@@ -1,29 +1,37 @@
-# Vite+ Monorepo Starter
+# Lazúli
 
-A starter for creating a Vite+ monorepo.
+Plataforma de gestão de conhecimento e retenção ativa.
+
+## Estrutura
+
+- `apps/website`: cliente React, Vite, Tailwind CSS e shadcn/ui;
+- `apps/server`: API Fastify, preparada para hospedagem separada;
+- `packages/shared`: contratos compartilhados entre cliente e servidor.
 
 ## Development
 
-- Check everything is ready:
+- Instale as dependências e copie a configuração local:
 
 ```bash
-vp run ready
+vp install
+cp .env.example .env
 ```
 
-- Run the tests:
-
-```bash
-vp run test -r
-```
-
-- Build the monorepo:
-
-```bash
-vp run build -r
-```
-
-- Run the development server:
+- Execute cliente e servidor juntos:
 
 ```bash
 vp run dev
+```
+
+Também é possível executar os processos separadamente:
+
+```bash
+vp run dev:website
+vp run dev:server
+```
+
+## Validação
+
+```bash
+vp run ready
 ```
