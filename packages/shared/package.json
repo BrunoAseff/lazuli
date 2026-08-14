@@ -1,0 +1,17 @@
+{
+  "name": "@lazuli/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

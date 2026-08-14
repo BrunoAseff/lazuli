@@ -8,9 +8,31 @@
     "build": "tsc && vp build",
     "preview": "vp preview"
   },
+  "dependencies": {
+    "@fontsource-variable/geist": "catalog:",
+    "@fontsource-variable/newsreader": "catalog:",
+    "@lazuli/shared": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
+    "lucide-react": "catalog:",
+    "next-themes": "catalog:",
+    "radix-ui": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "shadcn": "catalog:",
+    "sonner": "catalog:",
+    "tailwind-merge": "catalog:",
+    "tw-animate-css": "catalog:",
+    "vite": "catalog:"
+  },
   "devDependencies": {
-    "typescript": "~5.9.3",
-    "vite": "catalog:",
+    "@tailwindcss/vite": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
     "vite-plus": "catalog:"
   }
 }
