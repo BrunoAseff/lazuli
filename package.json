@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "db:generate": "vp run server#db:generate",
+    "db:migrate": "vp run server#db:migrate",
+    "db:studio": "vp run server#db:studio",
+    "db:up": "docker compose up -d postgres",
     "ready": "vp check && vp test && vp run -r build",
     "dev": "vp run --filter './apps/*' dev",
     "dev:website": "vp run website#dev",

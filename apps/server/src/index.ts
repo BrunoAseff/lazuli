@@ -10,7 +10,7 @@ const start = async () => {
       port: serverEnv.SERVER_PORT,
     });
   } catch (error) {
-    app.log.fatal({ error }, "server startup failed");
+    app.log.fatal({ err: error }, "server startup failed");
     process.exit(1);
   }
 };

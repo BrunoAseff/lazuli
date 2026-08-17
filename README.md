@@ -17,6 +17,13 @@ vp install
 cp .env.example .env
 ```
 
+Substitua `RESEND_API_KEY` pela sua chave e inicie o PostgreSQL antes da API:
+
+```bash
+vp run db:up
+vp run db:migrate
+```
+
 - Execute cliente e servidor juntos:
 
 ```bash
