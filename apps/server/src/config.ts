@@ -1,14 +1,27 @@
+import { config } from "dotenv";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
+config({
+  path: fileURLToPath(new URL("../../../.env", import.meta.url)),
+  quiet: true,
+});
+
 const serverEnvSchema = z.object({
-  CORS_ORIGIN: z.string().default("http://localhost:3000"),
+  AUTH_EMAIL_FROM: z.string().min(1),
+  BETTER_AUTH_SECRET: z.string().min(32),
+  BETTER_AUTH_URL: z.url(),
+  DATABASE_URL: z.url(),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("debug"),
   LOG_PRETTY: z
     .string()
     .optional()
     .transform((value) => value !== "false"),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  RESEND_API_KEY: z.string().min(1),
   SERVER_HOST: z.string().default("0.0.0.0"),
   SERVER_PORT: z.coerce.number().int().positive().default(3001),
+  WEBSITE_URL: z.url(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

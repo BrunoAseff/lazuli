@@ -126,6 +126,10 @@
     @apply m-0 bg-background text-foreground antialiased;
   }
 
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+
   button,
   a {
     @apply touch-manipulation;
