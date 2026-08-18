@@ -130,7 +130,12 @@ export const listProjectDocuments = async (
   projectId: string,
   input: ProjectListQuery,
 ) => {
-  const ownedProject = await getProject(database, userId, projectId);
+  const [ownedProject] = await database
+    .select({ id: project.id })
+    .from(project)
+    .where(and(eq(project.id, projectId), eq(project.userId, userId)))
+    .limit(1);
+
   if (!ownedProject) {
     return null;
   }
