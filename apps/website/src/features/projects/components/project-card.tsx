@@ -37,7 +37,7 @@ export const ProjectCard = ({
     <div className="grid gap-3 p-4">
       <div className="flex min-w-0 items-start gap-3">
         <Link
-          className="min-w-0 flex-1 font-heading text-xl leading-tight font-medium underline-offset-4 outline-none hover:underline focus-visible:underline"
+          className="min-w-0 flex-1 font-heading text-xl leading-tight font-medium [overflow-wrap:anywhere] underline-offset-4 outline-none hover:underline focus-visible:underline"
           state={{ projectListLocation: listLocation }}
           to={`/documents/${project.id}`}
         >

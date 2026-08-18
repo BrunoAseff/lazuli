@@ -111,7 +111,7 @@ export const ProjectDetailPage = () => {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Documentos / Projeto
           </p>
-          <h1 className="font-heading text-4xl font-medium tracking-tight sm:text-5xl">
+          <h1 className="font-heading text-4xl font-medium tracking-tight [overflow-wrap:anywhere] sm:text-5xl">
             {currentProject.title}
           </h1>
           <p className="text-sm text-muted-foreground">
