@@ -8,6 +8,13 @@
       "when": 1786980320808,
       "tag": "0000_stale_bloodstorm",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787020596521,
+      "tag": "0001_chief_forgotten_one",
+      "breakpoints": true
     }
   ]
 }

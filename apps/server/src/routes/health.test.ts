@@ -39,4 +39,20 @@ describe("healthRoutes", () => {
       timestamp: expect.any(String),
     });
   });
+
+  it("allows the HTTP methods used by authenticated project mutations", async () => {
+    const response = await app.inject({
+      headers: {
+        "access-control-request-method": "PATCH",
+        origin: testEnv.WEBSITE_URL,
+      },
+      method: "OPTIONS",
+      url: "/api/projects/project-id",
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.headers["access-control-allow-origin"]).toBe(testEnv.WEBSITE_URL);
+    expect(response.headers["access-control-allow-methods"]).toContain("PATCH");
+    expect(response.headers["access-control-allow-methods"]).toContain("DELETE");
+  });
 });

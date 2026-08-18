@@ -10,7 +10,8 @@ const AppShell = lazy(() => import("@/app/layouts/app-shell.tsx"));
 const LoginPage = lazy(() => import("@/features/auth/pages/login-page.tsx"));
 const RegisterPage = lazy(() => import("@/features/auth/pages/register-page.tsx"));
 const VerifyEmailPage = lazy(() => import("@/features/auth/pages/verify-email-page.tsx"));
-const DocumentsPage = lazy(() => import("@/pages/documents-page.tsx"));
+const ProjectListPage = lazy(() => import("@/features/projects/pages/project-list-page.tsx"));
+const ProjectDetailPage = lazy(() => import("@/features/projects/pages/project-detail-page.tsx"));
 
 export const App = () => (
   <Suspense fallback={<SessionLoading />}>
@@ -23,7 +24,8 @@ export const App = () => (
       <Route element={<VerifyEmailPage />} path="verify-email" />
       <Route element={<PrivateRoute />}>
         <Route element={<AppShell />}>
-          <Route element={<DocumentsPage />} path="documents" />
+          <Route element={<ProjectListPage />} path="documents" />
+          <Route element={<ProjectDetailPage />} path="documents/:projectId" />
         </Route>
       </Route>
       <Route element={<Navigate replace to="/" />} path="*" />

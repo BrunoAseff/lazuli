@@ -70,15 +70,27 @@ export const UserMenu = ({ user }: UserMenuProps) => {
               <ChevronsUpDownIcon aria-hidden="true" className="ml-auto" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-56" side="top" sideOffset={8}>
-            <DropdownMenuLabel className="font-normal">
-              <span className="grid gap-0.5">
-                <span className="truncate text-sm font-medium text-foreground">{user.name}</span>
-                <span className="truncate text-xs">{user.email}</span>
+          <DropdownMenuContent
+            align="end"
+            className="w-64 rounded-none border-border/90 p-1 shadow-[4px_4px_0_color-mix(in_oklch,var(--primary),transparent_88%)]"
+            side="right"
+            sideOffset={8}
+          >
+            <DropdownMenuLabel className="flex items-center gap-3 rounded-none px-3 py-3 font-normal">
+              <Avatar className="size-9 rounded-none border">
+                {user.image && <AvatarImage alt="" src={user.image} />}
+                <AvatarFallback className="rounded-none">{getInitials(user.name)}</AvatarFallback>
+              </Avatar>
+              <span className="grid min-w-0 flex-1 gap-0.5">
+                <span className="truncate font-heading text-base font-medium text-foreground">
+                  {user.name}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
               </span>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
+              className="rounded-none px-3 py-2"
               disabled={isSigningOut}
               onSelect={() => void signOut()}
               variant="destructive"

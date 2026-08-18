@@ -11,7 +11,11 @@
     "test": "vp test",
     "check": "vp check"
   },
+  "dependencies": {
+    "zod": "catalog:"
+  },
   "devDependencies": {
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

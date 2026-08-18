@@ -5,6 +5,7 @@ import type { ServerEnv } from "./config.ts";
 import { createAuth } from "./auth/auth.ts";
 import { createDatabase } from "./database/client.ts";
 import { createLogger } from "./logger.ts";
+import { createProjectRoutes } from "./projects/project-routes.ts";
 import { createAuthRoutes } from "./routes/auth-routes.ts";
 import { healthRoutes } from "./routes/health.ts";
 
@@ -17,10 +18,12 @@ export const buildApp = (env: ServerEnv) => {
 
   void app.register(cors, {
     credentials: true,
+    methods: ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"],
     origin: env.WEBSITE_URL,
   });
 
   app.register(createAuthRoutes(auth, env));
+  app.register(createProjectRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
   app.register(healthRoutes);
 
   app.addHook("onClose", async () => {
