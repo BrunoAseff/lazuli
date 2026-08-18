@@ -1,4 +1,5 @@
 import type { ProjectSummary } from "@lazuli/shared";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
@@ -12,6 +13,59 @@ type ProjectTableProps = {
   onAction: (action: "cover" | "delete" | "rename", project: ProjectSummary) => void;
   projects: ProjectSummary[];
   query: string;
+};
+
+const ProjectTitleLink = ({
+  listLocation,
+  project,
+  query,
+}: {
+  listLocation: string;
+  project: ProjectSummary;
+  query: string;
+}) => {
+  const linkRef = useRef<HTMLAnchorElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    const link = linkRef.current;
+    if (!link) return;
+
+    const updateTruncation = () => {
+      const nextIsTruncated = link.scrollWidth > link.clientWidth;
+      setIsTruncated(nextIsTruncated);
+      if (!nextIsTruncated) setTooltipOpen(false);
+    };
+
+    updateTruncation();
+    const observer = new ResizeObserver(updateTruncation);
+    observer.observe(link);
+    return () => observer.disconnect();
+  }, [project.title]);
+
+  return (
+    <Tooltip
+      onOpenChange={(open) => setTooltipOpen(open && isTruncated)}
+      open={tooltipOpen && isTruncated}
+    >
+      <TooltipTrigger asChild>
+        <Link
+          className="block truncate font-medium underline-offset-4 outline-none hover:underline focus-visible:underline"
+          ref={linkRef}
+          state={{ projectListLocation: listLocation }}
+          to={`/documents/${project.id}`}
+        >
+          <HighlightText query={query} text={project.title} />
+        </Link>
+      </TooltipTrigger>
+      {isTruncated && (
+        <TooltipContent className="max-w-sm [overflow-wrap:anywhere]">
+          {project.title}
+        </TooltipContent>
+      )}
+    </Tooltip>
+  );
 };
 
 export const ProjectTable = ({ listLocation, onAction, projects, query }: ProjectTableProps) => (
@@ -44,20 +98,7 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
                   coverKey={project.coverKey}
                 />
                 <div className="min-w-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link
-                        className="block truncate font-medium underline-offset-4 outline-none hover:underline focus-visible:underline"
-                        state={{ projectListLocation: listLocation }}
-                        to={`/documents/${project.id}`}
-                      >
-                        <HighlightText query={query} text={project.title} />
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-sm [overflow-wrap:anywhere]">
-                      {project.title}
-                    </TooltipContent>
-                  </Tooltip>
+                  <ProjectTitleLink listLocation={listLocation} project={project} query={query} />
                   <span className="mt-0.5 block text-xs text-muted-foreground sm:hidden">
                     {project.documentCount}{" "}
                     {project.documentCount === 1 ? "documento" : "documentos"}
