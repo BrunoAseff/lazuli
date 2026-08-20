@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 import { Card } from "@/components/ui/card.tsx";
 import { formatProjectDate } from "../format-project-date.ts";
-import { HighlightText } from "../highlight-text.tsx";
+import { HighlightText } from "@/components/highlight-text.tsx";
 import { ProjectActionsMenu } from "./project-actions-menu.tsx";
 import { ProjectCover } from "./project-cover.tsx";
 

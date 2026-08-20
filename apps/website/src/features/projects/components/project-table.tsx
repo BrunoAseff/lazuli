@@ -1,10 +1,9 @@
 import type { ProjectSummary } from "@lazuli/shared";
-import { useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
+import { HighlightText } from "@/components/highlight-text.tsx";
+import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { formatProjectDate } from "../format-project-date.ts";
-import { HighlightText } from "../highlight-text.tsx";
 import { ProjectActionsMenu } from "./project-actions-menu.tsx";
 import { ProjectCover } from "./project-cover.tsx";
 
@@ -24,47 +23,19 @@ const ProjectTitleLink = ({
   project: ProjectSummary;
   query: string;
 }) => {
-  const linkRef = useRef<HTMLAnchorElement>(null);
-  const [isTruncated, setIsTruncated] = useState(false);
-  const [tooltipOpen, setTooltipOpen] = useState(false);
-
-  useLayoutEffect(() => {
-    const link = linkRef.current;
-    if (!link) return;
-
-    const updateTruncation = () => {
-      const nextIsTruncated = link.scrollWidth > link.clientWidth;
-      setIsTruncated(nextIsTruncated);
-      if (!nextIsTruncated) setTooltipOpen(false);
-    };
-
-    updateTruncation();
-    const observer = new ResizeObserver(updateTruncation);
-    observer.observe(link);
-    return () => observer.disconnect();
-  }, [project.title]);
-
   return (
-    <Tooltip
-      onOpenChange={(open) => setTooltipOpen(open && isTruncated)}
-      open={tooltipOpen && isTruncated}
-    >
-      <TooltipTrigger asChild>
+    <OverflowTooltip text={project.title}>
+      {(ref) => (
         <Link
           className="block truncate font-medium underline-offset-4 outline-none hover:underline focus-visible:underline"
-          ref={linkRef}
+          ref={ref as React.RefObject<HTMLAnchorElement>}
           state={{ projectListLocation: listLocation }}
           to={`/documents/${project.id}`}
         >
           <HighlightText query={query} text={project.title} />
         </Link>
-      </TooltipTrigger>
-      {isTruncated && (
-        <TooltipContent className="max-w-sm [overflow-wrap:anywhere]">
-          {project.title}
-        </TooltipContent>
       )}
-    </Tooltip>
+    </OverflowTooltip>
   );
 };
 

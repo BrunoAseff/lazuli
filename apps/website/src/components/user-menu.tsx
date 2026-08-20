@@ -56,7 +56,7 @@ export const UserMenu = ({ user }: UserMenuProps) => {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton className="h-12" size="lg">
               <Avatar className="size-8 rounded-none">

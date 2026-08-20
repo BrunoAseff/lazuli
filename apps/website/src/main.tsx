@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
+import { createBrowserRouter, RouterProvider } from "react-router";
 
 import { App } from "./app.tsx";
 import { Toaster } from "./components/ui/sonner.tsx";
@@ -22,13 +22,13 @@ if (!rootElement) {
   throw new Error("App root element not found");
 }
 
+const router = createBrowserRouter([{ path: "*", Component: App }]);
+
 createRoot(rootElement).render(
-  <BrowserRouter>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <App />
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
-  </BrowserRouter>,
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <RouterProvider router={router} />
+      <Toaster />
+    </TooltipProvider>
+  </QueryClientProvider>,
 );

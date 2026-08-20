@@ -14,6 +14,11 @@ const testEnv: ServerEnv = {
   LOG_PRETTY: false,
   NODE_ENV: "test",
   RESEND_API_KEY: "re_test",
+  S3_ACCESS_KEY_ID: "lazuli",
+  S3_BUCKET: "lazuli-assets",
+  S3_ENDPOINT: "http://localhost:59000",
+  S3_REGION: "us-east-1",
+  S3_SECRET_ACCESS_KEY: "lazuli-local-secret",
   SERVER_HOST: "127.0.0.1",
   SERVER_PORT: 3001,
   WEBSITE_URL: "http://localhost:3000",
@@ -43,7 +48,7 @@ describe("healthRoutes", () => {
   it("allows the HTTP methods used by authenticated project mutations", async () => {
     const response = await app.inject({
       headers: {
-        "access-control-request-method": "PATCH",
+        "access-control-request-method": "PUT",
         origin: testEnv.WEBSITE_URL,
       },
       method: "OPTIONS",
@@ -52,6 +57,7 @@ describe("healthRoutes", () => {
 
     expect(response.statusCode).toBe(204);
     expect(response.headers["access-control-allow-origin"]).toBe(testEnv.WEBSITE_URL);
+    expect(response.headers["access-control-allow-methods"]).toContain("PUT");
     expect(response.headers["access-control-allow-methods"]).toContain("PATCH");
     expect(response.headers["access-control-allow-methods"]).toContain("DELETE");
   });

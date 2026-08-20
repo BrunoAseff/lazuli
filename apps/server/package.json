@@ -13,12 +13,15 @@
     "check": "vp check"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "catalog:",
     "@fastify/cors": "catalog:",
+    "@fastify/multipart": "catalog:",
     "@lazuli/shared": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "fastify": "catalog:",
+    "file-type": "catalog:",
     "pino": "catalog:",
     "postgres": "catalog:",
     "resend": "catalog:",

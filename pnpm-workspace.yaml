@@ -4,7 +4,12 @@ packages:
   - tools/*
 
 catalog:
+  "@aws-sdk/client-s3": ^3.1113.0
+  "@blocknote/core": ^0.54.0
+  "@blocknote/react": ^0.54.0
+  "@blocknote/shadcn": ^0.54.0
   "@fastify/cors": ^11.2.0
+  "@fastify/multipart": ^10.1.1
   "@fontsource-variable/geist": ^5.2.9
   "@fontsource-variable/newsreader": ^5.2.9
   "@hookform/resolvers": ^5.9.1
@@ -21,6 +26,7 @@ catalog:
   drizzle-kit: ^0.31.10
   drizzle-orm: ^0.45.2
   fastify: ^5.8.5
+  file-type: ^22.0.2
   lucide-react: ^1.17.0
   next-themes: ^0.4.6
   pino: ^10.3.1

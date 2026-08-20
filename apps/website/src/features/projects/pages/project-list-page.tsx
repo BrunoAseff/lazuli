@@ -1,11 +1,10 @@
 import { PROJECT_PAGE_SIZE, type ProjectSummary } from "@lazuli/shared";
-import { Grid2X2Icon, ListIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
+import { PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import { useProjects } from "../api/project-queries.ts";
 import { ProjectCard } from "../components/project-card.tsx";
 import {
@@ -22,11 +21,11 @@ import {
 } from "../components/project-list-states.tsx";
 import { ProjectPagination } from "../components/project-pagination.tsx";
 import { ProjectTable } from "../components/project-table.tsx";
+import { ViewModeToggle, type ViewMode } from "../components/view-mode-toggle.tsx";
 
-type ProjectView = "cards" | "table";
 type ProjectAction = "cover" | "delete" | "rename";
 
-const getInitialView = (): ProjectView =>
+const getInitialView = (): ViewMode =>
   localStorage.getItem("lazuli-project-view") === "table" ? "table" : "cards";
 
 const parsePage = (value: string | null) => {
@@ -40,7 +39,7 @@ export const ProjectListPage = () => {
   const query = searchParams.get("query")?.trim() ?? "";
   const page = parsePage(searchParams.get("page"));
   const [searchValue, setSearchValue] = useState(query);
-  const [view, setView] = useState<ProjectView>(getInitialView);
+  const [view, setView] = useState<ViewMode>(getInitialView);
   const [createOpen, setCreateOpen] = useState(false);
   const [activeAction, setActiveAction] = useState<{
     action: ProjectAction;
@@ -68,7 +67,7 @@ export const ProjectListPage = () => {
     });
   };
 
-  const changeView = (nextView: ProjectView) => {
+  const changeView = (nextView: ViewMode) => {
     setView(nextView);
     localStorage.setItem("lazuli-project-view", nextView);
   };
@@ -152,39 +151,8 @@ export const ProjectListPage = () => {
               </Button>
             )}
           </div>
-          <div
-            aria-label="Visualização dos projetos"
-            className="ml-auto flex border p-0.5"
-            role="group"
-          >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  aria-label="Visualizar como cards"
-                  aria-pressed={view === "cards"}
-                  onClick={() => changeView("cards")}
-                  size="icon-sm"
-                  variant={view === "cards" ? "secondary" : "ghost"}
-                >
-                  <Grid2X2Icon aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Cards</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  aria-label="Visualizar como tabela"
-                  aria-pressed={view === "table"}
-                  onClick={() => changeView("table")}
-                  size="icon-sm"
-                  variant={view === "table" ? "secondary" : "ghost"}
-                >
-                  <ListIcon aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Tabela</TooltipContent>
-            </Tooltip>
+          <div className="ml-auto">
+            <ViewModeToggle label="Visualização dos projetos" onChange={changeView} value={view} />
           </div>
         </div>
 

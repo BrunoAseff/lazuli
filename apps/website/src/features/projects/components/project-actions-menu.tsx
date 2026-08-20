@@ -22,7 +22,7 @@ export const ProjectActionsMenu = ({
   onDelete,
   onRename,
 }: ProjectActionsMenuProps) => (
-  <DropdownMenu>
+  <DropdownMenu modal={false}>
     <DropdownMenuTrigger asChild>
       <Button
         aria-label="Abrir ações do projeto"

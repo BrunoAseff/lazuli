@@ -1,9 +1,10 @@
 import { ArrowLeftIcon, FileTextIcon, TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { RecentDocuments } from "@/features/documents/components/recent-documents.tsx";
 import { useProject, useProjectDocuments } from "../api/project-queries.ts";
 import { ProjectApiError } from "../api/project-api.ts";
 import {
@@ -13,42 +14,32 @@ import {
 } from "../components/project-dialogs.tsx";
 import { ProjectActionsMenu } from "../components/project-actions-menu.tsx";
 import { ProjectCover } from "../components/project-cover.tsx";
-import { ProjectPagination } from "../components/project-pagination.tsx";
-import { formatProjectDate } from "../format-project-date.ts";
+import { ViewModeToggle, type ViewMode } from "../components/view-mode-toggle.tsx";
 
 type DetailAction = "cover" | "delete" | "rename" | null;
-
-const parsePage = (value: string | null) => {
-  const page = Number(value);
-  return Number.isInteger(page) && page > 0 ? page : 1;
-};
 
 export const ProjectDetailPage = () => {
   const { projectId = "" } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [action, setAction] = useState<DetailAction>(null);
-  const page = parsePage(searchParams.get("page"));
+  const [documentView, setDocumentView] = useState<ViewMode>(() =>
+    localStorage.getItem("lazuli-document-view") === "table" ? "table" : "cards",
+  );
   const project = useProject(projectId);
-  const documents = useProjectDocuments(projectId, page);
+  const documents = useProjectDocuments(projectId, 1, 6);
   const state = location.state as { projectListLocation?: unknown } | null;
   const backLocation =
     typeof state?.projectListLocation === "string" ? state.projectListLocation : "/documents";
   const notFound = project.error instanceof ProjectApiError && project.error.status === 404;
-
-  const setPage = (nextPage: number) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      if (nextPage <= 1) next.delete("page");
-      else next.set("page", String(nextPage));
-      return next;
-    });
+  const changeDocumentView = (view: ViewMode) => {
+    setDocumentView(view);
+    localStorage.setItem("lazuli-document-view", view);
   };
 
   if (project.isPending) {
     return (
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-5 pt-7 pb-8 sm:px-8 lg:px-12 lg:pt-7 lg:pb-10">
         <Skeleton className="h-5 w-28" />
         <Skeleton className="aspect-[3/1] w-full rounded-none" />
         <Skeleton className="h-12 w-1/2" />
@@ -87,7 +78,7 @@ export const ProjectDetailPage = () => {
   const currentProject = project.data;
 
   return (
-    <div className="flex flex-1 flex-col px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+    <div className="flex min-h-full flex-col px-5 pt-7 pb-8 sm:px-8 lg:px-12 lg:pt-7 lg:pb-10">
       <div className="mx-auto w-full max-w-6xl">
         <Link
           className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
@@ -121,9 +112,16 @@ export const ProjectDetailPage = () => {
         </div>
 
         <section className="mt-8" aria-labelledby="project-documents-title">
-          <h2 className="font-heading text-2xl font-medium" id="project-documents-title">
-            Documentos
-          </h2>
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="font-heading text-2xl font-medium" id="project-documents-title">
+              Documentos recentes
+            </h2>
+            <ViewModeToggle
+              label="Visualização dos documentos recentes"
+              onChange={changeDocumentView}
+              value={documentView}
+            />
+          </div>
 
           {documents.isPending && (
             <div
@@ -154,7 +152,10 @@ export const ProjectDetailPage = () => {
           {documents.data?.items.length === 0 && (
             <div className="mt-5 grid min-h-56 place-items-center border border-dashed bg-card/40 p-6 text-center">
               <div className="max-w-sm">
-                <FileTextIcon aria-hidden="true" className="mx-auto mb-4 size-7 text-primary" />
+                <FileTextIcon
+                  aria-hidden="true"
+                  className="mx-auto mb-4 size-7 text-muted-foreground"
+                />
                 <h3 className="font-heading text-2xl font-medium">Nenhum documento ainda</h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   Os documentos deste projeto serão criados e organizados aqui na próxima etapa.
@@ -164,24 +165,11 @@ export const ProjectDetailPage = () => {
           )}
 
           {documents.data && documents.data.items.length > 0 && (
-            <div className="mt-5 divide-y border bg-card">
-              {documents.data.items.map((document) => (
-                <div className="flex items-center gap-3 p-4" key={document.id}>
-                  <FileTextIcon aria-hidden="true" className="size-4 text-primary" />
-                  <span className="min-w-0 flex-1 truncate font-medium">{document.title}</span>
-                  <time
-                    className="hidden text-xs text-muted-foreground sm:block"
-                    dateTime={document.updatedAt}
-                  >
-                    {formatProjectDate(document.updatedAt)}
-                  </time>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {documents.data && (
-            <ProjectPagination onPageChange={setPage} pagination={documents.data.pagination} />
+            <RecentDocuments
+              items={documents.data.items}
+              projectId={projectId}
+              view={documentView}
+            />
           )}
         </section>
       </div>

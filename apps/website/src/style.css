@@ -3,6 +3,8 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/newsreader";
+@import "@blocknote/shadcn/style.css";
+@source "../node_modules/@blocknote/shadcn";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -60,8 +62,8 @@
   --secondary-foreground: var(--foreground);
   --muted: oklch(0.955 0.006 80);
   --muted-foreground: oklch(0.5 0.014 60);
-  --accent: oklch(0.93 0.025 250);
-  --accent-foreground: oklch(0.27 0.075 253);
+  --accent: oklch(0.945 0.006 80);
+  --accent-foreground: var(--foreground);
   --destructive: oklch(0.58 0.21 27);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.84 0.012 75);
@@ -70,6 +72,8 @@
   --chart-1: oklch(0.55 0.11 253);
   --chart-2: oklch(0.57 0.09 155);
   --chart-3: oklch(0.63 0.11 70);
+  --search-match: color-mix(in oklab, var(--primary) 18%, transparent);
+  --search-current: color-mix(in oklab, var(--primary) 36%, transparent);
   --chart-4: oklch(0.51 0.08 310);
   --chart-5: oklch(0.59 0.11 25);
   --radius: 0.25rem;
@@ -96,8 +100,8 @@
   --secondary-foreground: var(--foreground);
   --muted: oklch(0.24 0.009 60);
   --muted-foreground: oklch(0.7 0.012 80);
-  --accent: oklch(0.29 0.035 250);
-  --accent-foreground: oklch(0.86 0.055 250);
+  --accent: oklch(0.255 0.009 60);
+  --accent-foreground: var(--foreground);
   --destructive: oklch(0.67 0.19 25);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 16%);
@@ -120,10 +124,25 @@
 
   html {
     @apply font-sans;
+    scrollbar-gutter: stable;
   }
 
   body {
     @apply m-0 bg-background text-foreground antialiased;
+  }
+
+  html body[data-scroll-locked] {
+    --removed-body-scroll-bar-size: 0px !important;
+    padding-right: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .right-scroll-bar-position {
+    right: 0 !important;
+  }
+
+  .width-before-scroll-bar {
+    margin-right: 0 !important;
   }
 
   ::selection {
@@ -138,4 +157,343 @@
 
 #app {
   min-height: 100svh;
+}
+
+.project-workspace {
+  container-type: inline-size;
+}
+
+.project-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 64rem);
+  justify-content: center;
+  transition: grid-template-columns 200ms ease-out;
+  width: 100%;
+}
+
+.project-workspace-tree {
+  display: none;
+}
+
+.project-workspace-content {
+  grid-column: 1;
+}
+
+.project-files-trigger {
+  display: inline-flex;
+}
+
+@container (min-width: 56rem) {
+  .project-workspace-grid {
+    grid-template-columns: 15rem minmax(0, 64rem);
+    justify-content: center;
+  }
+
+  .project-workspace-tree {
+    display: block;
+    grid-column: 1;
+  }
+
+  .project-workspace-grid[data-tree-collapsed="true"] {
+    grid-template-columns: 2.75rem minmax(0, 64rem);
+  }
+
+  .project-workspace-content {
+    grid-column: 2;
+  }
+
+  .project-files-trigger {
+    display: none;
+  }
+}
+
+@container (min-width: 94rem) {
+  .project-workspace-grid {
+    grid-template-columns: minmax(15rem, 1fr) minmax(0, 64rem) minmax(15rem, 1fr);
+    justify-content: stretch;
+  }
+
+  .project-workspace-tree {
+    justify-self: end;
+  }
+
+  .project-workspace-grid[data-tree-collapsed="true"] {
+    grid-template-columns: minmax(2.75rem, 1fr) minmax(0, 64rem) minmax(2.75rem, 1fr);
+  }
+}
+
+@container (max-width: 55.999rem) {
+  .project-workspace-content main:has(.lazuli-editor) {
+    padding-inline: 4rem;
+  }
+}
+
+.lazuli-editor.bn-container {
+  --bn-colors-editor-background: transparent;
+  --bn-colors-editor-text: var(--foreground);
+  --bn-colors-menu-background: var(--popover);
+  --bn-colors-menu-text: var(--popover-foreground);
+  --bn-colors-tooltip-background: var(--foreground);
+  --bn-colors-tooltip-text: var(--background);
+  font-family: var(--font-sans);
+}
+
+.lazuli-editor button svg,
+.lazuli-editor button svg * {
+  pointer-events: none;
+}
+
+.lazuli-editor .bn-editor {
+  min-height: 60vh;
+  padding-inline: 0;
+  background: transparent;
+}
+
+.lazuli-editor .bn-inline-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lazuli-editor [data-content-type="codeBlock"] {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.lazuli-editor [data-content-type="heading"] {
+  font-family: var(--font-heading);
+}
+
+.lazuli-editor .bn-block-outer[data-image-import-error] > .bn-block {
+  border-radius: calc(var(--radius) - 2px);
+  outline: 2px solid var(--destructive);
+  outline-offset: 0.25rem;
+}
+
+.lazuli-editor .bn-block-outer[data-image-import-error]::after {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--destructive) 35%, var(--border));
+  border-radius: calc(var(--radius) - 2px);
+  background: color-mix(in oklab, var(--destructive) 7%, var(--background));
+  color: var(--destructive);
+  content: attr(data-image-import-error);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.lazuli-broken-image {
+  display: grid;
+  width: min(32rem, calc(100vw - 3rem));
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.lazuli-broken-image > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.lazuli-broken-image p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.lazuli-broken-image p:first-child {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+@media (max-width: 40rem) {
+  .lazuli-broken-image {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .lazuli-broken-image [data-slot="button"] {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+.lazuli-editor .bn-suggestion-menu {
+  width: min(20rem, calc(100vw - 2rem));
+  max-height: min(22rem, 55vh);
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent) transparent;
+}
+
+.lazuli-editor .bn-suggestion-menu > .bn-suggestion-menu-item {
+  min-height: 2.5rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.lazuli-editor .bn-suggestion-menu > .bn-suggestion-menu-item .bn-suggestion-menu-item {
+  min-height: 0;
+  padding: 0;
+}
+
+.lazuli-editor .bn-suggestion-menu > .bn-suggestion-menu-item [data-position="left"] {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  place-items: center;
+  padding: 0;
+}
+
+.lazuli-editor .bn-suggestion-menu > .bn-suggestion-menu-item > .flex-1 {
+  min-width: 0;
+}
+
+.lazuli-editor
+  .bn-suggestion-menu
+  > .bn-suggestion-menu-item
+  [data-position="left"]
+  + div
+  > div:first-child {
+  overflow: hidden;
+  font-size: 0.9rem;
+  line-height: 1.2rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lazuli-editor
+  .bn-suggestion-menu
+  > .bn-suggestion-menu-item
+  [data-position="left"]
+  + div
+  > div:last-child {
+  overflow: hidden;
+  font-size: 0.7rem;
+  line-height: 0.95rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lazuli-editor [data-slot="select-content"] {
+  width: min(14rem, calc(100vw - 1rem));
+  max-width: calc(100vw - 1rem);
+}
+
+.lazuli-editor [data-slot="select-item"] {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.lazuli-editor [data-slot="select-item"] > span:first-child {
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+}
+
+.lazuli-editor [data-slot="select-item"] > span:first-child > div {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lazuli-editor [data-slot="select-item"] > span:last-child svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.lazuli-editor .bn-form-popover:has(input[name="url"]) {
+  width: min(23rem, calc(100vw - 1rem));
+}
+
+.lazuli-editor .bn-form-popover:has(input[name="url"]) > .bn-text-input {
+  height: auto;
+  min-height: 2.75rem;
+  width: 100%;
+  padding-block: 0.375rem;
+}
+
+.lazuli-editor .bn-form-popover:has(input[name="url"]) input.bn-text-input {
+  min-height: 1.75rem;
+  padding-inline: 0.5rem;
+}
+
+.lazuli-editor [data-slot="dropdown-menu-sub-trigger"] > svg:last-child {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.lazuli-editor .bn-color-picker-dropdown {
+  width: min(10.5rem, calc(100vw - 1rem));
+  padding: 0.25rem;
+}
+
+.lazuli-editor .bn-color-picker-dropdown [data-slot="dropdown-menu-checkbox-item"] {
+  min-height: 2rem;
+  min-width: 0;
+  gap: 0.5rem;
+  padding-block: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.lazuli-editor .bn-color-picker-dropdown [data-slot="dropdown-menu-checkbox-item"] > svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.lazuli-editor .bn-color-picker-dropdown [data-slot="dropdown-menu-checkbox-item-indicator"] {
+  right: 0.5rem;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.lazuli-editor .bn-color-picker-dropdown [data-slot="dropdown-menu-checkbox-item-indicator"] svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.lazuli-source-anchor {
+  text-decoration: underline 2px color-mix(in oklab, var(--primary) 65%, transparent);
+  text-underline-offset: 0.2em;
+}
+
+.lazuli-tree-drag-preview {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  display: flex;
+  max-width: 15rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  overflow: hidden;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--popover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0.5rem 1.5rem color-mix(in oklab, var(--foreground) 16%, transparent);
+}
+
+.lazuli-tree-drag-preview > svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  color: var(--muted-foreground);
+}
+
+.lazuli-tree-drag-preview > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

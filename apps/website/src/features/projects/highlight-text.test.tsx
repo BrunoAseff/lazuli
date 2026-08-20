@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getHighlightSegments } from "./highlight-text.tsx";
+import { getHighlightSegments } from "../../components/highlight-text.tsx";
 
 describe("getHighlightSegments", () => {
   it("finds multiple matches without changing the original text", () => {
