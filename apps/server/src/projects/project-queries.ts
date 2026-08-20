@@ -2,7 +2,7 @@ import type { CreateProjectInput, ProjectListQuery, UpdateProjectInput } from "@
 import { and, count, desc, eq, or, sql } from "drizzle-orm";
 
 import type { Database } from "../database/client.ts";
-import { document, project } from "../database/schema/index.ts";
+import { asset, project, projectItem } from "../database/schema/index.ts";
 
 export const escapeLikePattern = (value: string) =>
   value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
@@ -20,7 +20,7 @@ const projectSelection = {
   id: project.id,
   title: project.title,
   coverKey: project.coverKey,
-  documentCount: count(document.id).mapWith(Number),
+  documentCount: count(projectItem.id).mapWith(Number),
   createdAt: project.createdAt,
   updatedAt: project.updatedAt,
 };
@@ -33,10 +33,13 @@ export const listProjects = async (database: Database, userId: string, input: Pr
   const items = await database
     .select(projectSelection)
     .from(project)
-    .leftJoin(document, eq(document.projectId, project.id))
+    .leftJoin(
+      projectItem,
+      and(eq(projectItem.projectId, project.id), eq(projectItem.type, "document")),
+    )
     .where(where)
     .groupBy(project.id)
-    .orderBy(desc(project.updatedAt), desc(project.id))
+    .orderBy(desc(project.createdAt), desc(project.id))
     .limit(input.pageSize)
     .offset((input.page - 1) * input.pageSize);
 
@@ -55,7 +58,10 @@ export const getProject = async (database: Database, userId: string, projectId: 
   const [result] = await database
     .select(projectSelection)
     .from(project)
-    .leftJoin(document, eq(document.projectId, project.id))
+    .leftJoin(
+      projectItem,
+      and(eq(projectItem.projectId, project.id), eq(projectItem.type, "document")),
+    )
     .where(and(eq(project.id, projectId), eq(project.userId, userId)))
     .groupBy(project.id)
     .limit(1);
@@ -115,14 +121,32 @@ export const updateProject = async (
   return getProject(database, userId, updated?.id ?? projectId);
 };
 
-export const deleteProject = async (database: Database, userId: string, projectId: string) => {
-  const [deleted] = await database
-    .delete(project)
-    .where(and(eq(project.id, projectId), eq(project.userId, userId)))
-    .returning({ id: project.id });
+export const deleteProject = async (
+  database: Database,
+  userId: string,
+  projectId: string,
+  deleteObjects: (objectKeys: string[]) => Promise<void>,
+) =>
+  database.transaction(async (tx) => {
+    const [owned] = await tx
+      .select({ id: project.id })
+      .from(project)
+      .where(and(eq(project.id, projectId), eq(project.userId, userId)))
+      .limit(1)
+      .for("update");
+    if (!owned) return false;
 
-  return Boolean(deleted);
-};
+    const storedAssets = await tx
+      .select({ objectKey: asset.objectKey })
+      .from(asset)
+      .where(and(eq(asset.projectId, projectId), eq(asset.userId, userId)));
+    await deleteObjects(storedAssets.map(({ objectKey }) => objectKey));
+    const [deleted] = await tx
+      .delete(project)
+      .where(and(eq(project.id, projectId), eq(project.userId, userId)))
+      .returning({ id: project.id });
+    return Boolean(deleted);
+  });
 
 export const listProjectDocuments = async (
   database: Database,
@@ -141,23 +165,24 @@ export const listProjectDocuments = async (
   }
 
   const where = and(
-    eq(document.projectId, projectId),
+    eq(projectItem.projectId, projectId),
+    eq(projectItem.type, "document"),
     input.query
-      ? sql<boolean>`unaccent(lower(${document.title})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`
+      ? sql<boolean>`unaccent(lower(${projectItem.title})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`
       : undefined,
   );
-  const [total] = await database.select({ value: count() }).from(document).where(where);
+  const [total] = await database.select({ value: count() }).from(projectItem).where(where);
   const totalItems = total?.value ?? 0;
   const items = await database
     .select({
-      id: document.id,
-      title: document.title,
-      createdAt: document.createdAt,
-      updatedAt: document.updatedAt,
+      id: projectItem.id,
+      title: projectItem.title,
+      createdAt: projectItem.createdAt,
+      updatedAt: projectItem.updatedAt,
     })
-    .from(document)
+    .from(projectItem)
     .where(where)
-    .orderBy(desc(document.updatedAt), desc(document.id))
+    .orderBy(desc(projectItem.updatedAt), desc(projectItem.id))
     .limit(input.pageSize)
     .offset((input.page - 1) * input.pageSize);
 

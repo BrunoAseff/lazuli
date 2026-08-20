@@ -1,5 +1,6 @@
 export const APP_NAME = "Lazúli";
 
+export * from "./documents/document-contracts.ts";
 export * from "./projects/project-contracts.ts";
 
 export type ApiHealthResponse = {
