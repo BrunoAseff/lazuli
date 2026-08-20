@@ -16,8 +16,9 @@ export const projectKeys = {
   list: (input: ProjectListQuery) => [...projectKeys.lists(), input] as const,
   details: () => [...projectKeys.all, "detail"] as const,
   detail: (projectId: string) => [...projectKeys.details(), projectId] as const,
+  projectDocuments: (projectId: string) => [...projectKeys.all, "documents", projectId] as const,
   documents: (projectId: string, input: ProjectListQuery) =>
-    [...projectKeys.detail(projectId), "documents", input] as const,
+    [...projectKeys.projectDocuments(projectId), input] as const,
 };
 
 export const useProjects = (input: ProjectListQuery) =>
@@ -32,8 +33,12 @@ export const useProject = (projectId: string) =>
     queryFn: ({ signal }) => fetchProject(projectId, signal),
   });
 
-export const useProjectDocuments = (projectId: string, page: number) => {
-  const input = { page, pageSize: PROJECT_PAGE_SIZE, query: "" };
+export const useProjectDocuments = (
+  projectId: string,
+  page: number,
+  pageSize = PROJECT_PAGE_SIZE,
+) => {
+  const input = { page, pageSize, query: "" };
   return useQuery({
     queryKey: projectKeys.documents(projectId, input),
     queryFn: ({ signal }) => fetchProjectDocuments(projectId, input, signal),
