@@ -10,6 +10,7 @@ import {
   bufferedImageSource,
   filenameFromUrl,
   ImageUploadTooLargeError,
+  StorageLimitReachedError,
   storeDocumentImage,
   streamedImageSource,
 } from "./document-image-storage.ts";
@@ -57,6 +58,11 @@ export const createDocumentAssetRoutes = ({
             return reply.status(413).send({
               code: "IMAGE_TOO_LARGE",
               message: "A imagem deve ter no máximo 10 MB.",
+            });
+          if (error instanceof StorageLimitReachedError)
+            return reply.status(409).send({
+              code: "STORAGE_LIMIT_REACHED",
+              message: "Seu limite de armazenamento foi atingido.",
             });
           request.log.error(
             { err: error, documentId: documentId.data, userId: session.user.id },
@@ -168,7 +174,6 @@ export const createDocumentAssetRoutes = ({
       if (!assetId.success) return documentValidationError(reply);
       const stored = await getOwnedAsset(database, session.user.id, assetId.data);
       if (stored) {
-        await storage.delete(stored.objectKey);
         await deleteOwnedAsset(database, session.user.id, assetId.data);
         request.log.info({ assetId: stored.id, userId: session.user.id }, "document asset deleted");
       }

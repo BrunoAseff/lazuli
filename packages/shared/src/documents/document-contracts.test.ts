@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DOCUMENT_IMPORT_MARKDOWN_MAX_BYTES,
   DOCUMENT_MAX_DEPTH,
+  createDocumentImportSchema,
   documentContentSchema,
   projectItemTitleSchema,
   updateProjectItemSchema,
@@ -83,5 +85,27 @@ describe("document contracts", () => {
       current = child;
     }
     expect(documentContentSchema.safeParse([root]).success).toBe(false);
+  });
+
+  it("accepts only supported document import metadata", () => {
+    const valid = {
+      id: "00000000-0000-4000-8000-000000000001",
+      documentId: "00000000-0000-4000-8000-000000000002",
+      parentId: null,
+      originalName: "anotações.md",
+      mimeType: "text/markdown",
+      byteSize: 128,
+    };
+    expect(createDocumentImportSchema.safeParse(valid).success).toBe(true);
+    expect(
+      createDocumentImportSchema.safeParse({ ...valid, mimeType: "application/x-msdownload" })
+        .success,
+    ).toBe(false);
+    expect(
+      createDocumentImportSchema.safeParse({
+        ...valid,
+        byteSize: DOCUMENT_IMPORT_MARKDOWN_MAX_BYTES + 1,
+      }).success,
+    ).toBe(false);
   });
 });

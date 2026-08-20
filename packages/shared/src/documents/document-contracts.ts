@@ -1,12 +1,20 @@
 import { z } from "zod";
 
 import { projectIdSchema } from "../projects/project-contracts.ts";
+import { sourceAnchorIdSchema } from "./source-anchor.ts";
 
 export const DOCUMENT_TITLE_MAX_LENGTH = 100;
 export const DOCUMENT_MAX_BLOCKS = 10_000;
 export const DOCUMENT_MAX_DEPTH = 20;
 export const DOCUMENT_MAX_CONTENT_BYTES = 5 * 1024 * 1024;
 export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+export const DOCUMENT_IMPORT_MARKDOWN_MAX_BYTES = 5 * 1024 * 1024;
+export const DOCUMENT_IMPORT_BINARY_MAX_BYTES = 25 * 1024 * 1024;
+export const DOCUMENT_IMPORT_MAX_ACTIVE = 5;
+export const DOCUMENT_IMPORT_RATE_LIMIT = 20;
+export const DOCUMENT_IMPORT_RATE_WINDOW_MS = 10 * 60 * 1_000;
+export const DOCUMENT_IMPORT_MAX_PDF_PAGES = 500;
+export const STORAGE_BASIC_LIMIT_BYTES = 500 * 1024 * 1024;
 
 export const projectItemIdSchema = z.uuid();
 export const projectItemTypeSchema = z.enum(["folder", "document"]);
@@ -20,11 +28,17 @@ export const projectItemTitleSchema = z
 
 const jsonPrimitiveSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 const stylesSchema = z.record(z.string(), jsonPrimitiveSchema);
-const textContentSchema = z.object({
-  type: z.literal("text"),
-  text: z.string(),
-  styles: stylesSchema,
-});
+const textContentSchema = z
+  .object({
+    type: z.literal("text"),
+    text: z.string(),
+    styles: stylesSchema,
+  })
+  .superRefine(({ styles }, context) => {
+    if (!("sourceAnchor" in styles)) return;
+    if (!sourceAnchorIdSchema.safeParse(styles.sourceAnchor).success)
+      context.addIssue({ code: "custom", message: "A referência do texto é inválida." });
+  });
 const hasControlCharacter = (value: string) =>
   Array.from(value).some((character) => character.charCodeAt(0) < 32);
 const safeHrefSchema = z
@@ -182,6 +196,71 @@ export const assetResponseSchema = z.object({
   byteSize: z.number().int().positive(),
 });
 
+export const DOCUMENT_IMPORT_ACTIVE_STATUSES = [
+  "uploading",
+  "queued",
+  "processing",
+  "finalizing",
+] as const;
+export const documentImportStatusSchema = z.enum([
+  ...DOCUMENT_IMPORT_ACTIVE_STATUSES,
+  "completed",
+  "failed",
+  "canceled",
+]);
+export const documentImportPhaseSchema = z.enum([
+  "validating",
+  "extracting",
+  "converting",
+  "finalizing",
+]);
+export const documentImportMimeTypeSchema = z.enum([
+  "text/markdown",
+  "text/plain",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/pdf",
+]);
+export const createDocumentImportSchema = z
+  .object({
+    id: z.uuid(),
+    documentId: z.uuid(),
+    parentId: projectItemIdSchema.nullable().default(null),
+    originalName: z.string().trim().min(1).max(255),
+    mimeType: documentImportMimeTypeSchema,
+    byteSize: z.number().int().positive().max(DOCUMENT_IMPORT_BINARY_MAX_BYTES),
+  })
+  .refine(
+    ({ byteSize, mimeType }) =>
+      !["text/markdown", "text/plain"].includes(mimeType) ||
+      byteSize <= DOCUMENT_IMPORT_MARKDOWN_MAX_BYTES,
+    { message: "Arquivos de texto devem ter no máximo 5 MB.", path: ["byteSize"] },
+  );
+export const documentImportSchema = z.object({
+  id: z.uuid(),
+  projectId: projectIdSchema,
+  parentId: projectItemIdSchema.nullable(),
+  documentId: z.uuid(),
+  originalName: z.string(),
+  mimeType: z.string(),
+  byteSize: z.number().int().nonnegative(),
+  status: documentImportStatusSchema,
+  phase: documentImportPhaseSchema.nullable(),
+  progressCurrent: z.number().int().nonnegative().nullable(),
+  progressTotal: z.number().int().positive().nullable(),
+  errorCode: z.string().nullable(),
+  warnings: z.array(z.string()),
+  resultDocumentId: z.uuid().nullable(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+  finishedAt: z.iso.datetime().nullable(),
+});
+export const documentImportListSchema = z.object({ imports: z.array(documentImportSchema) });
+export const storageUsageSchema = z.object({
+  usedBytes: z.number().int().nonnegative(),
+  reservedBytes: z.number().int().nonnegative(),
+  limitBytes: z.number().int().positive(),
+});
+
 export type ProjectTreeItem = z.infer<typeof projectTreeItemSchema>;
 export type ProjectTreeResponse = z.infer<typeof projectTreeResponseSchema>;
 export type CreateProjectItemInput = z.infer<typeof createProjectItemSchema>;
@@ -190,3 +269,8 @@ export type DocumentResponse = z.infer<typeof documentResponseSchema>;
 export type SaveDocumentContentInput = z.infer<typeof saveDocumentContentSchema>;
 export type ImportDocumentImageInput = z.infer<typeof importDocumentImageSchema>;
 export type AssetResponse = z.infer<typeof assetResponseSchema>;
+export type CreateDocumentImportInput = z.infer<typeof createDocumentImportSchema>;
+export type DocumentImport = z.infer<typeof documentImportSchema>;
+export type DocumentImportList = z.infer<typeof documentImportListSchema>;
+export type DocumentImportStatus = z.infer<typeof documentImportStatusSchema>;
+export type StorageUsage = z.infer<typeof storageUsageSchema>;
