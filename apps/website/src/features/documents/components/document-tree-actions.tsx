@@ -1,5 +1,12 @@
 import type { ProjectTreeItem } from "@lazuli/shared";
-import { FilePlus2Icon, FolderPlusIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import {
+  DownloadIcon,
+  FilePlus2Icon,
+  FolderPlusIcon,
+  PencilIcon,
+  Trash2Icon,
+  UploadIcon,
+} from "lucide-react";
 
 import { ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu.tsx";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu.tsx";
@@ -9,12 +16,16 @@ export const DocumentTreeActions = ({
   item,
   onCreate,
   onDelete,
+  onExport,
+  onImport,
   onRename,
 }: {
   context?: boolean;
   item: ProjectTreeItem;
   onCreate: (type: "folder" | "document") => void;
   onDelete: () => void;
+  onExport?: () => void;
+  onImport?: () => void;
   onRename: () => void;
 }) => {
   const Item = context ? ContextMenuItem : DropdownMenuItem;
@@ -26,6 +37,11 @@ export const DocumentTreeActions = ({
       </Item>
       {item.type === "folder" && (
         <>
+          {onImport && (
+            <Item className="whitespace-nowrap" onSelect={onImport}>
+              <UploadIcon /> Importar documentos
+            </Item>
+          )}
           <Item className="whitespace-nowrap" onSelect={() => onCreate("document")}>
             <FilePlus2Icon /> Novo documento
           </Item>
@@ -33,6 +49,11 @@ export const DocumentTreeActions = ({
             <FolderPlusIcon /> Nova pasta
           </Item>
         </>
+      )}
+      {item.type === "document" && onExport && (
+        <Item onSelect={onExport}>
+          <DownloadIcon /> Baixar Markdown
+        </Item>
       )}
       <Separator />
       <Item variant="destructive" onSelect={onDelete}>

@@ -329,6 +329,10 @@
 .lazuli-editor .bn-suggestion-menu {
   width: min(20rem, calc(100vw - 2rem));
   max-height: min(22rem, 55vh);
+}
+
+.lazuli-editor .bn-suggestion-menu,
+.lazuli-thin-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent) transparent;
 }

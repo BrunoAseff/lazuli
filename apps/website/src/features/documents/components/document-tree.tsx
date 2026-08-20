@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { cn } from "@/lib/utils.ts";
+import { useDocumentImports } from "@/features/document-imports/document-import-provider.tsx";
 import { foldSearchText } from "@/lib/text.ts";
 import {
   useCreateProjectItem,
@@ -33,6 +34,7 @@ import {
   useMoveProjectItem,
   useRenameProjectItem,
 } from "../api/document-queries.ts";
+import { downloadDocumentMarkdown } from "../api/document-api.ts";
 import { buildProjectChildren, collectProjectDescendantIds } from "../project-tree.ts";
 import { DOCUMENT_MESSAGES } from "../document-messages.ts";
 import { DocumentTreeActions } from "./document-tree-actions.tsx";
@@ -64,6 +66,7 @@ export const DocumentTree = ({
   closeIcon = "panel",
 }: Props) => {
   const navigate = useNavigate();
+  const { openImportDialog } = useDocumentImports();
   const createItem = useCreateProjectItem(projectId);
   const renameItem = useRenameProjectItem(projectId);
   const moveItem = useMoveProjectItem(projectId);
@@ -132,6 +135,9 @@ export const DocumentTree = ({
   const openDocument = (itemId: string) => {
     onNavigate?.();
     void navigate(`/documents/${projectId}/document/${itemId}`);
+  };
+  const requestImport = (parentId: string | null) => {
+    openImportDialog(projectId, parentId);
   };
 
   const beginCreate = (type: PendingCreation["type"], parentId: string | null = null) => {
@@ -299,7 +305,7 @@ export const DocumentTree = ({
             <OverflowTooltip side="right" text={item.title}>
               {(ref) => (
                 <button
-                  className="min-w-0 flex-1 truncate text-left"
+                  className="min-w-0 flex-1 truncate text-left transition-[padding] duration-100 group-hover:pr-7 group-focus-within:pr-7 group-has-data-[state=open]:pr-7"
                   data-tree-label
                   onClick={(event) => {
                     if (event.detail > 1) return;
@@ -318,7 +324,8 @@ export const DocumentTree = ({
             <OverflowTooltip side="right" text={item.title}>
               {(ref) => (
                 <Link
-                  className="min-w-0 flex-1 truncate"
+                  className="min-w-0 flex-1 truncate transition-[padding] duration-100 group-hover:pr-7 group-focus-within:pr-7 group-has-data-[state=open]:pr-7"
+                  data-tree-label
                   onClick={(event) => {
                     if (event.detail > 1 && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
                       event.preventDefault();
@@ -348,7 +355,7 @@ export const DocumentTree = ({
                 <div
                   aria-grabbed={draggedId === item.id}
                   className={cn(
-                    "group flex h-9 cursor-pointer items-center gap-1 rounded-sm pr-3 text-sm transition-colors hover:bg-muted/60",
+                    "group relative flex h-9 cursor-pointer items-center gap-1 rounded-sm pr-3 text-sm transition-colors hover:bg-muted/60",
                     isActive && "bg-muted font-medium text-foreground",
                     isDropTarget && "bg-muted ring-1 ring-inset ring-foreground/20",
                     draggedId === item.id && "opacity-45",
@@ -428,30 +435,45 @@ export const DocumentTree = ({
                     />
                   )}
                   {label}
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        aria-label={`Ações de ${item.title}`}
-                        className="size-7 shrink-0 opacity-0 hover:bg-transparent group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:bg-transparent data-[state=open]:opacity-100"
-                        size="icon"
-                        variant="ghost"
+                  {editing !== item.id && (
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          aria-label={`Ações de ${item.title}`}
+                          className="absolute right-1 size-7 opacity-0 hover:bg-transparent group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 data-[state=open]:bg-transparent data-[state=open]:opacity-100"
+                          size="icon"
+                          variant="ghost"
+                        >
+                          <MoreHorizontalIcon />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="min-w-44"
+                        onCloseAutoFocus={(event) => event.preventDefault()}
+                        side="right"
                       >
-                        <MoreHorizontalIcon />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      className="min-w-44"
-                      onCloseAutoFocus={(event) => event.preventDefault()}
-                      side="right"
-                    >
-                      <DocumentTreeActions
-                        item={item}
-                        onCreate={(type) => afterFocusMoves(() => beginCreate(type, item.id))}
-                        onDelete={() => afterFocusMoves(() => setDeleting(item))}
-                        onRename={() => afterFocusMoves(() => startRename(item))}
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <DocumentTreeActions
+                          item={item}
+                          onCreate={(type) => afterFocusMoves(() => beginCreate(type, item.id))}
+                          onDelete={() => afterFocusMoves(() => setDeleting(item))}
+                          onExport={
+                            item.type === "document"
+                              ? () =>
+                                  void downloadDocumentMarkdown(
+                                    projectId,
+                                    item.id,
+                                    item.title,
+                                  ).catch(() => toast.error("Não foi possível baixar o documento."))
+                              : undefined
+                          }
+                          onImport={
+                            item.type === "folder" ? () => requestImport(item.id) : undefined
+                          }
+                          onRename={() => afterFocusMoves(() => startRename(item))}
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent
@@ -463,6 +485,15 @@ export const DocumentTree = ({
                   item={item}
                   onCreate={(type) => afterFocusMoves(() => beginCreate(type, item.id))}
                   onDelete={() => afterFocusMoves(() => setDeleting(item))}
+                  onExport={
+                    item.type === "document"
+                      ? () =>
+                          void downloadDocumentMarkdown(projectId, item.id, item.title).catch(() =>
+                            toast.error("Não foi possível baixar o documento."),
+                          )
+                      : undefined
+                  }
+                  onImport={item.type === "folder" ? () => requestImport(item.id) : undefined}
                   onRename={() => afterFocusMoves(() => startRename(item))}
                 />
               </ContextMenuContent>
@@ -485,6 +516,7 @@ export const DocumentTree = ({
         closeIcon={closeIcon}
         onClose={onClose}
         onCreate={(type) => afterFocusMoves(() => beginCreate(type))}
+        onImport={() => requestImport(null)}
         onSearchChange={setSearch}
         onSearchOpenChange={setSearchOpen}
         search={search}
