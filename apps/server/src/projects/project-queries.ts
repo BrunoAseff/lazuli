@@ -2,6 +2,7 @@ import type { CreateProjectInput, ProjectListQuery, UpdateProjectInput } from "@
 import { and, count, desc, eq, or, sql } from "drizzle-orm";
 
 import type { Database } from "../database/client.ts";
+import { escapeLikePattern } from "../database/sql-search.ts";
 import {
   asset,
   document,
@@ -11,9 +12,6 @@ import {
   userStorage,
 } from "../database/schema/index.ts";
 import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
-
-export const escapeLikePattern = (value: string) =>
-  value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
 
 const createSearchCondition = (query: string) => {
   if (!query) {

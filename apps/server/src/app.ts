@@ -9,6 +9,7 @@ import { createDocumentRoutes } from "./documents/document-routes.ts";
 import { createDocumentAssetRoutes } from "./documents/document-asset-routes.ts";
 import { createDocumentImportRoutes } from "./document-imports/document-import-routes.ts";
 import { createDocumentImportWorker } from "./document-imports/document-import-worker.ts";
+import { createFlashcardCollectionRoutes } from "./flashcards/flashcard-collection-routes.ts";
 import { createLogger } from "./logger.ts";
 import { createProjectRoutes } from "./projects/project-routes.ts";
 import { createAuthRoutes } from "./routes/auth-routes.ts";
@@ -40,6 +41,13 @@ export const buildApp = (env: ServerEnv) => {
     }),
   );
   app.register(createDocumentRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
+  app.register(
+    createFlashcardCollectionRoutes({
+      auth,
+      database: database.db,
+      websiteUrl: env.WEBSITE_URL,
+    }),
+  );
   app.register(
     createDocumentAssetRoutes({
       auth,
