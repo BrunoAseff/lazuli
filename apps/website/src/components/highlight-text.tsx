@@ -50,7 +50,7 @@ export const getHighlightSegments = (text: string, query: string): HighlightSegm
 export const HighlightText = ({ query, text }: { query: string; text: string }) =>
   getHighlightSegments(text, query).map((segment, index) =>
     segment.highlighted ? (
-      <mark className="bg-primary/15 text-inherit" key={`${segment.text}-${index}`}>
+      <mark className="bg-muted text-inherit" key={`${segment.text}-${index}`}>
         {segment.text}
       </mark>
     ) : (

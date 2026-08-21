@@ -123,7 +123,7 @@ export const DocumentImportDialog = ({
                 <div className="flex min-w-0 flex-1 items-center">
                   <Input
                     aria-label={`Nome de ${item.originalName}`}
-                    className="h-8 min-w-0 rounded-r-none border-r-0 pr-0"
+                    className="h-8 min-w-0 border-r-0 pr-0"
                     maxLength={Math.max(1, 255 - item.extension.length)}
                     onChange={(event) =>
                       setFiles((current) =>
@@ -134,7 +134,7 @@ export const DocumentImportDialog = ({
                     }
                     value={item.title}
                   />
-                  <span className="flex h-8 items-center rounded-r-md border border-l-0 bg-muted/40 pr-2 text-sm text-muted-foreground">
+                  <span className="flex h-8 items-center border border-l-0 bg-muted/40 pr-2 text-sm text-muted-foreground">
                     {item.extension}
                   </span>
                 </div>
