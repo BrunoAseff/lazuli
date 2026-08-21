@@ -1,5 +1,5 @@
-import { FileTextIcon } from "lucide-react";
-import { NavLink } from "react-router";
+import { FileTextIcon, Layers3Icon } from "lucide-react";
+import { NavLink, useLocation } from "react-router";
 
 import { UserMenu } from "@/components/user-menu.tsx";
 import {
@@ -20,6 +20,7 @@ import { authClient } from "@/features/auth/auth-client.ts";
 export const AppSidebar = () => {
   const { data: session } = authClient.useSession();
   const { isMobile, setOpenMobile } = useSidebar();
+  const location = useLocation();
 
   if (!session) {
     return null;
@@ -50,14 +51,26 @@ export const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive tooltip="Documentos">
-                  <NavLink
-                    aria-current="page"
-                    onClick={() => isMobile && setOpenMobile(false)}
-                    to="/documents"
-                  >
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname.startsWith("/documents")}
+                  tooltip="Documentos"
+                >
+                  <NavLink onClick={() => isMobile && setOpenMobile(false)} to="/documents">
                     <FileTextIcon aria-hidden="true" />
                     <span>Documentos</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname.startsWith("/flashcards")}
+                  tooltip="Flashcards"
+                >
+                  <NavLink onClick={() => isMobile && setOpenMobile(false)} to="/flashcards">
+                    <Layers3Icon aria-hidden="true" />
+                    <span>Flashcards</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
