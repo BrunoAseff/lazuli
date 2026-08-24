@@ -14,7 +14,7 @@ export const PasswordInput = forwardRef<
   return (
     <div className="relative">
       <Input
-        className={cn("h-11 rounded-none pr-11", className)}
+        className={cn("h-11 pr-11", className)}
         disabled={disabled}
         ref={ref}
         type={isVisible ? "text" : "password"}

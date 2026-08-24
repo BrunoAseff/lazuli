@@ -11,6 +11,9 @@ const LoginPage = lazy(() => import("@/features/auth/pages/login-page.tsx"));
 const RegisterPage = lazy(() => import("@/features/auth/pages/register-page.tsx"));
 const VerifyEmailPage = lazy(() => import("@/features/auth/pages/verify-email-page.tsx"));
 const ProjectListPage = lazy(() => import("@/features/projects/pages/project-list-page.tsx"));
+const FlashcardCollectionListPage = lazy(
+  () => import("@/features/flashcards/pages/flashcard-collection-list-page.tsx"),
+);
 const ProjectDetailPage = lazy(() => import("@/features/projects/pages/project-detail-page.tsx"));
 const ProjectWorkspaceLayout = lazy(
   () => import("@/features/documents/components/project-workspace-layout.tsx"),
@@ -31,6 +34,7 @@ export const App = () => (
       <Route element={<PrivateRoute />}>
         <Route element={<AppShell />}>
           <Route element={<ProjectListPage />} path="documents" />
+          <Route element={<FlashcardCollectionListPage />} path="flashcards" />
           <Route element={<ProjectWorkspaceLayout />} path="documents/:projectId">
             <Route element={<ProjectDetailPage />} index />
             <Route element={<DocumentEditorPage />} path="document/:documentId" />

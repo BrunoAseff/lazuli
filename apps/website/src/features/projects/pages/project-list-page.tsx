@@ -132,7 +132,7 @@ export const ProjectListPage = () => {
             />
             <Input
               aria-label="Pesquisar projetos"
-              className="h-9 rounded-none pr-9 pl-9"
+              className="h-9 pr-9 pl-9"
               maxLength={100}
               onChange={(event) => setSearchValue(event.target.value)}
               placeholder="Pesquisar projetos"

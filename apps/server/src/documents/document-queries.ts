@@ -3,11 +3,20 @@ import type {
   SaveDocumentContentInput,
   UpdateProjectItemInput,
 } from "@lazuli/shared";
-import { and, asc, eq, inArray, max, sql } from "drizzle-orm";
+import { STORAGE_BASIC_LIMIT_BYTES } from "@lazuli/shared";
+import { and, asc, eq, inArray, isNull, lt, max, sql } from "drizzle-orm";
 import { isDeepStrictEqual } from "node:util";
 
 import type { Database } from "../database/client.ts";
-import { asset, document, project, projectItem } from "../database/schema/index.ts";
+import {
+  asset,
+  document,
+  project,
+  projectItem,
+  storageObjectDeletion,
+  userStorage,
+} from "../database/schema/index.ts";
+import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
 
 const ownedProject = (userId: string, projectId: string) =>
   and(eq(project.id, projectId), eq(project.userId, userId));
@@ -182,7 +191,6 @@ export const deleteProjectItem = async (
   userId: string,
   projectId: string,
   itemId: string,
-  deleteObjects: (objectKeys: string[]) => Promise<void>,
 ) => {
   return db.transaction(async (tx) => {
     const [owned] = await tx
@@ -202,7 +210,7 @@ export const deleteProjectItem = async (
 
     const targets = [...ids];
     const storedAssets = await tx
-      .select({ objectKey: asset.objectKey })
+      .select({ objectKey: asset.objectKey, byteSize: asset.byteSize })
       .from(asset)
       .where(
         and(
@@ -211,10 +219,27 @@ export const deleteProjectItem = async (
           inArray(asset.documentId, targets),
         ),
       );
-    await deleteObjects(storedAssets.map(({ objectKey }) => objectKey));
+    const [documentBytes] = await tx
+      .select({ value: sql<number>`coalesce(sum(${document.contentByteSize}), 0)::bigint` })
+      .from(document)
+      .where(inArray(document.id, targets));
+    await enqueueObjectDeletions(
+      tx,
+      storedAssets.map(({ objectKey }) => objectKey),
+    );
     await tx
       .delete(projectItem)
       .where(and(eq(projectItem.id, itemId), eq(projectItem.projectId, projectId)));
+    const releasedBytes =
+      storedAssets.reduce((sum, item) => sum + item.byteSize, 0) +
+      Number(documentBytes?.value ?? 0);
+    await tx
+      .update(userStorage)
+      .set({
+        usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${releasedBytes})`,
+        updatedAt: new Date(),
+      })
+      .where(eq(userStorage.userId, userId));
     return { kind: "deleted" as const };
   });
 };
@@ -257,6 +282,7 @@ export const saveDocumentContent = async (
     const [current] = await tx
       .select({
         content: document.content,
+        contentByteSize: document.contentByteSize,
         revision: document.revision,
         updatedAt: projectItem.updatedAt,
       })
@@ -290,6 +316,10 @@ export const saveDocumentContent = async (
         );
       if (ownedAssets.length !== referencedAssetIds.length)
         return { kind: "invalid-assets" as const };
+      await tx
+        .update(asset)
+        .set({ attachedAt: new Date() })
+        .where(inArray(asset.id, referencedAssetIds));
     }
 
     if (isDeepStrictEqual(current.content, input.content))
@@ -300,9 +330,27 @@ export const saveDocumentContent = async (
       };
 
     const now = new Date();
+    const contentByteSize = Buffer.byteLength(JSON.stringify(input.content));
+    const storageDelta = contentByteSize - current.contentByteSize;
+    await tx.insert(userStorage).values({ userId }).onConflictDoNothing();
+    const [usage] = await tx
+      .select()
+      .from(userStorage)
+      .where(eq(userStorage.userId, userId))
+      .for("update");
+    if (
+      storageDelta > 0 &&
+      (!usage || usage.usedBytes + usage.reservedBytes + storageDelta > STORAGE_BASIC_LIMIT_BYTES)
+    )
+      return { kind: "quota" as const };
     const [saved] = await tx
       .update(document)
-      .set({ content: input.content, revision: sql`${document.revision} + 1`, updatedAt: now })
+      .set({
+        content: input.content,
+        contentByteSize,
+        revision: sql`${document.revision} + 1`,
+        updatedAt: now,
+      })
       .where(and(eq(document.id, documentId), eq(document.revision, input.expectedRevision)))
       .returning({ revision: document.revision });
     if (!saved) {
@@ -317,6 +365,13 @@ export const saveDocumentContent = async (
       .update(projectItem)
       .set({ updatedAt: now })
       .where(and(eq(projectItem.id, documentId), eq(projectItem.projectId, projectId)));
+    await tx
+      .update(userStorage)
+      .set({
+        usedBytes: sql`greatest(0, ${userStorage.usedBytes} + ${storageDelta})`,
+        updatedAt: now,
+      })
+      .where(eq(userStorage.userId, userId));
     return { kind: "saved" as const, revision: saved.revision, updatedAt: now };
   });
 };
@@ -339,8 +394,28 @@ const collectReferencedAssetIds = (content: SaveDocumentContentInput["content"])
 };
 
 export const createAsset = async (db: Database, values: typeof asset.$inferInsert) => {
-  const [created] = await db.insert(asset).values(values).returning();
-  return created;
+  return db.transaction(async (tx) => {
+    await tx.insert(userStorage).values({ userId: values.userId }).onConflictDoNothing();
+    const [usage] = await tx
+      .select()
+      .from(userStorage)
+      .where(eq(userStorage.userId, values.userId))
+      .for("update");
+    if (
+      !usage ||
+      usage.usedBytes + usage.reservedBytes + values.byteSize > STORAGE_BASIC_LIMIT_BYTES
+    )
+      return null;
+    const [created] = await tx.insert(asset).values(values).returning();
+    await tx
+      .delete(storageObjectDeletion)
+      .where(eq(storageObjectDeletion.objectKey, values.objectKey));
+    await tx
+      .update(userStorage)
+      .set({ usedBytes: sql`${userStorage.usedBytes} + ${values.byteSize}`, updatedAt: new Date() })
+      .where(eq(userStorage.userId, values.userId));
+    return created!;
+  });
 };
 
 export const getOwnedAsset = async (db: Database, userId: string, assetId: string) => {
@@ -353,9 +428,55 @@ export const getOwnedAsset = async (db: Database, userId: string, assetId: strin
 };
 
 export const deleteOwnedAsset = async (db: Database, userId: string, assetId: string) => {
-  const [deleted] = await db
-    .delete(asset)
-    .where(and(eq(asset.id, assetId), eq(asset.userId, userId)))
-    .returning();
-  return deleted ?? null;
+  return db.transaction(async (tx) => {
+    const [deleted] = await tx
+      .delete(asset)
+      .where(and(eq(asset.id, assetId), eq(asset.userId, userId)))
+      .returning();
+    if (!deleted) return null;
+    await enqueueObjectDeletions(tx, [deleted.objectKey]);
+    await tx
+      .update(userStorage)
+      .set({
+        usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${deleted.byteSize})`,
+        updatedAt: new Date(),
+      })
+      .where(eq(userStorage.userId, userId));
+    return deleted;
+  });
 };
+
+export const cleanupUnattachedAssets = async (db: Database) =>
+  db.transaction(async (tx) => {
+    const stale = await tx
+      .select()
+      .from(asset)
+      .where(
+        and(isNull(asset.attachedAt), lt(asset.createdAt, new Date(Date.now() - 24 * 60 * 60_000))),
+      )
+      .limit(50)
+      .for("update", { skipLocked: true });
+    if (!stale.length) return 0;
+    await enqueueObjectDeletions(
+      tx,
+      stale.map((item) => item.objectKey),
+    );
+    await tx.delete(asset).where(
+      inArray(
+        asset.id,
+        stale.map((item) => item.id),
+      ),
+    );
+    const releasedByUser = new Map<string, number>();
+    for (const item of stale)
+      releasedByUser.set(item.userId, (releasedByUser.get(item.userId) ?? 0) + item.byteSize);
+    for (const [userId, bytes] of releasedByUser)
+      await tx
+        .update(userStorage)
+        .set({
+          usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${bytes})`,
+          updatedAt: new Date(),
+        })
+        .where(eq(userStorage.userId, userId));
+    return stale.length;
+  });

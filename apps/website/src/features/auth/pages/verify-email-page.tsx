@@ -78,7 +78,7 @@ export const VerifyEmailPage = () => {
             aria-describedby={form.formState.errors.email ? "verification-email-error" : undefined}
             aria-invalid={Boolean(form.formState.errors.email)}
             autoComplete="email"
-            className="h-11 rounded-none"
+            className="h-11"
             id="verification-email"
             inputMode="email"
             {...form.register("email")}

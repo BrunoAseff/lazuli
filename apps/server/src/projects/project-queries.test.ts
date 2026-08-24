@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { escapeLikePattern } from "./project-queries.ts";
+import { escapeLikePattern } from "../database/sql-search.ts";
 
 describe("project query helpers", () => {
   it("escapes SQL LIKE wildcards as literal search characters", () => {

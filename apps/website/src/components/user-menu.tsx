@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ import { authClient } from "@/features/auth/auth-client.ts";
 
 type UserMenuProps = {
   user: {
+    id: string;
     email: string;
     image?: string | null;
     name: string;
@@ -34,6 +36,7 @@ const getInitials = (name: string) =>
 
 export const UserMenu = ({ user }: UserMenuProps) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const signOut = async () => {
@@ -50,6 +53,8 @@ export const UserMenu = ({ user }: UserMenuProps) => {
       return;
     }
 
+    queryClient.clear();
+    localStorage.removeItem(`lazuli-document-imports-completed-dismissed-at:${user.id}`);
     await navigate("/login", { replace: true });
   };
 

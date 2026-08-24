@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Auth } from "../auth/auth.ts";
 import type { Database } from "../database/client.ts";
-import type { ObjectStorage } from "../storage/object-storage.ts";
 import { createProjectRoutes } from "./project-routes.ts";
 
 const projectQueries = vi.hoisted(() => ({
@@ -19,8 +18,6 @@ vi.mock("./project-queries.ts", () => projectQueries);
 
 const apps: ReturnType<typeof Fastify>[] = [];
 const database = {} as Database;
-const storageDelete = vi.fn();
-const storage = { delete: storageDelete } as unknown as ObjectStorage;
 const verifiedSession = {
   session: { id: "session-1" },
   user: { id: "user-1", email: "ana@example.com", name: "Ana" },
@@ -32,9 +29,7 @@ const createAuth = (session: typeof verifiedSession | null) =>
 const registerRoutes = async (auth: Auth) => {
   const app = Fastify({ logger: false });
   apps.push(app);
-  await app.register(
-    createProjectRoutes({ auth, database, storage, websiteUrl: "http://localhost:3000" }),
-  );
+  await app.register(createProjectRoutes({ auth, database, websiteUrl: "http://localhost:3000" }));
   return app;
 };
 
@@ -115,18 +110,8 @@ describe("project routes", () => {
     );
   });
 
-  it("cleans project objects before completing deletion", async () => {
-    projectQueries.deleteProject.mockImplementation(
-      async (
-        _database: Database,
-        _userId: string,
-        _projectId: string,
-        deleteObjects: (keys: string[]) => Promise<void>,
-      ) => {
-        await deleteObjects(["stored-object"]);
-        return true;
-      },
-    );
+  it("delegates atomic project deletion to the query layer", async () => {
+    projectQueries.deleteProject.mockResolvedValue(true);
     const app = await registerRoutes(createAuth(verifiedSession));
     const response = await app.inject({
       method: "DELETE",
@@ -135,6 +120,10 @@ describe("project routes", () => {
     });
 
     expect(response.statusCode).toBe(204);
-    expect(storageDelete).toHaveBeenCalledWith("stored-object");
+    expect(projectQueries.deleteProject).toHaveBeenCalledWith(
+      database,
+      "user-1",
+      "2a36ca27-f1e7-4b07-bd5a-bf831fee8f62",
+    );
   });
 });

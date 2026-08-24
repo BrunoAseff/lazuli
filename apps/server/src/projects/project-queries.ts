@@ -1,11 +1,22 @@
-import type { CreateProjectInput, ProjectListQuery, UpdateProjectInput } from "@lazuli/shared";
+import {
+  DOCUMENT_IMPORT_ACTIVE_STATUSES,
+  type CreateProjectInput,
+  type ProjectListQuery,
+  type UpdateProjectInput,
+} from "@lazuli/shared";
 import { and, count, desc, eq, or, sql } from "drizzle-orm";
 
 import type { Database } from "../database/client.ts";
-import { asset, project, projectItem } from "../database/schema/index.ts";
-
-export const escapeLikePattern = (value: string) =>
-  value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+import { escapeLikePattern } from "../database/sql-search.ts";
+import {
+  asset,
+  document,
+  documentImport,
+  project,
+  projectItem,
+  userStorage,
+} from "../database/schema/index.ts";
+import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
 
 const createSearchCondition = (query: string) => {
   if (!query) {
@@ -121,12 +132,7 @@ export const updateProject = async (
   return getProject(database, userId, updated?.id ?? projectId);
 };
 
-export const deleteProject = async (
-  database: Database,
-  userId: string,
-  projectId: string,
-  deleteObjects: (objectKeys: string[]) => Promise<void>,
-) =>
+export const deleteProject = async (database: Database, userId: string, projectId: string) =>
   database.transaction(async (tx) => {
     const [owned] = await tx
       .select({ id: project.id })
@@ -137,14 +143,47 @@ export const deleteProject = async (
     if (!owned) return false;
 
     const storedAssets = await tx
-      .select({ objectKey: asset.objectKey })
+      .select({ objectKey: asset.objectKey, byteSize: asset.byteSize })
       .from(asset)
       .where(and(eq(asset.projectId, projectId), eq(asset.userId, userId)));
-    await deleteObjects(storedAssets.map(({ objectKey }) => objectKey));
+    const temporaryImports = await tx
+      .select({
+        objectKey: documentImport.inputObjectKey,
+        byteSize: documentImport.inputByteSize,
+        status: documentImport.status,
+      })
+      .from(documentImport)
+      .where(and(eq(documentImport.projectId, projectId), eq(documentImport.userId, userId)));
+    await enqueueObjectDeletions(tx, [
+      ...storedAssets.map(({ objectKey }) => objectKey),
+      ...temporaryImports.flatMap(({ objectKey }) => (objectKey ? [objectKey] : [])),
+    ]);
+    const [documentBytes] = await tx
+      .select({ value: sql<number>`coalesce(sum(${document.contentByteSize}), 0)::bigint` })
+      .from(document)
+      .innerJoin(projectItem, eq(projectItem.id, document.id))
+      .where(eq(projectItem.projectId, projectId));
+    const usedBytes =
+      storedAssets.reduce((sum, item) => sum + item.byteSize, 0) +
+      Number(documentBytes?.value ?? 0);
+    const reservedBytes = temporaryImports
+      .filter(({ status }) =>
+        DOCUMENT_IMPORT_ACTIVE_STATUSES.some((activeStatus) => activeStatus === status),
+      )
+      .reduce((sum, item) => sum + item.byteSize, 0);
     const [deleted] = await tx
       .delete(project)
       .where(and(eq(project.id, projectId), eq(project.userId, userId)))
       .returning({ id: project.id });
+    if (deleted)
+      await tx
+        .update(userStorage)
+        .set({
+          usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${usedBytes})`,
+          reservedBytes: sql`greatest(0, ${userStorage.reservedBytes} - ${reservedBytes})`,
+          updatedAt: new Date(),
+        })
+        .where(eq(userStorage.userId, userId));
     return Boolean(deleted);
   });
 

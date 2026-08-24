@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { FormFieldError } from "@/components/form-field-error.tsx";
 import {
   Dialog,
   DialogContent,
@@ -42,13 +43,6 @@ import { CoverPicker } from "./cover-picker.tsx";
 const renameProjectSchema = z.object({ title: projectTitleSchema });
 type RenameProjectValues = z.input<typeof renameProjectSchema>;
 type CreateProjectValues = z.input<typeof createProjectSchema>;
-
-const FieldError = ({ id, message }: { id: string; message?: string }) =>
-  message ? (
-    <p className="text-xs text-destructive" id={id} role="alert">
-      {message}
-    </p>
-  ) : null;
 
 export const CreateProjectDialog = ({
   onOpenChange,
@@ -114,7 +108,7 @@ export const CreateProjectDialog = ({
               maxLength={100}
               placeholder="Ex.: Física moderna"
             />
-            <FieldError
+            <FormFieldError
               id="new-project-title-error"
               message={form.formState.errors.title?.message}
             />
@@ -207,7 +201,7 @@ export const RenameProjectDialog = ({
               id={`rename-project-${project.id}`}
               maxLength={100}
             />
-            <FieldError
+            <FormFieldError
               id={`rename-project-${project.id}-error`}
               message={form.formState.errors.title?.message}
             />

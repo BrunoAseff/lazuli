@@ -111,3 +111,21 @@ export const removeAssetByUrl = (url: string): Promise<void> => {
     ? apiRequest(`/api/assets/${match[1]}`, null, { method: "DELETE" })
     : Promise.resolve();
 };
+
+export const downloadDocumentMarkdown = async (
+  projectId: string,
+  documentId: string,
+  title: string,
+) => {
+  const response = await fetch(
+    `${API_URL}${path(projectId)}/documents/${encodeURIComponent(documentId)}/export/markdown`,
+    { credentials: "include" },
+  );
+  if (!response.ok) throw new Error("Document export failed");
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${title}.md`;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+};

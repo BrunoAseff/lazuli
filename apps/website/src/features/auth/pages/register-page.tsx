@@ -57,7 +57,7 @@ export const RegisterPage = () => {
             aria-describedby={form.formState.errors.name ? "name-error" : undefined}
             aria-invalid={Boolean(form.formState.errors.name)}
             autoComplete="name"
-            className="h-11 rounded-none"
+            className="h-11"
             id="name"
             placeholder="Como devemos chamar você?"
             {...form.register("name")}
@@ -75,7 +75,7 @@ export const RegisterPage = () => {
             aria-describedby={form.formState.errors.email ? "email-error" : undefined}
             aria-invalid={Boolean(form.formState.errors.email)}
             autoComplete="email"
-            className="h-11 rounded-none"
+            className="h-11"
             id="email"
             inputMode="email"
             placeholder="voce@exemplo.com"

@@ -4,11 +4,13 @@ import { Readable, Transform } from "node:stream";
 
 import type { Database } from "../database/client.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
+import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
 import { createAsset } from "./document-queries.ts";
 
 const imageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export class ImageUploadTooLargeError extends Error {}
+export class StorageLimitReachedError extends Error {}
 
 type ImageSource = {
   body: Uint8Array | Readable;
@@ -64,11 +66,13 @@ export const storeDocumentImage = async ({
   }
   const id = crypto.randomUUID();
   const objectKey = `${userId}/${projectId}/${documentId}/${id}.${source.detected.ext}`;
+  await enqueueObjectDeletions(database, [objectKey], 10 * 60_000);
   await storage.put(objectKey, source.body, source.detected.mime);
   if (source.isTruncated?.() || source.getByteSize() > IMAGE_MAX_BYTES) {
-    await storage.delete(objectKey);
+    await enqueueObjectDeletions(database, [objectKey]);
     throw new ImageUploadTooLargeError();
   }
+  let committed = false;
   try {
     const created = await createAsset(database, {
       id,
@@ -80,6 +84,8 @@ export const storeDocumentImage = async ({
       mimeType: source.detected.mime,
       byteSize: source.getByteSize(),
     });
+    if (!created) throw new StorageLimitReachedError();
+    committed = true;
     return assetResponseSchema.parse({
       id: created.id,
       url: `/api/assets/${created.id}/content`,
@@ -87,7 +93,7 @@ export const storeDocumentImage = async ({
       byteSize: created.byteSize,
     });
   } catch (error) {
-    await storage.delete(objectKey);
+    if (!committed) await enqueueObjectDeletions(database, [objectKey]);
     throw error;
   }
 };

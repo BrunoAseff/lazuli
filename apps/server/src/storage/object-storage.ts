@@ -29,12 +29,13 @@ export const createObjectStorage = (env: ServerEnv) => {
         await client.send(new CreateBucketCommand({ Bucket: env.S3_BUCKET }));
       }
     },
-    put(key: string, body: Uint8Array | Readable, contentType: string) {
+    put(key: string, body: Uint8Array | Readable, contentType: string, contentLength?: number) {
       return client.send(
         new PutObjectCommand({
           Bucket: env.S3_BUCKET,
           Key: key,
           Body: body,
+          ContentLength: contentLength,
           ContentType: contentType,
         }),
       );

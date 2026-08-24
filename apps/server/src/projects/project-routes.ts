@@ -10,8 +10,6 @@ import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
-import { deleteObjectBatch } from "../storage/delete-object-batch.ts";
-import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
   createProject,
   deleteProject,
@@ -24,7 +22,6 @@ import {
 type ProjectRoutesOptions = {
   auth: Auth;
   database: Database;
-  storage: ObjectStorage;
   websiteUrl: string;
 };
 
@@ -43,7 +40,6 @@ const serializeProject = (value: NonNullable<Awaited<ReturnType<typeof getProjec
 export const createProjectRoutes = ({
   auth,
   database,
-  storage,
   websiteUrl,
 }: ProjectRoutesOptions): FastifyPluginAsync =>
   async function projectRoutes(app) {
@@ -179,9 +175,7 @@ export const createProjectRoutes = ({
       if (!projectId.success) return sendValidationError(reply);
 
       try {
-        const deleted = await deleteProject(database, session.user.id, projectId.data, (keys) =>
-          deleteObjectBatch(storage, keys),
-        );
+        const deleted = await deleteProject(database, session.user.id, projectId.data);
         request.log.info(
           { deleted, projectId: projectId.data, userId: session.user.id },
           "project deletion completed",

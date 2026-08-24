@@ -22,6 +22,27 @@
       "when": 1787099861375,
       "tag": "0002_awesome_infant_terrible",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787237000498,
+      "tag": "0003_odd_next_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787248784752,
+      "tag": "0004_yielding_millenium_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787261038755,
+      "tag": "0005_new_dreadnoughts",
+      "breakpoints": true
     }
   ]
 }
