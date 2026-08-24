@@ -102,19 +102,20 @@ export const DocumentEditor = ({
     element.style.height = "0px";
     element.style.height = `${element.scrollHeight}px`;
   }, [title]);
+  const titleDirty = normalizeProjectItemTitle(title) !== savedTitle.current;
   const blocker = useBlocker(() => {
-    if (!dirty) return false;
+    if (!dirty && !titleDirty) return false;
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     return true;
   });
 
   useEffect(() => {
     const prevent = (event: BeforeUnloadEvent) => {
-      if (dirty) event.preventDefault();
+      if (dirty || titleDirty) event.preventDefault();
     };
     window.addEventListener("beforeunload", prevent);
     return () => window.removeEventListener("beforeunload", prevent);
-  }, [dirty]);
+  }, [dirty, titleDirty]);
   useEffect(() => {
     const root = editorContainerRef.current;
     const previous = root?.querySelector<HTMLElement>("[data-image-import-error]");
@@ -305,13 +306,13 @@ export const DocumentEditor = ({
     try {
       await rename.mutateAsync({ itemId: documentId, input: { title: normalized } });
       savedTitle.current = normalized;
+      setTitle(normalized);
       setSaveState((current) => {
         if (current === "conflict") return current;
         if (saveInFlight.current) return "saving";
         return dirty ? "pending" : "saved";
       });
     } catch {
-      setTitle(savedTitle.current);
       setSaveState((current) => (current === "conflict" ? current : "error"));
       toast.error("Não foi possível renomear o documento.");
     } finally {
@@ -340,7 +341,8 @@ export const DocumentEditor = ({
             onOpenConflict={() => setConflictDialogOpen(true)}
             onRetry={() => {
               setAutoSavePaused(false);
-              void save(false);
+              if (titleDirty) void finishTitle();
+              if (dirty) void save(false);
             }}
             state={saveState}
           />
