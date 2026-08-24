@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
 
 import { App } from "./app.tsx";
+import { AppErrorPage } from "./components/app-error-page.tsx";
 import { Toaster } from "./components/ui/sonner.tsx";
 import { TooltipProvider } from "./components/ui/tooltip.tsx";
 import "./style.css";
@@ -22,7 +23,7 @@ if (!rootElement) {
   throw new Error("App root element not found");
 }
 
-const router = createBrowserRouter([{ path: "*", Component: App }]);
+const router = createBrowserRouter([{ path: "*", Component: App, ErrorBoundary: AppErrorPage }]);
 
 createRoot(rootElement).render(
   <QueryClientProvider client={queryClient}>

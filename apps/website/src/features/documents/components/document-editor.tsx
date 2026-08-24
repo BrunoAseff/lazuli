@@ -18,19 +18,17 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
-import { ApiError } from "@/lib/api-client.ts";
 import {
-  importDocumentImage,
-  fetchDocument,
   removeAssetByUrl,
   releaseResolvedAssetUrls,
   resolveAssetUrl,
-  uploadDocumentImage,
-} from "../api/document-api.ts";
+} from "@/features/assets/asset-api.ts";
+import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
+import { ApiError } from "@/lib/api-client.ts";
+import { fetchDocument, importDocumentImage, uploadDocumentImage } from "../api/document-api.ts";
 import { useDocument, useRenameProjectItem, useSaveDocument } from "../api/document-queries.ts";
 import { DOCUMENT_MESSAGES } from "../document-messages.ts";
 import { lazuliBlockNoteDictionary } from "../editor/blocknote-dictionary.ts";
-import { cleanupAssets, collectAssetUrls } from "../editor/document-assets.ts";
 import { documentSchema, type LazuliDocumentBlock } from "../editor/document-schema.tsx";
 import { DocumentFind } from "../editor/document-find.tsx";
 import {

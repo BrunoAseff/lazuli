@@ -14,6 +14,12 @@ const ProjectListPage = lazy(() => import("@/features/projects/pages/project-lis
 const FlashcardCollectionListPage = lazy(
   () => import("@/features/flashcards/pages/flashcard-collection-list-page.tsx"),
 );
+const FlashcardCollectionPage = lazy(
+  () => import("@/features/flashcards/pages/flashcard-collection-page.tsx"),
+);
+const FlashcardPracticePage = lazy(
+  () => import("@/features/flashcards/pages/flashcard-practice-page.tsx"),
+);
 const ProjectDetailPage = lazy(() => import("@/features/projects/pages/project-detail-page.tsx"));
 const ProjectWorkspaceLayout = lazy(
   () => import("@/features/documents/components/project-workspace-layout.tsx"),
@@ -35,6 +41,11 @@ export const App = () => (
         <Route element={<AppShell />}>
           <Route element={<ProjectListPage />} path="documents" />
           <Route element={<FlashcardCollectionListPage />} path="flashcards" />
+          <Route element={<FlashcardCollectionPage />} path="flashcards/:collectionId" />
+          <Route
+            element={<FlashcardPracticePage />}
+            path="flashcards/:collectionId/practice/:sessionId"
+          />
           <Route element={<ProjectWorkspaceLayout />} path="documents/:projectId">
             <Route element={<ProjectDetailPage />} index />
             <Route element={<DocumentEditorPage />} path="document/:documentId" />

@@ -12,6 +12,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
 
@@ -34,7 +35,7 @@ export const FlashcardCollectionActions = ({
         <EllipsisIcon aria-hidden="true" />
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" className="w-48">
+    <DropdownMenuContent align="end">
       <DropdownMenuItem onSelect={onEdit}>
         <PencilIcon aria-hidden="true" />
         Renomear e organizar
@@ -50,6 +51,7 @@ export const FlashcardCollectionActions = ({
           Arquivar
         </DropdownMenuItem>
       )}
+      <DropdownMenuSeparator />
       <DropdownMenuItem onSelect={onDelete} variant="destructive">
         <Trash2Icon aria-hidden="true" />
         Excluir

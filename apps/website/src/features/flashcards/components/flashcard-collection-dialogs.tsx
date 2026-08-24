@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import {
   Dialog,
+  DialogCancelButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -162,9 +163,9 @@ export const FlashcardCollectionDialog = ({
             </p>
           </div>
           <DialogFooter>
-            <Button disabled={mutation.isPending} onClick={close} type="button" variant="outline">
+            <DialogCancelButton disabled={mutation.isPending} onClick={close}>
               Cancelar
-            </Button>
+            </DialogCancelButton>
             <Button
               disabled={!form.formState.isValid || !changed || mutation.isPending}
               type="submit"

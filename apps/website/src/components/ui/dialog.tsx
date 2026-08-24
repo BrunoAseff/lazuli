@@ -105,6 +105,13 @@ function DialogFooter({
   );
 }
 
+function DialogCancelButton({
+  type = "button",
+  ...props
+}: Omit<React.ComponentProps<typeof Button>, "variant">) {
+  return <Button data-slot="dialog-cancel-button" type={type} variant="outline" {...props} />;
+}
+
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
@@ -133,6 +140,7 @@ function DialogDescription({
 
 export {
   Dialog,
+  DialogCancelButton,
   DialogClose,
   DialogContent,
   DialogDescription,

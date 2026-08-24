@@ -11,8 +11,12 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
 
+const TRANSPARENT_IMAGE = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+
 const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageBlockConfig>) => {
-  const resolved = useResolveUrl(props.block.props.url);
+  const pendingUpload = !props.block.props.url;
+  const resolved = useResolveUrl(props.block.props.url || TRANSPARENT_IMAGE);
+  const resolutionFailed = resolved.loadingState === "error";
   const source = resolved.loadingState === "loading" ? props.block.props.url : resolved.downloadUrl;
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -23,7 +27,11 @@ const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageB
       {...(props as any)}
       buttonIcon={<ImageOffIcon aria-hidden size={24} />}
     >
-      {loadFailed ? (
+      {pendingUpload ? (
+        <div className="lazuli-image-uploading" contentEditable={false}>
+          Enviando imagem…
+        </div>
+      ) : loadFailed || resolutionFailed ? (
         <div className="lazuli-broken-image" contentEditable={false}>
           <ImageOffIcon aria-hidden />
           <div>
