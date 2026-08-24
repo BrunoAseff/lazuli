@@ -8,5 +8,5 @@ const messages: Record<string, string> = {
 
 export const getFlashcardCollectionErrorMessage = (error: unknown, fallback: string) =>
   error instanceof ApiError
-    ? ((error.code ? messages[error.code] : undefined) ?? error.message ?? fallback)
+    ? ((error.code ? messages[error.code] : undefined) ?? fallback)
     : fallback;

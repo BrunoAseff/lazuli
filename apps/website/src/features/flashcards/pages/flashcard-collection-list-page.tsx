@@ -41,7 +41,9 @@ const parsePage = (value: string | null) => {
 
 export const FlashcardCollectionListPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const query = searchParams.get("query")?.trim() ?? "";
+  const rawQuery = searchParams.get("query")?.trim() ?? "";
+  const parsedQuery = flashcardCollectionListQuerySchema.shape.query.safeParse(rawQuery);
+  const query = parsedQuery.success ? parsedQuery.data : "";
   const status: FlashcardCollectionStatus =
     searchParams.get("status") === "archived" ? "archived" : "active";
   const parsedProject = flashcardCollectionProjectFilterSchema.safeParse(
