@@ -9,10 +9,9 @@ import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
   bufferedImageSource,
   filenameFromUrl,
-  ImageUploadTooLargeError,
+  isImageUploadTooLargeError,
   StorageLimitReachedError,
   storeDocumentImage,
-  streamedImageSource,
 } from "./document-image-storage.ts";
 import { documentValidationError, parseDocumentParams } from "./document-route-utils.ts";
 import { deleteOwnedAsset, getDocument, getOwnedAsset } from "./document-queries.ts";
@@ -49,12 +48,12 @@ export const createDocumentAssetRoutes = ({
             documentId: documentId.data,
             originalName: part.filename,
             projectId: projectId.data,
-            source: await streamedImageSource(part.file),
+            source: await bufferedImageSource(await part.toBuffer()),
             storage,
             userId: session.user.id,
           });
         } catch (error) {
-          if (error instanceof ImageUploadTooLargeError)
+          if (isImageUploadTooLargeError(error))
             return reply.status(413).send({
               code: "IMAGE_TOO_LARGE",
               message: "A imagem deve ter no máximo 10 MB.",

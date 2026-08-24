@@ -14,6 +14,7 @@ import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import {
   createFlashcardCollection,
   deleteFlashcardCollection,
+  getFlashcardCollection,
   listFlashcardCollections,
   updateFlashcardCollection,
 } from "./flashcard-collection-queries.ts";
@@ -83,6 +84,22 @@ export const createFlashcardCollectionRoutes = ({
           message: "Não foi possível carregar suas coleções.",
         });
       }
+    });
+
+    app.get("/api/flashcard-collections/:collectionId", async (request, reply) => {
+      const session = await requireSession(auth, request, reply);
+      if (!session) return;
+      const collectionId = flashcardCollectionIdSchema.safeParse(
+        (request.params as { collectionId?: unknown }).collectionId,
+      );
+      if (!collectionId.success) return sendValidationError(reply);
+      const collection = await getFlashcardCollection(database, session.user.id, collectionId.data);
+      if (!collection)
+        return reply.status(404).send({
+          code: "COLLECTION_NOT_FOUND",
+          message: "Esta coleção não foi encontrada.",
+        });
+      return serializeCollection(collection);
     });
 
     app.post("/api/flashcard-collections", async (request, reply) => {

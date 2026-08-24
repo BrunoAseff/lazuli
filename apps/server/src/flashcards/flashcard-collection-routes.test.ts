@@ -8,6 +8,7 @@ import { createFlashcardCollectionRoutes } from "./flashcard-collection-routes.t
 const queries = vi.hoisted(() => ({
   createFlashcardCollection: vi.fn(),
   deleteFlashcardCollection: vi.fn(),
+  getFlashcardCollection: vi.fn(),
   listFlashcardCollections: vi.fn(),
   updateFlashcardCollection: vi.fn(),
 }));
@@ -82,6 +83,19 @@ describe("flashcard collection routes", () => {
       status: "archived",
     });
     expect(response.json().items[0].createdAt).toBe("2026-08-20T12:00:00.000Z");
+  });
+
+  it("returns an owned collection detail without exposing content", async () => {
+    queries.getFlashcardCollection.mockResolvedValue(collection);
+    const app = await register();
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/flashcard-collections/${collection.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(queries.getFlashcardCollection).toHaveBeenCalledWith(database, "user-1", collection.id);
+    expect(response.json()).toMatchObject({ id: collection.id, title: "Anatomia" });
   });
 
   it("rejects collection mutations from another origin", async () => {

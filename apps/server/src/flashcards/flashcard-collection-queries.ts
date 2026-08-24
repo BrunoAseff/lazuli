@@ -23,9 +23,11 @@ import { escapeLikePattern } from "../database/sql-search.ts";
 import {
   flashcard,
   flashcardCollection,
+  flashcardPracticeSession,
   flashcardReview,
   project,
 } from "../database/schema/index.ts";
+import { deleteCards } from "./flashcard-queries.ts";
 
 const collectionSelection = {
   id: flashcardCollection.id,
@@ -57,6 +59,7 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
     .select({
       collectionId: flashcard.collectionId,
       totalCards: count().mapWith(Number),
+      newCards: sql<number>`count(*) filter (where ${flashcard.srsState} = 'new')`.mapWith(Number),
       studiedCards:
         sql<number>`count(*) filter (where ${flashcard.lastReviewedAt} is not null)`.mapWith(
           Number,
@@ -76,26 +79,28 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1_000);
   const reviewMetrics = await database
     .select({
-      collectionId: flashcard.collectionId,
+      collectionId: flashcardPracticeSession.collectionId,
       reviewsLastSevenDays: count().mapWith(Number),
+      successfulReviews:
+        sql<number>`count(*) filter (where ${flashcardReview.rating} in ('hard', 'good', 'easy'))`.mapWith(
+          Number,
+        ),
     })
     .from(flashcardReview)
-    .innerJoin(flashcard, eq(flashcard.id, flashcardReview.flashcardId))
+    .innerJoin(flashcardPracticeSession, eq(flashcardPracticeSession.id, flashcardReview.sessionId))
     .where(
       and(
-        inArray(flashcard.collectionId, collectionIds),
-        isNull(flashcard.archivedAt),
+        inArray(flashcardPracticeSession.collectionId, collectionIds),
         gte(flashcardReview.reviewedAt, weekStart),
       ),
     )
-    .groupBy(flashcard.collectionId);
+    .groupBy(flashcardPracticeSession.collectionId);
   const cardsByCollection = new Map(cardMetrics.map((item) => [item.collectionId, item]));
-  const reviewsByCollection = new Map(
-    reviewMetrics.map((item) => [item.collectionId, item.reviewsLastSevenDays]),
-  );
+  const reviewsByCollection = new Map(reviewMetrics.map((item) => [item.collectionId, item]));
 
   return rows.map((row) => {
     const metrics = cardsByCollection.get(row.id);
+    const reviews = reviewsByCollection.get(row.id);
     return {
       id: row.id,
       title: row.title,
@@ -103,10 +108,14 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
         row.projectId && row.projectTitle ? { id: row.projectId, title: row.projectTitle } : null,
       archivedAt: row.archivedAt,
       totalCards: metrics?.totalCards ?? 0,
+      newCards: metrics?.newCards ?? 0,
       studiedCards: metrics?.studiedCards ?? 0,
       dueCards: metrics?.dueCards ?? 0,
       nextPracticeAt: metrics?.nextPracticeAt ?? null,
-      reviewsLastSevenDays: reviewsByCollection.get(row.id) ?? 0,
+      reviewsLastSevenDays: reviews?.reviewsLastSevenDays ?? 0,
+      successRateLastSevenDays: reviews?.reviewsLastSevenDays
+        ? reviews.successfulReviews / reviews.reviewsLastSevenDays
+        : null,
       lastReviewedAt: metrics?.lastReviewedAt ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -270,10 +279,26 @@ export const deleteFlashcardCollection = async (
   database: Database,
   userId: string,
   collectionId: string,
-) => {
-  const [deleted] = await database
-    .delete(flashcardCollection)
-    .where(and(eq(flashcardCollection.id, collectionId), eq(flashcardCollection.userId, userId)))
-    .returning({ id: flashcardCollection.id });
-  return Boolean(deleted);
-};
+) =>
+  database.transaction(async (tx) => {
+    const [owned] = await tx
+      .select({ id: flashcardCollection.id })
+      .from(flashcardCollection)
+      .where(and(eq(flashcardCollection.id, collectionId), eq(flashcardCollection.userId, userId)))
+      .limit(1)
+      .for("update");
+    if (!owned) return false;
+    const cards = await tx
+      .select({ id: flashcard.id })
+      .from(flashcard)
+      .where(eq(flashcard.collectionId, collectionId))
+      .for("update");
+    if (cards.length)
+      await deleteCards(
+        tx,
+        userId,
+        cards.map(({ id }) => id),
+      );
+    await tx.delete(flashcardCollection).where(eq(flashcardCollection.id, collectionId));
+    return true;
+  });
