@@ -80,7 +80,7 @@ const convertInThread = (
           warnings: string[];
           assets: Array<{ id: string; mimeType: string; bytes: Uint8Array }>;
         };
-        error?: { code: string; retryable: boolean };
+        error?: { code: string; message?: string; retryable: boolean };
       }) => {
         if (message.type === "progress") {
           progressChain = progressChain.then(() => onProgress(message.current!, message.total!));
@@ -98,7 +98,7 @@ const convertInThread = (
             reject(
               new ImportConversionError(
                 message.error?.code ?? "IMPORT_CONVERSION_FAILED",
-                "",
+                message.error?.message,
                 message.error?.retryable ?? false,
               ),
             ),
@@ -351,10 +351,19 @@ export const createDocumentImportWorker = (
   let timer: NodeJS.Timeout | undefined;
   let stopped = false;
   let running = false;
+  let inFlight: Promise<void> | undefined;
   let lastMaintenanceAt = 0;
 
+  const launch = () => {
+    if (stopped || inFlight) return;
+    const operation = run();
+    inFlight = operation;
+    void operation.finally(() => {
+      if (inFlight === operation) inFlight = undefined;
+    });
+  };
   const schedule = () => {
-    if (!stopped) timer = setTimeout(run, POLL_INTERVAL_MS);
+    if (!stopped) timer = setTimeout(launch, POLL_INTERVAL_MS);
   };
   const run = async () => {
     if (stopped || running) return schedule();
@@ -413,11 +422,12 @@ export const createDocumentImportWorker = (
 
   return {
     start() {
-      void run();
+      launch();
     },
-    stop() {
+    async stop() {
       stopped = true;
       if (timer) clearTimeout(timer);
+      await inFlight;
     },
   };
 };

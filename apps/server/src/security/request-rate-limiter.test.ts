@@ -11,4 +11,12 @@ describe("request rate limiter", () => {
     expect(limiter.consume("user", 2)).toBe(false);
     expect(limiter.consume("user", 1_000)).toBe(true);
   });
+
+  it("keeps counters isolated by key", () => {
+    const limiter = createRequestRateLimiter({ limit: 1, windowMs: 1_000 });
+
+    expect(limiter.consume("user-a", 0)).toBe(true);
+    expect(limiter.consume("user-a", 1)).toBe(false);
+    expect(limiter.consume("user-b", 1)).toBe(true);
+  });
 });

@@ -26,6 +26,16 @@ describe("document import converters", () => {
     ).rejects.toMatchObject({ code: "UNSUPPORTED_FILE_TYPE" });
   });
 
+  it("classifies malformed UTF-8 as a non-retryable input error", async () => {
+    await expect(
+      convertDocument("text/plain", new Uint8Array([0xc3, 0x28]), async () => undefined),
+    ).rejects.toMatchObject({
+      code: "INVALID_TEXT_ENCODING",
+      name: "ImportConversionError",
+      retryable: false,
+    });
+  });
+
   it("removes an external Markdown image without failing the complete document", async () => {
     const result = await convertDocument(
       "text/markdown",

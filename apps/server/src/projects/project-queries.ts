@@ -1,4 +1,9 @@
-import type { CreateProjectInput, ProjectListQuery, UpdateProjectInput } from "@lazuli/shared";
+import {
+  DOCUMENT_IMPORT_ACTIVE_STATUSES,
+  type CreateProjectInput,
+  type ProjectListQuery,
+  type UpdateProjectInput,
+} from "@lazuli/shared";
 import { and, count, desc, eq, or, sql } from "drizzle-orm";
 
 import type { Database } from "../database/client.ts";
@@ -162,7 +167,9 @@ export const deleteProject = async (database: Database, userId: string, projectI
       storedAssets.reduce((sum, item) => sum + item.byteSize, 0) +
       Number(documentBytes?.value ?? 0);
     const reservedBytes = temporaryImports
-      .filter(({ status }) => ["uploading", "queued", "processing", "finalizing"].includes(status))
+      .filter(({ status }) =>
+        DOCUMENT_IMPORT_ACTIVE_STATUSES.some((activeStatus) => activeStatus === status),
+      )
       .reduce((sum, item) => sum + item.byteSize, 0);
     const [deleted] = await tx
       .delete(project)

@@ -18,10 +18,12 @@ import { convertPdfDocument } from "./pdf-document-converter.ts";
 export class ImportConversionError extends Error {
   constructor(
     readonly code: string,
-    message: string,
+    message = code,
     readonly retryable = false,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
+    this.name = "ImportConversionError";
   }
 }
 
@@ -148,12 +150,22 @@ export const convertDocument = async (
 ) => {
   const warnings: string[] = [];
   if (mimeType === "text/markdown" || mimeType === "text/plain") {
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    let text: string;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch (error) {
+      throw new ImportConversionError(
+        "INVALID_TEXT_ENCODING",
+        "O arquivo não contém texto UTF-8 válido.",
+        false,
+        { cause: error },
+      );
+    }
     await onProgress(1, 1);
     const blocks = await editor.tryParseMarkdownToBlocks(text);
     return {
       blocks: validateBlocks(blocks, warnings),
-      warnings,
+      warnings: [...new Set(warnings)],
       assets: [],
     };
   }
@@ -216,10 +228,11 @@ export const convertDocument = async (
       ],
       allowedAttributes: { a: ["href"], img: ["src", "alt"] },
       allowedSchemes: ["http", "https", "mailto"],
+      exclusiveFilter: ({ attribs, tag }) => tag === "img" && !attribs.src,
     });
     await onProgress(1, 1);
     const blocks = await editor.tryParseHTMLToBlocks(html);
-    return { blocks: validateBlocks(blocks, warnings), warnings, assets };
+    return { blocks: validateBlocks(blocks, warnings), warnings: [...new Set(warnings)], assets };
   }
 
   if (mimeType === "application/pdf") {
@@ -227,6 +240,7 @@ export const convertDocument = async (
     return {
       ...result,
       blocks: validateBlocks(result.blocks, result.warnings),
+      warnings: [...new Set(result.warnings)],
     };
   }
 

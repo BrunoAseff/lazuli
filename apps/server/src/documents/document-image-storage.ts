@@ -72,6 +72,7 @@ export const storeDocumentImage = async ({
     await enqueueObjectDeletions(database, [objectKey]);
     throw new ImageUploadTooLargeError();
   }
+  let committed = false;
   try {
     const created = await createAsset(database, {
       id,
@@ -84,6 +85,7 @@ export const storeDocumentImage = async ({
       byteSize: source.getByteSize(),
     });
     if (!created) throw new StorageLimitReachedError();
+    committed = true;
     return assetResponseSchema.parse({
       id: created.id,
       url: `/api/assets/${created.id}/content`,
@@ -91,7 +93,7 @@ export const storeDocumentImage = async ({
       byteSize: created.byteSize,
     });
   } catch (error) {
-    await enqueueObjectDeletions(database, [objectKey]);
+    if (!committed) await enqueueObjectDeletions(database, [objectKey]);
     throw error;
   }
 };

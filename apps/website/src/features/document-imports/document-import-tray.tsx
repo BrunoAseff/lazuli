@@ -22,6 +22,7 @@ const completedDismissedAtStorageKey = (userId: string) =>
 const failureMessages: Record<string, string> = {
   CONVERTED_DOCUMENT_TOO_LARGE: "O conteúdo convertido excede o limite do editor.",
   IMPORT_CONVERSION_TIMEOUT: "A conversão demorou mais que o permitido.",
+  INVALID_TEXT_ENCODING: "O arquivo não contém texto UTF-8 válido.",
   INVALID_DOCX_ARCHIVE: "O arquivo DOCX está corrompido ou incompleto.",
   PDF_PAGE_LIMIT_EXCEEDED: "O PDF possui páginas demais para esta importação.",
   PDF_WITHOUT_TEXT: "Este PDF não possui texto selecionável. OCR ainda não é suportado.",
@@ -80,7 +81,7 @@ export const DocumentImportTray = ({
       <header className="flex h-12 items-center gap-2 border-b px-4">
         <p className="min-w-0 flex-1 font-medium">
           {active
-            ? `${active} importação${active > 1 ? "ões" : ""} em andamento`
+            ? `${active} ${active === 1 ? "importação" : "importações"} em andamento`
             : "Importações concluídas"}
         </p>
         <Button

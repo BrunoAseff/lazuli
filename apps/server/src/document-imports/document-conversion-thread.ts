@@ -1,6 +1,6 @@
 import { parentPort } from "node:worker_threads";
 
-import { convertDocument } from "./document-converters.ts";
+import { convertDocument, ImportConversionError } from "./document-converters.ts";
 
 if (!parentPort) throw new Error("document conversion thread requires a parent port");
 
@@ -11,17 +11,13 @@ parentPort.once("message", async ({ mimeType, bytes }: { mimeType: string; bytes
     });
     parentPort!.postMessage({ type: "result", result });
   } catch (error) {
+    const known = error instanceof ImportConversionError;
     parentPort!.postMessage({
       type: "error",
       error: {
-        code:
-          error && typeof error === "object" && "code" in error
-            ? String(error.code)
-            : "IMPORT_CONVERSION_FAILED",
-        retryable:
-          error && typeof error === "object" && "retryable" in error
-            ? Boolean(error.retryable)
-            : false,
+        code: known ? error.code : "IMPORT_CONVERSION_FAILED",
+        message: error instanceof Error ? error.message : "Document conversion failed",
+        retryable: known ? error.retryable : true,
       },
     });
   }

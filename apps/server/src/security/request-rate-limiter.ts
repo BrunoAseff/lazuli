@@ -10,6 +10,8 @@ export const createRequestRateLimiter = ({
   const entries = new Map<string, RateLimitEntry>();
   return {
     consume(key: string, now = Date.now()) {
+      if (entries.size > 1_000)
+        for (const [entryKey, entry] of entries) if (entry.resetAt <= now) entries.delete(entryKey);
       const current = entries.get(key);
       if (!current || current.resetAt <= now) {
         entries.set(key, { count: 1, resetAt: now + windowMs });
@@ -17,8 +19,6 @@ export const createRequestRateLimiter = ({
       }
       if (current.count >= limit) return false;
       current.count += 1;
-      if (entries.size > 1_000)
-        for (const [entryKey, entry] of entries) if (entry.resetAt <= now) entries.delete(entryKey);
       return true;
     },
   };

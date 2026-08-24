@@ -67,7 +67,7 @@ export const buildApp = (env: ServerEnv) => {
   app.register(healthRoutes);
 
   app.addHook("onClose", async () => {
-    importWorker.stop();
+    await importWorker.stop();
     storage.destroy();
     await database.client.end({ timeout: 1 });
   });
