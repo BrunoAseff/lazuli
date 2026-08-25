@@ -40,10 +40,12 @@ const collection = {
   project: null,
   archivedAt: null,
   totalCards: 0,
+  newCards: 0,
   studiedCards: 0,
   dueCards: 0,
   nextPracticeAt: null,
   reviewsLastSevenDays: 0,
+  successRateLastSevenDays: null,
   lastReviewedAt: null,
   createdAt: new Date("2026-08-20T12:00:00.000Z"),
   updatedAt: new Date("2026-08-20T12:00:00.000Z"),
@@ -96,6 +98,18 @@ describe("flashcard collection routes", () => {
     expect(response.statusCode).toBe(200);
     expect(queries.getFlashcardCollection).toHaveBeenCalledWith(database, "user-1", collection.id);
     expect(response.json()).toMatchObject({ id: collection.id, title: "Anatomia" });
+  });
+
+  it("returns not found when the collection detail is not owned", async () => {
+    queries.getFlashcardCollection.mockResolvedValue(null);
+    const app = await register();
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/flashcard-collections/${collection.id}`,
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: "COLLECTION_NOT_FOUND" });
   });
 
   it("rejects collection mutations from another origin", async () => {

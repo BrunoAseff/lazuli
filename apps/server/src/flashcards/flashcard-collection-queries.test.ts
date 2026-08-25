@@ -229,4 +229,19 @@ describe("flashcard collection queries", () => {
     expect(ownershipWhere.params).toEqual([collectionId, userId]);
     expect(tx.delete).not.toHaveBeenCalled();
   });
+
+  it("deletes owned collection cards in bounded batches before the collection", async () => {
+    const cardId = "bd61ec35-ed34-4ac0-bb74-43cbe89c9af7";
+    const { builders, executor: tx } = createExecutor({
+      selects: [[{ id: collectionId }], [{ id: cardId }], [], []],
+    });
+    const transaction = vi.fn((operation: (executor: unknown) => unknown) => operation(tx));
+    const database = { transaction } as unknown as Database;
+
+    const deleted = await deleteFlashcardCollection(database, userId, collectionId);
+
+    expect(deleted).toBe(true);
+    expect(builders.select[1]?.limit).toHaveBeenCalledWith(500);
+    expect(tx.delete).toHaveBeenCalledTimes(2);
+  });
 });

@@ -29,6 +29,8 @@ import {
 } from "../database/schema/index.ts";
 import { deleteCards } from "./flashcard-queries.ts";
 
+const COLLECTION_DELETE_BATCH_SIZE = 500;
+
 const collectionSelection = {
   id: flashcardCollection.id,
   title: flashcardCollection.title,
@@ -288,17 +290,20 @@ export const deleteFlashcardCollection = async (
       .limit(1)
       .for("update");
     if (!owned) return false;
-    const cards = await tx
-      .select({ id: flashcard.id })
-      .from(flashcard)
-      .where(eq(flashcard.collectionId, collectionId))
-      .for("update");
-    if (cards.length)
+    while (true) {
+      const cards = await tx
+        .select({ id: flashcard.id })
+        .from(flashcard)
+        .where(eq(flashcard.collectionId, collectionId))
+        .limit(COLLECTION_DELETE_BATCH_SIZE)
+        .for("update", { of: flashcard });
+      if (!cards.length) break;
       await deleteCards(
         tx,
         userId,
         cards.map(({ id }) => id),
       );
+    }
     await tx.delete(flashcardCollection).where(eq(flashcardCollection.id, collectionId));
     return true;
   });

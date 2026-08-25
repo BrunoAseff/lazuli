@@ -161,7 +161,12 @@ export const flashcardDetailSchema = flashcardSummarySchema.extend({
 export const createFlashcardPracticeSessionSchema = z
   .object({
     id: z.uuid(),
-    size: z.union([z.literal(10), z.literal(20), z.literal(50), z.literal(200)]),
+    size: z.union([
+      z.literal(10),
+      z.literal(20),
+      z.literal(50),
+      z.literal(FLASHCARD_PRACTICE_MAX_SIZE),
+    ]),
     abandonActive: z.boolean().default(false),
   })
   .strict();

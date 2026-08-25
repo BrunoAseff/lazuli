@@ -93,13 +93,28 @@ export const createFlashcardCollectionRoutes = ({
         (request.params as { collectionId?: unknown }).collectionId,
       );
       if (!collectionId.success) return sendValidationError(reply);
-      const collection = await getFlashcardCollection(database, session.user.id, collectionId.data);
-      if (!collection)
-        return reply.status(404).send({
-          code: "COLLECTION_NOT_FOUND",
-          message: "Esta coleção não foi encontrada.",
+      try {
+        const collection = await getFlashcardCollection(
+          database,
+          session.user.id,
+          collectionId.data,
+        );
+        if (!collection)
+          return reply.status(404).send({
+            code: "COLLECTION_NOT_FOUND",
+            message: "Esta coleção não foi encontrada.",
+          });
+        return serializeCollection(collection);
+      } catch (error) {
+        request.log.error(
+          { collectionId: collectionId.data, err: error, userId: session.user.id },
+          "flashcard collection detail failed",
+        );
+        return reply.status(500).send({
+          code: "INTERNAL_ERROR",
+          message: "Não foi possível carregar esta coleção.",
         });
-      return serializeCollection(collection);
+      }
     });
 
     app.post("/api/flashcard-collections", async (request, reply) => {

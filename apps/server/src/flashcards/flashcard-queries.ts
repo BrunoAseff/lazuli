@@ -102,7 +102,7 @@ const cardWhere = (userId: string, collectionId: string, input: FlashcardListQue
     eq(flashcardCollection.userId, userId),
     input.status === "active" ? isNull(flashcard.archivedAt) : isNotNull(flashcard.archivedAt),
     input.filter === "new"
-      ? isNull(flashcard.lastReviewedAt)
+      ? eq(flashcard.srsState, "new")
       : input.filter === "due"
         ? lte(flashcard.dueAt, now)
         : input.filter === "scheduled"
@@ -340,16 +340,30 @@ export const importFlashcards = async (
       .from(flashcard)
       .where(inArray(flashcard.id, ids));
     if (existing.length) return { kind: "conflict" as const };
-    await tx.insert(flashcard).values(
-      input.cards.map(({ answer, id, question }) => ({
-        id,
-        collectionId,
-        question: plainTextFlashcardContent(question),
-        answer: plainTextFlashcardContent(answer),
-        questionText: question.replace(/\s+/g, " ").trim(),
-        answerText: answer.replace(/\s+/g, " ").trim(),
-      })),
-    );
+    const inserted = await tx
+      .insert(flashcard)
+      .values(
+        input.cards.map(({ answer, id, question }) => ({
+          id,
+          collectionId,
+          question: plainTextFlashcardContent(question),
+          answer: plainTextFlashcardContent(answer),
+          questionText: question.replace(/\s+/g, " ").trim(),
+          answerText: answer.replace(/\s+/g, " ").trim(),
+        })),
+      )
+      .onConflictDoNothing({ target: flashcard.id })
+      .returning({ id: flashcard.id });
+    if (inserted.length !== input.cards.length) {
+      if (inserted.length)
+        await tx.delete(flashcard).where(
+          inArray(
+            flashcard.id,
+            inserted.map(({ id }) => id),
+          ),
+        );
+      return { kind: "conflict" as const };
+    }
     return { kind: "ok" as const, imported: input.cards.length };
   });
 
@@ -458,7 +472,7 @@ export const batchFlashcards = async (
           inArray(flashcard.id, input.ids),
         ),
       )
-      .for("update");
+      .for("update", { of: flashcard });
     if (rows.length !== input.ids.length) return { kind: "not-found" as const };
     if (input.action.type === "delete") await deleteCards(tx, userId, input.ids);
     else if (input.action.type === "move") {

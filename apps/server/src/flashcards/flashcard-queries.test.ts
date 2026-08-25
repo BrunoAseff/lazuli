@@ -27,13 +27,20 @@ describe("flashcard queries", () => {
         id: "same-image",
         type: "image",
         props: { url: `/api/assets/${assetId}/content` },
+        children: [
+          {
+            id: "nested",
+            type: "paragraph",
+            content: [{ type: "text", text: "conteúdo aninhado", styles: {} }],
+          },
+        ],
       },
     ]);
 
     expect(summary).toEqual({
       assetIds: [assetId],
       hasImage: true,
-      text: "Pergunta com link",
+      text: "Pergunta com link conteúdo aninhado",
     });
   });
 });
