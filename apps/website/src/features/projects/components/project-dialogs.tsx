@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { FormFieldError } from "@/components/form-field-error.tsx";
 import {
   Dialog,
+  DialogCancelButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -119,9 +120,9 @@ export const CreateProjectDialog = ({
             value={form.watch("coverKey") ?? null}
           />
           <DialogFooter>
-            <Button disabled={mutation.isPending} onClick={close} type="button" variant="outline">
+            <DialogCancelButton disabled={mutation.isPending} onClick={close}>
               Cancelar
-            </Button>
+            </DialogCancelButton>
             <Button disabled={!form.formState.isValid || mutation.isPending} type="submit">
               {mutation.isPending && <Spinner />}
               {mutation.isPending ? "Criando..." : "Criar projeto"}
@@ -207,9 +208,9 @@ export const RenameProjectDialog = ({
             />
           </div>
           <DialogFooter>
-            <Button disabled={mutation.isPending} onClick={close} type="button" variant="outline">
+            <DialogCancelButton disabled={mutation.isPending} onClick={close}>
               Cancelar
-            </Button>
+            </DialogCancelButton>
             <Button
               disabled={!form.formState.isValid || !hasChanges || mutation.isPending}
               type="submit"
@@ -276,9 +277,9 @@ export const ChangeProjectCoverDialog = ({
         </DialogHeader>
         <CoverPicker disabled={mutation.isPending} onChange={setCoverKey} value={coverKey} />
         <DialogFooter>
-          <Button disabled={mutation.isPending} onClick={close} type="button" variant="outline">
+          <DialogCancelButton disabled={mutation.isPending} onClick={close}>
             Cancelar
-          </Button>
+          </DialogCancelButton>
           <Button
             disabled={mutation.isPending || coverKey === project.coverKey}
             onClick={save}

@@ -43,6 +43,34 @@
       "when": 1787261038755,
       "tag": "0005_new_dreadnoughts",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787536355135,
+      "tag": "0006_mushy_champions",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787537968816,
+      "tag": "0007_sleepy_groot",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787540146414,
+      "tag": "0008_dear_northstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787621108675,
+      "tag": "0009_normal_hawkeye",
+      "breakpoints": true
     }
   ]
 }

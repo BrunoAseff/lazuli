@@ -10,6 +10,8 @@ import { createDocumentAssetRoutes } from "./documents/document-asset-routes.ts"
 import { createDocumentImportRoutes } from "./document-imports/document-import-routes.ts";
 import { createDocumentImportWorker } from "./document-imports/document-import-worker.ts";
 import { createFlashcardCollectionRoutes } from "./flashcards/flashcard-collection-routes.ts";
+import { createFlashcardRoutes } from "./flashcards/flashcard-routes.ts";
+import { createFlashcardPracticeRoutes } from "./flashcards/flashcard-practice-routes.ts";
 import { createLogger } from "./logger.ts";
 import { createProjectRoutes } from "./projects/project-routes.ts";
 import { createAuthRoutes } from "./routes/auth-routes.ts";
@@ -32,6 +34,24 @@ export const buildApp = (env: ServerEnv) => {
   });
   void app.register(multipart, { limits: { files: 1 } });
 
+  app.setErrorHandler((error, request, reply) => {
+    request.log.error({ err: error }, "unhandled request error");
+    const statusCode =
+      typeof error === "object" &&
+      error !== null &&
+      "statusCode" in error &&
+      typeof error.statusCode === "number"
+        ? error.statusCode
+        : 500;
+    const clientError = statusCode >= 400 && statusCode < 500;
+    return reply.status(clientError ? statusCode : 500).send({
+      code: clientError ? "REQUEST_ERROR" : "INTERNAL_ERROR",
+      message: clientError
+        ? "Não foi possível processar esta solicitação."
+        : "Não foi possível concluir esta operação.",
+    });
+  });
+
   app.register(createAuthRoutes(auth, env));
   app.register(
     createProjectRoutes({
@@ -43,6 +63,21 @@ export const buildApp = (env: ServerEnv) => {
   app.register(createDocumentRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
   app.register(
     createFlashcardCollectionRoutes({
+      auth,
+      database: database.db,
+      websiteUrl: env.WEBSITE_URL,
+    }),
+  );
+  app.register(
+    createFlashcardRoutes({
+      auth,
+      database: database.db,
+      storage,
+      websiteUrl: env.WEBSITE_URL,
+    }),
+  );
+  app.register(
+    createFlashcardPracticeRoutes({
       auth,
       database: database.db,
       websiteUrl: env.WEBSITE_URL,

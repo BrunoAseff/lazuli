@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
 import { cn } from "@/lib/utils.ts";
@@ -33,7 +34,7 @@ export const ProjectActionsMenu = ({
         <EllipsisIcon aria-hidden="true" />
       </Button>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" className="w-40">
+    <DropdownMenuContent align="end">
       <DropdownMenuItem onSelect={onRename}>
         <PencilIcon aria-hidden="true" />
         Renomear
@@ -42,6 +43,7 @@ export const ProjectActionsMenu = ({
         <ImageIcon aria-hidden="true" />
         Alterar capa
       </DropdownMenuItem>
+      <DropdownMenuSeparator />
       <DropdownMenuItem onSelect={onDelete} variant="destructive">
         <Trash2Icon aria-hidden="true" />
         Excluir

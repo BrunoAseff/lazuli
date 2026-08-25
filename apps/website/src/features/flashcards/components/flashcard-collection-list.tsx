@@ -1,10 +1,12 @@
 import { calculateFlashcardProgress, type FlashcardCollectionSummary } from "@lazuli/shared";
-import { CalendarClockIcon, Layers3Icon, RotateCcwIcon } from "lucide-react";
+import { CalendarClockIcon, Layers3Icon, PlayIcon, RotateCcwIcon } from "lucide-react";
 import type { Ref } from "react";
+import { Link } from "react-router";
 
 import { HighlightText } from "@/components/highlight-text.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
+import { Button } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
 import { FlashcardCollectionActions } from "./flashcard-collection-actions.tsx";
 
@@ -25,6 +27,7 @@ const practiceLabel = (collection: FlashcardCollectionSummary) => {
 export const FlashcardCollectionList = ({
   collections,
   onAction,
+  onPractice,
   query,
 }: {
   collections: FlashcardCollectionSummary[];
@@ -32,6 +35,7 @@ export const FlashcardCollectionList = ({
     action: "archive" | "delete" | "edit" | "restore",
     collection: FlashcardCollectionSummary,
   ) => void;
+  onPractice: (collection: FlashcardCollectionSummary) => void;
   query: string;
 }) => (
   <div className="divide-y border-y">
@@ -47,12 +51,13 @@ export const FlashcardCollectionList = ({
               <Layers3Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
               <OverflowTooltip text={collection.title}>
                 {(ref) => (
-                  <h2
+                  <Link
                     className="truncate font-heading text-xl font-medium"
-                    ref={ref as Ref<HTMLHeadingElement>}
+                    ref={ref as Ref<HTMLAnchorElement>}
+                    to={`/flashcards/${collection.id}`}
                   >
                     <HighlightText query={query} text={collection.title} />
-                  </h2>
+                  </Link>
                 )}
               </OverflowTooltip>
             </div>
@@ -97,7 +102,19 @@ export const FlashcardCollectionList = ({
               </span>
             </p>
           </div>
-          <div className="justify-self-end lg:justify-self-auto">
+          <div className="grid w-full min-w-40 grid-cols-[1fr_auto] items-center justify-self-stretch">
+            {!collection.archivedAt && (
+              <Button
+                aria-label={`Praticar ${collection.title}`}
+                disabled={collection.dueCards === 0}
+                onClick={() => onPractice(collection)}
+                className="justify-self-center"
+                size="sm"
+              >
+                <PlayIcon aria-hidden="true" />
+                Praticar
+              </Button>
+            )}
             <FlashcardCollectionActions
               collection={collection}
               onArchive={() => onAction("archive", collection)}

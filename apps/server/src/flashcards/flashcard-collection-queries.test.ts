@@ -216,15 +216,32 @@ describe("flashcard collection queries", () => {
   });
 
   it("conditions deletion on the owner and reports a missing collection", async () => {
-    const deletedBuilder = createBuilder([]);
-    const database = { delete: vi.fn(() => deletedBuilder) } as unknown as Database;
+    const { builders, executor: tx } = createExecutor({ selects: [[]] });
+    const transaction = vi.fn((operation: (executor: unknown) => unknown) => operation(tx));
+    const database = { transaction } as unknown as Database;
 
     const deleted = await deleteFlashcardCollection(database, userId, collectionId);
-    const deletionWhere = new PgDialect().sqlToQuery(deletedBuilder.where.mock.calls[0]![0]);
+    const ownershipWhere = new PgDialect().sqlToQuery(builders.select[0]!.where.mock.calls[0]![0]);
 
     expect(deleted).toBe(false);
-    expect(deletionWhere.sql).toContain('"flashcard_collection"."id" = $1');
-    expect(deletionWhere.sql).toContain('"flashcard_collection"."user_id" = $2');
-    expect(deletionWhere.params).toEqual([collectionId, userId]);
+    expect(ownershipWhere.sql).toContain('"flashcard_collection"."id" = $1');
+    expect(ownershipWhere.sql).toContain('"flashcard_collection"."user_id" = $2');
+    expect(ownershipWhere.params).toEqual([collectionId, userId]);
+    expect(tx.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes owned collection cards in bounded batches before the collection", async () => {
+    const cardId = "bd61ec35-ed34-4ac0-bb74-43cbe89c9af7";
+    const { builders, executor: tx } = createExecutor({
+      selects: [[{ id: collectionId }], [{ id: cardId }], [], []],
+    });
+    const transaction = vi.fn((operation: (executor: unknown) => unknown) => operation(tx));
+    const database = { transaction } as unknown as Database;
+
+    const deleted = await deleteFlashcardCollection(database, userId, collectionId);
+
+    expect(deleted).toBe(true);
+    expect(builders.select[1]?.limit).toHaveBeenCalledWith(500);
+    expect(tx.delete).toHaveBeenCalledTimes(2);
   });
 });

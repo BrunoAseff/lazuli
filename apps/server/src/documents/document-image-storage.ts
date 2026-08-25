@@ -12,6 +12,13 @@ const imageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"
 export class ImageUploadTooLargeError extends Error {}
 export class StorageLimitReachedError extends Error {}
 
+export const isImageUploadTooLargeError = (error: unknown) =>
+  error instanceof ImageUploadTooLargeError ||
+  (typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "FST_REQ_FILE_TOO_LARGE");
+
 type ImageSource = {
   body: Uint8Array | Readable;
   detected: FileTypeResult | undefined;
@@ -60,12 +67,64 @@ export const storeDocumentImage = async ({
   storage: ObjectStorage;
   userId: string;
 }) => {
+  return storeImage({
+    assetTarget: { documentId, projectId },
+    database,
+    keyPrefix: `${userId}/${projectId}/${documentId}`,
+    originalName,
+    source,
+    storage,
+    userId,
+  });
+};
+
+export const storeFlashcardImage = async ({
+  database,
+  originalName,
+  source,
+  storage,
+  userId,
+}: {
+  database: Database;
+  originalName: string;
+  source: ImageSource;
+  storage: ObjectStorage;
+  userId: string;
+}) => {
+  return storeImage({
+    assetTarget: {},
+    database,
+    keyPrefix: `${userId}/flashcards/pending`,
+    originalName,
+    source,
+    storage,
+    userId,
+  });
+};
+
+const storeImage = async ({
+  assetTarget,
+  database,
+  keyPrefix,
+  originalName,
+  source,
+  storage,
+  userId,
+}: {
+  assetTarget: { documentId?: string; projectId?: string };
+  database: Database;
+  keyPrefix: string;
+  originalName: string;
+  source: ImageSource;
+  storage: ObjectStorage;
+  userId: string;
+}) => {
   if (!source.detected || !imageTypes.has(source.detected.mime)) {
     if (source.body instanceof Readable) source.body.destroy();
     return null;
   }
   const id = crypto.randomUUID();
-  const objectKey = `${userId}/${projectId}/${documentId}/${id}.${source.detected.ext}`;
+  const objectKey = `${keyPrefix}/${id}.${source.detected.ext}`;
   await enqueueObjectDeletions(database, [objectKey], 10 * 60_000);
   await storage.put(objectKey, source.body, source.detected.mime);
   if (source.isTruncated?.() || source.getByteSize() > IMAGE_MAX_BYTES) {
@@ -77,8 +136,7 @@ export const storeDocumentImage = async ({
     const created = await createAsset(database, {
       id,
       userId,
-      projectId,
-      documentId,
+      ...assetTarget,
       objectKey,
       originalName: originalName.slice(0, 255),
       mimeType: source.detected.mime,

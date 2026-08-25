@@ -249,6 +249,22 @@
   background: transparent;
 }
 
+.lazuli-flashcard-editor .bn-editor {
+  min-height: 8rem;
+}
+
+.lazuli-flashcard-practice .bn-editor {
+  min-height: 0;
+}
+
+.lazuli-image-uploading {
+  display: grid;
+  min-height: 8rem;
+  place-items: center;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
 .lazuli-editor .bn-inline-content {
   min-width: 0;
   overflow-wrap: anywhere;

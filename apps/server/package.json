@@ -32,6 +32,7 @@
     "postgres": "catalog:",
     "resend": "catalog:",
     "sanitize-html": "catalog:",
+    "ts-fsrs": "catalog:",
     "y-prosemirror": "catalog:",
     "yauzl": "catalog:",
     "zod": "catalog:"

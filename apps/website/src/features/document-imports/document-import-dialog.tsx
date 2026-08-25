@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Dialog,
+  DialogCancelButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -156,9 +157,7 @@ export const DocumentImportDialog = ({
           </div>
         )}
         <DialogFooter>
-          <Button onClick={() => close(false)} variant="outline">
-            Cancelar
-          </Button>
+          <DialogCancelButton onClick={() => close(false)}>Cancelar</DialogCancelButton>
           <Button
             disabled={!files.length || files.some((item) => !item.title.trim())}
             onClick={() => {

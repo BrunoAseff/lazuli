@@ -31,6 +31,7 @@ import {
   NoFlashcardCollectionResults,
 } from "../components/flashcard-collection-list-states.tsx";
 import { ProjectFilter, type ProjectFilterValue } from "../components/project-filter.tsx";
+import { PracticeSetupDialog } from "../components/practice-setup-dialog.tsx";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 
 type CollectionAction = "archive" | "delete" | "edit";
@@ -53,6 +54,7 @@ export const FlashcardCollectionListPage = () => {
   const page = parsePage(searchParams.get("page"));
   const [searchValue, setSearchValue] = useState(query);
   const [createOpen, setCreateOpen] = useState(false);
+  const [practiceCollectionId, setPracticeCollectionId] = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<{
     action: CollectionAction;
     collection: FlashcardCollectionSummary;
@@ -209,6 +211,7 @@ export const FlashcardCollectionListPage = () => {
           <FlashcardCollectionList
             collections={collections.data.items}
             onAction={(action, collection) => void handleAction(action, collection)}
+            onPractice={(collection) => setPracticeCollectionId(collection.id)}
             query={query}
           />
         )}
@@ -222,6 +225,13 @@ export const FlashcardCollectionListPage = () => {
       </div>
 
       <FlashcardCollectionDialog onOpenChange={setCreateOpen} open={createOpen} />
+      {practiceCollectionId && (
+        <PracticeSetupDialog
+          collectionId={practiceCollectionId}
+          onOpenChange={(open) => !open && setPracticeCollectionId(null)}
+          open
+        />
+      )}
       {activeAction?.action === "edit" && (
         <FlashcardCollectionDialog
           collection={activeAction.collection}
