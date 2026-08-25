@@ -197,7 +197,7 @@ export const flashcardReview = pgTable(
   (table) => [
     index("flashcard_review_card_reviewed_idx").on(table.flashcardId, table.reviewedAt, table.id),
     index("flashcard_review_reviewed_card_idx").on(table.reviewedAt, table.flashcardId),
-    index("flashcard_review_practice_item_idx").on(table.practiceItemId),
+    uniqueIndex("flashcard_review_practice_item_idx").on(table.practiceItemId),
     index("flashcard_review_session_reviewed_idx").on(table.sessionId, table.reviewedAt),
     check("flashcard_review_due_order_check", sql`${table.nextDueAt} >= ${table.reviewedAt}`),
     check("flashcard_review_stability_check", sql`${table.stability} >= 0`),

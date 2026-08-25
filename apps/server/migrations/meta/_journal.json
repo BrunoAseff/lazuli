@@ -64,6 +64,13 @@
       "when": 1787540146414,
       "tag": "0008_dear_northstar",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787621108675,
+      "tag": "0009_normal_hawkeye",
+      "breakpoints": true
     }
   ]
 }

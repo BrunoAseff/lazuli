@@ -35,16 +35,45 @@ ALTER TABLE "flashcard" ADD COLUMN "learning_steps" integer DEFAULT 0 NOT NULL;-
 ALTER TABLE "flashcard" ADD COLUMN "reps" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE "flashcard" ADD COLUMN "lapses" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE "flashcard" ADD COLUMN "scheduler_version" text DEFAULT 'ts-fsrs@5.4.1' NOT NULL;--> statement-breakpoint
-ALTER TABLE "flashcard_review" ADD COLUMN "session_id" text NOT NULL;--> statement-breakpoint
-ALTER TABLE "flashcard_review" ADD COLUMN "practice_item_id" text NOT NULL;--> statement-breakpoint
-ALTER TABLE "flashcard_review" ADD COLUMN "previous_state" "flashcard_srs_state" NOT NULL;--> statement-breakpoint
-ALTER TABLE "flashcard_review" ADD COLUMN "next_state" "flashcard_srs_state" NOT NULL;--> statement-breakpoint
-ALTER TABLE "flashcard_review" ADD COLUMN "stability" double precision NOT NULL;--> statement-breakpoint
-ALTER TABLE "flashcard_review" ADD COLUMN "difficulty" double precision NOT NULL;--> statement-breakpoint
-ALTER TABLE "flashcard_review" ADD COLUMN "elapsed_days" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "flashcard_review" ADD COLUMN "scheduled_days" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "flashcard_review" ADD COLUMN "learning_steps" integer NOT NULL;--> statement-breakpoint
-ALTER TABLE "flashcard_review" ADD COLUMN "scheduler_version" text NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ADD COLUMN "session_id" text;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ADD COLUMN "practice_item_id" text;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ADD COLUMN "previous_state" "flashcard_srs_state";--> statement-breakpoint
+ALTER TABLE "flashcard_review" ADD COLUMN "next_state" "flashcard_srs_state";--> statement-breakpoint
+ALTER TABLE "flashcard_review" ADD COLUMN "stability" double precision;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ADD COLUMN "difficulty" double precision;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ADD COLUMN "elapsed_days" integer;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ADD COLUMN "scheduled_days" integer;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ADD COLUMN "learning_steps" integer;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ADD COLUMN "scheduler_version" text;--> statement-breakpoint
+INSERT INTO "flashcard_practice_session" ("id", "user_id", "collection_id", "status", "total_cards", "reviewed_cards", "started_at", "last_activity_at", "finished_at", "created_at")
+SELECT 'legacy-session-' || r."id", c."user_id", f."collection_id", 'completed', 1, 1, r."reviewed_at", r."reviewed_at", r."reviewed_at", r."reviewed_at"
+FROM "flashcard_review" r
+INNER JOIN "flashcard" f ON f."id" = r."flashcard_id"
+INNER JOIN "flashcard_collection" c ON c."id" = f."collection_id";--> statement-breakpoint
+INSERT INTO "flashcard_practice_item" ("id", "session_id", "flashcard_id", "position", "review_id", "reviewed_at")
+SELECT 'legacy-item-' || r."id", 'legacy-session-' || r."id", r."flashcard_id", 0, r."id", r."reviewed_at"
+FROM "flashcard_review" r;--> statement-breakpoint
+UPDATE "flashcard_review"
+SET "session_id" = 'legacy-session-' || "id",
+    "practice_item_id" = 'legacy-item-' || "id",
+    "previous_state" = 'review',
+    "next_state" = 'review',
+    "stability" = 0,
+    "difficulty" = 0,
+    "elapsed_days" = greatest(0, floor(extract(epoch from ("reviewed_at" - "previous_due_at")) / 86400)::integer),
+    "scheduled_days" = greatest(0, ceil(extract(epoch from ("next_due_at" - "reviewed_at")) / 86400)::integer),
+    "learning_steps" = 0,
+    "scheduler_version" = 'legacy-unreconstructable';--> statement-breakpoint
+ALTER TABLE "flashcard_review" ALTER COLUMN "session_id" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ALTER COLUMN "practice_item_id" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ALTER COLUMN "previous_state" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ALTER COLUMN "next_state" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ALTER COLUMN "stability" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ALTER COLUMN "difficulty" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ALTER COLUMN "elapsed_days" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ALTER COLUMN "scheduled_days" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ALTER COLUMN "learning_steps" SET NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_review" ALTER COLUMN "scheduler_version" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "flashcard_practice_item" ADD CONSTRAINT "flashcard_practice_item_session_id_flashcard_practice_session_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."flashcard_practice_session"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "flashcard_practice_item" ADD CONSTRAINT "flashcard_practice_item_flashcard_id_flashcard_id_fk" FOREIGN KEY ("flashcard_id") REFERENCES "public"."flashcard"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "flashcard_practice_session" ADD CONSTRAINT "flashcard_practice_session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
