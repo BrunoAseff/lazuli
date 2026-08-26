@@ -23,3 +23,5 @@ export const createRequestRateLimiter = ({
     },
   };
 };
+
+export type RequestRateLimiter = ReturnType<typeof createRequestRateLimiter>;

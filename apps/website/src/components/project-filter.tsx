@@ -8,7 +8,7 @@ import {
   SearchIcon,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState, type Ref } from "react";
+import { type Ref, useEffect, useState } from "react";
 
 import { HighlightText } from "@/components/highlight-text.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";

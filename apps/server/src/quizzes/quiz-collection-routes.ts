@@ -1,8 +1,8 @@
 import {
-  createFlashcardCollectionSchema,
-  flashcardCollectionIdSchema,
-  flashcardCollectionListQuerySchema,
-  updateFlashcardCollectionSchema,
+  createQuizCollectionSchema,
+  quizCollectionIdSchema,
+  quizCollectionListQuerySchema,
+  updateQuizCollectionSchema,
 } from "@lazuli/shared";
 import type { FastifyPluginAsync } from "fastify";
 
@@ -12,21 +12,20 @@ import type { Database } from "../database/client.ts";
 import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import {
-  createFlashcardCollection,
-  deleteFlashcardCollection,
-  getFlashcardCollection,
-  listFlashcardCollections,
-  updateFlashcardCollection,
-} from "./flashcard-collection-queries.ts";
+  createQuizCollection,
+  deleteQuizCollection,
+  getQuizCollection,
+  listQuizCollections,
+  updateQuizCollection,
+} from "./quiz-collection-queries.ts";
 
-type FlashcardCollectionRoutesOptions = { auth: Auth; database: Database; websiteUrl: string };
+type QuizCollectionRoutesOptions = { auth: Auth; database: Database; websiteUrl: string };
 
 const serializeCollection = <
   T extends {
     archivedAt: Date | null;
     createdAt: Date;
-    lastReviewedAt: Date | null;
-    nextPracticeAt: Date | null;
+    lastAttemptAt: Date | null;
     updatedAt: Date;
   },
 >(
@@ -34,51 +33,46 @@ const serializeCollection = <
 ) => ({
   ...value,
   archivedAt: value.archivedAt?.toISOString() ?? null,
-  nextPracticeAt: value.nextPracticeAt?.toISOString() ?? null,
-  lastReviewedAt: value.lastReviewedAt?.toISOString() ?? null,
+  lastAttemptAt: value.lastAttemptAt?.toISOString() ?? null,
   createdAt: value.createdAt.toISOString(),
   updatedAt: value.updatedAt.toISOString(),
 });
 
-export const createFlashcardCollectionRoutes = ({
+export const createQuizCollectionRoutes = ({
   auth,
   database,
   websiteUrl,
-}: FlashcardCollectionRoutesOptions): FastifyPluginAsync =>
-  async function flashcardCollectionRoutes(app) {
+}: QuizCollectionRoutesOptions): FastifyPluginAsync =>
+  async function quizCollectionRoutes(app) {
     const mutationLimiter = createRequestRateLimiter({ limit: 60, windowMs: 10 * 60 * 1_000 });
     const authorizeMutation = createMutationAuthorizer(auth, websiteUrl, mutationLimiter);
 
-    app.get("/api/flashcard-collections", async (request, reply) => {
+    app.get("/api/quiz-collections", async (request, reply) => {
       const session = await requireSession(auth, request, reply);
       if (!session) return;
-      const query = flashcardCollectionListQuerySchema.safeParse(request.query);
+      const query = quizCollectionListQuerySchema.safeParse(request.query);
       if (!query.success) return sendValidationError(reply);
       try {
-        const result = await listFlashcardCollections(database, session.user.id, query.data);
+        const result = await listQuizCollections(database, session.user.id, query.data);
         return { ...result, items: result.items.map(serializeCollection) };
       } catch (error) {
-        request.log.error({ err: error, userId: session.user.id }, "flashcard collections failed");
+        request.log.error({ err: error, userId: session.user.id }, "quiz collections failed");
         return reply.status(500).send({
           code: "INTERNAL_ERROR",
-          message: "Não foi possível carregar suas coleções.",
+          message: "Não foi possível carregar suas coleções de quizzes.",
         });
       }
     });
 
-    app.get("/api/flashcard-collections/:collectionId", async (request, reply) => {
+    app.get("/api/quiz-collections/:collectionId", async (request, reply) => {
       const session = await requireSession(auth, request, reply);
       if (!session) return;
-      const collectionId = flashcardCollectionIdSchema.safeParse(
+      const collectionId = quizCollectionIdSchema.safeParse(
         (request.params as { collectionId?: unknown }).collectionId,
       );
       if (!collectionId.success) return sendValidationError(reply);
       try {
-        const collection = await getFlashcardCollection(
-          database,
-          session.user.id,
-          collectionId.data,
-        );
+        const collection = await getQuizCollection(database, session.user.id, collectionId.data);
         if (!collection)
           return reply.status(404).send({
             code: "COLLECTION_NOT_FOUND",
@@ -88,7 +82,7 @@ export const createFlashcardCollectionRoutes = ({
       } catch (error) {
         request.log.error(
           { collectionId: collectionId.data, err: error, userId: session.user.id },
-          "flashcard collection detail failed",
+          "quiz collection detail failed",
         );
         return reply.status(500).send({
           code: "INTERNAL_ERROR",
@@ -97,13 +91,13 @@ export const createFlashcardCollectionRoutes = ({
       }
     });
 
-    app.post("/api/flashcard-collections", async (request, reply) => {
+    app.post("/api/quiz-collections", async (request, reply) => {
       const session = await authorizeMutation(request, reply);
       if (!session) return;
-      const input = createFlashcardCollectionSchema.safeParse(request.body);
+      const input = createQuizCollectionSchema.safeParse(request.body);
       if (!input.success) return sendValidationError(reply);
       try {
-        const result = await createFlashcardCollection(database, session.user.id, input.data);
+        const result = await createQuizCollection(database, session.user.id, input.data);
         if (result.kind === "project-not-found")
           return reply.status(400).send({
             code: "PROJECT_NOT_FOUND",
@@ -116,13 +110,16 @@ export const createFlashcardCollectionRoutes = ({
           });
         request.log.info(
           { collectionId: result.collection.id, created: result.created, userId: session.user.id },
-          "flashcard collection creation completed",
+          "quiz collection creation completed",
         );
         return reply
           .status(result.created ? 201 : 200)
           .send(serializeCollection(result.collection));
       } catch (error) {
-        request.log.error({ err: error, userId: session.user.id }, "collection creation failed");
+        request.log.error(
+          { err: error, userId: session.user.id },
+          "quiz collection creation failed",
+        );
         return reply.status(500).send({
           code: "INTERNAL_ERROR",
           message: "Não foi possível criar a coleção.",
@@ -130,16 +127,16 @@ export const createFlashcardCollectionRoutes = ({
       }
     });
 
-    app.patch("/api/flashcard-collections/:collectionId", async (request, reply) => {
+    app.patch("/api/quiz-collections/:collectionId", async (request, reply) => {
       const session = await authorizeMutation(request, reply);
       if (!session) return;
-      const collectionId = flashcardCollectionIdSchema.safeParse(
+      const collectionId = quizCollectionIdSchema.safeParse(
         (request.params as { collectionId?: unknown }).collectionId,
       );
-      const input = updateFlashcardCollectionSchema.safeParse(request.body);
+      const input = updateQuizCollectionSchema.safeParse(request.body);
       if (!collectionId.success || !input.success) return sendValidationError(reply);
       try {
-        const result = await updateFlashcardCollection(
+        const result = await updateQuizCollection(
           database,
           session.user.id,
           collectionId.data,
@@ -155,15 +152,11 @@ export const createFlashcardCollectionRoutes = ({
             code: "COLLECTION_NOT_FOUND",
             message: "Esta coleção não foi encontrada.",
           });
-        request.log.info(
-          { collectionId: collectionId.data, userId: session.user.id },
-          "flashcard collection updated",
-        );
         return serializeCollection(result.collection);
       } catch (error) {
         request.log.error(
           { collectionId: collectionId.data, err: error, userId: session.user.id },
-          "collection update failed",
+          "quiz collection update failed",
         );
         return reply.status(500).send({
           code: "INTERNAL_ERROR",
@@ -172,33 +165,25 @@ export const createFlashcardCollectionRoutes = ({
       }
     });
 
-    app.delete("/api/flashcard-collections/:collectionId", async (request, reply) => {
+    app.delete("/api/quiz-collections/:collectionId", async (request, reply) => {
       const session = await authorizeMutation(request, reply);
       if (!session) return;
-      const collectionId = flashcardCollectionIdSchema.safeParse(
+      const collectionId = quizCollectionIdSchema.safeParse(
         (request.params as { collectionId?: unknown }).collectionId,
       );
       if (!collectionId.success) return sendValidationError(reply);
       try {
-        const deleted = await deleteFlashcardCollection(
-          database,
-          session.user.id,
-          collectionId.data,
-        );
+        const deleted = await deleteQuizCollection(database, session.user.id, collectionId.data);
         if (!deleted)
           return reply.status(404).send({
             code: "COLLECTION_NOT_FOUND",
             message: "Esta coleção não foi encontrada.",
           });
-        request.log.info(
-          { collectionId: collectionId.data, userId: session.user.id },
-          "flashcard collection deleted",
-        );
         return reply.status(204).send();
       } catch (error) {
         request.log.error(
           { collectionId: collectionId.data, err: error, userId: session.user.id },
-          "collection deletion failed",
+          "quiz collection deletion failed",
         );
         return reply.status(500).send({
           code: "INTERNAL_ERROR",

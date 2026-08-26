@@ -1,7 +1,7 @@
 import type {
-  CreateFlashcardCollectionInput,
-  FlashcardCollectionSummary,
-  UpdateFlashcardCollectionInput,
+  CreateQuizCollectionInput,
+  QuizCollectionSummary,
+  UpdateQuizCollectionInput,
 } from "@lazuli/shared";
 import { AlertTriangleIcon, ArchiveIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -20,43 +20,43 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import {
-  useCreateFlashcardCollection,
-  useDeleteFlashcardCollection,
-  useUpdateFlashcardCollection,
-} from "../api/flashcard-collection-queries.ts";
-import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
+  useCreateQuizCollection,
+  useDeleteQuizCollection,
+  useUpdateQuizCollection,
+} from "../api/quiz-collection-queries.ts";
+import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
-export const FlashcardCollectionDialog = ({
+export const QuizCollectionDialog = ({
   collection,
   onOpenChange,
   open,
 }: {
-  collection?: FlashcardCollectionSummary;
+  collection?: QuizCollectionSummary;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
-  const create = useCreateFlashcardCollection();
-  const update = useUpdateFlashcardCollection(collection?.id ?? "");
+  const create = useCreateQuizCollection();
+  const update = useUpdateQuizCollection(collection?.id ?? "");
   const mutation = collection ? update : create;
 
   return (
     <StudyCollectionDialog
       collection={collection}
-      createDescription="Agrupe flashcards relacionados a um mesmo assunto."
+      createDescription="Agrupe questões relacionadas a um mesmo assunto."
       onOpenChange={onOpenChange}
       onReset={() => mutation.reset()}
       onSubmit={async (input) => {
         try {
           if ("id" in input) {
-            await create.mutateAsync(input as CreateFlashcardCollectionInput);
+            await create.mutateAsync(input as CreateQuizCollectionInput);
             toast.success("Coleção criada.");
           } else {
-            await update.mutateAsync(input as UpdateFlashcardCollectionInput);
+            await update.mutateAsync(input as UpdateQuizCollectionInput);
             toast.success("Coleção atualizada.");
           }
         } catch (error) {
           toast.error(
-            getFlashcardCollectionErrorMessage(
+            getQuizCollectionErrorMessage(
               error,
               collection
                 ? "Não foi possível atualizar a coleção."
@@ -68,30 +68,28 @@ export const FlashcardCollectionDialog = ({
       }}
       open={open}
       pending={mutation.isPending}
-      placeholder="Ex.: Anatomia cardiovascular"
+      placeholder="Ex.: História da arte"
     />
   );
 };
 
-export const ArchiveFlashcardCollectionDialog = ({
+export const ArchiveQuizCollectionDialog = ({
   collection,
   onOpenChange,
   open,
 }: {
-  collection: FlashcardCollectionSummary;
+  collection: QuizCollectionSummary;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
-  const mutation = useUpdateFlashcardCollection(collection.id);
+  const mutation = useUpdateQuizCollection(collection.id);
   const archive = async () => {
     try {
       await mutation.mutateAsync({ archived: true });
       toast.success("Coleção arquivada.");
       onOpenChange(false);
     } catch (error) {
-      toast.error(
-        getFlashcardCollectionErrorMessage(error, "Não foi possível arquivar a coleção."),
-      );
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível arquivar a coleção."));
     }
   };
   return (
@@ -103,9 +101,11 @@ export const ArchiveFlashcardCollectionDialog = ({
           </AlertDialogMedia>
           <AlertDialogTitle>Arquivar “{collection.title}”?</AlertDialogTitle>
           <AlertDialogDescription>
-            Seus {collection.totalCards}{" "}
-            {collection.totalCards === 1 ? "card será preservado" : "cards serão preservados"}. Você
-            poderá restaurar a coleção depois.
+            Suas {collection.totalQuestions}{" "}
+            {collection.totalQuestions === 1
+              ? "questão será preservada"
+              : "questões serão preservadas"}
+            . Você poderá restaurar a coleção depois.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -126,18 +126,18 @@ export const ArchiveFlashcardCollectionDialog = ({
   );
 };
 
-export const DeleteFlashcardCollectionDialog = ({
+export const DeleteQuizCollectionDialog = ({
   collection,
   onDeleted,
   onOpenChange,
   open,
 }: {
-  collection: FlashcardCollectionSummary;
+  collection: QuizCollectionSummary;
   onDeleted: () => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
-  const mutation = useDeleteFlashcardCollection(collection.id);
+  const mutation = useDeleteQuizCollection(collection.id);
   const remove = async () => {
     try {
       await mutation.mutateAsync();
@@ -145,7 +145,7 @@ export const DeleteFlashcardCollectionDialog = ({
       onOpenChange(false);
       onDeleted();
     } catch (error) {
-      toast.error(getFlashcardCollectionErrorMessage(error, "Não foi possível excluir a coleção."));
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível excluir a coleção."));
     }
   };
   return (
@@ -157,9 +157,12 @@ export const DeleteFlashcardCollectionDialog = ({
           </AlertDialogMedia>
           <AlertDialogTitle>Excluir “{collection.title}”?</AlertDialogTitle>
           <AlertDialogDescription>
-            {collection.totalCards === 0
-              ? "A coleção ainda não possui cards."
-              : `${collection.totalCards} ${collection.totalCards === 1 ? "card e seu histórico serão excluídos" : "cards e seus históricos serão excluídos"}.`}{" "}
+            {collection.totalQuestions === 0
+              ? "A coleção ainda não possui questões."
+              : `${collection.totalQuestions} ${collection.totalQuestions === 1 ? "questão será excluída" : "questões serão excluídas"}.`}{" "}
+            {collection.totalAttempts > 0
+              ? `O histórico de ${collection.totalAttempts} ${collection.totalAttempts === 1 ? "tentativa também será excluído" : "tentativas também será excluído"}. `
+              : ""}
             Esta ação não pode ser desfeita.
           </AlertDialogDescription>
         </AlertDialogHeader>

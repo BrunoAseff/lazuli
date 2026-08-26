@@ -27,6 +27,7 @@ import {
   flashcardReview,
   project,
 } from "../database/schema/index.ts";
+import { ownsProject } from "../projects/project-ownership.ts";
 import { deleteCards } from "./flashcard-queries.ts";
 
 const COLLECTION_DELETE_BATCH_SIZE = 500;
@@ -189,16 +190,6 @@ export const getFlashcardCollection = async (
     .limit(1);
   if (!row) return null;
   return (await enrichCollections(database, [row], now))[0] ?? null;
-};
-
-const ownsProject = async (database: QueryExecutor, userId: string, projectId: string) => {
-  const [owned] = await database
-    .select({ id: project.id })
-    .from(project)
-    .where(and(eq(project.id, projectId), eq(project.userId, userId)))
-    .limit(1)
-    .for("share");
-  return Boolean(owned);
 };
 
 export const createFlashcardCollection = async (

@@ -1,9 +1,9 @@
 import {
-  FLASHCARD_COLLECTION_PAGE_SIZE,
-  flashcardCollectionListQuerySchema,
-  type FlashcardCollectionSummary,
+  QUIZ_COLLECTION_PAGE_SIZE,
+  quizCollectionListQuerySchema,
+  type QuizCollectionSummary,
 } from "@lazuli/shared";
-import { Layers3Icon, PlusIcon } from "lucide-react";
+import { SquareCheckBig, PlusIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -17,22 +17,18 @@ import {
 import { StudyCollectionToolbar } from "@/components/study-collection-toolbar.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useStudyCollectionListState } from "@/hooks/use-study-collection-list-state.ts";
+import { useQuizCollections, useRestoreQuizCollection } from "../api/quiz-collection-queries.ts";
 import {
-  useFlashcardCollections,
-  useRestoreFlashcardCollection,
-} from "../api/flashcard-collection-queries.ts";
-import {
-  ArchiveFlashcardCollectionDialog,
-  DeleteFlashcardCollectionDialog,
-  FlashcardCollectionDialog,
-} from "../components/flashcard-collection-dialogs.tsx";
-import { FlashcardCollectionList } from "../components/flashcard-collection-list.tsx";
-import { PracticeSetupDialog } from "../components/practice-setup-dialog.tsx";
-import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
+  ArchiveQuizCollectionDialog,
+  DeleteQuizCollectionDialog,
+  QuizCollectionDialog,
+} from "../components/quiz-collection-dialogs.tsx";
+import { QuizCollectionList } from "../components/quiz-collection-list.tsx";
+import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
 type CollectionAction = "archive" | "delete" | "edit";
 
-export const FlashcardCollectionListPage = () => {
+export const QuizCollectionListPage = () => {
   const {
     clearFilters,
     page,
@@ -45,30 +41,29 @@ export const FlashcardCollectionListPage = () => {
     updateParams,
   } = useStudyCollectionListState();
   const [createOpen, setCreateOpen] = useState(false);
-  const [practiceCollectionId, setPracticeCollectionId] = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<{
     action: CollectionAction;
-    collection: FlashcardCollectionSummary;
+    collection: QuizCollectionSummary;
   } | null>(null);
-  const input = flashcardCollectionListQuerySchema.parse({
+  const input = quizCollectionListQuerySchema.parse({
     page,
-    pageSize: FLASHCARD_COLLECTION_PAGE_SIZE,
+    pageSize: QUIZ_COLLECTION_PAGE_SIZE,
     project,
     query,
     status,
   });
-  const collections = useFlashcardCollections(input);
-  const restore = useRestoreFlashcardCollection();
+  const collections = useQuizCollections(input);
+  const restore = useRestoreQuizCollection();
   const restoringIds = useRef(new Set<string>());
 
   useEffect(() => {
     const totalPages = collections.data?.pagination.totalPages;
     if (totalPages && page > totalPages) setPage(totalPages);
-  }, [collections.data?.pagination.totalPages, page]);
+  }, [collections.data?.pagination.totalPages, page, setPage]);
 
   const handleAction = async (
     action: "archive" | "delete" | "edit" | "restore",
-    collection: FlashcardCollectionSummary,
+    collection: QuizCollectionSummary,
   ) => {
     if (action !== "restore") {
       setActiveAction({ action, collection });
@@ -80,9 +75,7 @@ export const FlashcardCollectionListPage = () => {
       await restore.mutateAsync(collection.id);
       toast.success("Coleção restaurada.");
     } catch (error) {
-      toast.error(
-        getFlashcardCollectionErrorMessage(error, "Não foi possível restaurar a coleção."),
-      );
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível restaurar a coleção."));
     } finally {
       restoringIds.current.delete(collection.id);
     }
@@ -99,13 +92,13 @@ export const FlashcardCollectionListPage = () => {
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Estudo ativo
+              Prática e avaliação
             </p>
             <h1 className="font-heading text-4xl font-medium tracking-tight sm:text-5xl">
-              Flashcards
+              Quizzes
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              Organize suas coleções e acompanhe o que já estudou e o que precisa revisar.
+              Organize suas questões e acompanhe seus resultados ao longo do tempo.
             </p>
           </div>
           <Button className="self-start sm:self-auto" onClick={() => setCreateOpen(true)}>
@@ -134,53 +127,45 @@ export const FlashcardCollectionListPage = () => {
         {isEmpty && (
           <EmptyStudyCollections
             archived={status === "archived"}
-            description="Organize seus flashcards por disciplina, idioma ou assunto."
-            icon={Layers3Icon}
+            description="Organize questões por disciplina, idioma ou assunto."
+            icon={SquareCheckBig}
             onCreate={() => setCreateOpen(true)}
           />
         )}
         {noResults && <NoStudyCollectionResults onClear={clearFilters} />}
         {hasItems && collections.data && (
-          <FlashcardCollectionList
+          <QuizCollectionList
             collections={collections.data.items}
             onAction={(action, collection) => void handleAction(action, collection)}
-            onPractice={(collection) => setPracticeCollectionId(collection.id)}
             query={query}
           />
         )}
         {collections.data && (
           <PaginationControls
-            label="Paginação de coleções"
+            label="Paginação de coleções de quizzes"
             onPageChange={setPage}
             pagination={collections.data.pagination}
           />
         )}
       </div>
 
-      <FlashcardCollectionDialog onOpenChange={setCreateOpen} open={createOpen} />
-      {practiceCollectionId && (
-        <PracticeSetupDialog
-          collectionId={practiceCollectionId}
-          onOpenChange={(open) => !open && setPracticeCollectionId(null)}
-          open
-        />
-      )}
+      <QuizCollectionDialog onOpenChange={setCreateOpen} open={createOpen} />
       {activeAction?.action === "edit" && (
-        <FlashcardCollectionDialog
+        <QuizCollectionDialog
           collection={activeAction.collection}
           onOpenChange={(open) => !open && setActiveAction(null)}
           open
         />
       )}
       {activeAction?.action === "archive" && (
-        <ArchiveFlashcardCollectionDialog
+        <ArchiveQuizCollectionDialog
           collection={activeAction.collection}
           onOpenChange={(open) => !open && setActiveAction(null)}
           open
         />
       )}
       {activeAction?.action === "delete" && (
-        <DeleteFlashcardCollectionDialog
+        <DeleteQuizCollectionDialog
           collection={activeAction.collection}
           onDeleted={() => {
             if (collections.data?.items.length === 1 && page > 1) setPage(page - 1);
@@ -194,4 +179,4 @@ export const FlashcardCollectionListPage = () => {
   );
 };
 
-export default FlashcardCollectionListPage;
+export default QuizCollectionListPage;

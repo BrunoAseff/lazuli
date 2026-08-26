@@ -1,4 +1,4 @@
-import { FileTextIcon, Layers3Icon } from "lucide-react";
+import { SquareCheckBig, FileTextIcon, Layers3Icon } from "lucide-react";
 import { NavLink, useLocation } from "react-router";
 
 import { UserMenu } from "@/components/user-menu.tsx";
@@ -71,6 +71,18 @@ export const AppSidebar = () => {
                   <NavLink onClick={() => isMobile && setOpenMobile(false)} to="/flashcards">
                     <Layers3Icon aria-hidden="true" />
                     <span>Flashcards</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname.startsWith("/quizzes")}
+                  tooltip="Quizzes"
+                >
+                  <NavLink onClick={() => isMobile && setOpenMobile(false)} to="/quizzes">
+                    <SquareCheckBig aria-hidden="true" />
+                    <span>Quizzes</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

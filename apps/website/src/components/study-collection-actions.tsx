@@ -1,4 +1,3 @@
-import type { FlashcardCollectionSummary } from "@lazuli/shared";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
@@ -16,22 +15,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
 
-export const FlashcardCollectionActions = ({
-  collection,
+export const StudyCollectionActions = ({
+  archived,
   onArchive,
   onDelete,
   onEdit,
   onRestore,
+  title,
 }: {
-  collection: FlashcardCollectionSummary;
+  archived: boolean;
   onArchive: () => void;
   onDelete: () => void;
   onEdit: () => void;
   onRestore: () => void;
+  title: string;
 }) => (
   <DropdownMenu modal={false}>
     <DropdownMenuTrigger asChild>
-      <Button aria-label={`Ações de ${collection.title}`} size="icon-sm" variant="ghost">
+      <Button aria-label={`Ações de ${title}`} size="icon-sm" variant="ghost">
         <EllipsisIcon aria-hidden="true" />
       </Button>
     </DropdownMenuTrigger>
@@ -40,7 +41,7 @@ export const FlashcardCollectionActions = ({
         <PencilIcon aria-hidden="true" />
         Renomear e organizar
       </DropdownMenuItem>
-      {collection.archivedAt ? (
+      {archived ? (
         <DropdownMenuItem onSelect={onRestore}>
           <ArchiveRestoreIcon aria-hidden="true" />
           Restaurar
