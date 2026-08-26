@@ -14,6 +14,7 @@ import { createFlashcardRoutes } from "./flashcards/flashcard-routes.ts";
 import { createFlashcardPracticeRoutes } from "./flashcards/flashcard-practice-routes.ts";
 import { createLogger } from "./logger.ts";
 import { createProjectRoutes } from "./projects/project-routes.ts";
+import { createQuizCollectionRoutes } from "./quizzes/quiz-collection-routes.ts";
 import { createAuthRoutes } from "./routes/auth-routes.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { createObjectStorage } from "./storage/object-storage.ts";
@@ -78,6 +79,13 @@ export const buildApp = (env: ServerEnv) => {
   );
   app.register(
     createFlashcardPracticeRoutes({
+      auth,
+      database: database.db,
+      websiteUrl: env.WEBSITE_URL,
+    }),
+  );
+  app.register(
+    createQuizCollectionRoutes({
       auth,
       database: database.db,
       websiteUrl: env.WEBSITE_URL,

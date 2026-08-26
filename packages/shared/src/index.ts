@@ -5,6 +5,8 @@ export * from "./documents/source-anchor.ts";
 export * from "./flashcards/flashcard-contracts.ts";
 export * from "./flashcards/flashcard-metrics.ts";
 export * from "./projects/project-contracts.ts";
+export * from "./quizzes/quiz-contracts.ts";
+export * from "./study-collections/study-collection-contracts.ts";
 
 export type ApiHealthResponse = {
   appName: typeof APP_NAME;
