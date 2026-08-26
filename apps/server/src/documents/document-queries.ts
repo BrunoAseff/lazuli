@@ -431,7 +431,7 @@ export const deleteOwnedAsset = async (db: Database, userId: string, assetId: st
   return db.transaction(async (tx) => {
     const [deleted] = await tx
       .delete(asset)
-      .where(and(eq(asset.id, assetId), eq(asset.userId, userId)))
+      .where(and(eq(asset.id, assetId), eq(asset.userId, userId), isNull(asset.attachedAt)))
       .returning();
     if (!deleted) return null;
     await enqueueObjectDeletions(tx, [deleted.objectKey]);

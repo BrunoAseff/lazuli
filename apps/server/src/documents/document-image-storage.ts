@@ -102,6 +102,29 @@ export const storeFlashcardImage = async ({
   });
 };
 
+export const storeQuizImage = async ({
+  database,
+  originalName,
+  source,
+  storage,
+  userId,
+}: {
+  database: Database;
+  originalName: string;
+  source: ImageSource;
+  storage: ObjectStorage;
+  userId: string;
+}) =>
+  storeImage({
+    assetTarget: {},
+    database,
+    keyPrefix: `${userId}/quizzes/pending`,
+    originalName,
+    source,
+    storage,
+    userId,
+  });
+
 const storeImage = async ({
   assetTarget,
   database,

@@ -7,8 +7,17 @@ import { and, count, desc, eq, gte, inArray, isNotNull, isNull, or, sql } from "
 
 import type { Database } from "../database/client.ts";
 import { escapeLikePattern } from "../database/sql-search.ts";
-import { project, quizAttempt, quizCollection, quizQuestion } from "../database/schema/index.ts";
+import {
+  asset,
+  project,
+  quizAttempt,
+  quizAttemptAsset,
+  quizCollection,
+  quizQuestion,
+  userStorage,
+} from "../database/schema/index.ts";
 import { ownsProject } from "../projects/project-ownership.ts";
+import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
 
 const collectionSelection = {
   id: quizCollection.id,
@@ -264,9 +273,47 @@ export const deleteQuizCollection = async (
   collectionId: string,
 ) =>
   database.transaction(async (tx) => {
+    const questionAssets = await tx
+      .select({ byteSize: asset.byteSize, id: asset.id, objectKey: asset.objectKey })
+      .from(asset)
+      .innerJoin(quizQuestion, eq(quizQuestion.id, asset.quizQuestionId))
+      .innerJoin(quizCollection, eq(quizCollection.id, quizQuestion.collectionId))
+      .where(and(eq(quizCollection.id, collectionId), eq(quizCollection.userId, userId)))
+      .for("update", { of: asset });
+    const attemptAssets = await tx
+      .select({ byteSize: asset.byteSize, id: asset.id, objectKey: asset.objectKey })
+      .from(asset)
+      .innerJoin(quizAttemptAsset, eq(quizAttemptAsset.assetId, asset.id))
+      .innerJoin(quizAttempt, eq(quizAttempt.id, quizAttemptAsset.attemptId))
+      .where(and(eq(quizAttempt.collectionId, collectionId), eq(quizAttempt.userId, userId)))
+      .for("update", { of: asset });
+    const ownedAssets = [
+      ...new Map([...questionAssets, ...attemptAssets].map((item) => [item.id, item])).values(),
+    ];
     const [deleted] = await tx
       .delete(quizCollection)
       .where(and(eq(quizCollection.id, collectionId), eq(quizCollection.userId, userId)))
       .returning({ id: quizCollection.id });
-    return Boolean(deleted);
+    if (!deleted) return false;
+    if (ownedAssets.length) {
+      await enqueueObjectDeletions(
+        tx,
+        ownedAssets.map(({ objectKey }) => objectKey),
+      );
+      await tx.delete(asset).where(
+        inArray(
+          asset.id,
+          ownedAssets.map(({ id }) => id),
+        ),
+      );
+      const bytes = ownedAssets.reduce((sum, item) => sum + item.byteSize, 0);
+      await tx
+        .update(userStorage)
+        .set({
+          usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${bytes})`,
+          updatedAt: new Date(),
+        })
+        .where(eq(userStorage.userId, userId));
+    }
+    return true;
   });
