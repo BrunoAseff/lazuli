@@ -1,11 +1,19 @@
 import type { QuizCollectionSummary } from "@lazuli/shared";
-import { BarChart3Icon, CalendarClockIcon, SquareCheckBig, HistoryIcon } from "lucide-react";
+import {
+  BarChart3Icon,
+  CalendarClockIcon,
+  SquareCheckBig,
+  HistoryIcon,
+  PlayIcon,
+} from "lucide-react";
 import type { Ref } from "react";
+import { Link } from "react-router";
 
 import { HighlightText } from "@/components/highlight-text.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { StudyCollectionActions } from "@/components/study-collection-actions.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
+import { Button } from "@/components/ui/button.tsx";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "medium",
@@ -32,7 +40,7 @@ export const QuizCollectionList = ({
   <div className="divide-y border-y">
     {collections.map((collection) => (
       <article
-        className="grid gap-4 py-5 sm:px-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(9rem,0.55fr)_minmax(12rem,0.75fr)_minmax(12rem,0.75fr)_auto] lg:items-center"
+        className="grid gap-4 py-5 sm:px-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(9rem,0.55fr)_minmax(12rem,0.75fr)_minmax(12rem,0.75fr)_auto_auto] lg:items-center"
         key={collection.id}
       >
         <div className="min-w-0">
@@ -40,12 +48,13 @@ export const QuizCollectionList = ({
             <SquareCheckBig aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
             <OverflowTooltip text={collection.title}>
               {(ref) => (
-                <h2
-                  className="truncate font-heading text-xl font-medium"
-                  ref={ref as Ref<HTMLHeadingElement>}
+                <Link
+                  className="truncate font-heading text-xl font-medium underline-offset-4 hover:underline"
+                  ref={ref as Ref<HTMLAnchorElement>}
+                  to={`/quizzes/${collection.id}`}
                 >
                   <HighlightText query={query} text={collection.title} />
-                </h2>
+                </Link>
               )}
             </OverflowTooltip>
           </div>
@@ -98,6 +107,20 @@ export const QuizCollectionList = ({
             </span>
           </p>
         </div>
+
+        {!collection.archivedAt && (
+          <Button asChild size="sm" variant={collection.totalQuestions ? "default" : "secondary"}>
+            <Link
+              aria-disabled={collection.totalQuestions === 0}
+              className={
+                collection.totalQuestions === 0 ? "pointer-events-none opacity-50" : undefined
+              }
+              to={`/quizzes/${collection.id}?start=true`}
+            >
+              <PlayIcon /> Iniciar
+            </Link>
+          </Button>
+        )}
 
         <StudyCollectionActions
           archived={Boolean(collection.archivedAt)}

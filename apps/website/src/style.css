@@ -257,6 +257,10 @@
   min-height: 0;
 }
 
+.lazuli-readonly-editor .bn-editor {
+  min-height: 0;
+}
+
 .lazuli-image-uploading {
   display: grid;
   min-height: 8rem;

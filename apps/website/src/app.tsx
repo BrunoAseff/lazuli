@@ -23,6 +23,8 @@ const FlashcardPracticePage = lazy(
 const QuizCollectionListPage = lazy(
   () => import("@/features/quizzes/pages/quiz-collection-list-page.tsx"),
 );
+const QuizCollectionPage = lazy(() => import("./features/quizzes/pages/quiz-collection-page.tsx"));
+const QuizAttemptPage = lazy(() => import("./features/quizzes/pages/quiz-attempt-page.tsx"));
 const ProjectDetailPage = lazy(() => import("@/features/projects/pages/project-detail-page.tsx"));
 const ProjectWorkspaceLayout = lazy(
   () => import("@/features/documents/components/project-workspace-layout.tsx"),
@@ -46,6 +48,8 @@ export const App = () => (
           <Route element={<FlashcardCollectionListPage />} path="flashcards" />
           <Route element={<FlashcardCollectionPage />} path="flashcards/:collectionId" />
           <Route element={<QuizCollectionListPage />} path="quizzes" />
+          <Route element={<QuizCollectionPage />} path="quizzes/:collectionId" />
+          <Route element={<QuizAttemptPage />} path="quizzes/:collectionId/attempts/:attemptId" />
           <Route
             element={<FlashcardPracticePage />}
             path="flashcards/:collectionId/practice/:sessionId"
