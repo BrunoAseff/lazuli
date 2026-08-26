@@ -5,10 +5,10 @@ import { Link } from "react-router";
 
 import { HighlightText } from "@/components/highlight-text.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
+import { StudyCollectionActions } from "@/components/study-collection-actions.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
-import { FlashcardCollectionActions } from "./flashcard-collection-actions.tsx";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "medium",
@@ -115,12 +115,13 @@ export const FlashcardCollectionList = ({
                 Praticar
               </Button>
             )}
-            <FlashcardCollectionActions
-              collection={collection}
+            <StudyCollectionActions
+              archived={Boolean(collection.archivedAt)}
               onArchive={() => onAction("archive", collection)}
               onDelete={() => onAction("delete", collection)}
               onEdit={() => onAction("edit", collection)}
               onRestore={() => onAction("restore", collection)}
+              title={collection.title}
             />
           </div>
         </article>

@@ -4,12 +4,12 @@ import {
   flashcardCollectionListQuerySchema,
   updateFlashcardCollectionSchema,
 } from "@lazuli/shared";
-import type { FastifyPluginAsync, FastifyReply } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
-import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
+import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import {
   createFlashcardCollection,
@@ -21,11 +21,6 @@ import {
 
 type FlashcardCollectionRoutesOptions = { auth: Auth; database: Database; websiteUrl: string };
 
-const sendValidationError = (reply: FastifyReply) =>
-  reply.status(400).send({
-    code: "VALIDATION_ERROR",
-    message: "Revise os dados informados e tente novamente.",
-  });
 const serializeCollection = <
   T extends {
     archivedAt: Date | null;
@@ -52,22 +47,7 @@ export const createFlashcardCollectionRoutes = ({
 }: FlashcardCollectionRoutesOptions): FastifyPluginAsync =>
   async function flashcardCollectionRoutes(app) {
     const mutationLimiter = createRequestRateLimiter({ limit: 60, windowMs: 10 * 60 * 1_000 });
-    const authorizeMutation = async (
-      request: Parameters<typeof requireSession>[1],
-      reply: FastifyReply,
-    ) => {
-      if (!requireTrustedOrigin(websiteUrl, request, reply)) return null;
-      const session = await requireSession(auth, request, reply);
-      if (!session) return null;
-      if (!mutationLimiter.consume(session.user.id)) {
-        reply.status(429).send({
-          code: "RATE_LIMITED",
-          message: "Muitas alterações foram feitas em pouco tempo. Aguarde e tente novamente.",
-        });
-        return null;
-      }
-      return session;
-    };
+    const authorizeMutation = createMutationAuthorizer(auth, websiteUrl, mutationLimiter);
 
     app.get("/api/flashcard-collections", async (request, reply) => {
       const session = await requireSession(auth, request, reply);

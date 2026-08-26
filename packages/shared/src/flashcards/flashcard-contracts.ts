@@ -2,9 +2,20 @@ import { z } from "zod";
 
 import { documentContentSchema } from "../documents/document-contracts.ts";
 import { paginationSchema, projectIdSchema } from "../projects/project-contracts.ts";
+import {
+  createStudyCollectionSchema,
+  STUDY_COLLECTION_MAX_PAGE_SIZE,
+  STUDY_COLLECTION_PAGE_SIZE,
+  studyCollectionIdSchema,
+  studyCollectionListQueryShape,
+  studyCollectionProjectFilterSchema,
+  studyCollectionStatusSchema,
+  studyCollectionTitleSchema,
+  updateStudyCollectionSchema,
+} from "../study-collections/study-collection-contracts.ts";
 
-export const FLASHCARD_COLLECTION_PAGE_SIZE = 12;
-export const FLASHCARD_COLLECTION_MAX_PAGE_SIZE = 24;
+export const FLASHCARD_COLLECTION_PAGE_SIZE = STUDY_COLLECTION_PAGE_SIZE;
+export const FLASHCARD_COLLECTION_MAX_PAGE_SIZE = STUDY_COLLECTION_MAX_PAGE_SIZE;
 export const FLASHCARD_PAGE_SIZE = 25;
 export const FLASHCARD_MAX_PAGE_SIZE = 100;
 export const FLASHCARD_MAX_CONTENT_BYTES = 256 * 1024;
@@ -14,15 +25,10 @@ export const FLASHCARD_IMPORT_MAX_BYTES = 2 * 1024 * 1024;
 export const FLASHCARD_IMPORT_MAX_ROWS = 1_000;
 export const FLASHCARD_IMPORT_TEXT_MAX_LENGTH = 10_000;
 
-export const flashcardCollectionIdSchema = z.uuid();
-export const flashcardCollectionTitleSchema = z
-  .string()
-  .trim()
-  .min(1, "Informe o título da coleção.")
-  .max(100, "O título deve ter no máximo 100 caracteres.")
-  .transform((title) => title.replace(/\s+/g, " "));
-export const flashcardCollectionStatusSchema = z.enum(["active", "archived"]);
-export const flashcardCollectionProjectFilterSchema = z.union([projectIdSchema, z.literal("none")]);
+export const flashcardCollectionIdSchema = studyCollectionIdSchema;
+export const flashcardCollectionTitleSchema = studyCollectionTitleSchema;
+export const flashcardCollectionStatusSchema = studyCollectionStatusSchema;
+export const flashcardCollectionProjectFilterSchema = studyCollectionProjectFilterSchema;
 export const flashcardRatingSchema = z.enum(["again", "hard", "good", "easy"]);
 export const flashcardIdSchema = z.uuid();
 export const flashcardPracticeSessionIdSchema = z.uuid();
@@ -222,36 +228,11 @@ export const flashcardListResponseSchema = z.object({
   pagination: paginationSchema,
 });
 
-export const flashcardCollectionListQuerySchema = z.object({
-  query: z.string().trim().max(100).default(""),
-  project: flashcardCollectionProjectFilterSchema.optional(),
-  status: flashcardCollectionStatusSchema.default("active"),
-  page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(FLASHCARD_COLLECTION_MAX_PAGE_SIZE)
-    .default(FLASHCARD_COLLECTION_PAGE_SIZE),
-});
+export const flashcardCollectionListQuerySchema = z.object(studyCollectionListQueryShape).strict();
 
-export const createFlashcardCollectionSchema = z.object({
-  id: flashcardCollectionIdSchema,
-  title: flashcardCollectionTitleSchema,
-  projectId: projectIdSchema.nullable().default(null),
-});
+export const createFlashcardCollectionSchema = createStudyCollectionSchema;
 
-export const updateFlashcardCollectionSchema = z
-  .object({
-    title: flashcardCollectionTitleSchema.optional(),
-    projectId: projectIdSchema.nullable().optional(),
-    archived: z.boolean().optional(),
-  })
-  .refine(
-    ({ archived, projectId, title }) =>
-      archived !== undefined || projectId !== undefined || title !== undefined,
-    { message: "Informe ao menos uma alteração." },
-  );
+export const updateFlashcardCollectionSchema = updateStudyCollectionSchema;
 
 const flashcardMetricSchema = z.number().int().nonnegative();
 export const flashcardCollectionSummarySchema = z

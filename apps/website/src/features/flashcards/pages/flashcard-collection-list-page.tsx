@@ -1,19 +1,22 @@
 import {
   FLASHCARD_COLLECTION_PAGE_SIZE,
-  flashcardCollectionProjectFilterSchema,
   flashcardCollectionListQuerySchema,
   type FlashcardCollectionSummary,
-  type FlashcardCollectionStatus,
 } from "@lazuli/shared";
-import { PlusIcon, SearchIcon, XIcon } from "lucide-react";
+import { Layers3Icon, PlusIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { PaginationControls } from "@/components/pagination-controls.tsx";
+import {
+  EmptyStudyCollections,
+  NoStudyCollectionResults,
+  StudyCollectionListError,
+  StudyCollectionListSkeleton,
+} from "@/components/study-collection-list-states.tsx";
+import { StudyCollectionToolbar } from "@/components/study-collection-toolbar.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import { useStudyCollectionListState } from "@/hooks/use-study-collection-list-state.ts";
 import {
   useFlashcardCollections,
   useRestoreFlashcardCollection,
@@ -24,35 +27,23 @@ import {
   FlashcardCollectionDialog,
 } from "../components/flashcard-collection-dialogs.tsx";
 import { FlashcardCollectionList } from "../components/flashcard-collection-list.tsx";
-import {
-  EmptyFlashcardCollections,
-  FlashcardCollectionListError,
-  FlashcardCollectionListSkeleton,
-  NoFlashcardCollectionResults,
-} from "../components/flashcard-collection-list-states.tsx";
-import { ProjectFilter, type ProjectFilterValue } from "../components/project-filter.tsx";
 import { PracticeSetupDialog } from "../components/practice-setup-dialog.tsx";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 
 type CollectionAction = "archive" | "delete" | "edit";
-const parsePage = (value: string | null) => {
-  const page = Number(value);
-  return Number.isInteger(page) && page > 0 ? page : 1;
-};
 
 export const FlashcardCollectionListPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const rawQuery = searchParams.get("query")?.trim() ?? "";
-  const parsedQuery = flashcardCollectionListQuerySchema.shape.query.safeParse(rawQuery);
-  const query = parsedQuery.success ? parsedQuery.data : "";
-  const status: FlashcardCollectionStatus =
-    searchParams.get("status") === "archived" ? "archived" : "active";
-  const parsedProject = flashcardCollectionProjectFilterSchema.safeParse(
-    searchParams.get("project") ?? undefined,
-  );
-  const project = parsedProject.success ? parsedProject.data : undefined;
-  const page = parsePage(searchParams.get("page"));
-  const [searchValue, setSearchValue] = useState(query);
+  const {
+    clearFilters,
+    page,
+    project,
+    query,
+    searchValue,
+    setPage,
+    setSearchValue,
+    status,
+    updateParams,
+  } = useStudyCollectionListState();
   const [createOpen, setCreateOpen] = useState(false);
   const [practiceCollectionId, setPracticeCollectionId] = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<{
@@ -70,37 +61,6 @@ export const FlashcardCollectionListPage = () => {
   const restore = useRestoreFlashcardCollection();
   const restoringIds = useRef(new Set<string>());
 
-  const updateParams = (changes: Record<string, string | undefined>, resetPage = true) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      for (const [key, value] of Object.entries(changes)) {
-        if (!value || (key === "status" && value === "active")) next.delete(key);
-        else next.set(key, value);
-      }
-      if (resetPage) next.delete("page");
-      return next;
-    });
-  };
-  const setPage = (nextPage: number) =>
-    updateParams({ page: nextPage <= 1 ? undefined : String(nextPage) }, false);
-  const clearFilters = () => {
-    setSearchValue("");
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.delete("query");
-      next.delete("project");
-      next.delete("page");
-      return next;
-    });
-  };
-
-  useEffect(() => setSearchValue(query), [query]);
-  useEffect(() => {
-    const normalized = searchValue.trim();
-    if (normalized === query) return;
-    const timer = window.setTimeout(() => updateParams({ query: normalized || undefined }), 300);
-    return () => window.clearTimeout(timer);
-  }, [query, searchValue]);
   useEffect(() => {
     const totalPages = collections.data?.pagination.totalPages;
     if (totalPages && page > totalPages) setPage(totalPages);
@@ -154,59 +114,32 @@ export const FlashcardCollectionListPage = () => {
           </Button>
         </div>
 
-        <div className="my-8 grid gap-3 border-y py-3 lg:grid-cols-[minmax(15rem,1fr)_auto_auto] lg:items-center">
-          <div className="relative min-w-0 lg:max-w-md">
-            <SearchIcon
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              aria-label="Pesquisar coleções"
-              className="h-9 pr-9 pl-9"
-              maxLength={100}
-              onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="Pesquisar coleções"
-              type="text"
-              value={searchValue}
-            />
-            {searchValue && (
-              <Button
-                aria-label="Limpar pesquisa"
-                className="absolute top-1/2 right-1 -translate-y-1/2"
-                onClick={() => {
-                  setSearchValue("");
-                  updateParams({ query: undefined });
-                }}
-                size="icon-sm"
-                variant="ghost"
-              >
-                <XIcon aria-hidden="true" />
-              </Button>
-            )}
-          </div>
-          <ProjectFilter
-            onChange={(value: ProjectFilterValue) => updateParams({ project: value })}
-            value={project}
-          />
-          <Tabs onValueChange={(value) => updateParams({ status: value })} value={status}>
-            <TabsList aria-label="Estado das coleções" variant="line">
-              <TabsTrigger value="active">Ativas</TabsTrigger>
-              <TabsTrigger value="archived">Arquivadas</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+        <StudyCollectionToolbar
+          onClearSearch={() => {
+            setSearchValue("");
+            updateParams({ query: undefined });
+          }}
+          onProjectChange={(value) => updateParams({ project: value })}
+          onSearchChange={setSearchValue}
+          onStatusChange={(value) => updateParams({ status: value })}
+          project={project}
+          searchValue={searchValue}
+          status={status}
+        />
 
-        {collections.isPending && <FlashcardCollectionListSkeleton />}
+        {collections.isPending && <StudyCollectionListSkeleton />}
         {collections.isError && (
-          <FlashcardCollectionListError onRetry={() => void collections.refetch()} />
+          <StudyCollectionListError onRetry={() => void collections.refetch()} />
         )}
         {isEmpty && (
-          <EmptyFlashcardCollections
+          <EmptyStudyCollections
             archived={status === "archived"}
+            description="Organize seus flashcards por disciplina, idioma ou assunto."
+            icon={Layers3Icon}
             onCreate={() => setCreateOpen(true)}
           />
         )}
-        {noResults && <NoFlashcardCollectionResults onClear={clearFilters} />}
+        {noResults && <NoStudyCollectionResults onClear={clearFilters} />}
         {hasItems && collections.data && (
           <FlashcardCollectionList
             collections={collections.data.items}
