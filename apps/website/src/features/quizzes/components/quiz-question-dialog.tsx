@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
 import { resolveAssetUrl, releaseResolvedAssetUrls } from "@/features/assets/asset-api.ts";
 import { lazuliBlockNoteDictionary } from "@/features/documents/editor/blocknote-dictionary.ts";
@@ -222,26 +223,38 @@ export const QuizQuestionDialog = ({
                     value={option.text}
                   />
                   <div className="flex flex-wrap items-center gap-1 sm:justify-end">
-                    <Button
-                      aria-pressed={option.isCorrect}
-                      className={cn(
-                        "mr-auto justify-start sm:mr-2",
-                        option.isCorrect &&
-                          "border-emerald-700 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
-                      )}
-                      onClick={() => {
-                        setDirty(true);
-                        setOptions((current) =>
-                          current.map((item) => ({ ...item, isCorrect: item.id === option.id })),
-                        );
-                      }}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      {option.isCorrect ? <CheckCircle2Icon /> : <CircleIcon />}
-                      {option.isCorrect ? "Resposta correta" : "Marcar como correta"}
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          aria-label={
+                            option.isCorrect ? "Resposta correta" : "Marcar como resposta correta"
+                          }
+                          aria-pressed={option.isCorrect}
+                          className={cn(
+                            "mr-auto sm:mr-2",
+                            option.isCorrect &&
+                              "border-emerald-700 bg-emerald-50 text-emerald-900 hover:bg-emerald-100",
+                          )}
+                          onClick={() => {
+                            setDirty(true);
+                            setOptions((current) =>
+                              current.map((item) => ({
+                                ...item,
+                                isCorrect: item.id === option.id,
+                              })),
+                            );
+                          }}
+                          size="icon-sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          {option.isCorrect ? <CheckCircle2Icon /> : <CircleIcon />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {option.isCorrect ? "Resposta correta" : "Marcar como resposta correta"}
+                      </TooltipContent>
+                    </Tooltip>
                     <Button
                       aria-label={`Mover alternativa ${index + 1} para cima`}
                       disabled={index === 0}

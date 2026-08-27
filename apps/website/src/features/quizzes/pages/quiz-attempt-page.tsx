@@ -231,7 +231,7 @@ export const QuizAttemptPage = () => {
               <ArrowLeftIcon /> Voltar à questão
             </Button>
           ) : (
-            <div className="flex gap-2">
+            <div className="ml-auto flex gap-2">
               <Button
                 disabled={index === 0}
                 onClick={() => setIndex((value) => value - 1)}
@@ -239,22 +239,20 @@ export const QuizAttemptPage = () => {
               >
                 <ArrowLeftIcon /> Anterior
               </Button>
-              <Button
-                disabled={index === attempt.items.length - 1}
-                onClick={() => setIndex((value) => value + 1)}
-                variant="outline"
-              >
-                Próxima <ArrowRightIcon />
-              </Button>
+              {index === attempt.items.length - 1 ? (
+                <Button onClick={() => setReviewing(true)}>Revisar respostas</Button>
+              ) : (
+                <Button onClick={() => setIndex((value) => value + 1)}>
+                  Próxima <ArrowRightIcon />
+                </Button>
+              )}
             </div>
           )}
           {reviewing ? (
             <Button disabled={!allAnswered || complete.isPending} onClick={() => void finish()}>
               {complete.isPending && <LoaderCircleIcon className="animate-spin" />} Concluir quiz
             </Button>
-          ) : (
-            <Button onClick={() => setReviewing(true)}>Revisar respostas</Button>
-          )}
+          ) : null}
         </footer>
       </div>
       <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
