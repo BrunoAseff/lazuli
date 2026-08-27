@@ -29,6 +29,16 @@ export const fetchQuizCollections = (
     signal,
   });
 
+export const fetchQuizCollection = (
+  collectionId: string,
+  signal?: AbortSignal,
+): Promise<QuizCollectionSummary> =>
+  request(
+    `/api/quiz-collections/${encodeURIComponent(collectionId)}`,
+    quizCollectionSummarySchema,
+    { signal },
+  );
+
 export const postQuizCollection = (
   input: CreateQuizCollectionInput,
 ): Promise<QuizCollectionSummary> =>

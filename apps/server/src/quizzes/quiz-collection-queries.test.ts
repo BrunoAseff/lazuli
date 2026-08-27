@@ -20,6 +20,7 @@ const createBuilder = (result: unknown) => {
     for: vi.fn(),
     from: vi.fn(),
     groupBy: vi.fn(),
+    innerJoin: vi.fn(),
     leftJoin: vi.fn(),
     limit: vi.fn(),
     offset: vi.fn(),

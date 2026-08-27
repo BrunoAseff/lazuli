@@ -16,6 +16,7 @@ import {
 import { user } from "./auth.ts";
 import { flashcard } from "./flashcards.ts";
 import { project } from "./projects.ts";
+import { quizAttempt, quizQuestion } from "./quizzes.ts";
 
 export const projectItemType = pgEnum("project_item_type", ["folder", "document"]);
 export const documentImportStatus = pgEnum("document_import_status", [
@@ -162,6 +163,9 @@ export const asset = pgTable(
     projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }),
     documentId: text("document_id").references(() => document.id, { onDelete: "cascade" }),
     flashcardId: text("flashcard_id").references(() => flashcard.id, { onDelete: "cascade" }),
+    quizQuestionId: text("quiz_question_id").references(() => quizQuestion.id, {
+      onDelete: "set null",
+    }),
     objectKey: text("object_key").notNull(),
     originalName: text("original_name").notNull(),
     mimeType: text("mime_type").notNull(),
@@ -173,15 +177,30 @@ export const asset = pgTable(
     uniqueIndex("asset_object_key_unique").on(table.objectKey),
     index("asset_document_idx").on(table.documentId, table.createdAt),
     index("asset_flashcard_idx").on(table.flashcardId, table.createdAt),
+    index("asset_quiz_question_idx").on(table.quizQuestionId, table.createdAt),
     index("asset_user_idx").on(table.userId, table.createdAt),
     index("asset_unattached_idx").on(table.attachedAt, table.createdAt),
     check(
       "asset_target_check",
       sql`(
-        (${table.projectId} is null and ${table.documentId} is null and ${table.flashcardId} is null)
-        or (${table.projectId} is not null and ${table.documentId} is not null and ${table.flashcardId} is null)
-        or (${table.projectId} is null and ${table.documentId} is null and ${table.flashcardId} is not null)
+        (${table.projectId} is null and ${table.documentId} is null and ${table.flashcardId} is null and ${table.quizQuestionId} is null)
+        or (${table.projectId} is not null and ${table.documentId} is not null and ${table.flashcardId} is null and ${table.quizQuestionId} is null)
+        or (${table.projectId} is null and ${table.documentId} is null and ${table.flashcardId} is not null and ${table.quizQuestionId} is null)
+        or (${table.projectId} is null and ${table.documentId} is null and ${table.flashcardId} is null and ${table.quizQuestionId} is not null)
       )`,
     ),
   ],
+);
+
+export const quizAttemptAsset = pgTable(
+  "quiz_attempt_asset",
+  {
+    attemptId: text("attempt_id")
+      .notNull()
+      .references(() => quizAttempt.id, { onDelete: "cascade" }),
+    assetId: text("asset_id")
+      .notNull()
+      .references(() => asset.id, { onDelete: "cascade" }),
+  },
+  (table) => [uniqueIndex("quiz_attempt_asset_unique_idx").on(table.attemptId, table.assetId)],
 );

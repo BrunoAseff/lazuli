@@ -23,6 +23,7 @@ import {
 
 import type { Database } from "../database/client.ts";
 import { escapeLikePattern } from "../database/sql-search.ts";
+import { summarizeRichContent } from "../documents/rich-content-summary.ts";
 import { asset, flashcard, flashcardCollection, userStorage } from "../database/schema/index.ts";
 import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
 import { plainTextFlashcardContent } from "./flashcard-import.ts";
@@ -48,38 +49,7 @@ const selection = {
   answerHasImage: sql<boolean>`jsonb_path_exists(${flashcard.answer}, '$.** ? (@.type == "image")')`,
 };
 
-type RichBlock = {
-  type?: unknown;
-  props?: Record<string, unknown>;
-  content?: Array<
-    { type: "text"; text: string } | { type: "link"; content: Array<{ text: string }> }
-  >;
-  children?: RichBlock[];
-};
-
-export const summarizeFlashcardContent = (content: unknown[]) => {
-  const text: string[] = [];
-  const assetIds = new Set<string>();
-  const pending = [...(content as RichBlock[])];
-  let hasImage = false;
-  while (pending.length) {
-    const block = pending.shift()!;
-    if (block.type === "image") {
-      hasImage = true;
-      const url = block.props?.url;
-      if (typeof url === "string") {
-        const match = /^\/api\/assets\/([0-9a-f-]{36})\/content$/i.exec(url);
-        if (match?.[1]) assetIds.add(match[1]);
-      }
-    }
-    for (const item of block.content ?? []) {
-      if (item.type === "text") text.push(item.text);
-      else text.push(...item.content.map(({ text: value }) => value));
-    }
-    if (block.children) pending.unshift(...block.children);
-  }
-  return { assetIds: [...assetIds], hasImage, text: text.join(" ").replace(/\s+/g, " ").trim() };
-};
+export const summarizeFlashcardContent = summarizeRichContent;
 
 const serializeRow = <T extends Record<string, unknown>>(row: T) => ({
   ...row,

@@ -28,10 +28,12 @@ import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
 export const QuizCollectionDialog = ({
   collection,
+  onCreated,
   onOpenChange,
   open,
 }: {
   collection?: QuizCollectionSummary;
+  onCreated?: (collection: QuizCollectionSummary) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
@@ -48,7 +50,8 @@ export const QuizCollectionDialog = ({
       onSubmit={async (input) => {
         try {
           if ("id" in input) {
-            await create.mutateAsync(input as CreateQuizCollectionInput);
+            const created = await create.mutateAsync(input as CreateQuizCollectionInput);
+            onCreated?.(created);
             toast.success("Coleção criada.");
           } else {
             await update.mutateAsync(input as UpdateQuizCollectionInput);

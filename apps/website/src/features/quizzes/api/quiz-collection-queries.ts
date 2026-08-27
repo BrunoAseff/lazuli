@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import {
   fetchQuizCollections,
+  fetchQuizCollection,
   patchQuizCollection,
   postQuizCollection,
   removeQuizCollection,
@@ -17,7 +18,15 @@ export const quizCollectionKeys = {
   all: QUERY_KEY_ROOTS.quizCollections,
   lists: () => [...quizCollectionKeys.all, "list"] as const,
   list: (input: QuizCollectionListQuery) => [...quizCollectionKeys.lists(), input] as const,
+  detail: (collectionId: string) => [...quizCollectionKeys.all, "detail", collectionId] as const,
 };
+
+export const useQuizCollection = (collectionId: string) =>
+  useQuery({
+    queryKey: quizCollectionKeys.detail(collectionId),
+    queryFn: ({ signal }) => fetchQuizCollection(collectionId, signal),
+    enabled: Boolean(collectionId),
+  });
 
 export const useQuizCollections = (input: QuizCollectionListQuery) =>
   useQuery({

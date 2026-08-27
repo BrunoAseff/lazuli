@@ -60,6 +60,7 @@ export const quizQuestion = pgTable(
       .references(() => quizCollection.id, { onDelete: "cascade" }),
     content: jsonb("content").$type<unknown[]>().notNull(),
     contentText: text("content_text").default("").notNull(),
+    contentSchemaVersion: integer("content_schema_version").default(1).notNull(),
     position: integer("position").notNull(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -74,6 +75,7 @@ export const quizQuestion = pgTable(
       table.id,
     ),
     check("quiz_question_position_check", sql`${table.position} >= 0`),
+    check("quiz_question_schema_version_check", sql`${table.contentSchemaVersion} > 0`),
   ],
 );
 
@@ -131,6 +133,9 @@ export const quizAttempt = pgTable(
       table.status,
       table.lastActivityAt,
     ),
+    uniqueIndex("quiz_attempt_one_active_idx")
+      .on(table.userId, table.collectionId)
+      .where(sql`${table.status} = 'active'`),
     check("quiz_attempt_total_check", sql`${table.totalQuestions} >= 0`),
     check(
       "quiz_attempt_answered_check",
@@ -143,6 +148,36 @@ export const quizAttempt = pgTable(
     check(
       "quiz_attempt_completion_check",
       sql`(${table.status} = 'completed' and ${table.completedAt} is not null and ${table.totalQuestions} > 0 and ${table.answeredQuestions} = ${table.totalQuestions}) or (${table.status} <> 'completed' and ${table.completedAt} is null)`,
+    ),
+  ],
+);
+
+export type QuizAttemptOptionSnapshot = { id: string; text: string; position: number };
+
+export const quizAttemptItem = pgTable(
+  "quiz_attempt_item",
+  {
+    id: text("id").primaryKey(),
+    attemptId: text("attempt_id")
+      .notNull()
+      .references(() => quizAttempt.id, { onDelete: "cascade" }),
+    questionId: text("question_id").references(() => quizQuestion.id, { onDelete: "set null" }),
+    position: integer("position").notNull(),
+    question: jsonb("question").$type<unknown[]>().notNull(),
+    options: jsonb("options").$type<QuizAttemptOptionSnapshot[]>().notNull(),
+    correctOptionId: text("correct_option_id").notNull(),
+    selectedOptionId: text("selected_option_id"),
+    isCorrect: boolean("is_correct"),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("quiz_attempt_item_attempt_position_idx").on(table.attemptId, table.position),
+    index("quiz_attempt_item_attempt_answered_idx").on(table.attemptId, table.answeredAt),
+    check("quiz_attempt_item_position_check", sql`${table.position} >= 0`),
+    check(
+      "quiz_attempt_item_answer_check",
+      sql`(${table.selectedOptionId} is null and ${table.answeredAt} is null) or (${table.selectedOptionId} is not null and ${table.answeredAt} is not null)`,
     ),
   ],
 );

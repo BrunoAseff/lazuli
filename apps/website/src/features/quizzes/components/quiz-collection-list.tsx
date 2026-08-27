@@ -1,11 +1,16 @@
 import type { QuizCollectionSummary } from "@lazuli/shared";
-import { BarChart3Icon, CalendarClockIcon, SquareCheckBig, HistoryIcon } from "lucide-react";
-import type { Ref } from "react";
+import {
+  BarChart3Icon,
+  CalendarClockIcon,
+  SquareCheckBig,
+  HistoryIcon,
+  PlayIcon,
+} from "lucide-react";
+import { Link } from "react-router";
 
-import { HighlightText } from "@/components/highlight-text.tsx";
-import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { StudyCollectionActions } from "@/components/study-collection-actions.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
+import { StudyCollectionIdentity } from "@/components/study-collection-identity.tsx";
+import { Button } from "@/components/ui/button.tsx";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "medium",
@@ -32,35 +37,18 @@ export const QuizCollectionList = ({
   <div className="divide-y border-y">
     {collections.map((collection) => (
       <article
-        className="grid gap-4 py-5 sm:px-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(9rem,0.55fr)_minmax(12rem,0.75fr)_minmax(12rem,0.75fr)_auto] lg:items-center"
+        className="grid gap-4 py-5 sm:px-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(9rem,0.55fr)_minmax(12rem,0.75fr)_minmax(12rem,0.75fr)_auto_auto] lg:items-center"
         key={collection.id}
       >
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
+        <StudyCollectionIdentity
+          href={`/quizzes/${collection.id}`}
+          icon={
             <SquareCheckBig aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            <OverflowTooltip text={collection.title}>
-              {(ref) => (
-                <h2
-                  className="truncate font-heading text-xl font-medium"
-                  ref={ref as Ref<HTMLHeadingElement>}
-                >
-                  <HighlightText query={query} text={collection.title} />
-                </h2>
-              )}
-            </OverflowTooltip>
-          </div>
-          <OverflowTooltip text={collection.project?.title ?? "Sem projeto"}>
-            {(ref) => (
-              <Badge
-                className="mt-2 max-w-full"
-                ref={ref as Ref<HTMLSpanElement>}
-                variant="outline"
-              >
-                <span className="truncate">{collection.project?.title ?? "Sem projeto"}</span>
-              </Badge>
-            )}
-          </OverflowTooltip>
-        </div>
+          }
+          projectTitle={collection.project?.title}
+          query={query}
+          title={collection.title}
+        />
 
         <div className="flex items-center gap-2 text-sm">
           <SquareCheckBig aria-hidden="true" className="size-4 text-muted-foreground" />
@@ -98,6 +86,20 @@ export const QuizCollectionList = ({
             </span>
           </p>
         </div>
+
+        {!collection.archivedAt && (
+          <Button asChild size="sm" variant={collection.totalQuestions ? "default" : "secondary"}>
+            <Link
+              aria-disabled={collection.totalQuestions === 0}
+              className={
+                collection.totalQuestions === 0 ? "pointer-events-none opacity-50" : undefined
+              }
+              to={`/quizzes/${collection.id}?start=true`}
+            >
+              <PlayIcon /> Iniciar
+            </Link>
+          </Button>
+        )}
 
         <StudyCollectionActions
           archived={Boolean(collection.archivedAt)}
