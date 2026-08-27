@@ -1,12 +1,8 @@
 import { calculateFlashcardProgress, type FlashcardCollectionSummary } from "@lazuli/shared";
 import { CalendarClockIcon, Layers3Icon, PlayIcon, RotateCcwIcon } from "lucide-react";
-import type { Ref } from "react";
-import { Link } from "react-router";
 
-import { HighlightText } from "@/components/highlight-text.tsx";
-import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { StudyCollectionActions } from "@/components/study-collection-actions.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
+import { StudyCollectionIdentity } from "@/components/study-collection-identity.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
 
@@ -46,33 +42,15 @@ export const FlashcardCollectionList = ({
           className="grid gap-4 py-5 sm:px-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(12rem,0.8fr)_minmax(13rem,0.9fr)_auto] lg:items-center"
           key={collection.id}
         >
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
+          <StudyCollectionIdentity
+            href={`/flashcards/${collection.id}`}
+            icon={
               <Layers3Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-              <OverflowTooltip text={collection.title}>
-                {(ref) => (
-                  <Link
-                    className="truncate font-heading text-xl font-medium"
-                    ref={ref as Ref<HTMLAnchorElement>}
-                    to={`/flashcards/${collection.id}`}
-                  >
-                    <HighlightText query={query} text={collection.title} />
-                  </Link>
-                )}
-              </OverflowTooltip>
-            </div>
-            <OverflowTooltip text={collection.project?.title ?? "Sem projeto"}>
-              {(ref) => (
-                <Badge
-                  className="mt-2 max-w-full"
-                  ref={ref as Ref<HTMLSpanElement>}
-                  variant="outline"
-                >
-                  <span className="truncate">{collection.project?.title ?? "Sem projeto"}</span>
-                </Badge>
-              )}
-            </OverflowTooltip>
-          </div>
+            }
+            projectTitle={collection.project?.title}
+            query={query}
+            title={collection.title}
+          />
           <div>
             <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
               <span>
