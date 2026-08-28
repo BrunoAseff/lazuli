@@ -1,4 +1,8 @@
-import { REFERENCE_PAGE_SIZE, type ReferenceSource, type ReferenceTarget } from "@lazuli/shared";
+import {
+  REFERENCE_MAX_PAGE_SIZE,
+  type ReferenceSource,
+  type ReferenceTarget,
+} from "@lazuli/shared";
 import { CheckIcon, FileTextIcon, Link2Icon, LoaderCircleIcon, PlusIcon } from "lucide-react";
 import { useMemo, useState, type Ref } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
@@ -49,11 +53,11 @@ export const ReferenceManager = ({
   const [pickerOpen, setPickerOpen] = useState(false);
   const references = useReferences({
     page: 1,
-    pageSize: REFERENCE_PAGE_SIZE,
+    pageSize: REFERENCE_MAX_PAGE_SIZE,
     targetId: target.id,
     targetType: target.type,
   });
-  const count = references.data?.pagination.totalItems ?? 0;
+  const count = references.data?.items.length ?? 0;
   return (
     <section className="border-t pt-3">
       <div className="flex min-h-8 items-center gap-2 text-xs text-muted-foreground">

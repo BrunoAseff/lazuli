@@ -1,4 +1,4 @@
-import { REFERENCE_MAX_PAGE_SIZE } from "@lazuli/shared";
+import { REFERENCE_PAGE_SIZE } from "@lazuli/shared";
 import {
   Layers3Icon,
   Link2Icon,
@@ -7,9 +7,10 @@ import {
   SquareCheckBigIcon,
 } from "lucide-react";
 import { Link } from "react-router";
-import type { Ref } from "react";
+import { useEffect, useState, type Ref } from "react";
 
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
+import { PaginationControls } from "@/components/pagination-controls.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Dialog,
@@ -42,8 +43,10 @@ export const DocumentReferencesDialog = ({
   onLastReferenceRemoved?: (anchorId: string) => void | Promise<void>;
   open: boolean;
 }) => {
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [anchorId, documentId, open]);
   const references = useReferences(
-    { anchorId, documentId, page: 1, pageSize: REFERENCE_MAX_PAGE_SIZE },
+    { anchorId, documentId, page, pageSize: REFERENCE_PAGE_SIZE },
     open,
   );
   return (
@@ -108,7 +111,7 @@ export const DocumentReferencesDialog = ({
                   </div>
                   <ReferenceDeleteButton
                     onRemoved={
-                      anchorId && references.data.items.length === 1
+                      anchorId && references.data.pagination.totalItems === 1
                         ? () => onLastReferenceRemoved?.(anchorId)
                         : undefined
                     }
@@ -118,6 +121,13 @@ export const DocumentReferencesDialog = ({
               );
             })}
           </div>
+          {references.data && (
+            <PaginationControls
+              label="Paginação das referências"
+              onPageChange={setPage}
+              pagination={references.data.pagination}
+            />
+          )}
         </div>
         {(onAdd ||
           onCreateFlashcard ||

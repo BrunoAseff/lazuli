@@ -551,10 +551,15 @@ export const DocumentEditor = ({
               return;
             }
 
-            const imageBlock = target.closest<HTMLElement>(".bn-block-outer[data-id]");
-            if (imageBlock?.querySelector("img") && event.currentTarget.contains(imageBlock)) {
-              const blockId = imageBlock.dataset.id;
-              if (blockId) setActiveAnchorId(blockId);
+            const imageReferenceTrigger = target.closest<HTMLElement>(
+              "[data-image-reference-trigger]",
+            );
+            if (imageReferenceTrigger && event.currentTarget.contains(imageReferenceTrigger)) {
+              const blockId = imageReferenceTrigger.dataset.imageReferenceTrigger;
+              const imageBlock = imageReferenceTrigger.closest<HTMLElement>(
+                ".bn-block-outer[data-id]",
+              );
+              if (blockId && imageBlock?.dataset.id === blockId) setActiveAnchorId(blockId);
               return;
             }
 
@@ -731,14 +736,27 @@ export const DocumentEditor = ({
             : undefined
         }
         onOpenChange={(open) => !open && setActiveAnchorId(null)}
-        onLastReferenceRemoved={async () => {
+        onLastReferenceRemoved={async (anchorId) => {
+          const localContent = removeSourceAnchors(
+            editor.document as LazuliDocumentBlock,
+            new Set([anchorId]),
+          ).content as LazuliDocumentBlock;
+          const hadUnsavedChanges = dirty;
           const remote = await fetchDocument(projectId, documentId);
-          editor.replaceBlocks(editor.document, remote.content as LazuliDocumentBlock);
+          editor.replaceBlocks(
+            editor.document,
+            hadUnsavedChanges ? localContent : (remote.content as LazuliDocumentBlock),
+          );
           setRevision(remote.revision);
           revisionRef.current = remote.revision;
-          cleanSnapshot.current = JSON.stringify(remote.content);
-          setDirty(false);
-          setSaveState("saved");
+          if (hadUnsavedChanges) {
+            setDirty(true);
+            setSaveState("pending");
+          } else {
+            cleanSnapshot.current = JSON.stringify(remote.content);
+            setDirty(false);
+            setSaveState("saved");
+          }
           setActiveAnchorId(null);
         }}
         open={Boolean(activeAnchorId)}

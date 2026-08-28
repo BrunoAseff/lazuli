@@ -73,6 +73,7 @@ export const FlashcardEditorDialog = ({
   const committed = useRef(false);
   const create = useCreateFlashcard(targetCollectionId);
   const update = useUpdateFlashcard(collectionId ?? targetCollectionId, card?.id ?? "");
+  const initialQuestionKey = JSON.stringify(initialQuestion ?? null);
   const question = useCreateBlockNote(
     {
       schema: documentSchema,
@@ -85,7 +86,7 @@ export const FlashcardEditorDialog = ({
       },
       resolveFileUrl: resolveAssetUrl,
     },
-    [card?.id, initialQuestion],
+    [card?.id, initialQuestionKey],
   );
   const answer = useCreateBlockNote(
     {

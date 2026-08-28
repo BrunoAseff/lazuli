@@ -1,6 +1,7 @@
 import {
   FLASHCARD_COLLECTION_MAX_PAGE_SIZE,
   FLASHCARD_PAGE_SIZE,
+  REFERENCE_MAX_BATCH_SIZE,
   QUIZ_COLLECTION_MAX_PAGE_SIZE,
   QUIZ_QUESTION_PAGE_SIZE,
   type ReferenceSource,
@@ -77,7 +78,7 @@ export const ExistingMaterialPickerDialog = ({
     collectionInput,
     type === "quizQuestion" && !collectionId,
   );
-  const flashcards = useFlashcards(collectionId ?? "", {
+  const flashcards = useFlashcards(type === "flashcard" ? (collectionId ?? "") : "", {
     filter: "all",
     page: 1,
     pageSize: FLASHCARD_PAGE_SIZE,
@@ -101,7 +102,9 @@ export const ExistingMaterialPickerDialog = ({
         ? current.filter(
             ({ id, type: currentType }) => id !== target.id || currentType !== target.type,
           )
-        : [...current, target],
+        : current.length < REFERENCE_MAX_BATCH_SIZE
+          ? [...current, target]
+          : current,
     );
   const save = async () => {
     if (!selected.length) return;
