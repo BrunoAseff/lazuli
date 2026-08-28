@@ -17,6 +17,7 @@ import {
   userStorage,
 } from "../database/schema/index.ts";
 import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { reconcileDocumentReferences } from "../references/reference-queries.ts";
 
 const ownedProject = (userId: string, projectId: string) =>
   and(eq(project.id, projectId), eq(project.userId, userId));
@@ -321,6 +322,8 @@ export const saveDocumentContent = async (
         .set({ attachedAt: new Date() })
         .where(inArray(asset.id, referencedAssetIds));
     }
+
+    await reconcileDocumentReferences(tx, userId, documentId, input.content);
 
     if (isDeepStrictEqual(current.content, input.content))
       return {

@@ -242,6 +242,6 @@ describe("flashcard collection queries", () => {
 
     expect(deleted).toBe(true);
     expect(builders.select[1]?.limit).toHaveBeenCalledWith(500);
-    expect(tx.delete).toHaveBeenCalledTimes(2);
+    expect(tx.delete).toHaveBeenCalledTimes(3);
   });
 });

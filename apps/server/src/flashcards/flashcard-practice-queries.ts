@@ -12,6 +12,7 @@ import {
   flashcardPracticeItem,
   flashcardPracticeSession,
   flashcardReview,
+  studyMaterialReference,
 } from "../database/schema/index.ts";
 import { summarizeFlashcardContent } from "./flashcard-queries.ts";
 import {
@@ -186,7 +187,33 @@ const sessionPayload = async (tx: Transaction, userId: string, sessionId: string
     item = null;
   }
   const ratings = await ratingCounts(tx, sessionId);
-  return { ...session, currentItem: item ? { ...item, schedule: undefined } : null, ratings };
+  const reviewedMaterials =
+    session.status === "active"
+      ? []
+      : await tx
+          .select({
+            id: flashcard.id,
+            questionText: flashcard.questionText,
+            referenceCount:
+              sql<number>`(select count(*) from ${studyMaterialReference} where ${studyMaterialReference.flashcardId} = ${flashcard.id})`.mapWith(
+                Number,
+              ),
+          })
+          .from(flashcardPracticeItem)
+          .innerJoin(flashcard, eq(flashcard.id, flashcardPracticeItem.flashcardId))
+          .where(
+            and(
+              eq(flashcardPracticeItem.sessionId, sessionId),
+              sql`${flashcardPracticeItem.reviewedAt} is not null`,
+            ),
+          )
+          .orderBy(asc(flashcardPracticeItem.position));
+  return {
+    ...session,
+    currentItem: item ? { ...item, schedule: undefined } : null,
+    ratings,
+    reviewedMaterials,
+  };
 };
 
 export const getPracticeAvailability = async (

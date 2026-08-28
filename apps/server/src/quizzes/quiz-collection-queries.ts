@@ -18,6 +18,7 @@ import {
 } from "../database/schema/index.ts";
 import { ownsProject } from "../projects/project-ownership.ts";
 import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { deleteReferencesForTargets } from "../references/reference-queries.ts";
 
 const collectionSelection = {
   id: quizCollection.id,
@@ -273,6 +274,14 @@ export const deleteQuizCollection = async (
   collectionId: string,
 ) =>
   database.transaction(async (tx) => {
+    const ownedQuestions = await tx
+      .select({ id: quizQuestion.id })
+      .from(quizQuestion)
+      .innerJoin(quizCollection, eq(quizCollection.id, quizQuestion.collectionId))
+      .where(and(eq(quizCollection.id, collectionId), eq(quizCollection.userId, userId)));
+    await deleteReferencesForTargets(tx, userId, {
+      quizQuestionIds: ownedQuestions.map(({ id }) => id),
+    });
     const questionAssets = await tx
       .select({ byteSize: asset.byteSize, id: asset.id, objectKey: asset.objectKey })
       .from(asset)

@@ -16,6 +16,7 @@ import { createLogger } from "./logger.ts";
 import { createProjectRoutes } from "./projects/project-routes.ts";
 import { createQuizCollectionRoutes } from "./quizzes/quiz-collection-routes.ts";
 import { createQuizRoutes } from "./quizzes/quiz-routes.ts";
+import { createReferenceRoutes } from "./references/reference-routes.ts";
 import { createAuthRoutes } from "./routes/auth-routes.ts";
 import { healthRoutes } from "./routes/health.ts";
 import { createObjectStorage } from "./storage/object-storage.ts";
@@ -95,6 +96,7 @@ export const buildApp = (env: ServerEnv) => {
   app.register(
     createQuizRoutes({ auth, database: database.db, storage, websiteUrl: env.WEBSITE_URL }),
   );
+  app.register(createReferenceRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
   app.register(
     createDocumentAssetRoutes({
       auth,
