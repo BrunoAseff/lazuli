@@ -323,8 +323,6 @@ export const saveDocumentContent = async (
         .where(inArray(asset.id, referencedAssetIds));
     }
 
-    await reconcileDocumentReferences(tx, userId, documentId, input.content);
-
     if (isDeepStrictEqual(current.content, input.content))
       return {
         kind: "unchanged" as const,
@@ -364,6 +362,7 @@ export const saveDocumentContent = async (
         .limit(1);
       return { kind: "conflict" as const, revision: latest?.revision ?? current.revision };
     }
+    await reconcileDocumentReferences(tx, userId, documentId, input.content);
     await tx
       .update(projectItem)
       .set({ updatedAt: now })

@@ -59,4 +59,27 @@ describe("reference content helpers", () => {
       getReferenceSourcePreview([...content, { id: "image-one", type: "image" }], "image-one"),
     ).toBe("Imagem vinculada");
   });
+
+  it("keeps nested document content in depth-first reading order", () => {
+    const nested: DocumentBlock[] = [
+      {
+        id: "parent",
+        type: "paragraph",
+        content: [{ type: "text", text: "Pai", styles: {} }],
+        children: [
+          {
+            id: "child",
+            type: "paragraph",
+            content: [{ type: "text", text: "Filho", styles: {} }],
+          },
+        ],
+      },
+      {
+        id: "sibling",
+        type: "paragraph",
+        content: [{ type: "text", text: "Irmão", styles: {} }],
+      },
+    ];
+    expect(getReferenceSourcePreview(nested, null)).toBe("Pai Filho Irmão");
+  });
 });

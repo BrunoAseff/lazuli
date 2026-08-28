@@ -294,40 +294,11 @@ export const reconcileDocumentReferences = async (
   return removed.length;
 };
 
-export const deleteReferencesForTargets = async (
+const removeUnusedDocumentAnchors = async (
   tx: Transaction,
   userId: string,
-  targets: { flashcardIds?: string[]; quizQuestionIds?: string[] },
+  candidates: Map<string, Set<string>>,
 ) => {
-  const conditions = [
-    targets.flashcardIds?.length
-      ? inArray(studyMaterialReference.flashcardId, targets.flashcardIds)
-      : undefined,
-    targets.quizQuestionIds?.length
-      ? inArray(studyMaterialReference.quizQuestionId, targets.quizQuestionIds)
-      : undefined,
-  ].filter((condition) => condition !== undefined);
-  if (!conditions.length) return;
-  const removed = await tx
-    .delete(studyMaterialReference)
-    .where(
-      and(
-        eq(studyMaterialReference.userId, userId),
-        or(...conditions),
-        isNotNull(studyMaterialReference.anchorId),
-      ),
-    )
-    .returning({
-      documentId: studyMaterialReference.documentId,
-      anchorId: studyMaterialReference.anchorId,
-    });
-  const candidates = new Map<string, Set<string>>();
-  for (const { anchorId, documentId } of removed) {
-    if (!anchorId) continue;
-    const anchors = candidates.get(documentId) ?? new Set<string>();
-    anchors.add(anchorId);
-    candidates.set(documentId, anchors);
-  }
   if (!candidates.size) return;
   const documentIds = [...candidates.keys()];
   const remaining = await tx
@@ -384,6 +355,43 @@ export const deleteReferencesForTargets = async (
     .where(eq(userStorage.userId, userId));
 };
 
+export const deleteReferencesForTargets = async (
+  tx: Transaction,
+  userId: string,
+  targets: { flashcardIds?: string[]; quizQuestionIds?: string[] },
+) => {
+  const conditions = [
+    targets.flashcardIds?.length
+      ? inArray(studyMaterialReference.flashcardId, targets.flashcardIds)
+      : undefined,
+    targets.quizQuestionIds?.length
+      ? inArray(studyMaterialReference.quizQuestionId, targets.quizQuestionIds)
+      : undefined,
+  ].filter((condition) => condition !== undefined);
+  if (!conditions.length) return;
+  const removed = await tx
+    .delete(studyMaterialReference)
+    .where(
+      and(
+        eq(studyMaterialReference.userId, userId),
+        or(...conditions),
+        isNotNull(studyMaterialReference.anchorId),
+      ),
+    )
+    .returning({
+      documentId: studyMaterialReference.documentId,
+      anchorId: studyMaterialReference.anchorId,
+    });
+  const candidates = new Map<string, Set<string>>();
+  for (const { anchorId, documentId } of removed) {
+    if (!anchorId) continue;
+    const anchors = candidates.get(documentId) ?? new Set<string>();
+    anchors.add(anchorId);
+    candidates.set(documentId, anchors);
+  }
+  await removeUnusedDocumentAnchors(tx, userId, candidates);
+};
+
 export const deleteReference = async (db: Database, userId: string, referenceId: string) =>
   db.transaction(async (tx) => {
     const [reference] = await tx
@@ -401,56 +409,10 @@ export const deleteReference = async (db: Database, userId: string, referenceId:
     if (!reference) return { kind: "not-found" as const };
     await tx.delete(studyMaterialReference).where(eq(studyMaterialReference.id, reference.id));
     if (!reference.anchorId) return { kind: "ok" as const };
-    const [remaining] = await tx
-      .select({ value: count().mapWith(Number) })
-      .from(studyMaterialReference)
-      .where(
-        and(
-          eq(studyMaterialReference.documentId, reference.documentId),
-          eq(studyMaterialReference.anchorId, reference.anchorId),
-        ),
-      );
-    if ((remaining?.value ?? 0) > 0) return { kind: "ok" as const };
-    const [stored] = await tx
-      .select({
-        content: document.content,
-        contentByteSize: document.contentByteSize,
-        projectId: projectItem.projectId,
-      })
-      .from(document)
-      .innerJoin(projectItem, eq(projectItem.id, document.id))
-      .where(eq(document.id, reference.documentId))
-      .limit(1)
-      .for("update", { of: document });
-    if (!stored) return { kind: "ok" as const };
-    const stripped = removeSourceAnchors(
-      stored.content as DocumentBlock[],
-      new Set([reference.anchorId]),
+    await removeUnusedDocumentAnchors(
+      tx,
+      userId,
+      new Map([[reference.documentId, new Set([reference.anchorId])]]),
     );
-    if (!stripped.changed) return { kind: "ok" as const };
-    const contentByteSize = Buffer.byteLength(JSON.stringify(stripped.content));
-    const storageDelta = contentByteSize - stored.contentByteSize;
-    const now = new Date();
-    await tx
-      .update(document)
-      .set({
-        content: stripped.content,
-        contentByteSize,
-        revision: sql`${document.revision} + 1`,
-        updatedAt: now,
-      })
-      .where(eq(document.id, reference.documentId));
-    await tx
-      .update(projectItem)
-      .set({ updatedAt: now })
-      .where(eq(projectItem.id, reference.documentId));
-    await tx.insert(userStorage).values({ userId }).onConflictDoNothing();
-    await tx
-      .update(userStorage)
-      .set({
-        usedBytes: sql`greatest(0, ${userStorage.usedBytes} + ${storageDelta})`,
-        updatedAt: now,
-      })
-      .where(eq(userStorage.userId, userId));
     return { kind: "ok" as const };
   });

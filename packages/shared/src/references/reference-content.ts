@@ -38,9 +38,9 @@ export const getReferenceSourcePreview = (
   maxLength = 500,
 ) => {
   const fragments: string[] = [];
-  const pending = [...blocks];
+  const pending = [...blocks].reverse();
   while (pending.length) {
-    const block = pending.shift()!;
+    const block = pending.pop()!;
     if (anchorId && block.id === anchorId && block.type === "image") return "Imagem vinculada";
     for (const item of block.content ?? []) {
       const texts = item.type === "text" ? [item] : item.content;
@@ -48,7 +48,7 @@ export const getReferenceSourcePreview = (
         if (!anchorId || readSourceAnchorId(text.styles) === anchorId) fragments.push(text.text);
       }
     }
-    if (block.children) pending.push(...block.children);
+    if (block.children) pending.push(...[...block.children].reverse());
   }
   const preview = fragments.join(" ").replace(/\s+/g, " ").trim();
   return preview.length > maxLength ? `${preview.slice(0, maxLength).trimEnd()}…` : preview;
