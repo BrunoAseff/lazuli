@@ -38,6 +38,8 @@ import {
   type LazuliDocumentBlock,
 } from "@/features/documents/editor/document-schema.tsx";
 import { RichContentField } from "@/components/rich-content-field.tsx";
+import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
+import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
 import { cn } from "@/lib/utils.ts";
 import { useFlashcardCollections } from "../api/flashcard-collection-queries.ts";
 import { uploadFlashcardImage } from "../api/flashcard-api.ts";
@@ -47,26 +49,34 @@ import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 export const FlashcardEditorDialog = ({
   card,
   collectionId,
+  initialQuestion,
+  onCreated,
   onOpenChange,
   open,
+  sourcePreview,
 }: {
   card?: FlashcardDetail;
-  collectionId: string;
+  collectionId?: string;
+  initialQuestion?: LazuliDocumentBlock;
+  onCreated?: (cardId: string) => void | boolean | Promise<void | boolean>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  sourcePreview?: string;
 }) => {
-  const [targetCollectionId, setTargetCollectionId] = useState(card?.collectionId ?? collectionId);
+  const [targetCollectionId, setTargetCollectionId] = useState(
+    card?.collectionId ?? collectionId ?? "",
+  );
   const [dirty, setDirty] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ answer?: string; question?: string }>({});
   const createdUrls = useRef(new Set<string>());
   const committed = useRef(false);
   const create = useCreateFlashcard(targetCollectionId);
-  const update = useUpdateFlashcard(collectionId, card?.id ?? "");
+  const update = useUpdateFlashcard(collectionId ?? targetCollectionId, card?.id ?? "");
   const question = useCreateBlockNote(
     {
       schema: documentSchema,
-      initialContent: card?.question as LazuliDocumentBlock | undefined,
+      initialContent: (card?.question as LazuliDocumentBlock | undefined) ?? initialQuestion,
       dictionary: lazuliBlockNoteDictionary,
       uploadFile: async (file) => {
         const uploaded = await uploadFlashcardImage(file);
@@ -75,7 +85,7 @@ export const FlashcardEditorDialog = ({
       },
       resolveFileUrl: resolveAssetUrl,
     },
-    [card?.id],
+    [card?.id, initialQuestion],
   );
   const answer = useCreateBlockNote(
     {
@@ -143,12 +153,16 @@ export const FlashcardEditorDialog = ({
         });
         toast.success("Flashcard atualizado.");
       } else {
+        const cardId = crypto.randomUUID();
         await create.mutateAsync({
-          id: crypto.randomUUID(),
+          id: cardId,
           question: parsedQuestion.data,
           answer: parsedAnswer.data,
         });
-        toast.success("Flashcard criado.");
+        const followUpSucceeded = await onCreated?.(cardId);
+        if (followUpSucceeded === false)
+          toast.warning("Flashcard criado, mas a referência não pôde ser adicionada.");
+        else if (!onCreated) toast.success("Flashcard criado.");
       }
       committed.current = true;
       createdUrls.current.clear();
@@ -182,7 +196,8 @@ export const FlashcardEditorDialog = ({
               Escreva uma pergunta clara e uma resposta objetiva.
             </DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 space-y-7 overflow-y-auto px-6 py-6 subtle-scrollbar">
+          <div className="min-h-0 space-y-7 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
+            {sourcePreview && <ReferenceSourcePreview text={sourcePreview} />}
             <CollectionPicker
               value={targetCollectionId}
               onChange={(value) => {
@@ -218,14 +233,21 @@ export const FlashcardEditorDialog = ({
                 }));
               }}
             />
+            {card && (
+              <ReferenceManager
+                disabled={dirty}
+                returnTo={`/flashcards/${card.collectionId}?card=${card.id}`}
+                target={{ type: "flashcard", id: card.id }}
+              />
+            )}
           </div>
           <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4 sm:flex-row sm:justify-end">
             <DialogCancelButton disabled={isPending} onClick={requestClose}>
               Cancelar
             </DialogCancelButton>
-            {!card && (
+            {!card && !onCreated && (
               <Button
-                disabled={isPending || !questionValid || !answerValid}
+                disabled={isPending || !targetCollectionId || !questionValid || !answerValid}
                 onClick={() => void save(true)}
                 variant="outline"
               >
@@ -233,7 +255,7 @@ export const FlashcardEditorDialog = ({
               </Button>
             )}
             <Button
-              disabled={isPending || !questionValid || !answerValid}
+              disabled={isPending || !targetCollectionId || !questionValid || !answerValid}
               onClick={() => void save()}
             >
               {isPending && <LoaderCircleIcon aria-hidden="true" className="animate-spin" />}
@@ -287,7 +309,9 @@ export const CollectionPicker = ({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button className="w-full justify-between rounded-none" variant="outline">
-            <span className="truncate">{selected?.title ?? "Coleção atual"}</span>
+            <span className={cn("truncate", !selected && "text-muted-foreground")}>
+              {selected?.title ?? "Selecionar coleção"}
+            </span>
             <ChevronsUpDownIcon aria-hidden="true" />
           </Button>
         </PopoverTrigger>
@@ -304,7 +328,7 @@ export const CollectionPicker = ({
               value={query}
             />
           </div>
-          <div className="max-h-64 overflow-y-auto p-1 subtle-scrollbar">
+          <div className="max-h-64 overflow-y-auto p-1 lazuli-thin-scrollbar">
             {collections.data?.items.map((collection) => (
               <button
                 className={cn(

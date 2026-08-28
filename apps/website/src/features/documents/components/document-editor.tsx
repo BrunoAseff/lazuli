@@ -1,9 +1,13 @@
-import { normalizeProjectItemTitle } from "@lazuli/shared";
-import { useCreateBlockNote } from "@blocknote/react";
+import {
+  normalizeProjectItemTitle,
+  referenceTargetSchema,
+  removeSourceAnchors,
+} from "@lazuli/shared";
+import { FormattingToolbarController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
-import { CheckIcon } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useBlocker } from "react-router";
+import { ArrowLeftIcon, CheckIcon } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useBlocker, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import {
@@ -25,6 +29,18 @@ import {
 } from "@/features/assets/asset-api.ts";
 import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
 import { ApiError } from "@/lib/api-client.ts";
+import { DocumentMaterialFlow } from "@/features/references/components/document-material-flow.tsx";
+import {
+  DocumentReferencesButton,
+  DocumentReferencesDialog,
+} from "@/features/references/components/document-references-dialog.tsx";
+import {
+  createDocumentFormattingToolbar,
+  getDocumentReferenceSelection,
+  type DocumentMaterialAction,
+} from "@/features/references/components/document-formatting-toolbar.tsx";
+import { ExistingMaterialPickerDialog } from "@/features/references/components/existing-material-picker-dialog.tsx";
+import { useCreateReferences } from "@/features/references/api/reference-queries.ts";
 import { fetchDocument, importDocumentImage, uploadDocumentImage } from "../api/document-api.ts";
 import { useDocument, useRenameProjectItem, useSaveDocument } from "../api/document-queries.ts";
 import { DOCUMENT_MESSAGES } from "../document-messages.ts";
@@ -37,6 +53,7 @@ import {
 } from "../editor/import-external-images.ts";
 import { LocalizedBlockNoteInput } from "../editor/localized-blocknote-input.tsx";
 import { DocumentSaveStatus, type DocumentSaveState } from "./document-save-status.tsx";
+import { safeReturnTo } from "../document-navigation.ts";
 
 const blockNoteComponents = { Input: { Input: LocalizedBlockNoteInput } };
 export const DocumentEditor = ({
@@ -61,12 +78,43 @@ export const DocumentEditor = ({
     sourceUrl: string;
   } | null>(null);
   const [revision, setRevision] = useState(data.revision);
+  const revisionRef = useRef(data.revision);
   const [title, setTitle] = useState(data.item.title);
+  const [materialAction, setMaterialAction] = useState<DocumentMaterialAction | null>(null);
+  const [linkAction, setLinkAction] = useState<Omit<DocumentMaterialAction, "kind"> | null>(null);
+  const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
+  const [documentReferencesOpen, setDocumentReferencesOpen] = useState(false);
+  const [wholeDocumentPickerOpen, setWholeDocumentPickerOpen] = useState(false);
+  const [adjustingAnchorId, setAdjustingAnchorId] = useState<string | null>(null);
+  const [pendingSelectionAvailable, setPendingSelectionAvailable] = useState(false);
+  const [pendingLinkConfirmationOpen, setPendingLinkConfirmationOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const createReference = useCreateReferences();
+  const pendingTarget = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const parsed = referenceTargetSchema.safeParse({
+      type: params.get("referenceTargetType"),
+      id: params.get("referenceTargetId"),
+    });
+    return parsed.success ? parsed.data : null;
+  }, [location.search]);
+  const referenceReturnTo = useMemo(() => {
+    const value = new URLSearchParams(location.search).get("referenceReturnTo");
+    return value?.startsWith("/") && !value.startsWith("//") ? value : null;
+  }, [location.search]);
+  const contextualReturnTo = useMemo(
+    () => safeReturnTo(new URLSearchParams(location.search).get("returnTo")),
+    [location.search],
+  );
   const cleanSnapshot = useRef(JSON.stringify(data.content));
   const savedTitle = useRef(data.item.title);
   const cleanAssetUrls = useRef(collectAssetUrls(data.content as LazuliDocumentBlock));
   const createdAssetUrls = useRef(new Set<string>());
+  const adjustmentSnapshot = useRef<LazuliDocumentBlock | null>(null);
+  const adjustingAnchorRef = useRef<string | null>(null);
   const saveInFlight = useRef(false);
+  const saveWaiters = useRef<Array<() => void>>([]);
   const retryAttempt = useRef(0);
   const retryTimer = useRef<number | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -93,7 +141,114 @@ export const DocumentEditor = ({
     },
     [documentId],
   );
+  const openMaterialFlow = useCallback((action: DocumentMaterialAction) => {
+    setMaterialAction(action);
+  }, []);
+  const finishAdjustment = useCallback(() => {
+    adjustmentSnapshot.current = null;
+    adjustingAnchorRef.current = null;
+    setAdjustingAnchorId(null);
+    setAutoSavePaused(false);
+    toast.success("Trecho ajustado.");
+  }, []);
+  const formattingToolbar = useMemo(
+    () =>
+      createDocumentFormattingToolbar(
+        openMaterialFlow,
+        setLinkAction,
+        adjustingAnchorId ? { anchorId: adjustingAnchorId } : undefined,
+      ),
+    [adjustingAnchorId, finishAdjustment, openMaterialFlow],
+  );
+  const selectPendingTarget = async () => {
+    if (!pendingTarget) return;
+    const selection = getDocumentReferenceSelection(editor);
+    if (!selection) {
+      toast.error("Selecione um trecho do documento antes de vincular.");
+      return;
+    }
+    const active = selection.imageBlockId ? undefined : editor.getActiveStyles().sourceAnchor;
+    const anchorId =
+      selection.imageBlockId ??
+      (typeof active === "string" && active ? active : crypto.randomUUID());
+    const anchorCreated = !selection.imageBlockId && !active;
+    if (anchorCreated) editor.addStyles({ sourceAnchor: anchorId });
+    try {
+      if (!(await saveRef.current(true))) throw new Error("save_failed");
+      await createReference.mutateAsync({
+        source: { type: "selection", documentId, anchorId },
+        targets: [pendingTarget],
+      });
+      toast.success("Trecho vinculado.");
+      if (referenceReturnTo) void navigate(referenceReturnTo, { replace: true });
+      else void navigate(-1);
+    } catch {
+      if (anchorCreated) {
+        const next = removeSourceAnchors(
+          editor.document as LazuliDocumentBlock,
+          new Set([anchorId]),
+        ).content as LazuliDocumentBlock;
+        editor.replaceBlocks(editor.document, next);
+      }
+      toast.error("Não foi possível vincular o trecho.");
+    }
+  };
+  const applyAdjustment = () => {
+    if (!adjustingAnchorId || !editor.getSelectedText().trim()) {
+      toast.error("Selecione o novo trecho antes de salvar.");
+      return;
+    }
+    editor.addStyles({ sourceAnchor: adjustingAnchorId });
+    finishAdjustment();
+  };
+  const cancelAdjustment = () => {
+    if (adjustmentSnapshot.current)
+      editor.replaceBlocks(editor.document, adjustmentSnapshot.current);
+    const restoredSnapshot = JSON.stringify(adjustmentSnapshot.current ?? editor.document);
+    adjustmentSnapshot.current = null;
+    adjustingAnchorRef.current = null;
+    setAdjustingAnchorId(null);
+    setDirty(restoredSnapshot !== cleanSnapshot.current);
+    setSaveState(restoredSnapshot === cleanSnapshot.current ? "saved" : "pending");
+    setAutoSavePaused(false);
+  };
+  const closeMaterialFlow = (
+    removeAnchor: boolean,
+    anchorId = materialAction?.anchorId,
+    anchorCreated = materialAction?.anchorCreated ?? true,
+  ) => {
+    if (removeAnchor && anchorId && anchorCreated) {
+      const next = removeSourceAnchors(editor.document as LazuliDocumentBlock, new Set([anchorId]))
+        .content as LazuliDocumentBlock;
+      editor.replaceBlocks(editor.document, next);
+    }
+    setMaterialAction(null);
+    setLinkAction(null);
+  };
   useEffect(() => releaseResolvedAssetUrls, [documentId]);
+  useEffect(() => {
+    if (!pendingTarget && !adjustingAnchorId) {
+      setPendingSelectionAvailable(false);
+      return;
+    }
+    const update = () =>
+      setPendingSelectionAvailable(Boolean(getDocumentReferenceSelection(editor)));
+    update();
+    return editor.onSelectionChange(update);
+  }, [adjustingAnchorId, editor, pendingTarget]);
+  useEffect(() => {
+    const anchorId = new URLSearchParams(location.search).get("anchor");
+    if (!anchorId) return;
+    const timer = window.setTimeout(() => {
+      const anchor = editorContainerRef.current?.querySelector<HTMLElement>(
+        `.lazuli-source-anchor[data-anchor-id="${CSS.escape(anchorId)}"]`,
+      );
+      anchor?.scrollIntoView({ behavior: "smooth", block: "center" });
+      anchor?.setAttribute("data-reference-target", "true");
+      window.setTimeout(() => anchor?.removeAttribute("data-reference-target"), 2_000);
+    });
+    return () => window.clearTimeout(timer);
+  }, [documentId, location.search]);
   useLayoutEffect(() => {
     const element = titleElementRef.current;
     if (!element) return;
@@ -101,6 +256,9 @@ export const DocumentEditor = ({
     element.style.height = `${element.scrollHeight}px`;
   }, [title]);
   const titleDirty = normalizeProjectItemTitle(title) !== savedTitle.current;
+  const activeAnchorIsImage = Boolean(
+    activeAnchorId && editor.getBlock(activeAnchorId)?.type === "image",
+  );
   const blocker = useBlocker(() => {
     if (!dirty && !titleDirty) return false;
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
@@ -134,8 +292,12 @@ export const DocumentEditor = ({
       block.removeAttribute("aria-invalid");
     };
   }, [imageImportError]);
-  const save = async (silent = false, expectedRevision = revision) => {
-    if (saveInFlight.current) return;
+  const save = async (silent = false, expectedRevision = revision): Promise<boolean> => {
+    if (adjustingAnchorRef.current) return false;
+    if (saveInFlight.current) {
+      await new Promise<void>((resolve) => saveWaiters.current.push(resolve));
+      return saveRef.current(silent, revisionRef.current);
+    }
     saveInFlight.current = true;
     if (!silent) setAutoSavePaused(false);
     setImageImportError(null);
@@ -175,7 +337,7 @@ export const DocumentEditor = ({
         setSaveState(
           normalizeProjectItemTitle(titleRef.current) === savedTitle.current ? "saved" : "pending",
         );
-        return;
+        return true;
       }
       stage = "save";
       const result = await saveDocument.mutateAsync({ content, expectedRevision });
@@ -183,6 +345,7 @@ export const DocumentEditor = ({
       retryTimer.current = null;
       retryAttempt.current = 0;
       setRevision(result.revision);
+      revisionRef.current = result.revision;
       cleanSnapshot.current = snapshot;
       const removedAssets = [...cleanAssetUrls.current].filter((url) => !nextAssets.has(url));
       cleanAssetUrls.current = nextAssets;
@@ -199,6 +362,7 @@ export const DocumentEditor = ({
       );
       if (!silent) toast.success(DOCUMENT_MESSAGES.saveSuccess);
       if (failedCleanup.length) toast.warning(DOCUMENT_MESSAGES.savedWithCleanupPending);
+      return true;
     } catch (error) {
       setAutoSavePaused(true);
       if (stage === "import") {
@@ -245,9 +409,11 @@ export const DocumentEditor = ({
           );
         }
       }
+      return false;
     } finally {
       saveInFlight.current = false;
       setIsPreparingSave(false);
+      for (const resolve of saveWaiters.current.splice(0)) resolve();
     }
   };
   const saveRef = useRef(save);
@@ -268,7 +434,7 @@ export const DocumentEditor = ({
     const handleSaveShortcut = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        if (dirty) void saveRef.current(false);
+        if (dirty && !adjustingAnchorRef.current) void saveRef.current(false);
       }
     };
     window.addEventListener("keydown", handleSaveShortcut);
@@ -277,7 +443,7 @@ export const DocumentEditor = ({
   useEffect(() => {
     const retryWhenOnline = () => {
       if (dirty && saveState === "error") {
-        setAutoSavePaused(false);
+        if (!adjustingAnchorRef.current) setAutoSavePaused(false);
         void saveRef.current(true);
       }
     };
@@ -333,12 +499,23 @@ export const DocumentEditor = ({
   return (
     <>
       <header className="sticky top-0 z-20 bg-background/95 px-4 py-5 backdrop-blur sm:px-6">
-        <div className="flex h-9 items-center justify-end">
+        <div className="flex h-9 items-center justify-end gap-2">
+          {contextualReturnTo && (
+            <Button
+              className="mr-auto"
+              onClick={() => void navigate(contextualReturnTo)}
+              size="sm"
+              variant="ghost"
+            >
+              <ArrowLeftIcon aria-hidden="true" /> Voltar
+            </Button>
+          )}
+          <DocumentReferencesButton onClick={() => setDocumentReferencesOpen(true)} />
           <DocumentFind editorRef={editorContainerRef} showTrigger={false} />
           <DocumentSaveStatus
             onOpenConflict={() => setConflictDialogOpen(true)}
             onRetry={() => {
-              setAutoSavePaused(false);
+              if (!adjustingAnchorRef.current) setAutoSavePaused(false);
               if (titleDirty) void finishTitle();
               if (dirty) void save(false);
             }}
@@ -364,6 +541,23 @@ export const DocumentEditor = ({
           onClickCapture={(event) => {
             const target = event.target;
             if (!(target instanceof Element)) return;
+
+            const sourceAnchor = target.closest<HTMLElement>(
+              ".lazuli-source-anchor[data-anchor-id]",
+            );
+            if (sourceAnchor && event.currentTarget.contains(sourceAnchor)) {
+              const anchorId = sourceAnchor.dataset.anchorId;
+              if (anchorId) setActiveAnchorId(anchorId);
+              return;
+            }
+
+            const imageBlock = target.closest<HTMLElement>(".bn-block-outer[data-id]");
+            if (imageBlock?.querySelector("img") && event.currentTarget.contains(imageBlock)) {
+              const blockId = imageBlock.dataset.id;
+              if (blockId) setActiveAnchorId(blockId);
+              return;
+            }
+
             const link = target.closest("a[href]");
             if (!link || !event.currentTarget.contains(link) || event.ctrlKey || event.metaKey)
               return;
@@ -374,9 +568,10 @@ export const DocumentEditor = ({
           <BlockNoteView
             className="lazuli-editor"
             editor={editor}
+            formattingToolbar={false}
             onChange={() => {
               if (saveState !== "conflict") {
-                setAutoSavePaused(false);
+                if (!adjustingAnchorRef.current) setAutoSavePaused(false);
                 setSaveState("pending");
               }
               setImageImportError((current) => {
@@ -394,12 +589,169 @@ export const DocumentEditor = ({
             }}
             shadCNComponents={blockNoteComponents}
             theme="light"
-          />
+          >
+            <FormattingToolbarController formattingToolbar={formattingToolbar} />
+          </BlockNoteView>
         </div>
         <p aria-live="assertive" className="sr-only">
           {imageImportError?.message}
         </p>
       </main>
+      {(pendingTarget || adjustingAnchorId) && (
+        <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-xl border bg-popover px-4 py-3 shadow-lg">
+          <p className="min-w-0 flex-1 text-sm">
+            {adjustingAnchorId
+              ? "Selecione o novo trecho desta referência."
+              : "Selecione no documento o trecho que deseja vincular."}
+          </p>
+          <Button
+            onClick={
+              adjustingAnchorId
+                ? cancelAdjustment
+                : () => void navigate(referenceReturnTo ?? location.pathname, { replace: true })
+            }
+            size="sm"
+            variant="outline"
+          >
+            Cancelar
+          </Button>
+          <Button
+            disabled={!pendingSelectionAvailable}
+            onClick={() =>
+              adjustingAnchorId ? applyAdjustment() : setPendingLinkConfirmationOpen(true)
+            }
+            size="sm"
+          >
+            {adjustingAnchorId ? "Salvar trecho" : "Vincular trecho"}
+          </Button>
+        </div>
+      )}
+      <AlertDialog open={pendingLinkConfirmationOpen} onOpenChange={setPendingLinkConfirmationOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vincular o trecho selecionado?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A referência será adicionada e você voltará ao material.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setPendingLinkConfirmationOpen(false);
+                void selectPendingTarget();
+              }}
+            >
+              Vincular trecho
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <DocumentMaterialFlow
+        action={materialAction}
+        documentId={documentId}
+        onCancel={() => closeMaterialFlow(true)}
+        onComplete={() => closeMaterialFlow(false)}
+        persistDocument={() => saveRef.current(true)}
+      />
+      {linkAction && !pendingTarget && (
+        <ExistingMaterialPickerDialog
+          onCancel={() => closeMaterialFlow(true, linkAction.anchorId, linkAction.anchorCreated)}
+          onComplete={() => closeMaterialFlow(false)}
+          persistDocument={() => saveRef.current(true)}
+          source={{ type: "selection", documentId, anchorId: linkAction.anchorId }}
+          sourcePreview={linkAction.selectedText}
+        />
+      )}
+      {wholeDocumentPickerOpen && (
+        <ExistingMaterialPickerDialog
+          onCancel={() => setWholeDocumentPickerOpen(false)}
+          onComplete={() => setWholeDocumentPickerOpen(false)}
+          persistDocument={() => saveRef.current(true)}
+          source={{ type: "document", documentId }}
+        />
+      )}
+      <DocumentReferencesDialog
+        anchorId={activeAnchorId ?? undefined}
+        documentId={documentId}
+        onCreateFlashcard={
+          activeAnchorId && activeAnchorIsImage
+            ? () => {
+                setMaterialAction({
+                  anchorId: activeAnchorId,
+                  anchorCreated: false,
+                  kind: "flashcard",
+                  selectedText: "Imagem selecionada",
+                });
+                setActiveAnchorId(null);
+              }
+            : undefined
+        }
+        onCreateQuiz={
+          activeAnchorId && activeAnchorIsImage
+            ? () => {
+                setMaterialAction({
+                  anchorId: activeAnchorId,
+                  anchorCreated: false,
+                  kind: "quizQuestion",
+                  selectedText: "Imagem selecionada",
+                });
+                setActiveAnchorId(null);
+              }
+            : undefined
+        }
+        onAdd={
+          activeAnchorId
+            ? () => {
+                setLinkAction({
+                  anchorId: activeAnchorId,
+                  anchorCreated: false,
+                  selectedText: activeAnchorIsImage ? "Imagem selecionada" : "",
+                });
+                setActiveAnchorId(null);
+              }
+            : undefined
+        }
+        onAdjust={
+          activeAnchorId && !activeAnchorIsImage
+            ? () => {
+                adjustmentSnapshot.current = structuredClone(
+                  editor.document as LazuliDocumentBlock,
+                );
+                adjustingAnchorRef.current = activeAnchorId;
+                setAdjustingAnchorId(activeAnchorId);
+                setAutoSavePaused(true);
+                const next = removeSourceAnchors(
+                  editor.document as LazuliDocumentBlock,
+                  new Set([activeAnchorId]),
+                ).content as LazuliDocumentBlock;
+                editor.replaceBlocks(editor.document, next);
+                setActiveAnchorId(null);
+              }
+            : undefined
+        }
+        onOpenChange={(open) => !open && setActiveAnchorId(null)}
+        onLastReferenceRemoved={async () => {
+          const remote = await fetchDocument(projectId, documentId);
+          editor.replaceBlocks(editor.document, remote.content as LazuliDocumentBlock);
+          setRevision(remote.revision);
+          revisionRef.current = remote.revision;
+          cleanSnapshot.current = JSON.stringify(remote.content);
+          setDirty(false);
+          setSaveState("saved");
+          setActiveAnchorId(null);
+        }}
+        open={Boolean(activeAnchorId)}
+      />
+      <DocumentReferencesDialog
+        documentId={documentId}
+        onAdd={() => {
+          setDocumentReferencesOpen(false);
+          setWholeDocumentPickerOpen(true);
+        }}
+        onOpenChange={setDocumentReferencesOpen}
+        open={documentReferencesOpen}
+      />
       <AlertDialog open={blocker.state === "blocked"}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -428,7 +780,7 @@ export const DocumentEditor = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="sm:flex-wrap">
-            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogCancel className="whitespace-nowrap">Continuar editando</AlertDialogCancel>
             <Button
               onClick={() => {
                 void fetchDocument(projectId, documentId)
@@ -441,6 +793,7 @@ export const DocumentEditor = ({
                       });
                     editor.replaceBlocks(editor.document, remote.content as LazuliDocumentBlock);
                     setRevision(remote.revision);
+                    revisionRef.current = remote.revision;
                     cleanSnapshot.current = JSON.stringify(remote.content);
                     cleanAssetUrls.current = collectAssetUrls(
                       remote.content as LazuliDocumentBlock,
@@ -452,16 +805,19 @@ export const DocumentEditor = ({
                   })
                   .catch(() => toast.error("Não foi possível carregar a versão mais recente."));
               }}
+              className="whitespace-nowrap"
               variant="outline"
             >
               Usar versão do servidor
             </Button>
             <AlertDialogAction
+              className="whitespace-nowrap"
               onClick={(event) => {
                 event.preventDefault();
                 void fetchDocument(projectId, documentId)
                   .then((remote) => {
                     setRevision(remote.revision);
+                    revisionRef.current = remote.revision;
                     setAutoSavePaused(false);
                     setConflictDialogOpen(false);
                     return save(false, remote.revision);

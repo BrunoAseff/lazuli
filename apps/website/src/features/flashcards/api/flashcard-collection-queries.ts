@@ -20,8 +20,9 @@ export const flashcardCollectionKeys = {
     [...flashcardCollectionKeys.lists(), input] as const,
 };
 
-export const useFlashcardCollections = (input: FlashcardCollectionListQuery) =>
+export const useFlashcardCollections = (input: FlashcardCollectionListQuery, enabled = true) =>
   useQuery({
+    enabled,
     queryKey: flashcardCollectionKeys.list(input),
     queryFn: ({ signal }) => fetchFlashcardCollections(input, signal),
   });

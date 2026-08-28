@@ -22,16 +22,20 @@ export type ProjectFilterValue = string | undefined;
 
 export const ProjectFilter = ({
   allowAll = true,
+  allowNone = true,
   disabled,
   fullWidth = false,
   label = "Filtrar por projeto",
+  placeholder = "Selecionar projeto",
   onChange,
   value,
 }: {
   allowAll?: boolean;
+  allowNone?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
   label?: string;
+  placeholder?: string;
   onChange: (value: ProjectFilterValue) => void;
   value: ProjectFilterValue;
 }) => {
@@ -52,8 +56,9 @@ export const ProjectFilter = ({
         ? (selectedProject.data?.title ?? "Projeto selecionado")
         : allowAll
           ? "Todos os projetos"
-          : "Sem projeto";
-  const SelectedIcon = value === "none" ? FolderXIcon : value ? FolderIcon : Layers3Icon;
+          : placeholder;
+  const SelectedIcon =
+    value === "none" ? FolderXIcon : value ? FolderIcon : allowAll ? Layers3Icon : FolderIcon;
 
   const select = (next: ProjectFilterValue) => {
     onChange(next);
@@ -111,12 +116,14 @@ export const ProjectFilter = ({
                   onSelect={() => select(undefined)}
                 />
               )}
-              <ProjectOption
-                active={value === "none"}
-                icon={FolderXIcon}
-                label="Sem projeto"
-                onSelect={() => select("none")}
-              />
+              {allowNone && (
+                <ProjectOption
+                  active={value === "none"}
+                  icon={FolderXIcon}
+                  label="Sem projeto"
+                  onSelect={() => select("none")}
+                />
+              )}
             </div>
           )}
           {projects.isPending && (

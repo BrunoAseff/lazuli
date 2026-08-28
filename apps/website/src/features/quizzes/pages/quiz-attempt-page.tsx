@@ -11,7 +11,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import {
@@ -33,6 +33,7 @@ import {
   type LazuliDocumentBlock,
 } from "@/features/documents/editor/document-schema.tsx";
 import { cn } from "@/lib/utils.ts";
+import { MaterialReferencesButton } from "@/features/references/components/material-references-dialog.tsx";
 import {
   useAbandonQuizAttempt,
   useAnswerQuizAttempt,
@@ -119,7 +120,7 @@ export const QuizAttemptPage = () => {
             value={(attempt.answeredQuestions / attempt.totalQuestions) * 100}
           />
           <div
-            className="mt-3 flex gap-1 overflow-x-auto pb-1 subtle-scrollbar"
+            className="mt-3 flex gap-1 overflow-x-auto pb-1 lazuli-thin-scrollbar"
             aria-label="Navegação das questões"
           >
             {attempt.items.map((navigationItem, itemIndex) => (
@@ -314,8 +315,34 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
   const navigate = useNavigate();
   const restart = useCreateQuizAttempt(attempt.collectionId);
   const collection = useQuizCollection(attempt.collectionId);
-  const [reviewIndex, setReviewIndex] = useState(0);
+  const [params, setParams] = useSearchParams();
+  const requestedQuestion = params.get("question");
+  const requestedIndex = attempt.items.findIndex(
+    ({ questionId }) => questionId === requestedQuestion,
+  );
+  const reviewIndex = requestedIndex >= 0 ? requestedIndex : 0;
   const item = attempt.items[reviewIndex]!;
+  useEffect(() => {
+    if (requestedIndex >= 0) return;
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        updated.set("question", item.questionId);
+        return updated;
+      },
+      { replace: true },
+    );
+  }, [item.questionId, requestedIndex, setParams]);
+  const selectQuestion = (index: number) =>
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        updated.set("question", attempt.items[index]!.questionId);
+        updated.delete("reference");
+        return updated;
+      },
+      { replace: true },
+    );
   const rate = Math.round((attempt.correctAnswers / attempt.totalQuestions) * 100);
   const durationMinutes = Math.max(
     1,
@@ -404,17 +431,23 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
               );
             })}
           </div>
+          <div className="mt-5">
+            <MaterialReferencesButton
+              count={item.referenceCount}
+              target={{ id: item.questionId, type: "quizQuestion" }}
+            />
+          </div>
           <div className="mt-6 flex justify-between">
             <Button
               disabled={reviewIndex === 0}
-              onClick={() => setReviewIndex((value) => value - 1)}
+              onClick={() => selectQuestion(reviewIndex - 1)}
               variant="outline"
             >
               <ArrowLeftIcon /> Anterior
             </Button>
             <Button
               disabled={reviewIndex === attempt.items.length - 1}
-              onClick={() => setReviewIndex((value) => value + 1)}
+              onClick={() => selectQuestion(reviewIndex + 1)}
               variant="outline"
             >
               Próxima <ArrowRightIcon />

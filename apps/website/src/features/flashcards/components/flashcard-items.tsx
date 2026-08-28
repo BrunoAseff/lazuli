@@ -15,6 +15,7 @@ import type { Ref } from "react";
 
 import { HighlightText } from "@/components/highlight-text.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
+import { StudyItemActions, StudyItemShell } from "@/components/study-item-shell.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import {
@@ -75,14 +76,13 @@ export const FlashcardItems = ({
       const schedule = scheduleMeta(card);
       const ScheduleIcon = schedule.Icon;
       return (
-        <article
+        <StudyItemShell
           className={cn(
-            "group relative min-w-0 bg-background transition-colors hover:bg-muted/45",
-            mode === "cards"
-              ? "flex min-h-56 flex-col border p-5"
-              : "grid gap-3 py-4 sm:grid-cols-[auto_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_auto] sm:items-center sm:px-3",
+            mode === "table" &&
+              "sm:grid-cols-[auto_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_auto]",
           )}
           key={card.id}
+          mode={mode}
         >
           <Checkbox
             aria-label={`Selecionar flashcard: ${card.questionText}`}
@@ -162,10 +162,10 @@ export const FlashcardItems = ({
               </OverflowTooltip>
             </span>
           </div>
-          <div className={mode === "cards" ? "absolute top-3 right-3" : "justify-self-end"}>
+          <StudyItemActions mode={mode}>
             <CardActions card={card} onAction={onAction} onEdit={() => onEdit(card)} />
-          </div>
-        </article>
+          </StudyItemActions>
+        </StudyItemShell>
       );
     })}
   </div>

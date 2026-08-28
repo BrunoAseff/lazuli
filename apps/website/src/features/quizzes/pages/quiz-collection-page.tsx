@@ -6,12 +6,15 @@ import {
 import {
   ArchiveIcon,
   ArrowLeftIcon,
+  CalendarIcon,
   CalendarPlusIcon,
   HistoryIcon,
   ImageIcon,
+  ListChecksIcon,
   ListOrderedIcon,
   MoreHorizontalIcon,
   MoveRightIcon,
+  PencilIcon,
   PlayIcon,
   PlusIcon,
   RotateCcwIcon,
@@ -26,6 +29,7 @@ import { toast } from "sonner";
 import { HighlightText } from "@/components/highlight-text.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { PaginationControls } from "@/components/pagination-controls.tsx";
+import { StudyItemActions, StudyItemShell } from "@/components/study-item-shell.tsx";
 import { ViewModeToggle, type ViewMode } from "@/components/view-mode-toggle.tsx";
 import {
   AlertDialog,
@@ -77,6 +81,7 @@ export const QuizCollectionPage = () => {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const query = params.get("query")?.slice(0, 200).trim() ?? "";
+  const linkedQuestionId = params.get("question");
   const input = quizQuestionListQuerySchema.parse({
     query,
     status: params.get("status") === "archived" ? "archived" : "active",
@@ -102,6 +107,9 @@ export const QuizCollectionPage = () => {
   const remove = useDeleteQuizQuestion(collectionId);
   const start = useCreateQuizAttempt(collectionId);
   const patchQuestion = usePatchQuizQuestion(collectionId);
+  useEffect(() => {
+    if (linkedQuestionId) setEditor({ type: "edit", id: linkedQuestionId });
+  }, [linkedQuestionId]);
   const updateParams = (changes: Record<string, string | undefined>, reset = true) =>
     setParams((current) => {
       const next = new URLSearchParams(current);
@@ -371,7 +379,11 @@ export const QuizCollectionPage = () => {
       {editor && (editor.type === "create" || detail.data) && (
         <QuizQuestionDialog
           collectionId={collectionId}
-          onOpenChange={(open) => !open && setEditor(null)}
+          onOpenChange={(open) => {
+            if (open) return;
+            setEditor(null);
+            updateParams({ question: undefined }, false);
+          }}
           open
           question={editor.type === "edit" ? detail.data : undefined}
         />
@@ -451,36 +463,82 @@ const QuestionItem = ({
   query: string;
   question: QuizQuestionSummary;
 }) => (
-  <article
+  <StudyItemShell
     className={
-      mode === "cards"
-        ? "flex min-h-52 flex-col border p-5"
-        : "grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_10rem_10rem_auto] sm:items-center sm:px-3"
+      mode === "table" ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_8rem_10rem_auto]" : undefined
     }
+    mode={mode}
   >
-    <div className="min-w-0">
-      <div className="flex items-center gap-2">
-        {question.hasImage && <ImageIcon className="size-4 shrink-0 text-muted-foreground" />}
-        <OverflowTooltip text={question.contentText || "Pergunta com imagem"}>
-          {(ref) => (
-            <h2 className="truncate font-heading text-lg" ref={ref as Ref<HTMLHeadingElement>}>
-              <HighlightText query={query} text={question.contentText || "Pergunta com imagem"} />
-            </h2>
-          )}
-        </OverflowTooltip>
+    <button
+      className={`min-w-0 text-left ${mode === "cards" ? "mb-5 pr-8" : ""}`}
+      onClick={() => onAction("edit")}
+      type="button"
+    >
+      <p className="mb-1 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        Pergunta
+        {question.hasImage && <ImageIcon aria-label="Pergunta com imagem" className="size-3.5" />}
+      </p>
+      <OverflowTooltip text={question.contentText || "Pergunta com imagem"}>
+        {(ref) => (
+          <h2
+            className={
+              mode === "cards"
+                ? "line-clamp-3 font-heading text-xl font-medium"
+                : "truncate font-heading text-lg font-medium"
+            }
+            ref={ref as Ref<HTMLHeadingElement>}
+          >
+            <HighlightText query={query} text={question.contentText || "Pergunta com imagem"} />
+          </h2>
+        )}
+      </OverflowTooltip>
+    </button>
+    <button className="min-w-0 text-left" onClick={() => onAction("edit")} type="button">
+      <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        Resposta correta
+      </p>
+      <OverflowTooltip text={question.correctOptionText}>
+        {(ref) => (
+          <p
+            className={
+              mode === "cards"
+                ? "line-clamp-3 text-muted-foreground"
+                : "truncate text-muted-foreground"
+            }
+            ref={ref as Ref<HTMLParagraphElement>}
+          >
+            {question.correctOptionText}
+          </p>
+        )}
+      </OverflowTooltip>
+    </button>
+    {mode === "cards" ? (
+      <div className="mt-auto flex min-w-0 items-center gap-4 pt-5 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <ListChecksIcon aria-hidden="true" className="size-3.5 text-muted-foreground/80" />
+          {question.optionCount} alternativas
+        </span>
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <CalendarIcon aria-hidden="true" className="size-3.5 text-muted-foreground/80" />
+          {dateFormatter.format(new Date(question.updatedAt))}
+        </span>
       </div>
-      {mode === "cards" && (
-        <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
-          Resposta: {question.correctOptionText}
-        </p>
-      )}
-    </div>
-    <p className="text-sm text-muted-foreground">{question.optionCount} alternativas</p>
-    <p className="text-sm text-muted-foreground">
-      {dateFormatter.format(new Date(question.updatedAt))}
-    </p>
-    <QuestionActions archived={Boolean(question.archivedAt)} onAction={onAction} />
-  </article>
+    ) : (
+      <>
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <ListChecksIcon aria-hidden="true" className="size-3.5 text-muted-foreground/80" />
+          {question.optionCount} alternativas
+        </span>
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          <CalendarIcon aria-hidden="true" className="size-3.5 text-muted-foreground/80" />
+          {dateFormatter.format(new Date(question.updatedAt))}
+        </span>
+      </>
+    )}
+    <StudyItemActions mode={mode}>
+      <QuestionActions archived={Boolean(question.archivedAt)} onAction={onAction} />
+    </StudyItemActions>
+  </StudyItemShell>
 );
 const QuestionActions = ({
   archived,
@@ -497,7 +555,7 @@ const QuestionActions = ({
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
       <DropdownMenuItem onSelect={() => onAction("edit")}>
-        <HistoryIcon /> Editar
+        <PencilIcon /> Editar
       </DropdownMenuItem>
       <DropdownMenuItem onSelect={() => onAction("move")}>
         <MoveRightIcon /> Mover
