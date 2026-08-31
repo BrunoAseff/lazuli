@@ -8,7 +8,7 @@ import {
   MoreHorizontalIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -37,6 +37,7 @@ import {
 import { downloadDocumentMarkdown } from "../api/document-api.ts";
 import { buildProjectChildren, collectProjectDescendantIds } from "../project-tree.ts";
 import { DOCUMENT_MESSAGES } from "../document-messages.ts";
+import { documentLocation, safeReturnTo } from "../document-navigation.ts";
 import { DocumentTreeActions } from "./document-tree-actions.tsx";
 import { ProjectItemDeleteDialog } from "./project-item-delete-dialog.tsx";
 import { DocumentTreeToolbar } from "./document-tree-toolbar.tsx";
@@ -66,6 +67,8 @@ export const DocumentTree = ({
   closeIcon = "panel",
 }: Props) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = safeReturnTo(new URLSearchParams(location.search).get("returnTo"));
   const { openImportDialog } = useDocumentImports();
   const createItem = useCreateProjectItem(projectId);
   const renameItem = useRenameProjectItem(projectId);
@@ -134,7 +137,7 @@ export const DocumentTree = ({
     });
   const openDocument = (itemId: string) => {
     onNavigate?.();
-    void navigate(`/documents/${projectId}/document/${itemId}`);
+    void navigate(documentLocation({ documentId: itemId, projectId, returnTo }));
   };
   const requestImport = (parentId: string | null) => {
     openImportDialog(projectId, parentId);
@@ -165,7 +168,8 @@ export const DocumentTree = ({
           ? DOCUMENT_MESSAGES.createFolderSuccess
           : DOCUMENT_MESSAGES.createDocumentSuccess,
       );
-      if (pending.type === "document") void navigate(`/documents/${projectId}/document/${item.id}`);
+      if (pending.type === "document")
+        void navigate(documentLocation({ documentId: item.id, projectId, returnTo }));
     } catch {
       toast.error(DOCUMENT_MESSAGES.createError);
     }
@@ -340,7 +344,7 @@ export const DocumentTree = ({
                     }
                   }}
                   ref={ref as React.RefObject<HTMLAnchorElement>}
-                  to={`/documents/${projectId}/document/${item.id}`}
+                  to={documentLocation({ documentId: item.id, projectId, returnTo })}
                 >
                   <HighlightText query={search} text={item.title} />
                 </Link>

@@ -485,8 +485,13 @@
 }
 
 .lazuli-source-anchor {
+  cursor: pointer;
   text-decoration: underline 2px color-mix(in oklab, var(--primary) 65%, transparent);
   text-underline-offset: 0.2em;
+}
+
+.lazuli-source-anchor[data-reference-target="true"] {
+  background: color-mix(in oklab, var(--primary) 16%, transparent);
 }
 
 .lazuli-tree-drag-preview {

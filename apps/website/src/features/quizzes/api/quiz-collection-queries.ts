@@ -28,8 +28,9 @@ export const useQuizCollection = (collectionId: string) =>
     enabled: Boolean(collectionId),
   });
 
-export const useQuizCollections = (input: QuizCollectionListQuery) =>
+export const useQuizCollections = (input: QuizCollectionListQuery, enabled = true) =>
   useQuery({
+    enabled,
     queryKey: quizCollectionKeys.list(input),
     queryFn: ({ signal }) => fetchQuizCollections(input, signal),
   });

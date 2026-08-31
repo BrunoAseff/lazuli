@@ -26,6 +26,7 @@ import { escapeLikePattern } from "../database/sql-search.ts";
 import { summarizeRichContent } from "../documents/rich-content-summary.ts";
 import { asset, flashcard, flashcardCollection, userStorage } from "../database/schema/index.ts";
 import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { deleteReferencesForTargets } from "../references/reference-queries.ts";
 import { plainTextFlashcardContent } from "./flashcard-import.ts";
 
 type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
@@ -388,6 +389,7 @@ export const updateFlashcard = async (
   });
 
 export const deleteCards = async (tx: Transaction, userId: string, ids: string[]) => {
+  await deleteReferencesForTargets(tx, userId, { flashcardIds: ids });
   const stored = await tx
     .select({ byteSize: asset.byteSize, objectKey: asset.objectKey })
     .from(asset)

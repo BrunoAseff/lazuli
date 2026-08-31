@@ -38,8 +38,9 @@ const setTreeItem = (
         }
       : current,
   );
-export const useProjectTree = (projectId: string) =>
+export const useProjectTree = (projectId: string, enabled = true) =>
   useQuery({
+    enabled,
     queryKey: documentKeys.tree(projectId),
     queryFn: ({ signal }) => fetchProjectTree(projectId, signal),
   });

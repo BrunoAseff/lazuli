@@ -6,6 +6,8 @@ export * from "./flashcards/flashcard-contracts.ts";
 export * from "./flashcards/flashcard-metrics.ts";
 export * from "./projects/project-contracts.ts";
 export * from "./quizzes/quiz-contracts.ts";
+export * from "./references/reference-contracts.ts";
+export * from "./references/reference-content.ts";
 export * from "./study-collections/study-collection-contracts.ts";
 
 export type ApiHealthResponse = {

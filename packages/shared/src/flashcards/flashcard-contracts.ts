@@ -212,6 +212,13 @@ export const flashcardPracticeSessionSchema = z.object({
   lastActivityAt: z.iso.datetime(),
   finishedAt: z.iso.datetime().nullable(),
   currentItem: flashcardPracticeItemSchema.nullable(),
+  reviewedMaterials: z.array(
+    z.object({
+      id: flashcardIdSchema,
+      questionText: z.string(),
+      referenceCount: z.number().int().nonnegative(),
+    }),
+  ),
   ratings: flashcardRatingCountsSchema,
 });
 

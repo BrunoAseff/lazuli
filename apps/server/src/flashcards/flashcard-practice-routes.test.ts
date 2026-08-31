@@ -44,6 +44,7 @@ const completedSession = {
   lastActivityAt: new Date("2026-08-23T12:01:00.000Z"),
   finishedAt: new Date("2026-08-23T12:01:00.000Z"),
   currentItem: null,
+  reviewedMaterials: [],
   ratings: { again: 0, hard: 0, good: 1, easy: 0 },
 };
 

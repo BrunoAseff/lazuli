@@ -21,6 +21,7 @@ import {
   type LazuliDocumentBlock,
 } from "@/features/documents/editor/document-schema.tsx";
 import { cn } from "@/lib/utils.ts";
+import { MaterialReferencesButton } from "@/features/references/components/material-references-dialog.tsx";
 import {
   usePracticeAvailability,
   useFlashcardCollection,
@@ -310,6 +311,26 @@ const PracticeSummary = ({
           {availability.data?.totalAvailable ? "Praticar mais" : "Nada pendente agora"}
         </Button>
       </div>
+      {session.reviewedMaterials.some(({ referenceCount }) => referenceCount > 0) && (
+        <section className="mt-10 border-t pt-7 text-left">
+          <h2 className="font-heading text-2xl">Fontes dos flashcards revisados</h2>
+          <div className="mt-4 divide-y border-y">
+            {session.reviewedMaterials
+              .filter(({ referenceCount }) => referenceCount > 0)
+              .map((card) => (
+                <div className="flex min-w-0 items-center gap-4 py-3" key={card.id}>
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {card.questionText || "Flashcard com imagem"}
+                  </p>
+                  <MaterialReferencesButton
+                    count={card.referenceCount}
+                    target={{ id: card.id, type: "flashcard" }}
+                  />
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
       <PracticeSetupDialog
         collectionId={collectionId}
         onOpenChange={setSetupOpen}

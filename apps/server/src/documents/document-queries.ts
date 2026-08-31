@@ -17,6 +17,7 @@ import {
   userStorage,
 } from "../database/schema/index.ts";
 import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { reconcileDocumentReferences } from "../references/reference-queries.ts";
 
 const ownedProject = (userId: string, projectId: string) =>
   and(eq(project.id, projectId), eq(project.userId, userId));
@@ -361,6 +362,7 @@ export const saveDocumentContent = async (
         .limit(1);
       return { kind: "conflict" as const, revision: latest?.revision ?? current.revision };
     }
+    await reconcileDocumentReferences(tx, userId, documentId, input.content);
     await tx
       .update(projectItem)
       .set({ updatedAt: now })

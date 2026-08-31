@@ -68,6 +68,7 @@ export const FlashcardCollectionPage = () => {
   const { collectionId = "" } = useParams();
   const [params, setParams] = useSearchParams();
   const query = params.get("query")?.slice(0, 200).trim() ?? "";
+  const linkedCardId = params.get("card");
   const rawFilter = params.get("filter");
   const rawSort = params.get("sort");
   const input = flashcardListQuerySchema.parse({
@@ -98,6 +99,9 @@ export const FlashcardCollectionPage = () => {
   const detail = useFlashcard(collectionId, editor?.type === "edit" ? editor.cardId : null);
   const batch = useBatchFlashcards(collectionId);
   const remove = useDeleteFlashcard(collectionId);
+  useEffect(() => {
+    if (linkedCardId) setEditor({ type: "edit", cardId: linkedCardId });
+  }, [linkedCardId]);
 
   const updateParams = (changes: Record<string, string | undefined>, resetPage = true) =>
     setParams((current) => {
@@ -503,7 +507,11 @@ export const FlashcardCollectionPage = () => {
         <FlashcardEditorDialog
           card={detail.data}
           collectionId={collectionId}
-          onOpenChange={(open) => !open && setEditor(null)}
+          onOpenChange={(open) => {
+            if (open) return;
+            setEditor(null);
+            updateParams({ card: undefined }, false);
+          }}
           open
         />
       )}

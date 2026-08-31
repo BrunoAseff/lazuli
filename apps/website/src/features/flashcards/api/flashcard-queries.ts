@@ -104,6 +104,7 @@ export const useFlashcardCollection = (collectionId: string) =>
 
 export const useFlashcards = (collectionId: string, input: FlashcardListQuery) =>
   useQuery({
+    enabled: Boolean(collectionId),
     queryKey: flashcardKeys.list(collectionId, input),
     queryFn: ({ signal }) => fetchFlashcards(collectionId, input, signal),
   });

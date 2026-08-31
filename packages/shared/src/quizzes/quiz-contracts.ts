@@ -175,6 +175,8 @@ const attemptOptionSchema = z.object({
 });
 const attemptItemBaseSchema = z.object({
   id: quizAttemptItemIdSchema,
+  questionId: quizQuestionIdSchema,
+  referenceCount: z.number().int().nonnegative(),
   position: z.number().int().nonnegative(),
   question: quizQuestionContentSchema,
   options: z.array(attemptOptionSchema).min(2).max(6),

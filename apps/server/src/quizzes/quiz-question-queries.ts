@@ -29,6 +29,7 @@ import {
 } from "../database/schema/index.ts";
 import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
 import { summarizeRichContent } from "../documents/rich-content-summary.ts";
+import { deleteReferencesForTargets } from "../references/reference-queries.ts";
 
 type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 type Executor = Database | Transaction;
@@ -369,6 +370,7 @@ export const deleteQuizQuestion = async (
 ) =>
   db.transaction(async (tx) => {
     if (!(await getQuizQuestion(tx, userId, collectionId, questionId))) return false;
+    await deleteReferencesForTargets(tx, userId, { quizQuestionIds: [questionId] });
     await releaseAssets(tx, userId, questionId, []);
     await tx.delete(quizQuestion).where(eq(quizQuestion.id, questionId));
     return true;

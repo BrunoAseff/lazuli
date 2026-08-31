@@ -100,6 +100,8 @@ describe("quiz collection contracts", () => {
       items: [
         {
           id: "5cbda44d-0388-44c0-a52e-1c29f99fc8c2",
+          questionId: "8cbda44d-0388-44c0-a52e-1c29f99fc8c2",
+          referenceCount: 0,
           position: 0,
           question: [
             {

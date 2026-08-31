@@ -50,6 +50,8 @@ import {
   type LazuliDocumentBlock,
 } from "@/features/documents/editor/document-schema.tsx";
 import { RichContentField } from "@/components/rich-content-field.tsx";
+import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
+import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
 import { cn } from "@/lib/utils.ts";
 import { useQuizCollections } from "../api/quiz-collection-queries.ts";
 import { uploadQuizImage } from "../api/quiz-api.ts";
@@ -64,17 +66,23 @@ const newOptions = (): Option[] => [
 
 export const QuizQuestionDialog = ({
   collectionId,
+  initialContent,
+  onCreated,
   onOpenChange,
   open,
   question,
+  sourcePreview,
 }: {
-  collectionId: string;
+  collectionId?: string;
+  initialContent?: LazuliDocumentBlock;
+  onCreated?: (questionId: string) => void | boolean | Promise<void | boolean>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   question?: QuizQuestionDetail;
+  sourcePreview?: string;
 }) => {
   const [targetCollectionId, setTargetCollectionId] = useState(
-    question?.collectionId ?? collectionId,
+    question?.collectionId ?? collectionId ?? "",
   );
   const [options, setOptions] = useState<Option[]>(
     question?.options.map(({ id, isCorrect, text }) => ({ id, isCorrect, text })) ?? newOptions(),
@@ -86,11 +94,11 @@ export const QuizQuestionDialog = ({
   const createdUrls = useRef(new Set<string>());
   const committed = useRef(false);
   const create = useCreateQuizQuestion(targetCollectionId);
-  const update = useUpdateQuizQuestion(collectionId, question?.id ?? "");
+  const update = useUpdateQuizQuestion(collectionId ?? targetCollectionId, question?.id ?? "");
   const editor = useCreateBlockNote(
     {
       schema: documentSchema,
-      initialContent: question?.content as LazuliDocumentBlock | undefined,
+      initialContent: (question?.content as LazuliDocumentBlock | undefined) ?? initialContent,
       dictionary: lazuliBlockNoteDictionary,
       uploadFile: async (file) => {
         const uploaded = await uploadQuizImage(file);
@@ -99,7 +107,7 @@ export const QuizQuestionDialog = ({
       },
       resolveFileUrl: resolveAssetUrl,
     },
-    [question?.id],
+    [initialContent, question?.id],
   );
   useEffect(
     () => () => {
@@ -149,15 +157,21 @@ export const QuizQuestionDialog = ({
           ...(!sameOptions && { options: normalizedOptions }),
           ...(!sameCollection && { collectionId: targetCollectionId }),
         });
-      } else
+      } else {
+        const questionId = crypto.randomUUID();
         await create.mutateAsync({
-          id: crypto.randomUUID(),
+          id: questionId,
           content: parsed.data,
           options: normalizedOptions,
         });
+        const followUpSucceeded = await onCreated?.(questionId);
+        if (followUpSucceeded === false)
+          toast.warning("Questão criada, mas a referência não pôde ser adicionada.");
+      }
       committed.current = true;
       createdUrls.current.clear();
-      toast.success(question ? "Questão atualizada." : "Questão criada.");
+      if (question || !onCreated)
+        toast.success(question ? "Questão atualizada." : "Questão criada.");
       setDirty(false);
       if (createAnother && !question) {
         editor.replaceBlocks(editor.document, [{ type: "paragraph" }]);
@@ -184,7 +198,8 @@ export const QuizQuestionDialog = ({
               Crie a pergunta e marque uma única resposta correta.
             </DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 space-y-6 overflow-y-auto px-6 py-6 subtle-scrollbar">
+          <div className="min-h-0 space-y-6 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
+            {sourcePreview && <ReferenceSourcePreview text={sourcePreview} />}
             <QuizCollectionPicker
               value={targetCollectionId}
               onChange={(value) => {
@@ -322,6 +337,13 @@ export const QuizQuestionDialog = ({
                 <PlusIcon /> Adicionar outra alternativa
               </Button>
             </fieldset>
+            {question && (
+              <ReferenceManager
+                disabled={dirty}
+                returnTo={`/quizzes/${question.collectionId}?question=${question.id}`}
+                target={{ type: "quizQuestion", id: question.id }}
+              />
+            )}
           </div>
           <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4">
             <DialogCancelButton
@@ -330,9 +352,9 @@ export const QuizQuestionDialog = ({
             >
               Cancelar
             </DialogCancelButton>
-            {!question && (
+            {!question && !onCreated && (
               <Button
-                disabled={create.isPending || !contentValid || !optionsValid}
+                disabled={create.isPending || !targetCollectionId || !contentValid || !optionsValid}
                 onClick={() => void save(true)}
                 variant="outline"
               >
@@ -340,7 +362,13 @@ export const QuizQuestionDialog = ({
               </Button>
             )}
             <Button
-              disabled={create.isPending || update.isPending || !contentValid || !optionsValid}
+              disabled={
+                create.isPending ||
+                update.isPending ||
+                !targetCollectionId ||
+                !contentValid ||
+                !optionsValid
+              }
               onClick={() => void save()}
             >
               {(create.isPending || update.isPending) && (
@@ -399,7 +427,9 @@ const QuizCollectionPicker = ({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button className="w-full justify-between rounded-none" variant="outline">
-            <span className="truncate">{selected?.title ?? "Coleção atual"}</span>
+            <span className={cn("truncate", !selected && "text-muted-foreground")}>
+              {selected?.title ?? "Selecionar coleção"}
+            </span>
             <ChevronsUpDownIcon />
           </Button>
         </PopoverTrigger>
@@ -416,7 +446,7 @@ const QuizCollectionPicker = ({
               value={query}
             />
           </div>
-          <div className="max-h-64 overflow-y-auto p-1 subtle-scrollbar">
+          <div className="max-h-64 overflow-y-auto p-1 lazuli-thin-scrollbar">
             {collections.data?.items.map((collection) => (
               <button
                 className={cn(

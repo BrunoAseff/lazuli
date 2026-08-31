@@ -125,7 +125,7 @@ export const FlashcardImportDialog = ({
             Revise os pares reconhecidos antes de adicioná-los à coleção.
           </DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 overflow-y-auto px-6 py-6 subtle-scrollbar">
+        <div className="min-h-0 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
           {!preview ? (
             <button
               className={cn(
@@ -196,7 +196,7 @@ export const FlashcardImportDialog = ({
                   </p>
                 )}
               </div>
-              <div className="max-h-80 overflow-y-auto border subtle-scrollbar">
+              <div className="max-h-80 overflow-y-auto border lazuli-thin-scrollbar">
                 <div className="sticky top-0 grid grid-cols-2 border-b bg-muted px-3 py-2 text-xs font-medium tracking-wide uppercase">
                   <span>Pergunta</span>
                   <span>Resposta</span>

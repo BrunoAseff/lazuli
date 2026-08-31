@@ -14,6 +14,7 @@ import {
   quizCollection,
   quizOption,
   quizQuestion,
+  studyMaterialReference,
   userStorage,
 } from "../database/schema/index.ts";
 import { summarizeRichContent } from "../documents/rich-content-summary.ts";
@@ -110,6 +111,11 @@ export const getQuizAttempt = async (db: Executor, userId: string, attemptId: st
   const rows = await db
     .select({
       id: quizAttemptItem.id,
+      questionId: quizAttemptItem.questionId,
+      referenceCount:
+        sql<number>`(select count(*) from ${studyMaterialReference} where ${studyMaterialReference.quizQuestionId} = ${quizAttemptItem.questionId})`.mapWith(
+          Number,
+        ),
       position: quizAttemptItem.position,
       question: quizAttemptItem.question,
       options: quizAttemptItem.options,
