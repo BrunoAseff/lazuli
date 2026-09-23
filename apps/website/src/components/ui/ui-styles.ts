@@ -1,6 +1,9 @@
 export const controlTransition =
   "transition-[color,background-color,border-color,opacity] duration-120 ease-out";
 
+export const buttonTransition =
+  "transition-[color,background-color,border-color,opacity,transform] duration-120 ease-out";
+
 export const overlaySurface =
   "rounded-[var(--radius-overlay)] bg-popover text-popover-foreground shadow-[var(--shadow-overlay)] ring-1 ring-border";
 

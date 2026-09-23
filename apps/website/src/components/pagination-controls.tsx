@@ -2,19 +2,25 @@ import type { Pagination } from "@lazuli/shared";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button.tsx";
+import { cn } from "@/lib/utils.ts";
 
 export const PaginationControls = ({
   label,
+  className,
   onPageChange,
   pagination,
 }: {
   label: string;
+  className?: string;
   onPageChange: (page: number) => void;
   pagination: Pagination;
 }) => {
   if (pagination.totalPages <= 1) return null;
   return (
-    <nav aria-label={label} className="mt-7 flex items-center justify-between gap-4">
+    <nav
+      aria-label={label}
+      className={cn("mt-7 flex items-center justify-between gap-4", className)}
+    >
       <Button
         disabled={pagination.page <= 1}
         onClick={() => onPageChange(pagination.page - 1)}
