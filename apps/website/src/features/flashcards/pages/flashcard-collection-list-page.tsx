@@ -95,26 +95,16 @@ export const FlashcardCollectionListPage = () => {
 
   return (
     <div className="flex flex-1 flex-col px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Estudo ativo
-            </p>
-            <h1 className="font-heading text-4xl font-medium tracking-tight sm:text-5xl">
-              Flashcards
-            </h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              Organize suas coleções e acompanhe o que já estudou e o que precisa revisar.
-            </p>
-          </div>
-          <Button className="self-start sm:self-auto" onClick={() => setCreateOpen(true)}>
-            <PlusIcon aria-hidden="true" data-icon="inline-start" />
-            Nova coleção
-          </Button>
-        </div>
+      <div className="mx-auto w-full max-w-5xl">
+        <h1 className="font-heading text-4xl font-normal tracking-tight sm:text-5xl">Flashcards</h1>
 
         <StudyCollectionToolbar
+          action={
+            <Button className="shrink-0" onClick={() => setCreateOpen(true)}>
+              <PlusIcon aria-hidden="true" data-icon="inline-start" />
+              <span className="hidden sm:inline">Nova coleção</span>
+            </Button>
+          }
           onClearSearch={() => {
             setSearchValue("");
             updateParams({ query: undefined });
@@ -124,6 +114,7 @@ export const FlashcardCollectionListPage = () => {
           onStatusChange={(value) => updateParams({ status: value })}
           project={project}
           searchValue={searchValue}
+          searchDisabled={isEmpty}
           status={status}
         />
 
