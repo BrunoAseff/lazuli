@@ -72,10 +72,7 @@ export const ProjectFilter = ({
       <PopoverTrigger asChild>
         <Button
           aria-label={label}
-          className={cn(
-            "h-9 min-w-0 justify-between rounded-none",
-            fullWidth ? "w-full" : "w-full sm:w-56",
-          )}
+          className={cn("h-9 min-w-0 justify-between", fullWidth ? "w-full" : "w-full sm:w-56")}
           disabled={disabled}
           variant="outline"
         >
@@ -107,7 +104,7 @@ export const ProjectFilter = ({
         </div>
         <div className="lazuli-thin-scrollbar max-h-64 overflow-y-auto">
           {!query && (
-            <div className="mb-1 border-b pb-1">
+            <div className="mb-1 space-y-1 border-b pb-1">
               {allowAll && (
                 <ProjectOption
                   active={value === undefined}
@@ -139,16 +136,18 @@ export const ProjectFilter = ({
               Projetos
             </p>
           )}
-          {projects.data?.items.map((project) => (
-            <ProjectOption
-              active={value === project.id}
-              icon={FolderIcon}
-              key={project.id}
-              label={project.title}
-              onSelect={() => select(project.id)}
-              query={query}
-            />
-          ))}
+          <div className="space-y-1">
+            {projects.data?.items.map((project) => (
+              <ProjectOption
+                active={value === project.id}
+                icon={FolderIcon}
+                key={project.id}
+                label={project.title}
+                onSelect={() => select(project.id)}
+                query={query}
+              />
+            ))}
+          </div>
           {projects.data?.pagination.totalItems === 0 && query && (
             <p className="px-2 py-3 text-xs text-muted-foreground">Nenhum projeto encontrado.</p>
           )}
@@ -173,7 +172,7 @@ const ProjectOption = ({
 }) => (
   <button
     className={cn(
-      "flex w-full items-center gap-2 px-2 py-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       active && "bg-muted",
     )}
     onClick={onSelect}

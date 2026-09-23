@@ -76,7 +76,7 @@ export const PracticeSetupDialog = ({
           </div>
         ) : active ? (
           <div className="space-y-5">
-            <div className="border bg-muted/35 p-4">
+            <div className="rounded-xl border bg-muted/35 p-4">
               <p className="font-medium">Há uma prática em andamento</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {active.reviewedCards} de {active.totalCards} flashcards revisados.
@@ -99,7 +99,7 @@ export const PracticeSetupDialog = ({
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="grid grid-cols-3 gap-px border bg-border">
+            <div className="grid grid-cols-3 gap-2">
               <PracticeCount
                 label={{ singular: "Novo", plural: "Novos" }}
                 value={availability.data?.newCards ?? 0}
@@ -120,7 +120,7 @@ export const PracticeSetupDialog = ({
                   <button
                     aria-pressed={size === option.value}
                     className={cn(
-                      "border px-3 py-2 text-sm transition-colors hover:bg-muted",
+                      "rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-muted",
                       size === option.value && "border-foreground bg-muted font-medium",
                     )}
                     key={option.label}
@@ -160,8 +160,10 @@ const PracticeCount = ({
   label: { singular: string; plural: string };
   value: number;
 }) => (
-  <div className="bg-background p-3 text-center">
-    <p className="font-heading text-2xl">{value}</p>
-    <p className="text-xs text-muted-foreground">{value === 1 ? label.singular : label.plural}</p>
+  <div className="grid min-w-0 place-items-center gap-1 rounded-xl border bg-card px-2 py-3 text-center">
+    <p className="whitespace-nowrap text-xs text-muted-foreground">
+      {value === 1 ? label.singular : label.plural}
+    </p>
+    <p className="font-heading text-xl leading-none">{value}</p>
   </div>
 );

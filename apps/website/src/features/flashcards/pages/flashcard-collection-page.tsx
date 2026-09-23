@@ -5,27 +5,30 @@ import {
 } from "@lazuli/shared";
 import {
   ArchiveIcon,
+  ArchiveRestoreIcon,
   ArrowLeftIcon,
   CalendarClockIcon,
   CalendarPlusIcon,
   ClockAlertIcon,
+  FilterIcon,
   HistoryIcon,
   Layers3Icon,
   ListFilterIcon,
   MoveRightIcon,
+  PlayIcon,
   PlusIcon,
-  SparklesIcon,
   SearchIcon,
+  SearchXIcon,
   Trash2Icon,
   UploadIcon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Fragment, useEffect, useState, type ComponentType, type Ref } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { PaginationControls } from "@/components/pagination-controls.tsx";
-import { ViewModeToggle, type ViewMode } from "@/components/view-mode-toggle.tsx";
+import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -37,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import {
   Select,
   SelectContent,
@@ -46,6 +50,7 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { cn } from "@/lib/utils.ts";
 import {
   useBatchFlashcards,
   useDeleteFlashcard,
@@ -53,8 +58,8 @@ import {
   useFlashcardCollection,
   useFlashcards,
 } from "../api/flashcard-queries.ts";
-import { CollectionPicker, FlashcardEditorDialog } from "../components/flashcard-editor-sheet.tsx";
-import { FlashcardItems } from "../components/flashcard-items.tsx";
+import { CollectionPicker, FlashcardEditorPanel } from "../components/flashcard-editor-sheet.tsx";
+import { FlashcardIndex } from "../components/flashcard-items.tsx";
 import { FlashcardImportDialog } from "../components/flashcard-import-dialog.tsx";
 import { PracticeSetupDialog } from "../components/practice-setup-dialog.tsx";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
@@ -64,8 +69,13 @@ const parsePage = (value: string | null) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 };
 
+type EditorState = { type: "create" } | { type: "edit"; cardId: string } | null;
+type PendingEditorState = Exclude<EditorState, null> | "close" | null;
+type CardAction = "archive" | "delete" | "move" | "restore";
+
 export const FlashcardCollectionPage = () => {
   const { collectionId = "" } = useParams();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const query = params.get("query")?.slice(0, 200).trim() ?? "";
   const linkedCardId = params.get("card");
@@ -80,14 +90,14 @@ export const FlashcardCollectionPage = () => {
     pageSize: FLASHCARD_PAGE_SIZE,
   });
   const [search, setSearch] = useState(query);
-  const [view, setView] = useState<ViewMode>(() =>
-    localStorage.getItem("lazuli-flashcard-view") === "cards" ? "cards" : "table",
-  );
   const [selected, setSelected] = useState(new Set<string>());
-  const [editor, setEditor] = useState<
-    { type: "create" } | { type: "edit"; cardId: string } | null
-  >(null);
+  const [editor, setEditor] = useState<EditorState>(null);
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [pendingEditor, setPendingEditor] = useState<PendingEditorState>(null);
+  const compact = useCompactLayout();
   const [pendingDelete, setPendingDelete] = useState<FlashcardSummary | null>(null);
+  const [pendingArchive, setPendingArchive] = useState<FlashcardSummary | null>(null);
+  const [batchArchiveOpen, setBatchArchiveOpen] = useState(false);
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [moveCard, setMoveCard] = useState<FlashcardSummary | null>(null);
@@ -99,28 +109,37 @@ export const FlashcardCollectionPage = () => {
   const detail = useFlashcard(collectionId, editor?.type === "edit" ? editor.cardId : null);
   const batch = useBatchFlashcards(collectionId);
   const remove = useDeleteFlashcard(collectionId);
+
+  const updateParams = (
+    changes: Record<string, string | undefined>,
+    resetPage = true,
+    replace = false,
+  ) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        for (const [key, value] of Object.entries(changes)) {
+          if (
+            !value ||
+            (key === "filter" && value === "all") ||
+            (key === "sort" && value === "updated") ||
+            (key === "status" && value === "active")
+          )
+            next.delete(key);
+          else next.set(key, value);
+        }
+        if (resetPage) next.delete("page");
+        return next;
+      },
+      { replace },
+    );
+
   useEffect(() => {
-    if (linkedCardId) setEditor({ type: "edit", cardId: linkedCardId });
+    if (linkedCardId)
+      setEditor(
+        linkedCardId === "new" ? { type: "create" } : { type: "edit", cardId: linkedCardId },
+      );
   }, [linkedCardId]);
-
-  const updateParams = (changes: Record<string, string | undefined>, resetPage = true) =>
-    setParams((current) => {
-      const next = new URLSearchParams(current);
-      for (const [key, value] of Object.entries(changes)) {
-        if (
-          !value ||
-          (key === "filter" && value === "all") ||
-          (key === "sort" && value === "updated") ||
-          (key === "status" && value === "active")
-        )
-          next.delete(key);
-        else next.set(key, value);
-      }
-      if (resetPage) next.delete("page");
-      return next;
-    });
-
-  useEffect(() => setSearch(query), [query]);
   useEffect(() => {
     const normalized = search.trim();
     if (normalized === query) return;
@@ -130,19 +149,51 @@ export const FlashcardCollectionPage = () => {
   useEffect(() => setSelected(new Set()), [input.page, input.filter, input.query, input.status]);
   useEffect(() => {
     const totalPages = cards.data?.pagination.totalPages;
-    if (totalPages !== undefined && input.page > Math.max(totalPages, 1)) {
-      updateParams({ page: totalPages > 1 ? String(totalPages) : undefined }, false);
-    }
+    if (totalPages !== undefined && input.page > Math.max(totalPages, 1))
+      updateParams({ page: totalPages > 1 ? String(totalPages) : undefined }, false, true);
   }, [cards.data?.pagination.totalPages, input.page]);
+  useEffect(() => {
+    if (compact || editor || linkedCardId || !cards.data?.items.length) return;
+    const first = cards.data.items[0];
+    if (!first) return;
+    setEditor({ type: "edit", cardId: first.id });
+    updateParams({ card: first.id }, false, true);
+  }, [cards.data?.items, compact, editor, linkedCardId]);
 
-  const performCardAction = async (
-    action: "archive" | "delete" | "move" | "restore",
-    card: FlashcardSummary,
-  ) => {
-    if (action === "delete") {
-      setPendingDelete(card);
+  const openCard = (card: FlashcardSummary) => {
+    if (activeId === card.id) return;
+    const next = { type: "edit" as const, cardId: card.id };
+    if (editorDirty) {
+      setPendingEditor(next);
       return;
     }
+    setEditor(next);
+    updateParams({ card: card.id }, false);
+  };
+  const createCard = () => {
+    const next = { type: "create" as const };
+    if (editorDirty) {
+      setPendingEditor(next);
+      return;
+    }
+    setEditor(next);
+    updateParams({ card: "new" }, false);
+  };
+  const closeEditor = () => {
+    if (editorDirty) {
+      setPendingEditor("close");
+      return;
+    }
+    setEditor(null);
+    updateParams({ card: undefined }, false, true);
+  };
+  const performCardAction = async (
+    action: CardAction,
+    card: FlashcardSummary,
+    confirmed = false,
+  ) => {
+    if (action === "delete") return setPendingDelete(card);
+    if (action === "archive" && !confirmed) return setPendingArchive(card);
     if (action === "move") {
       setMoveCard(card);
       setMoveTarget(collectionId);
@@ -151,6 +202,10 @@ export const FlashcardCollectionPage = () => {
     }
     try {
       await batch.mutateAsync({ ids: [card.id], action: { type: action } });
+      if (activeId === card.id) {
+        setEditor(null);
+        updateParams({ card: undefined }, false, true);
+      }
       toast.success(action === "archive" ? "Flashcard arquivado." : "Flashcard restaurado.");
     } catch (error) {
       toast.error(
@@ -158,12 +213,16 @@ export const FlashcardCollectionPage = () => {
       );
     }
   };
-
   const performBatch = async (type: "archive" | "delete" | "restore") => {
     if (!selected.size) return;
+    const removesActiveCard = Boolean(activeId && selected.has(activeId) && type !== "restore");
     try {
       await batch.mutateAsync({ ids: [...selected], action: { type } });
       setSelected(new Set());
+      if (removesActiveCard) {
+        setEditor(null);
+        updateParams({ card: undefined }, false, true);
+      }
       if (type === "delete") setBatchDeleteOpen(false);
       toast.success(
         type === "delete"
@@ -178,18 +237,19 @@ export const FlashcardCollectionPage = () => {
       );
     }
   };
-
   const performMove = async () => {
     const ids = moveCard ? [moveCard.id] : [...selected];
     if (!ids.length || moveTarget === collectionId) return;
+    const movesActiveCard = Boolean(activeId && ids.includes(activeId));
     try {
-      await batch.mutateAsync({
-        ids,
-        action: { type: "move", collectionId: moveTarget },
-      });
+      await batch.mutateAsync({ ids, action: { type: "move", collectionId: moveTarget } });
       setSelected(new Set());
       setMoveCard(null);
       setMoveOpen(false);
+      if (movesActiveCard) {
+        setEditor(null);
+        updateParams({ card: undefined }, false, true);
+      }
       toast.success("Flashcards movidos.");
     } catch (error) {
       toast.error(
@@ -201,7 +261,7 @@ export const FlashcardCollectionPage = () => {
   if (collection.isPending) return <CollectionSkeleton />;
   if (collection.isError)
     return (
-      <main className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-8">
+      <main className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8">
         <p className="font-heading text-2xl">Coleção não encontrada</p>
         <Button asChild className="mt-4" variant="outline">
           <Link to="/flashcards">Voltar</Link>
@@ -210,376 +270,335 @@ export const FlashcardCollectionPage = () => {
     );
 
   const summary = collection.data;
+  const activeId = editor?.type === "edit" ? editor.cardId : undefined;
+  const appliedFilters =
+    Number(input.filter !== "all") +
+    Number(input.sort !== "updated") +
+    Number(input.status !== "active");
   return (
-    <main className="flex flex-1 flex-col px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
-      <div className="mx-auto w-full max-w-6xl">
-        <Link
-          className="mb-7 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          to="/flashcards"
+    <main className="h-[calc(100dvh-3.5rem)] min-h-0 max-h-[calc(100dvh-3.5rem)] flex-none overflow-hidden md:h-dvh md:max-h-dvh">
+      <section className="grid h-full min-h-0 w-full md:grid-cols-[19rem_minmax(0,1fr)] xl:grid-cols-[22rem_minmax(0,1fr)]">
+        <aside
+          className={cn(
+            "min-h-0 flex-col bg-background md:flex md:border-r",
+            editor ? "hidden" : "flex",
+          )}
         >
-          <ArrowLeftIcon className="size-4" /> Flashcards
-        </Link>
-        <header className="flex flex-col gap-6 border-b pb-7 md:flex-row md:items-end md:justify-between">
-          <div className="min-w-0">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Coleção de flashcards
-            </p>
-            <h1 className="truncate font-heading text-4xl font-medium sm:text-5xl">
-              {summary.title}
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {summary.project?.title ?? "Sem projeto"}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+          <header className="px-5 pt-5 pb-3">
+            <Link
+              className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
+              to="/flashcards"
+            >
+              <ArrowLeftIcon className="size-3.5" /> Coleções
+            </Link>
+            <div className="mt-3 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <OverflowTooltip text={summary.title}>
+                  {(ref) => (
+                    <h1
+                      className="truncate font-heading text-xl font-normal"
+                      ref={ref as Ref<HTMLHeadingElement>}
+                    >
+                      {summary.title}
+                    </h1>
+                  )}
+                </OverflowTooltip>
+                <p className="mt-1 truncate text-xs text-muted-foreground">
+                  {summary.project?.title ?? "Sem projeto"}
+                </p>
+              </div>
+              <Button
+                className="shrink-0"
+                disabled={Boolean(summary.archivedAt) || summary.dueCards === 0}
+                onClick={() => setPracticeOpen(true)}
+                size="sm"
+              >
+                <PlayIcon aria-hidden="true" className="-translate-y-px" /> Praticar{" "}
+                {summary.dueCards}
+              </Button>
+            </div>
+          </header>
+          <div className="flex items-center gap-2 p-3">
+            <SearchBox
+              disabled={!cards.isPending && !query && cards.data?.pagination.totalItems === 0}
+              search={search}
+              setSearch={setSearch}
+              clear={() => {
+                setSearch("");
+                updateParams({ query: undefined });
+              }}
+            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  aria-label="Filtrar e ordenar"
+                  className="relative"
+                  size="icon"
+                  variant="outline"
+                >
+                  <FilterIcon />
+                  {appliedFilters > 0 && (
+                    <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[0.625rem] text-primary-foreground">
+                      {appliedFilters}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 gap-4 p-4">
+                <FilterSelect
+                  label="Mostrar"
+                  value={input.filter}
+                  onChange={(value) => updateParams({ filter: value })}
+                  options={[
+                    ["all", "Todos", ListFilterIcon],
+                    ["new", "Novos", PlusIcon],
+                    ["due", "Para revisar", ClockAlertIcon],
+                    ["scheduled", "Agendados", CalendarClockIcon],
+                  ]}
+                />
+                <FilterSelect
+                  label="Ordenar"
+                  value={input.sort}
+                  onChange={(value) => updateParams({ sort: value })}
+                  options={[
+                    ["updated", "Atualizados", HistoryIcon],
+                    ["created", "Criados", CalendarPlusIcon],
+                    ["due", "Próxima revisão", CalendarClockIcon],
+                  ]}
+                />
+                <FilterSelect
+                  label="Estado"
+                  value={input.status}
+                  onChange={(value) => updateParams({ status: value })}
+                  options={[
+                    ["active", "Ativos", Layers3Icon],
+                    ["archived", "Arquivados", ArchiveIcon],
+                  ]}
+                />
+                {appliedFilters > 0 && (
+                  <Button
+                    className="w-full"
+                    onClick={() =>
+                      updateParams({ filter: "all", sort: "updated", status: "active" })
+                    }
+                    variant="outline"
+                  >
+                    Limpar filtros
+                  </Button>
+                )}
+              </PopoverContent>
+            </Popover>
             <Button
+              aria-label="Importar flashcards"
               disabled={Boolean(summary.archivedAt)}
               onClick={() => setImportOpen(true)}
+              size="icon"
               variant="outline"
             >
-              <UploadIcon /> Importar
+              <UploadIcon />
             </Button>
             <Button
+              aria-label="Novo flashcard"
               disabled={Boolean(summary.archivedAt)}
-              onClick={() => setEditor({ type: "create" })}
-              variant="outline"
+              onClick={createCard}
+              size="icon"
             >
-              <PlusIcon /> Novo flashcard
-            </Button>
-            <Button
-              disabled={Boolean(summary.archivedAt) || summary.dueCards === 0}
-              onClick={() => setPracticeOpen(true)}
-            >
-              Praticar ({summary.dueCards})
+              <PlusIcon />
             </Button>
           </div>
-        </header>
-
-        <section
-          aria-label="Resumo da coleção"
-          className="grid grid-cols-2 gap-px border-b bg-border md:grid-cols-4"
-        >
-          <Metric label="Novos" value={summary.newCards} />
-          <Metric label="Estudados" value={summary.studiedCards} />
-          <Metric label="Para revisar" value={summary.dueCards} />
-          <Metric
-            label="Próxima revisão"
-            value={
-              summary.dueCards
-                ? "Agora"
-                : summary.nextPracticeAt
-                  ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(
-                      new Date(summary.nextPracticeAt),
-                    )
-                  : "—"
-            }
+          <SelectionBar
+            count={selected.size}
+            due={summary.dueCards}
+            onClear={() => setSelected(new Set())}
+            onDelete={() => setBatchDeleteOpen(true)}
+            onMove={() => {
+              setMoveTarget(collectionId);
+              setMoveCard(null);
+              setMoveOpen(true);
+            }}
+            onToggleArchive={() => {
+              if (input.status === "active") setBatchArchiveOpen(true);
+              else void performBatch("restore");
+            }}
+            status={input.status}
+            studied={summary.studiedCards}
+            total={cards.data?.pagination.totalItems ?? 0}
+            totalCards={summary.totalCards}
+            reviews={summary.reviewsLastSevenDays}
           />
-        </section>
-
-        <div className="my-7 flex flex-col gap-3 border-y py-3 lg:flex-row lg:items-center">
-          <div className="relative min-w-0 flex-1 lg:max-w-md">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              aria-label="Pesquisar flashcards"
-              className="pr-9 pl-9"
-              maxLength={200}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Pesquisar pergunta ou resposta"
-              value={search}
-            />
-            {search && (
-              <Button
-                aria-label="Limpar pesquisa"
-                className="absolute top-1/2 right-1 -translate-y-1/2"
-                onClick={() => {
-                  setSearch("");
-                  updateParams({ query: undefined });
+          <div className="min-h-0 flex-1 overflow-y-auto p-2 lazuli-thin-scrollbar">
+            {cards.isPending && <FlashcardIndexSkeleton />}
+            {cards.isError && (
+              <div className="p-5 text-center text-sm">
+                <p>Não foi possível carregar.</p>
+                <Button
+                  className="mt-3"
+                  onClick={() => void cards.refetch()}
+                  size="sm"
+                  variant="outline"
+                >
+                  Tentar novamente
+                </Button>
+              </div>
+            )}
+            {cards.data?.pagination.totalItems === 0 && (
+              <div className="px-3 py-10 text-center">
+                {query ? (
+                  <SearchXIcon className="mx-auto mb-3 size-6 text-muted-foreground" />
+                ) : (
+                  <Layers3Icon className="mx-auto mb-3 size-6 text-muted-foreground" />
+                )}
+                <p className="font-heading text-lg">
+                  {query ? "Nenhum resultado" : "Nenhum flashcard ainda"}
+                </p>
+                {!query && input.status === "active" && (
+                  <Button className="mt-4" onClick={createCard} size="sm">
+                    <PlusIcon /> Criar flashcard
+                  </Button>
+                )}
+              </div>
+            )}
+            {cards.data?.items.length ? (
+              <FlashcardIndex
+                activeId={activeId}
+                cards={cards.data.items}
+                onOpen={openCard}
+                onSelect={(id, checked) =>
+                  setSelected((current) => {
+                    const next = new Set(current);
+                    if (checked) next.add(id);
+                    else next.delete(id);
+                    return next;
+                  })
+                }
+                query={query}
+                selected={selected}
+              />
+            ) : null}
+          </div>
+          {cards.data && cards.data.pagination.totalPages > 1 && (
+            <div className="border-t px-2">
+              <PaginationControls
+                className="mt-0 h-16"
+                label="Paginação de flashcards"
+                onPageChange={(page) =>
+                  updateParams({ page: page > 1 ? String(page) : undefined }, false)
+                }
+                pagination={cards.data.pagination}
+              />
+            </div>
+          )}
+        </aside>
+        <div className={cn("min-h-0 min-w-0 flex-col bg-card md:flex", editor ? "flex" : "hidden")}>
+          {editor && (
+            <div className="flex h-12 shrink-0 items-center border-b px-3 md:hidden">
+              <Button onClick={closeEditor} size="sm" variant="ghost">
+                <ArrowLeftIcon /> Flashcards
+              </Button>
+            </div>
+          )}
+          <div className="flex min-h-0 flex-1">
+            {editor?.type === "create" && (
+              <FlashcardEditorPanel
+                collectionId={collectionId}
+                key="new"
+                onOpenChange={() => undefined}
+                onDirtyChange={setEditorDirty}
+                onSaved={(cardId, savedCollectionId) => {
+                  setEditorDirty(false);
+                  if (savedCollectionId !== collectionId) {
+                    void navigate(`/flashcards/${savedCollectionId}?card=${cardId}`);
+                    return;
+                  }
+                  setEditor({ type: "edit", cardId });
+                  updateParams({ card: cardId }, false, true);
                 }}
-                size="icon-sm"
-                variant="ghost"
-              >
-                <XIcon />
-              </Button>
+                open
+                readOnly={Boolean(summary.archivedAt)}
+              />
             )}
-          </div>
-          <Select onValueChange={(value) => updateParams({ filter: value })} value={input.filter}>
-            <SelectTrigger aria-label="Filtrar cards" className="w-full lg:w-40">
-              <SelectValue>
-                {input.filter === "all" && <ListFilterIcon />}
-                {input.filter === "new" && <SparklesIcon />}
-                {input.filter === "due" && <ClockAlertIcon />}
-                {input.filter === "scheduled" && <CalendarClockIcon />}
-                {
-                  { all: "Todos", new: "Novos", due: "Para revisar", scheduled: "Agendados" }[
-                    input.filter
-                  ]
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                <ListFilterIcon /> Todos
-              </SelectItem>
-              <SelectSeparator />
-              <SelectItem value="new">
-                <SparklesIcon /> Novos
-              </SelectItem>
-              <SelectItem value="due">
-                <ClockAlertIcon /> Para revisar
-              </SelectItem>
-              <SelectItem value="scheduled">
-                <CalendarClockIcon /> Agendados
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <Select onValueChange={(value) => updateParams({ sort: value })} value={input.sort}>
-            <SelectTrigger aria-label="Ordenar cards" className="w-full lg:w-44">
-              <SelectValue>
-                {input.sort === "updated" && <HistoryIcon />}
-                {input.sort === "created" && <CalendarPlusIcon />}
-                {input.sort === "due" && <CalendarClockIcon />}
-                {{ updated: "Atualizados", created: "Criados", due: "Próxima revisão" }[input.sort]}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="updated">
-                <HistoryIcon /> Atualizados
-              </SelectItem>
-              <SelectItem value="created">
-                <CalendarPlusIcon /> Criados
-              </SelectItem>
-              <SelectItem value="due">
-                <CalendarClockIcon /> Próxima revisão
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <Select onValueChange={(value) => updateParams({ status: value })} value={input.status}>
-            <SelectTrigger aria-label="Estado dos cards" className="w-full lg:w-36">
-              <SelectValue>
-                {input.status === "active" ? <Layers3Icon /> : <ArchiveIcon />}
-                {input.status === "active" ? "Ativos" : "Arquivados"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">
-                <Layers3Icon /> Ativos
-              </SelectItem>
-              <SelectItem value="archived">
-                <ArchiveIcon /> Arquivados
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="lg:ml-auto">
-            <ViewModeToggle
-              label="Visualização dos flashcards"
-              onChange={(next) => {
-                setView(next);
-                localStorage.setItem("lazuli-flashcard-view", next);
-              }}
-              value={view}
-            />
+            {editor?.type === "edit" && detail.data && (
+              <FlashcardEditorPanel
+                card={detail.data}
+                collectionId={collectionId}
+                key={detail.data.id}
+                onOpenChange={() => undefined}
+                onAction={(action) => void performCardAction(action, detail.data)}
+                onDirtyChange={setEditorDirty}
+                onSaved={(cardId, savedCollectionId) => {
+                  setEditorDirty(false);
+                  if (savedCollectionId !== collectionId)
+                    void navigate(`/flashcards/${savedCollectionId}?card=${cardId}`);
+                  else updateParams({ card: cardId }, false, true);
+                }}
+                open
+                readOnly={Boolean(summary.archivedAt)}
+              />
+            )}
+            {editor?.type === "edit" && detail.isPending && <FlashcardEditorSkeleton />}
+            {!editor && !cards.isPending && (
+              <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                <div>
+                  <Layers3Icon className="mx-auto mb-3 size-7" />
+                  <p>Selecione um flashcard ou crie um novo.</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+      </section>
 
-        {selected.size > 0 && (
-          <div className="fixed bottom-4 left-1/2 z-40 flex w-[calc(100%-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-2 border bg-popover px-3 py-2 shadow-lg sm:bottom-6 sm:w-auto sm:justify-start">
-            <span className="w-full text-sm sm:mr-auto sm:w-auto">
-              {selected.size} {selected.size === 1 ? "selecionado" : "selecionados"}
-              <span className="hidden sm:inline"> nesta página</span>
-            </span>
-            <Button
-              disabled={batch.isPending}
-              onClick={() => {
-                setMoveTarget(collectionId);
-                setMoveCard(null);
-                setMoveOpen(true);
-              }}
-              size="sm"
-              variant="outline"
-            >
-              <MoveRightIcon /> Mover
-            </Button>
-            {input.status === "active" ? (
-              <Button
-                disabled={batch.isPending}
-                onClick={() => void performBatch("archive")}
-                size="sm"
-                variant="outline"
-              >
-                <ArchiveIcon /> Arquivar
-              </Button>
-            ) : (
-              <Button
-                disabled={batch.isPending}
-                onClick={() => void performBatch("restore")}
-                size="sm"
-                variant="outline"
-              >
-                Restaurar
-              </Button>
-            )}
-            <Button
-              disabled={batch.isPending}
-              onClick={() => setBatchDeleteOpen(true)}
-              size="sm"
-              variant="destructive"
-            >
-              <Trash2Icon /> Excluir
-            </Button>
-          </div>
-        )}
+      <ArchiveConfirmation
+        description="O flashcard deixará de aparecer entre os materiais ativos, mas poderá ser restaurado."
+        disabled={batch.isPending}
+        onConfirm={() => {
+          if (!pendingArchive) return;
+          const card = pendingArchive;
+          setPendingArchive(null);
+          void performCardAction("archive", card, true);
+        }}
+        onOpenChange={(open) => !open && setPendingArchive(null)}
+        open={Boolean(pendingArchive)}
+        title="Arquivar flashcard?"
+      />
+      <ArchiveConfirmation
+        description="Os itens selecionados deixarão de aparecer entre os materiais ativos e poderão ser restaurados posteriormente."
+        disabled={batch.isPending}
+        onConfirm={() => {
+          setBatchArchiveOpen(false);
+          void performBatch("archive");
+        }}
+        onOpenChange={setBatchArchiveOpen}
+        open={batchArchiveOpen}
+        title={`Arquivar ${selected.size} flashcards?`}
+      />
 
-        {cards.isPending && (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }, (_, index) => (
-              <Skeleton className="h-20" key={index} />
-            ))}
-          </div>
-        )}
-        {cards.isError && (
-          <div className="border border-dashed p-10 text-center">
-            <p>Não foi possível carregar os flashcards.</p>
-            <Button className="mt-4" onClick={() => void cards.refetch()} variant="outline">
-              Tentar novamente
-            </Button>
-          </div>
-        )}
-        {cards.data?.pagination.totalItems === 0 && (
-          <div className="border border-dashed px-5 py-16 text-center">
-            <Layers3Icon className="mx-auto mb-4 size-7 text-muted-foreground" />
-            <h2 className="font-heading text-2xl">
-              {query
-                ? "Nenhum flashcard encontrado"
-                : input.status === "archived"
-                  ? "Nenhum flashcard arquivado"
-                  : "Nenhum flashcard ainda"}
-            </h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-              {query
-                ? "Tente pesquisar por outros termos."
-                : "Crie perguntas e respostas para começar a estudar esta coleção."}
-            </p>
-            {!query && input.status === "active" && (
-              <Button className="mt-5" onClick={() => setEditor({ type: "create" })}>
-                <PlusIcon /> Criar flashcard
-              </Button>
-            )}
-          </div>
-        )}
-        {cards.data && cards.data.items.length > 0 && (
-          <FlashcardItems
-            cards={cards.data.items}
-            editable={!summary.archivedAt}
-            mode={view}
-            onAction={(action, card) => void performCardAction(action, card)}
-            onEdit={(card) => setEditor({ type: "edit", cardId: card.id })}
-            onSelect={(id, checked) =>
-              setSelected((current) => {
-                const next = new Set(current);
-                if (checked) next.add(id);
-                else next.delete(id);
-                return next;
-              })
+      <DeleteDialogs
+        batchDeleteOpen={batchDeleteOpen}
+        batchPending={batch.isPending || remove.isPending}
+        onBatchDeleteOpenChange={setBatchDeleteOpen}
+        onDeleteBatch={() => void performBatch("delete")}
+        onDeleteOne={async () => {
+          if (!pendingDelete) return;
+          try {
+            const deletedId = pendingDelete.id;
+            await remove.mutateAsync(deletedId);
+            if (activeId === deletedId) {
+              setEditor(null);
+              updateParams({ card: undefined }, false, true);
             }
-            query={query}
-            selected={selected}
-          />
-        )}
-        {cards.data && (
-          <PaginationControls
-            label="Paginação de flashcards"
-            onPageChange={(page) =>
-              updateParams({ page: page > 1 ? String(page) : undefined }, false)
-            }
-            pagination={cards.data.pagination}
-          />
-        )}
-      </div>
-
-      {editor?.type === "create" && (
-        <FlashcardEditorDialog
-          collectionId={collectionId}
-          onOpenChange={(open) => !open && setEditor(null)}
-          open
-        />
-      )}
-      {editor?.type === "edit" && detail.data && (
-        <FlashcardEditorDialog
-          card={detail.data}
-          collectionId={collectionId}
-          onOpenChange={(open) => {
-            if (open) return;
-            setEditor(null);
-            updateParams({ card: undefined }, false);
-          }}
-          open
-        />
-      )}
-      {editor?.type === "edit" && detail.isPending && (
-        <div
-          aria-live="polite"
-          className="fixed right-5 bottom-5 rounded-md bg-popover px-4 py-3 text-sm shadow-md"
-        >
-          Carregando flashcard…
-        </div>
-      )}
-      <AlertDialog
-        open={Boolean(pendingDelete)}
-        onOpenChange={(open) => !open && setPendingDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir flashcard?</AlertDialogTitle>
-            <AlertDialogDescription>
-              O conteúdo e todo o histórico deste card serão excluídos definitivamente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <Button
-              disabled={remove.isPending}
-              onClick={async () => {
-                if (!pendingDelete) return;
-                try {
-                  await remove.mutateAsync(pendingDelete.id);
-                  toast.success("Flashcard excluído.");
-                  setPendingDelete(null);
-                } catch (error) {
-                  toast.error(
-                    getFlashcardCollectionErrorMessage(
-                      error,
-                      "Não foi possível excluir o flashcard.",
-                    ),
-                  );
-                }
-              }}
-              variant="destructive"
-            >
-              Excluir
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog open={batchDeleteOpen} onOpenChange={setBatchDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir {selected.size} flashcards?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Os conteúdos e históricos selecionados serão excluídos definitivamente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <Button
-              disabled={batch.isPending}
-              onClick={() => void performBatch("delete")}
-              variant="destructive"
-            >
-              Excluir
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            toast.success("Flashcard excluído.");
+            setPendingDelete(null);
+          } catch (error) {
+            toast.error(
+              getFlashcardCollectionErrorMessage(error, "Não foi possível excluir o flashcard."),
+            );
+          }
+        }}
+        onPendingDeleteChange={setPendingDelete}
+        pendingDelete={pendingDelete}
+        selectedCount={selected.size}
+      />
       <AlertDialog
         open={moveOpen}
         onOpenChange={(open) => {
@@ -618,23 +637,344 @@ export const FlashcardCollectionPage = () => {
         onOpenChange={setImportOpen}
         open={importOpen}
       />
+      <AlertDialog
+        open={Boolean(pendingEditor)}
+        onOpenChange={(open) => !open && setPendingEditor(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A pergunta ou resposta atual ainda não foi salva.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <Button
+              onClick={() => {
+                if (!pendingEditor) return;
+                const next = pendingEditor;
+                setPendingEditor(null);
+                setEditorDirty(false);
+                if (next === "close") {
+                  setEditor(null);
+                  updateParams({ card: undefined }, false, true);
+                  return;
+                }
+                setEditor(next);
+                updateParams({ card: next.type === "create" ? "new" : next.cardId }, false);
+              }}
+              variant="destructive"
+            >
+              Descartar
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 };
 
-const Metric = ({ label, value }: { label: string; value: number | string }) => (
-  <div className="bg-background px-4 py-5">
-    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-    <p className="mt-1 font-heading text-2xl">{value}</p>
+const SearchBox = ({
+  clear,
+  disabled,
+  search,
+  setSearch,
+}: {
+  clear: () => void;
+  disabled: boolean;
+  search: string;
+  setSearch: (value: string) => void;
+}) => (
+  <div className="relative min-w-0 flex-1">
+    <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+    <Input
+      aria-label="Pesquisar flashcards"
+      className="pr-8 pl-9"
+      disabled={disabled}
+      maxLength={200}
+      onChange={(event) => setSearch(event.target.value)}
+      placeholder="Buscar materiais"
+      value={search}
+    />
+    {search && (
+      <Button
+        aria-label="Limpar pesquisa"
+        className="absolute top-1/2 right-1 -translate-y-1/2"
+        onClick={clear}
+        size="icon-sm"
+        variant="ghost"
+      >
+        <XIcon />
+      </Button>
+    )}
   </div>
 );
+
+type FilterOption = readonly [string, string, ComponentType<{ className?: string }>];
+const FilterSelect = ({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: ReadonlyArray<FilterOption>;
+  value: string;
+}) => (
+  <div className="space-y-2">
+    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
+    <Select onValueChange={onChange} value={value}>
+      <SelectTrigger className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map(([optionValue, optionLabel, Icon], index) => (
+          <Fragment key={optionValue}>
+            {index === 1 && label === "Mostrar" && <SelectSeparator />}
+            <SelectItem value={optionValue}>
+              <Icon className="size-4" /> {optionLabel}
+            </SelectItem>
+          </Fragment>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+);
+
+const SelectionBar = ({
+  count,
+  due,
+  onClear,
+  onDelete,
+  onMove,
+  onToggleArchive,
+  status,
+  studied,
+  total,
+  totalCards,
+  reviews,
+}: {
+  count: number;
+  due: number;
+  onClear: () => void;
+  onDelete: () => void;
+  onMove: () => void;
+  onToggleArchive: () => void;
+  status: string;
+  studied: number;
+  total: number;
+  totalCards: number;
+  reviews: number;
+}) => (
+  <div className="flex h-12 shrink-0 items-center border-y px-3 text-xs text-muted-foreground">
+    {count ? (
+      <div className="flex w-full min-w-0 items-center gap-1">
+        <span className="mr-auto truncate text-foreground">
+          {count} {count === 1 ? "selecionado" : "selecionados"}
+        </span>
+        <Button onClick={onClear} size="xs" variant="ghost">
+          Desmarcar
+        </Button>
+        <Button aria-label="Mover selecionados" onClick={onMove} size="icon-sm" variant="outline">
+          <MoveRightIcon />
+        </Button>
+        <Button
+          aria-label={status === "active" ? "Arquivar selecionados" : "Restaurar selecionados"}
+          onClick={onToggleArchive}
+          size="icon-sm"
+          variant="outline"
+        >
+          {status === "active" ? <ArchiveIcon /> : <ArchiveRestoreIcon />}
+        </Button>
+        <Button
+          aria-label="Excluir selecionados"
+          className="text-destructive hover:text-destructive"
+          onClick={onDelete}
+          size="icon-sm"
+          variant="outline"
+        >
+          <Trash2Icon />
+        </Button>
+      </div>
+    ) : (
+      <div className="w-full min-w-0 leading-4">
+        <p className="truncate text-foreground">
+          {total} {total === 1 ? "flashcard" : "flashcards"} · {studied} de {totalCards} estudados ·{" "}
+          {due} disponíveis
+        </p>
+        <p className="truncate">
+          {reviews === 0
+            ? "Sem revisões nos últimos 7 dias"
+            : `${reviews} ${reviews === 1 ? "revisão" : "revisões"} nos últimos 7 dias`}
+        </p>
+      </div>
+    )}
+  </div>
+);
+
+const ArchiveConfirmation = ({
+  description,
+  disabled,
+  onConfirm,
+  onOpenChange,
+  open,
+  title,
+}: {
+  description: string;
+  disabled: boolean;
+  onConfirm: () => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  title: string;
+}) => (
+  <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
+        <AlertDialogDescription>{description}</AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+        <Button disabled={disabled} onClick={onConfirm}>
+          <ArchiveIcon /> Arquivar
+        </Button>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+);
+
+const DeleteDialogs = ({
+  batchDeleteOpen,
+  batchPending,
+  onBatchDeleteOpenChange,
+  onDeleteBatch,
+  onDeleteOne,
+  onPendingDeleteChange,
+  pendingDelete,
+  selectedCount,
+}: {
+  batchDeleteOpen: boolean;
+  batchPending: boolean;
+  onBatchDeleteOpenChange: (open: boolean) => void;
+  onDeleteBatch: () => void;
+  onDeleteOne: () => void;
+  onPendingDeleteChange: (card: FlashcardSummary | null) => void;
+  pendingDelete: FlashcardSummary | null;
+  selectedCount: number;
+}) => (
+  <>
+    <AlertDialog
+      open={Boolean(pendingDelete)}
+      onOpenChange={(open) => !open && onPendingDeleteChange(null)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir flashcard?</AlertDialogTitle>
+          <AlertDialogDescription>
+            O conteúdo e todo o histórico deste card serão excluídos definitivamente.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <Button disabled={batchPending} onClick={onDeleteOne} variant="destructive">
+            <Trash2Icon /> Excluir
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    <AlertDialog open={batchDeleteOpen} onOpenChange={onBatchDeleteOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir {selectedCount} flashcards?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Os conteúdos e históricos selecionados serão excluídos definitivamente.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <Button disabled={batchPending} onClick={onDeleteBatch} variant="destructive">
+            <Trash2Icon /> Excluir
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
+);
+
 const CollectionSkeleton = () => (
-  <main className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-8">
-    <Skeleton className="h-5 w-24" />
-    <Skeleton className="mt-8 h-12 w-80 max-w-full" />
-    <Skeleton className="mt-8 h-24 w-full" />
-    <Skeleton className="mt-8 h-80 w-full" />
+  <main className="grid h-[calc(100dvh-3.5rem)] min-h-0 md:h-dvh md:grid-cols-[19rem_minmax(0,1fr)] xl:grid-cols-[22rem_minmax(0,1fr)]">
+    <aside className="border-r px-5 py-5">
+      <Skeleton className="h-4 w-20" />
+      <Skeleton className="mt-5 h-7 w-40" />
+      <Skeleton className="mt-2 h-3 w-24" />
+      <Skeleton className="mt-7 h-9 w-full" />
+      <div className="mt-8">
+        <FlashcardIndexSkeleton />
+      </div>
+    </aside>
+    <FlashcardEditorSkeleton className="hidden md:flex" />
   </main>
 );
+
+const FlashcardIndexSkeleton = () => (
+  <div aria-label="Carregando flashcards" className="space-y-1" role="status">
+    {Array.from({ length: 7 }, (_, index) => (
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 px-2 py-2.5" key={index}>
+        <Skeleton className="mt-0.5 size-4" />
+        <div className="min-w-0 space-y-2">
+          <Skeleton className="h-4" style={{ width: `${72 + (index % 3) * 8}%` }} />
+          <Skeleton className="h-3 w-32 max-w-[65%]" />
+        </div>
+      </div>
+    ))}
+    <span className="sr-only">Carregando flashcards...</span>
+  </div>
+);
+
+const FlashcardEditorSkeleton = ({ className }: { className?: string }) => (
+  <div
+    aria-label="Carregando conteúdo do flashcard"
+    className={cn("min-h-0 flex-1 flex-col px-6 py-6 sm:px-10", className ?? "flex")}
+    role="status"
+  >
+    <div className="mx-auto w-full max-w-3xl">
+      <div className="flex gap-2">
+        <Skeleton className="h-6 w-16" />
+        <Skeleton className="h-6 w-24" />
+      </div>
+      <div className="pt-[clamp(2.5rem,7vh,5rem)]">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="mt-5 h-9 w-[85%]" />
+        <Skeleton className="mt-3 h-9 w-[58%]" />
+        <div className="my-10 flex items-center gap-3">
+          <Skeleton className="h-px flex-1" />
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-px flex-1" />
+        </div>
+        <Skeleton className="h-6 w-[78%]" />
+        <Skeleton className="mt-3 h-6 w-[52%]" />
+      </div>
+    </div>
+    <span className="sr-only">Carregando conteúdo...</span>
+  </div>
+);
+
+const useCompactLayout = () => {
+  const [compact, setCompact] = useState(() =>
+    typeof window === "undefined" ? false : window.matchMedia("(max-width: 767px)").matches,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setCompact(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  return compact;
+};
 
 export default FlashcardCollectionPage;

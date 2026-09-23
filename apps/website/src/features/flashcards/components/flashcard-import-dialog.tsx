@@ -129,7 +129,7 @@ export const FlashcardImportDialog = ({
           {!preview ? (
             <button
               className={cn(
-                "grid min-h-52 w-full place-items-center border border-dashed p-6 text-center transition-colors hover:bg-muted/35",
+                "grid min-h-52 w-full place-items-center rounded-xl border border-dashed p-6 text-center transition-colors hover:bg-muted/35",
                 dragging && "border-foreground bg-muted/35",
               )}
               disabled={previewImport.isPending}
@@ -163,7 +163,7 @@ export const FlashcardImportDialog = ({
             </button>
           ) : (
             <div>
-              <div className="mb-5 flex items-center gap-3 border p-3">
+              <div className="mb-5 flex items-center gap-3 rounded-lg border p-3">
                 <FileSpreadsheetIcon className="size-5 shrink-0 text-muted-foreground" />
                 <OverflowTooltip text={file?.name ?? "Arquivo"}>
                   {(ref) => (
@@ -196,7 +196,7 @@ export const FlashcardImportDialog = ({
                   </p>
                 )}
               </div>
-              <div className="max-h-80 overflow-y-auto border lazuli-thin-scrollbar">
+              <div className="max-h-80 overflow-y-auto rounded-lg border lazuli-thin-scrollbar">
                 <div className="sticky top-0 grid grid-cols-2 border-b bg-muted px-3 py-2 text-xs font-medium tracking-wide uppercase">
                   <span>Pergunta</span>
                   <span>Resposta</span>
@@ -274,7 +274,7 @@ export const FlashcardImportDialog = ({
             type="file"
           />
         </div>
-        <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4">
+        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
           <DialogCancelButton
             disabled={previewImport.isPending || importCards.isPending}
             onClick={close}

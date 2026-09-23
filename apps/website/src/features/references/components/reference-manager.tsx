@@ -59,7 +59,7 @@ export const ReferenceManager = ({
   });
   const count = references.data?.items.length ?? 0;
   return (
-    <section className="border-t pt-3">
+    <section className="border-t py-4">
       <div className="flex min-h-8 items-center gap-2 text-xs text-muted-foreground">
         <Link2Icon aria-hidden="true" className="size-3.5 text-primary" />
         <span className="flex-1">
