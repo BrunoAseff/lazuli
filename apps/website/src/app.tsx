@@ -32,6 +32,9 @@ const ProjectWorkspaceLayout = lazy(
 const DocumentEditorPage = lazy(
   () => import("@/features/documents/pages/document-editor-page.tsx"),
 );
+const EditorialDesignPreviewPage = lazy(
+  () => import("@/features/design-preview/pages/editorial-design-preview-page.tsx"),
+);
 
 export const App = () => (
   <Suspense fallback={<SessionLoading />}>
@@ -43,6 +46,7 @@ export const App = () => (
       </Route>
       <Route element={<VerifyEmailPage />} path="verify-email" />
       <Route element={<PrivateRoute />}>
+        <Route element={<EditorialDesignPreviewPage />} path="design-preview" />
         <Route element={<AppShell />}>
           <Route element={<ProjectListPage />} path="documents" />
           <Route element={<FlashcardCollectionListPage />} path="flashcards" />
