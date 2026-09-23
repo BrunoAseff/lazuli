@@ -301,6 +301,24 @@
   min-height: 8rem;
 }
 
+.lazuli-flashcard-workbench .bn-editor {
+  min-height: 7rem;
+  padding-inline: 0;
+  font-family: var(--font-heading);
+}
+
+.lazuli-flashcard-workbench-question .bn-editor {
+  font-size: clamp(1.5rem, 2.5vw, 2.25rem);
+  line-height: 1.16;
+  letter-spacing: -0.025em;
+}
+
+.lazuli-flashcard-workbench-answer .bn-editor {
+  color: var(--muted-foreground);
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+
 .lazuli-flashcard-practice .bn-editor {
   min-height: 0;
 }

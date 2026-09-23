@@ -1,6 +1,7 @@
 import { calculateFlashcardProgress, type FlashcardCollectionSummary } from "@lazuli/shared";
-import { CalendarClockIcon, Layers3Icon, PlayIcon, RotateCcwIcon } from "lucide-react";
+import { CalendarClockIcon, PlayIcon, RotateCcwIcon } from "lucide-react";
 
+import { FlashcardCollectionMark } from "@/components/flashcard-collection-mark.tsx";
 import { StudyCollectionActions } from "@/components/study-collection-actions.tsx";
 import { StudyCollectionIdentity } from "@/components/study-collection-identity.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -34,18 +35,22 @@ export const FlashcardCollectionList = ({
   onPractice: (collection: FlashcardCollectionSummary) => void;
   query: string;
 }) => (
-  <div className="divide-y border-y">
+  <div className="space-y-2">
     {collections.map((collection) => {
       const progress = calculateFlashcardProgress(collection.studiedCards, collection.totalCards);
       return (
         <article
-          className="grid gap-4 py-5 sm:px-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(12rem,0.8fr)_minmax(13rem,0.9fr)_auto] lg:items-center"
+          className="grid gap-4 rounded-xl border bg-card px-4 py-4 transition-colors hover:bg-accent/45 sm:px-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(11rem,0.75fr)_minmax(13rem,0.9fr)_auto] lg:items-center"
           key={collection.id}
         >
           <StudyCollectionIdentity
             href={`/flashcards/${collection.id}`}
-            icon={
-              <Layers3Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+            icon={<FlashcardCollectionMark />}
+            metadata={
+              <>
+                {collection.project?.title ?? "Sem projeto"} · {collection.totalCards}{" "}
+                {collection.totalCards === 1 ? "card" : "cards"}
+              </>
             }
             projectTitle={collection.project?.title}
             query={query}
