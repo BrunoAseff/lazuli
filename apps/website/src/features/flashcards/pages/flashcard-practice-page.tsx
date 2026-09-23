@@ -149,7 +149,7 @@ export default function FlashcardPracticePage() {
 
   return (
     <main className="flex min-h-[calc(100vh-2px)] flex-1 flex-col px-5 py-7 sm:px-8 lg:px-12">
-      <div className="mx-auto flex w-full max-w-5xl items-center gap-4 border-b pb-5">
+      <div className="mx-auto flex w-full max-w-4xl items-center gap-4">
         <Button
           aria-label="Sair da prática"
           onClick={() => navigate(`/flashcards/${collectionId}`)}
@@ -170,13 +170,13 @@ export default function FlashcardPracticePage() {
       </div>
       <Progress
         aria-label={`${session.reviewedCards} de ${session.totalCards} flashcards revisados`}
-        className="mx-auto mt-4 h-1 w-full max-w-5xl"
+        className="mx-auto mt-4 h-1 w-full max-w-4xl"
         value={progress}
       />
-      <div className="mx-auto flex w-full max-w-3xl flex-col pt-12 pb-10 sm:pt-16">
-        <section aria-labelledby="question-title">
+      <div className="mx-auto mt-10 flex w-full max-w-3xl flex-col py-8 sm:mt-14 sm:py-10">
+        <section className="text-center" aria-labelledby="question-title">
           <p
-            className="mb-5 text-center text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase"
+            className="mb-5 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase"
             id="question-title"
           >
             Pergunta
@@ -184,15 +184,15 @@ export default function FlashcardPracticePage() {
           <RichContent content={session.currentItem.card.question as LazuliDocumentBlock} />
         </section>
         {!revealed ? (
-          <Button className="mx-auto mt-10 min-w-52" onClick={() => setRevealed(true)} size="lg">
+          <Button className="mt-10 self-center" onClick={() => setRevealed(true)} size="lg">
             Mostrar resposta
           </Button>
         ) : (
           <>
-            <div className="my-9 border-t" />
-            <section aria-labelledby="answer-title">
+            <div className="my-9 h-px bg-border" />
+            <section className="text-center" aria-labelledby="answer-title">
               <p
-                className="mb-5 text-center text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase"
+                className="mb-5 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase"
                 id="answer-title"
               >
                 Resposta
@@ -276,7 +276,7 @@ const PracticeSummary = ({
   const completed = session.status === "completed";
   return (
     <main className="mx-auto flex min-h-[75vh] w-full max-w-3xl flex-col justify-center px-5 py-12 text-center">
-      <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">
+      <p className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
         {completed ? "Sessão concluída" : "Sessão encerrada"}
       </p>
       <h1 className="mt-3 font-heading text-4xl sm:text-5xl">
@@ -295,11 +295,16 @@ const PracticeSummary = ({
               }).format(new Date(collection.data.nextPracticeAt))}.`
             : "Nenhuma outra revisão está agendada."}
       </p>
-      <div className="mt-8 grid grid-cols-4 gap-px border bg-border text-left">
+      <div className="mt-8 flex flex-wrap justify-center gap-2">
         {ratings.map((rating) => (
-          <div className="bg-background p-4" key={rating.value}>
-            <p className="font-heading text-2xl">{session.ratings[rating.value]}</p>
-            <p className="text-xs text-muted-foreground">{rating.label}</p>
+          <div
+            className="grid min-w-28 grid-cols-[1fr_2ch] items-baseline gap-3 rounded-xl border bg-card px-4 py-3 text-left"
+            key={rating.value}
+          >
+            <p className="text-sm text-muted-foreground">{rating.label}</p>
+            <p className="text-right font-heading text-xl tabular-nums">
+              {session.ratings[rating.value]}
+            </p>
           </div>
         ))}
       </div>
