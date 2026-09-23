@@ -1,8 +1,9 @@
 import { Outlet } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useState, type CSSProperties } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar.tsx";
+import { BrandMark } from "@/components/brand-mark.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar.tsx";
 import { DocumentImportProvider } from "@/features/document-imports/document-import-provider.tsx";
@@ -28,13 +29,21 @@ export const AppShell = () => {
   if (userId && cacheUserId !== userId) return <SessionLoading />;
 
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "13.375rem",
+          "--sidebar-width-icon": "13.375rem",
+        } as CSSProperties
+      }
+    >
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4 md:hidden">
           <SidebarTrigger />
           <Separator orientation="vertical" />
-          <span className="font-heading text-xl font-semibold">Lazúli</span>
+          <BrandMark className="size-6" />
+          <span className="font-heading text-xl font-medium tracking-[-0.02em]">Lazúli</span>
         </header>
         <DocumentImportProvider key={userId} userId={userId ?? ""}>
           <Outlet />
