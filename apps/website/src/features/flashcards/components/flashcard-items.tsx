@@ -1,13 +1,10 @@
 import type { FlashcardSummary } from "@lazuli/shared";
 import { ArchiveIcon, BrainIcon, RefreshCwIcon, SparklesIcon } from "lucide-react";
-import type { Ref } from "react";
 
-import { HighlightText } from "@/components/highlight-text.tsx";
-import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
+import { StudyItemTitle } from "@/components/study-item-title.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { formatMediumDate } from "@/lib/date-format.ts";
 import { cn } from "@/lib/utils.ts";
-
-const date = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" });
 
 const scheduleMeta = (card: FlashcardSummary) => {
   if (card.archivedAt) return { Icon: ArchiveIcon, label: "Arquivado" };
@@ -24,7 +21,7 @@ const scheduleMeta = (card: FlashcardSummary) => {
     label:
       due <= new Date()
         ? `${state.label} · disponível agora`
-        : `${state.label} · ${date.format(due)}`,
+        : `${state.label} · ${formatMediumDate(due)}`,
   };
 };
 
@@ -61,16 +58,7 @@ export const FlashcardIndex = ({
             onCheckedChange={(value) => onSelect(card.id, value === true)}
           />
           <button className="min-w-0 text-left" onClick={() => onOpen(card)} type="button">
-            <OverflowTooltip text={card.questionText || "Pergunta com imagem"}>
-              {(ref) => (
-                <span
-                  className="block truncate font-heading text-[0.9rem] leading-5"
-                  ref={ref as Ref<HTMLSpanElement>}
-                >
-                  <HighlightText query={query} text={card.questionText || "Pergunta com imagem"} />
-                </span>
-              )}
-            </OverflowTooltip>
+            <StudyItemTitle query={query} text={card.questionText} />
             <span className="mt-0.5 block truncate text-xs text-muted-foreground">
               {schedule.label}
             </span>

@@ -7,8 +7,8 @@ import {
   XIcon,
 } from "lucide-react";
 
+import { SearchInput } from "@/components/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
 
 export const DocumentTreeToolbar = ({
   closeIcon,
@@ -32,30 +32,18 @@ export const DocumentTreeToolbar = ({
   return (
     <div className="flex h-11 shrink-0 items-center gap-1 px-2">
       {searchOpen ? (
-        <>
-          <div className="relative min-w-0 flex-1">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              autoFocus
-              className="h-8 pr-2 pl-8"
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Pesquisar arquivos"
-              type="text"
-              value={search}
-            />
-          </div>
-          <Button
-            aria-label="Fechar pesquisa"
-            onClick={() => {
-              onSearchOpenChange(false);
-              onSearchChange("");
-            }}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <XIcon />
-          </Button>
-        </>
+        <SearchInput
+          autoFocus
+          className="h-8"
+          containerClassName="flex-1"
+          onClear={() => {
+            onSearchOpenChange(false);
+            onSearchChange("");
+          }}
+          onValueChange={onSearchChange}
+          placeholder="Pesquisar arquivos"
+          value={search}
+        />
       ) : (
         <>
           <span className="min-w-0 flex-1" />

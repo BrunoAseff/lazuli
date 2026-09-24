@@ -148,6 +148,33 @@ export const documentContentSchema = documentStructureLimitsSchema
     visit(blocks);
   });
 
+export const hasMeaningfulDocumentContent = (blocks: DocumentBlock[]) => {
+  const pending = [...blocks];
+  while (pending.length) {
+    const block = pending.pop()!;
+    if (block.type === "image") return true;
+    if (
+      block.content?.some((item) =>
+        item.type === "text"
+          ? Boolean(item.text.trim())
+          : item.content.some(({ text }) => Boolean(text.trim())),
+      )
+    )
+      return true;
+    if (block.children) pending.push(...block.children);
+  }
+  return false;
+};
+
+export const utf8ByteLength = (value: string) => {
+  let bytes = 0;
+  for (const character of value) {
+    const point = character.codePointAt(0)!;
+    bytes += point <= 0x7f ? 1 : point <= 0x7ff ? 2 : point <= 0xffff ? 3 : 4;
+  }
+  return bytes;
+};
+
 export const projectTreeItemSchema = z.object({
   id: projectItemIdSchema,
   projectId: projectIdSchema,

@@ -162,9 +162,13 @@ export const useUpdateFlashcard = (collectionId: string, cardId: string) => {
 
 export const useDeleteFlashcard = (collectionId: string) => {
   const invalidate = useInvalidateFlashcards(collectionId);
+  const client = useQueryClient();
   return useMutation({
     mutationFn: (cardId: string) => removeFlashcard(collectionId, cardId),
-    onSuccess: () => invalidate(),
+    onSuccess: (_result, cardId) => {
+      client.removeQueries({ queryKey: flashcardKeys.detail(collectionId, cardId) });
+      return invalidate();
+    },
   });
 };
 

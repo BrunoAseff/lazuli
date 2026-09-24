@@ -94,7 +94,7 @@ export const DocumentImportDialog = ({
         />
         <div
           className={cn(
-            "grid min-h-36 place-items-center rounded-lg border border-dashed p-5 text-center transition-colors",
+            "grid min-h-36 place-items-center rounded-lg border border-dashed p-5 text-center transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary",
             dragging && "border-foreground bg-muted/50",
           )}
           onDragEnter={(event) => {

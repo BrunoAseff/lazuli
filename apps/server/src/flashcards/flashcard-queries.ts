@@ -16,6 +16,7 @@ import {
   isNotNull,
   isNull,
   lte,
+  ne,
   notInArray,
   or,
   sql,
@@ -80,9 +81,12 @@ const cardWhere = (userId: string, collectionId: string, input: FlashcardListQue
           ? gt(flashcard.dueAt, now)
           : undefined,
     input.query
-      ? or(
-          sql<boolean>`unaccent(lower(${flashcard.questionText})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`,
-          sql<boolean>`unaccent(lower(${flashcard.answerText})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`,
+      ? and(
+          ne(flashcard.questionText, ""),
+          or(
+            sql<boolean>`unaccent(lower(${flashcard.questionText})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`,
+            sql<boolean>`unaccent(lower(${flashcard.answerText})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`,
+          ),
         )
       : undefined,
   );

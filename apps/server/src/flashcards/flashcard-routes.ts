@@ -22,6 +22,7 @@ import {
 } from "../documents/document-image-storage.ts";
 import { IMAGE_MAX_BYTES } from "@lazuli/shared";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
+import { sendValidationError } from "../routes/route-helpers.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
   batchFlashcards,
@@ -41,11 +42,6 @@ type Options = {
   websiteUrl: string;
 };
 
-const validationError = (reply: FastifyReply) =>
-  reply.status(400).send({
-    code: "VALIDATION_ERROR",
-    message: "Revise os dados informados e tente novamente.",
-  });
 const errorName = (error: unknown) => (error instanceof Error ? error.name : "UnknownError");
 
 const serializeCard = <
@@ -105,7 +101,7 @@ export const createFlashcardRoutes = ({
       if (!session) return;
       const { collectionId } = parseIds(request.params);
       const input = flashcardListQuerySchema.safeParse(request.query);
-      if (!collectionId.success || !input.success) return validationError(reply);
+      if (!collectionId.success || !input.success) return sendValidationError(reply);
       try {
         const result = await listFlashcards(
           database,
@@ -135,7 +131,7 @@ export const createFlashcardRoutes = ({
       const session = await requireSession(auth, request, reply);
       if (!session) return;
       const { cardId, collectionId } = parseIds(request.params);
-      if (!collectionId.success || !cardId.success) return validationError(reply);
+      if (!collectionId.success || !cardId.success) return sendValidationError(reply);
       const card = await getFlashcard(database, session.user.id, collectionId.data, cardId.data);
       if (!card)
         return reply.status(404).send({
@@ -150,7 +146,7 @@ export const createFlashcardRoutes = ({
       if (!session) return;
       const { collectionId } = parseIds(request.params);
       const input = createFlashcardSchema.safeParse(request.body);
-      if (!collectionId.success || !input.success) return validationError(reply);
+      if (!collectionId.success || !input.success) return sendValidationError(reply);
       const result = await createFlashcard(
         database,
         session.user.id,
@@ -178,7 +174,8 @@ export const createFlashcardRoutes = ({
       if (!session) return;
       const { cardId, collectionId } = parseIds(request.params);
       const input = updateFlashcardSchema.safeParse(request.body);
-      if (!collectionId.success || !cardId.success || !input.success) return validationError(reply);
+      if (!collectionId.success || !cardId.success || !input.success)
+        return sendValidationError(reply);
       const result = await updateFlashcard(
         database,
         session.user.id,
@@ -206,7 +203,7 @@ export const createFlashcardRoutes = ({
       const session = await authorizeMutation(request, reply);
       if (!session) return;
       const { cardId, collectionId } = parseIds(request.params);
-      if (!collectionId.success || !cardId.success) return validationError(reply);
+      if (!collectionId.success || !cardId.success) return sendValidationError(reply);
       if (!(await deleteFlashcard(database, session.user.id, collectionId.data, cardId.data)))
         return reply
           .status(404)
@@ -219,7 +216,7 @@ export const createFlashcardRoutes = ({
       if (!session) return;
       const { collectionId } = parseIds(request.params);
       const input = flashcardBatchSchema.safeParse(request.body);
-      if (!collectionId.success || !input.success) return validationError(reply);
+      if (!collectionId.success || !input.success) return sendValidationError(reply);
       const result = await batchFlashcards(
         database,
         session.user.id,
@@ -244,12 +241,12 @@ export const createFlashcardRoutes = ({
         const session = await authorizeMutation(request, reply);
         if (!session) return;
         const { collectionId } = parseIds(request.params);
-        if (!collectionId.success) return validationError(reply);
+        if (!collectionId.success) return sendValidationError(reply);
         try {
           const part = await request.file({
             limits: { files: 1, fileSize: FLASHCARD_IMPORT_MAX_BYTES },
           });
-          if (!part) return validationError(reply);
+          if (!part) return sendValidationError(reply);
           return parseFlashcardImport(part.filename, await part.toBuffer());
         } catch (error) {
           const tooLarge =
@@ -286,7 +283,7 @@ export const createFlashcardRoutes = ({
       if (!session) return;
       const { collectionId } = parseIds(request.params);
       const input = importFlashcardsSchema.safeParse(request.body);
-      if (!collectionId.success || !input.success) return validationError(reply);
+      if (!collectionId.success || !input.success) return sendValidationError(reply);
       const result = await importFlashcards(
         database,
         session.user.id,
@@ -311,7 +308,7 @@ export const createFlashcardRoutes = ({
       if (!session) return;
       try {
         const part = await request.file({ limits: { files: 1, fileSize: IMAGE_MAX_BYTES } });
-        if (!part) return validationError(reply);
+        if (!part) return sendValidationError(reply);
         const created = await storeFlashcardImage({
           database,
           originalName: part.filename,

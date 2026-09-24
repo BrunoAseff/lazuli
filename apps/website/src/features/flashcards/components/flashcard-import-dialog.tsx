@@ -129,7 +129,7 @@ export const FlashcardImportDialog = ({
           {!preview ? (
             <button
               className={cn(
-                "grid min-h-52 w-full place-items-center rounded-xl border border-dashed p-6 text-center transition-colors hover:bg-muted/35",
+                "grid min-h-52 w-full place-items-center rounded-xl border border-dashed p-6 text-center transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary",
                 dragging && "border-foreground bg-muted/35",
               )}
               disabled={previewImport.isPending}

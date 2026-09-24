@@ -18,6 +18,7 @@ import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 
 type UserMenuProps = {
+  mobile?: boolean;
   user: {
     id: string;
     email: string;
@@ -34,7 +35,7 @@ const getInitials = (name: string) =>
     .map((part) => part[0]?.toUpperCase())
     .join("");
 
-export const UserMenu = ({ user }: UserMenuProps) => {
+export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -78,7 +79,12 @@ export const UserMenu = ({ user }: UserMenuProps) => {
               <ChevronsUpDownIcon aria-hidden="true" className="ml-auto" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64" side="right" sideOffset={8}>
+          <DropdownMenuContent
+            align={mobile ? "start" : "end"}
+            className="w-64 max-w-[calc(100vw-1rem)]"
+            side={mobile ? "top" : "right"}
+            sideOffset={8}
+          >
             <DropdownMenuLabel className="flex items-center gap-3 px-3 py-3 font-normal">
               <Avatar className="size-9 border">
                 {user.image && <AvatarImage alt="" src={user.image} />}

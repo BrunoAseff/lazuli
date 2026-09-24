@@ -7,11 +7,9 @@ import {
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
-  CheckIcon,
-  ChevronsUpDownIcon,
+  CopyIcon,
   LoaderCircleIcon,
   MoveRightIcon,
-  SearchIcon,
   SlidersHorizontalIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -29,6 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { StudyCollectionPicker } from "@/components/study-collection-picker.tsx";
 import {
   Dialog,
   DialogCancelButton,
@@ -38,8 +37,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
-import { Input } from "@/components/ui/input.tsx";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import {
   Sheet,
   SheetContent,
@@ -66,9 +63,10 @@ import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 type FlashcardEditorProps = {
   card?: FlashcardDetail;
   collectionId?: string;
-  initialQuestion?: LazuliDocumentBlock;
+  initialAnswer?: FlashcardDetail["answer"] | LazuliDocumentBlock;
+  initialQuestion?: FlashcardDetail["question"] | LazuliDocumentBlock;
   onCreated?: (cardId: string) => void | boolean | Promise<void | boolean>;
-  onAction?: (action: "archive" | "delete" | "move" | "restore") => void;
+  onAction?: (action: "archive" | "delete" | "duplicate" | "move" | "restore") => void;
   onOpenChange: (open: boolean) => void;
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: (cardId: string, collectionId: string) => void;
@@ -81,6 +79,7 @@ type FlashcardEditorProps = {
 const FlashcardEditor = ({
   card,
   collectionId,
+  initialAnswer,
   initialQuestion,
   onCreated,
   onAction,
@@ -104,10 +103,13 @@ const FlashcardEditor = ({
   const create = useCreateFlashcard(targetCollectionId);
   const update = useUpdateFlashcard(collectionId ?? targetCollectionId, card?.id ?? "");
   const initialQuestionKey = JSON.stringify(initialQuestion ?? null);
+  const initialAnswerKey = JSON.stringify(initialAnswer ?? null);
   const question = useCreateBlockNote(
     {
       schema: documentSchema,
-      initialContent: (card?.question as LazuliDocumentBlock | undefined) ?? initialQuestion,
+      initialContent:
+        (card?.question as LazuliDocumentBlock | undefined) ??
+        (initialQuestion as LazuliDocumentBlock | undefined),
       dictionary: lazuliBlockNoteDictionary,
       uploadFile: async (file) => {
         const uploaded = await uploadFlashcardImage(file);
@@ -121,7 +123,9 @@ const FlashcardEditor = ({
   const answer = useCreateBlockNote(
     {
       schema: documentSchema,
-      initialContent: card?.answer as LazuliDocumentBlock | undefined,
+      initialContent:
+        (card?.answer as LazuliDocumentBlock | undefined) ??
+        (initialAnswer as LazuliDocumentBlock | undefined),
       dictionary: lazuliBlockNoteDictionary,
       uploadFile: async (file) => {
         const uploaded = await uploadFlashcardImage(file);
@@ -130,10 +134,10 @@ const FlashcardEditor = ({
       },
       resolveFileUrl: resolveAssetUrl,
     },
-    [card?.id],
+    [card?.id, initialAnswerKey],
   );
-  const [questionValid, setQuestionValid] = useState(Boolean(card));
-  const [answerValid, setAnswerValid] = useState(Boolean(card));
+  const [questionValid, setQuestionValid] = useState(Boolean(card || initialQuestion));
+  const [answerValid, setAnswerValid] = useState(Boolean(card || initialAnswer));
 
   useEffect(() => {
     committed.current = false;
@@ -432,7 +436,20 @@ const FlashcardEditor = ({
                 onChange={changeAnswer}
                 workbenchRole="answer"
               />
-              {!readOnly && <div className="mt-8 flex justify-end">{saveButton}</div>}
+              {!readOnly && (
+                <div className="mt-8 flex justify-end gap-2">
+                  {card && onAction && (
+                    <Button
+                      disabled={dirty}
+                      onClick={() => onAction("duplicate")}
+                      variant="outline"
+                    >
+                      <CopyIcon /> Duplicar
+                    </Button>
+                  )}
+                  {saveButton}
+                </div>
+              )}
             </div>
           </section>
           <Sheet open={detailsSheetOpen} onOpenChange={setDetailsSheetOpen}>
@@ -500,51 +517,21 @@ export const CollectionPicker = ({
   const collections = useFlashcardCollections(input);
   const selected = collections.data?.items.find(({ id }) => id === value);
   return (
-    <div>
-      <label className="mb-2 block text-sm font-medium">Coleção</label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button className="w-full justify-between" disabled={disabled} variant="outline">
-            <span className={cn("truncate", !selected && "text-muted-foreground")}>
-              {selected?.title ?? "Selecionar coleção"}
-            </span>
-            <ChevronsUpDownIcon aria-hidden="true" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-0">
-          <div className="relative border-b p-2">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Pesquisar coleções"
-              value={query}
-            />
-          </div>
-          <div className="max-h-64 overflow-y-auto p-1 lazuli-thin-scrollbar">
-            {collections.data?.items.map((collection) => (
-              <button
-                className={cn(
-                  "flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted",
-                  collection.id === value && "bg-muted",
-                )}
-                key={collection.id}
-                onClick={() => {
-                  onChange(collection.id);
-                  setOpen(false);
-                }}
-                type="button"
-              >
-                <span className="truncate">{collection.title}</span>
-                {collection.id === value && <CheckIcon className="size-4" />}
-              </button>
-            ))}
-            {!collections.isPending && !collections.data?.items.length && (
-              <p className="p-3 text-sm text-muted-foreground">Nenhuma coleção encontrada.</p>
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
+    <StudyCollectionPicker
+      disabled={disabled}
+      empty="Nenhuma coleção encontrada."
+      items={collections.data?.items ?? []}
+      loading={collections.isPending}
+      onChange={(collectionId) => {
+        onChange(collectionId);
+        setOpen(false);
+      }}
+      onOpenChange={setOpen}
+      onQueryChange={setQuery}
+      open={open}
+      query={query}
+      selectedTitle={selected?.title}
+      value={value}
+    />
   );
 };

@@ -9,6 +9,7 @@ import {
 } from "@lazuli/shared";
 
 import { ApiError, apiRequest as request } from "@/lib/api-client.ts";
+import { buildSearchParams } from "@/lib/search-params.ts";
 
 export { ApiError as FlashcardCollectionApiError };
 
@@ -19,14 +20,13 @@ const toSearchParams = ({
   query,
   status,
 }: FlashcardCollectionListQuery) => {
-  const params = new URLSearchParams({
-    page: String(page),
-    pageSize: String(pageSize),
+  return buildSearchParams({
+    page,
+    pageSize,
+    project,
+    query,
     status,
   });
-  if (query) params.set("query", query);
-  if (project) params.set("project", project);
-  return params;
 };
 
 export const fetchFlashcardCollections = (

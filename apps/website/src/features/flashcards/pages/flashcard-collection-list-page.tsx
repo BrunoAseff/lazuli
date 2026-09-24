@@ -4,10 +4,10 @@ import {
   type FlashcardCollectionSummary,
 } from "@lazuli/shared";
 import { Layers3Icon, PlusIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 
 import { PaginationControls } from "@/components/pagination-controls.tsx";
+import { ContentPage } from "@/components/content-page.tsx";
 import {
   EmptyStudyCollections,
   NoStudyCollectionResults,
@@ -17,6 +17,8 @@ import {
 import { StudyCollectionToolbar } from "@/components/study-collection-toolbar.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useStudyCollectionListState } from "@/hooks/use-study-collection-list-state.ts";
+import { usePaginationClamp } from "@/hooks/use-pagination-clamp.ts";
+import { useStudyCollectionActions } from "@/hooks/use-study-collection-actions.ts";
 import {
   useFlashcardCollections,
   useRestoreFlashcardCollection,
@@ -29,8 +31,6 @@ import {
 import { FlashcardCollectionList } from "../components/flashcard-collection-list.tsx";
 import { PracticeSetupDialog } from "../components/practice-setup-dialog.tsx";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
-
-type CollectionAction = "archive" | "delete" | "edit";
 
 export const FlashcardCollectionListPage = () => {
   const {
@@ -46,10 +46,6 @@ export const FlashcardCollectionListPage = () => {
   } = useStudyCollectionListState();
   const [createOpen, setCreateOpen] = useState(false);
   const [practiceCollectionId, setPracticeCollectionId] = useState<string | null>(null);
-  const [activeAction, setActiveAction] = useState<{
-    action: CollectionAction;
-    collection: FlashcardCollectionSummary;
-  } | null>(null);
   const input = flashcardCollectionListQuerySchema.parse({
     page,
     pageSize: FLASHCARD_COLLECTION_PAGE_SIZE,
@@ -59,34 +55,13 @@ export const FlashcardCollectionListPage = () => {
   });
   const collections = useFlashcardCollections(input);
   const restore = useRestoreFlashcardCollection();
-  const restoringIds = useRef(new Set<string>());
-
-  useEffect(() => {
-    const totalPages = collections.data?.pagination.totalPages;
-    if (totalPages && page > totalPages) setPage(totalPages);
-  }, [collections.data?.pagination.totalPages, page]);
-
-  const handleAction = async (
-    action: "archive" | "delete" | "edit" | "restore",
-    collection: FlashcardCollectionSummary,
-  ) => {
-    if (action !== "restore") {
-      setActiveAction({ action, collection });
-      return;
-    }
-    if (restoringIds.current.has(collection.id)) return;
-    restoringIds.current.add(collection.id);
-    try {
-      await restore.mutateAsync(collection.id);
-      toast.success("Coleção restaurada.");
-    } catch (error) {
-      toast.error(
+  const { activeAction, handleAction, setActiveAction } =
+    useStudyCollectionActions<FlashcardCollectionSummary>({
+      getRestoreErrorMessage: (error) =>
         getFlashcardCollectionErrorMessage(error, "Não foi possível restaurar a coleção."),
-      );
-    } finally {
-      restoringIds.current.delete(collection.id);
-    }
-  };
+      restore: (collectionId) => restore.mutateAsync(collectionId),
+    });
+  usePaginationClamp(page, collections.data?.pagination.totalPages, setPage);
 
   const hasItems = Boolean(collections.data?.items.length);
   const hasFilters = Boolean(query || project);
@@ -94,60 +69,57 @@ export const FlashcardCollectionListPage = () => {
   const noResults = collections.data?.pagination.totalItems === 0 && hasFilters;
 
   return (
-    <div className="flex flex-1 flex-col px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
-      <div className="mx-auto w-full max-w-5xl">
-        <h1 className="font-heading text-4xl font-normal tracking-tight sm:text-5xl">Flashcards</h1>
+    <ContentPage>
+      <h1 className="font-heading text-4xl font-normal tracking-tight sm:text-5xl">Flashcards</h1>
 
-        <StudyCollectionToolbar
-          action={
-            <Button className="shrink-0" onClick={() => setCreateOpen(true)}>
-              <PlusIcon aria-hidden="true" data-icon="inline-start" />
-              <span className="hidden sm:inline">Nova coleção</span>
-            </Button>
-          }
-          onClearSearch={() => {
-            setSearchValue("");
-            updateParams({ query: undefined });
-          }}
-          onProjectChange={(value) => updateParams({ project: value })}
-          onSearchChange={setSearchValue}
-          onStatusChange={(value) => updateParams({ status: value })}
-          project={project}
-          searchValue={searchValue}
-          searchDisabled={isEmpty}
-          status={status}
+      <StudyCollectionToolbar
+        action={
+          <Button className="shrink-0" onClick={() => setCreateOpen(true)}>
+            <PlusIcon aria-hidden="true" data-icon="inline-start" />
+            <span className="hidden sm:inline">Nova coleção</span>
+          </Button>
+        }
+        onClearSearch={() => {
+          setSearchValue("");
+          updateParams({ query: undefined });
+        }}
+        onProjectChange={(value) => updateParams({ project: value })}
+        onSearchChange={setSearchValue}
+        onStatusChange={(value) => updateParams({ status: value })}
+        project={project}
+        searchValue={searchValue}
+        searchDisabled={isEmpty}
+        status={status}
+      />
+
+      {collections.isPending && <StudyCollectionListSkeleton />}
+      {collections.isError && (
+        <StudyCollectionListError onRetry={() => void collections.refetch()} />
+      )}
+      {isEmpty && (
+        <EmptyStudyCollections
+          archived={status === "archived"}
+          description="Organize seus flashcards por disciplina, idioma ou assunto."
+          icon={Layers3Icon}
+          onCreate={() => setCreateOpen(true)}
         />
-
-        {collections.isPending && <StudyCollectionListSkeleton />}
-        {collections.isError && (
-          <StudyCollectionListError onRetry={() => void collections.refetch()} />
-        )}
-        {isEmpty && (
-          <EmptyStudyCollections
-            archived={status === "archived"}
-            description="Organize seus flashcards por disciplina, idioma ou assunto."
-            icon={Layers3Icon}
-            onCreate={() => setCreateOpen(true)}
-          />
-        )}
-        {noResults && <NoStudyCollectionResults onClear={clearFilters} />}
-        {hasItems && collections.data && (
-          <FlashcardCollectionList
-            collections={collections.data.items}
-            onAction={(action, collection) => void handleAction(action, collection)}
-            onPractice={(collection) => setPracticeCollectionId(collection.id)}
-            query={query}
-          />
-        )}
-        {collections.data && (
-          <PaginationControls
-            label="Paginação de coleções"
-            onPageChange={setPage}
-            pagination={collections.data.pagination}
-          />
-        )}
-      </div>
-
+      )}
+      {noResults && <NoStudyCollectionResults onClear={clearFilters} />}
+      {hasItems && collections.data && (
+        <FlashcardCollectionList
+          collections={collections.data.items}
+          onAction={(action, collection) => void handleAction(action, collection)}
+          onPractice={(collection) => setPracticeCollectionId(collection.id)}
+          query={query}
+        />
+      )}
+      {collections.data && (
+        <PaginationControls
+          label="Paginação de coleções"
+          onPageChange={setPage}
+          pagination={collections.data.pagination}
+        />
+      )}
       <FlashcardCollectionDialog onOpenChange={setCreateOpen} open={createOpen} />
       {practiceCollectionId && (
         <PracticeSetupDialog
@@ -181,7 +153,7 @@ export const FlashcardCollectionListPage = () => {
           open
         />
       )}
-    </div>
+    </ContentPage>
   );
 };
 
