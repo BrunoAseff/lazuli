@@ -6,18 +6,8 @@ import type {
 import { AlertTriangleIcon, ArchiveIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { StudyCollectionDialog } from "@/components/study-collection-dialog.tsx";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import {
   useCreateQuizCollection,
@@ -96,36 +86,29 @@ export const ArchiveQuizCollectionDialog = ({
     }
   };
   return (
-    <AlertDialog open={open} onOpenChange={(next) => !mutation.isPending && onOpenChange(next)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogMedia>
-            <ArchiveIcon aria-hidden="true" />
-          </AlertDialogMedia>
-          <AlertDialogTitle>Arquivar “{collection.title}”?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Suas {collection.totalQuestions}{" "}
-            {collection.totalQuestions === 1
-              ? "questão será preservada"
-              : "questões serão preservadas"}
-            . Você poderá restaurar a coleção depois.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={mutation.isPending}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={mutation.isPending}
-            onClick={(event) => {
-              event.preventDefault();
-              void archive();
-            }}
-          >
-            {mutation.isPending && <Spinner />}
-            {mutation.isPending ? "Arquivando..." : "Arquivar coleção"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmationDialog
+      actionLabel={
+        <>
+          {mutation.isPending && <Spinner />}
+          {mutation.isPending ? "Arquivando..." : "Arquivar coleção"}
+        </>
+      }
+      description={
+        <>
+          Suas {collection.totalQuestions}{" "}
+          {collection.totalQuestions === 1
+            ? "questão será preservada"
+            : "questões serão preservadas"}
+          . Você poderá restaurar a coleção depois.
+        </>
+      }
+      disabled={mutation.isPending}
+      media={<ArchiveIcon aria-hidden="true" />}
+      onConfirm={archive}
+      onOpenChange={(next) => !mutation.isPending && onOpenChange(next)}
+      open={open}
+      title={`Arquivar “${collection.title}”?`}
+    />
   );
 };
 
@@ -152,38 +135,32 @@ export const DeleteQuizCollectionDialog = ({
     }
   };
   return (
-    <AlertDialog open={open} onOpenChange={(next) => !mutation.isPending && onOpenChange(next)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogMedia className="bg-destructive/10 text-destructive">
-            <AlertTriangleIcon aria-hidden="true" />
-          </AlertDialogMedia>
-          <AlertDialogTitle>Excluir “{collection.title}”?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {collection.totalQuestions === 0
-              ? "A coleção ainda não possui questões."
-              : `${collection.totalQuestions} ${collection.totalQuestions === 1 ? "questão será excluída" : "questões serão excluídas"}.`}{" "}
-            {collection.totalAttempts > 0
-              ? `O histórico de ${collection.totalAttempts} ${collection.totalAttempts === 1 ? "tentativa também será excluído" : "tentativas também será excluído"}. `
-              : ""}
-            Esta ação não pode ser desfeita.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={mutation.isPending}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={mutation.isPending}
-            onClick={(event) => {
-              event.preventDefault();
-              void remove();
-            }}
-            variant="destructive"
-          >
-            {mutation.isPending && <Spinner />}
-            {mutation.isPending ? "Excluindo..." : "Excluir coleção"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmationDialog
+      actionLabel={
+        <>
+          {mutation.isPending && <Spinner />}
+          {mutation.isPending ? "Excluindo..." : "Excluir coleção"}
+        </>
+      }
+      description={
+        <>
+          {collection.totalQuestions === 0
+            ? "A coleção ainda não possui questões."
+            : `${collection.totalQuestions} ${collection.totalQuestions === 1 ? "questão será excluída" : "questões serão excluídas"}.`}{" "}
+          {collection.totalAttempts > 0
+            ? `O histórico de ${collection.totalAttempts} ${collection.totalAttempts === 1 ? "tentativa também será excluído" : "tentativas também será excluído"}. `
+            : ""}
+          Esta ação não pode ser desfeita.
+        </>
+      }
+      destructive
+      disabled={mutation.isPending}
+      media={<AlertTriangleIcon aria-hidden="true" />}
+      mediaClassName="bg-destructive/10 text-destructive"
+      onConfirm={remove}
+      onOpenChange={(next) => !mutation.isPending && onOpenChange(next)}
+      open={open}
+      title={`Excluir “${collection.title}”?`}
+    />
   );
 };

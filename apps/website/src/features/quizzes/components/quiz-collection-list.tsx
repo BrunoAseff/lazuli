@@ -10,12 +10,9 @@ import { Link } from "react-router";
 
 import { StudyCollectionActions } from "@/components/study-collection-actions.tsx";
 import { StudyCollectionIdentity } from "@/components/study-collection-identity.tsx";
+import { QuizCollectionMark } from "@/components/quiz-collection-mark.tsx";
 import { Button } from "@/components/ui/button.tsx";
-
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
+import { formatMediumDateTime } from "@/lib/date-format.ts";
 
 const scoreLabel = (score: QuizCollectionSummary["lastScore"]) =>
   score
@@ -34,21 +31,22 @@ export const QuizCollectionList = ({
   ) => void;
   query: string;
 }) => (
-  <div className="divide-y border-y">
+  <div className="space-y-2">
     {collections.map((collection) => (
       <article
-        className="grid gap-4 py-5 sm:px-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(9rem,0.55fr)_minmax(12rem,0.75fr)_minmax(12rem,0.75fr)_auto_auto] lg:items-center"
+        className="relative grid gap-4 rounded-xl border bg-card px-4 py-4 transition-colors hover:bg-accent/45 sm:px-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(7rem,0.45fr)_minmax(10rem,0.7fr)_minmax(10rem,0.7fr)_minmax(7rem,auto)] lg:items-center"
         key={collection.id}
       >
-        <StudyCollectionIdentity
-          href={`/quizzes/${collection.id}`}
-          icon={
-            <SquareCheckBig aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-          }
-          projectTitle={collection.project?.title}
-          query={query}
-          title={collection.title}
-        />
+        <div className="min-w-0 pr-10 lg:pr-0">
+          <StudyCollectionIdentity
+            href={`/quizzes/${collection.id}`}
+            icon={<QuizCollectionMark />}
+            metadata={collection.project?.title ?? "Sem projeto"}
+            projectTitle={collection.project?.title}
+            query={query}
+            title={collection.title}
+          />
+        </div>
 
         <div className="flex items-center gap-2 text-sm">
           <SquareCheckBig aria-hidden="true" className="size-4 text-muted-foreground" />
@@ -67,7 +65,7 @@ export const QuizCollectionList = ({
           </p>
           <p className="text-xs text-muted-foreground">
             {collection.lastAttemptAt
-              ? `Última em ${dateFormatter.format(new Date(collection.lastAttemptAt))}`
+              ? `Última em ${formatMediumDateTime(collection.lastAttemptAt)}`
               : "Nenhuma tentativa concluída"}
           </p>
         </div>
@@ -87,28 +85,36 @@ export const QuizCollectionList = ({
           </p>
         </div>
 
-        {!collection.archivedAt && (
-          <Button asChild size="sm" variant={collection.totalQuestions ? "default" : "secondary"}>
-            <Link
-              aria-disabled={collection.totalQuestions === 0}
-              className={
-                collection.totalQuestions === 0 ? "pointer-events-none opacity-50" : undefined
-              }
-              to={`/quizzes/${collection.id}?start=true`}
+        <div className="flex w-full items-center justify-end gap-2 lg:min-w-28">
+          {!collection.archivedAt && (
+            <Button
+              asChild
+              className="w-full lg:w-auto"
+              size="sm"
+              variant={collection.totalQuestions ? "default" : "secondary"}
             >
-              <PlayIcon /> Iniciar
-            </Link>
-          </Button>
-        )}
-
-        <StudyCollectionActions
-          archived={Boolean(collection.archivedAt)}
-          onArchive={() => onAction("archive", collection)}
-          onDelete={() => onAction("delete", collection)}
-          onEdit={() => onAction("edit", collection)}
-          onRestore={() => onAction("restore", collection)}
-          title={collection.title}
-        />
+              <Link
+                aria-disabled={collection.totalQuestions === 0}
+                className={
+                  collection.totalQuestions === 0 ? "pointer-events-none opacity-50" : undefined
+                }
+                to={`/quizzes/${collection.id}?start=true`}
+              >
+                <PlayIcon /> Iniciar
+              </Link>
+            </Button>
+          )}
+          <div className="absolute top-3 right-3 lg:static">
+            <StudyCollectionActions
+              archived={Boolean(collection.archivedAt)}
+              onArchive={() => onAction("archive", collection)}
+              onDelete={() => onAction("delete", collection)}
+              onEdit={() => onAction("edit", collection)}
+              onRestore={() => onAction("restore", collection)}
+              title={collection.title}
+            />
+          </div>
+        </div>
       </article>
     ))}
   </div>

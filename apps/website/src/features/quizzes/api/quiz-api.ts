@@ -17,6 +17,7 @@ import {
 } from "@lazuli/shared";
 
 import { apiRequest } from "@/lib/api-client.ts";
+import { buildSearchParams } from "@/lib/search-params.ts";
 
 const collectionPath = (collectionId: string) =>
   `/api/quiz-collections/${encodeURIComponent(collectionId)}`;
@@ -25,12 +26,12 @@ export const fetchQuizQuestions = (
   input: QuizQuestionListQuery,
   signal?: AbortSignal,
 ): Promise<QuizQuestionListResponse> => {
-  const params = new URLSearchParams({
+  const params = buildSearchParams({
     query: input.query,
     status: input.status,
     sort: input.sort,
-    page: String(input.page),
-    pageSize: String(input.pageSize),
+    page: input.page,
+    pageSize: input.pageSize,
   });
   return apiRequest(
     `${collectionPath(collectionId)}/questions?${params}`,
