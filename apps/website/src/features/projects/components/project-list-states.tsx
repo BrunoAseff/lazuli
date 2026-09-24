@@ -1,5 +1,6 @@
 import { FolderOpenIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 
@@ -38,44 +39,39 @@ export const ProjectListSkeleton = ({ view }: { view: "cards" | "table" }) => {
 };
 
 export const EmptyProjects = ({ onCreate }: { onCreate: () => void }) => (
-  <section className="grid min-h-72 place-items-center border border-dashed bg-card/40 px-5 text-center">
-    <div className="max-w-sm">
-      <span className="mx-auto mb-4 flex size-11 items-center justify-center border bg-background text-primary">
-        <FolderOpenIcon aria-hidden="true" className="size-5" />
-      </span>
-      <h2 className="font-heading text-2xl font-medium">Crie seu primeiro projeto</h2>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Reúna documentos de uma disciplina, idioma ou assunto em um mesmo lugar.
-      </p>
-      <Button className="mt-5" onClick={onCreate}>
-        Novo projeto
-      </Button>
-    </div>
-  </section>
+  <EmptyState
+    action={<Button onClick={onCreate}>Novo projeto</Button>}
+    description="Reúna documentos de uma disciplina, idioma ou assunto em um mesmo lugar."
+    featuredIcon
+    icon={FolderOpenIcon}
+    minHeight="lg"
+    title="Crie seu primeiro projeto"
+  />
 );
 
 export const NoProjectResults = ({ onClear }: { onClear: () => void }) => (
-  <section className="grid min-h-64 place-items-center border border-dashed bg-card/40 px-5 text-center">
-    <div className="max-w-sm">
-      <SearchXIcon aria-hidden="true" className="mx-auto mb-4 size-7 text-muted-foreground" />
-      <h2 className="font-heading text-2xl font-medium">Nenhum projeto encontrado</h2>
-      <p className="mt-2 text-sm text-muted-foreground">Tente outro termo ou limpe a pesquisa.</p>
-      <Button className="mt-5" onClick={onClear} variant="outline">
+  <EmptyState
+    action={
+      <Button onClick={onClear} variant="outline">
         Limpar pesquisa
       </Button>
-    </div>
-  </section>
+    }
+    description="Tente outro termo ou limpe a pesquisa."
+    icon={SearchXIcon}
+    title="Nenhum projeto encontrado"
+  />
 );
 
 export const ProjectListError = ({ onRetry }: { onRetry: () => void }) => (
-  <section className="grid min-h-64 place-items-center border border-dashed bg-card/40 px-5 text-center">
-    <div className="max-w-sm">
-      <TriangleAlertIcon aria-hidden="true" className="mx-auto mb-4 size-7 text-destructive" />
-      <h2 className="font-heading text-2xl font-medium">Não foi possível carregar os projetos</h2>
-      <p className="mt-2 text-sm text-muted-foreground">Confira sua conexão e tente novamente.</p>
-      <Button className="mt-5" onClick={onRetry} variant="outline">
+  <EmptyState
+    action={
+      <Button onClick={onRetry} variant="outline">
         Tentar novamente
       </Button>
-    </div>
-  </section>
+    }
+    description="Confira sua conexão e tente novamente."
+    icon={TriangleAlertIcon}
+    iconClassName="text-destructive"
+    title="Não foi possível carregar os projetos"
+  />
 );

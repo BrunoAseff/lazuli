@@ -12,7 +12,6 @@ import {
   CheckIcon,
   Layers3Icon,
   LoaderCircleIcon,
-  SearchIcon,
   SquareCheckBigIcon,
 } from "lucide-react";
 import { useMemo, useState, type Ref } from "react";
@@ -20,6 +19,7 @@ import { toast } from "sonner";
 
 import { HighlightText } from "@/components/highlight-text.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
+import { SearchInput } from "@/components/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Dialog,
@@ -30,7 +30,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import { useFlashcardCollections } from "@/features/flashcards/api/flashcard-collection-queries.ts";
 import { useFlashcards } from "@/features/flashcards/api/flashcard-queries.ts";
 import { useQuizCollections } from "@/features/quizzes/api/quiz-collection-queries.ts";
@@ -172,19 +171,13 @@ export const ExistingMaterialPickerDialog = ({
                 <ArrowLeftIcon aria-hidden="true" />
               </Button>
             )}
-            <div className="relative flex-1">
-              <SearchIcon
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                autoFocus
-                className="pl-9"
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={collectionId ? "Pesquisar materiais" : "Pesquisar coleções"}
-                value={query}
-              />
-            </div>
+            <SearchInput
+              autoFocus
+              containerClassName="flex-1"
+              onValueChange={setQuery}
+              placeholder={collectionId ? "Pesquisar materiais" : "Pesquisar coleções"}
+              value={query}
+            />
           </div>
           <div className="max-h-72 divide-y overflow-y-auto border-y lazuli-thin-scrollbar">
             {!collectionId &&

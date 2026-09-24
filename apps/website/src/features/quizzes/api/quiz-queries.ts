@@ -77,9 +77,13 @@ export const usePatchQuizQuestion = (collectionId: string) => {
 };
 export const useDeleteQuizQuestion = (collectionId: string) => {
   const invalidate = useInvalidateQuiz(collectionId);
+  const client = useQueryClient();
   return useMutation({
     mutationFn: (questionId: string) => removeQuizQuestion(collectionId, questionId),
-    onSuccess: invalidate,
+    onSuccess: (_result, questionId) => {
+      client.removeQueries({ queryKey: quizKeys.question(collectionId, questionId) });
+      return invalidate();
+    },
   });
 };
 export const useQuizAttemptAvailability = (collectionId: string) =>

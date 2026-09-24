@@ -10,14 +10,10 @@ import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
+import { sendValidationError } from "../routes/route-helpers.ts";
 import { createReferences, deleteReference, listReferences } from "./reference-queries.ts";
 
 type Options = { auth: Auth; database: Database; websiteUrl: string };
-const validationError = (reply: FastifyReply) =>
-  reply
-    .status(400)
-    .send({ code: "VALIDATION_ERROR", message: "Revise os dados informados e tente novamente." });
-
 export const createReferenceRoutes =
   ({ auth, database, websiteUrl }: Options): FastifyPluginAsync =>
   async (app) => {
@@ -43,7 +39,7 @@ export const createReferenceRoutes =
       const session = await requireSession(auth, request, reply);
       if (!session) return;
       const input = referenceListQuerySchema.safeParse(request.query);
-      if (!input.success) return validationError(reply);
+      if (!input.success) return sendValidationError(reply);
       return listReferences(database, session.user.id, input.data);
     });
 
@@ -51,7 +47,7 @@ export const createReferenceRoutes =
       const session = await mutationSession(request, reply);
       if (!session) return;
       const input = createReferencesSchema.safeParse(request.body);
-      if (!input.success) return validationError(reply);
+      if (!input.success) return sendValidationError(reply);
       const result = await createReferences(database, session.user.id, input.data);
       if (result.kind === "not-found")
         return reply.status(404).send({
@@ -80,7 +76,7 @@ export const createReferenceRoutes =
       const referenceId = referenceIdSchema.safeParse(
         (request.params as { referenceId?: unknown }).referenceId,
       );
-      if (!referenceId.success) return validationError(reply);
+      if (!referenceId.success) return sendValidationError(reply);
       const result = await deleteReference(database, session.user.id, referenceId.data);
       if (result.kind === "not-found")
         return reply

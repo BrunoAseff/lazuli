@@ -6,10 +6,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 
-const parsePage = (value: string | null) => {
-  const page = Number(value);
-  return Number.isInteger(page) && page > 0 ? page : 1;
-};
+import { parsePositivePage } from "@/lib/pagination.ts";
 
 export const useStudyCollectionListState = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,7 +19,7 @@ export const useStudyCollectionListState = () => {
     searchParams.get("project") ?? undefined,
   );
   const project = parsedProject.success ? parsedProject.data : undefined;
-  const page = parsePage(searchParams.get("page"));
+  const page = parsePositivePage(searchParams.get("page"));
   const [searchValue, setSearchValue] = useState(query);
 
   const updateParams = useCallback(

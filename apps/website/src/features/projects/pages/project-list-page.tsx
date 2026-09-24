@@ -1,10 +1,13 @@
 import { PROJECT_PAGE_SIZE, type ProjectSummary } from "@lazuli/shared";
-import { PlusIcon, SearchIcon, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { PlusIcon } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
 
+import { ContentPage } from "@/components/content-page.tsx";
+import { SearchInput } from "@/components/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
+import { parsePositivePage } from "@/lib/pagination.ts";
+import { usePaginationClamp } from "@/hooks/use-pagination-clamp.ts";
 import { useProjects } from "../api/project-queries.ts";
 import { ProjectCard } from "../components/project-card.tsx";
 import {
@@ -28,16 +31,11 @@ type ProjectAction = "cover" | "delete" | "rename";
 const getInitialView = (): ViewMode =>
   localStorage.getItem("lazuli-project-view") === "table" ? "table" : "cards";
 
-const parsePage = (value: string | null) => {
-  const page = Number(value);
-  return Number.isInteger(page) && page > 0 ? page : 1;
-};
-
 export const ProjectListPage = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("query")?.trim() ?? "";
-  const page = parsePage(searchParams.get("page"));
+  const page = parsePositivePage(searchParams.get("page"));
   const [searchValue, setSearchValue] = useState(query);
   const [view, setView] = useState<ViewMode>(getInitialView);
   const [createOpen, setCreateOpen] = useState(false);
@@ -48,14 +46,17 @@ export const ProjectListPage = () => {
   const projects = useProjects({ page, pageSize: PROJECT_PAGE_SIZE, query });
   const listLocation = `${location.pathname}${location.search}`;
 
-  const setPage = (nextPage: number) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      if (nextPage <= 1) next.delete("page");
-      else next.set("page", String(nextPage));
-      return next;
-    });
-  };
+  const setPage = useCallback(
+    (nextPage: number) => {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        if (nextPage <= 1) next.delete("page");
+        else next.set("page", String(nextPage));
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
   const clearSearch = () => {
     setSearchValue("");
@@ -91,10 +92,7 @@ export const ProjectListPage = () => {
     return () => window.clearTimeout(timeout);
   }, [query, searchValue, setSearchParams]);
 
-  useEffect(() => {
-    const totalPages = projects.data?.pagination.totalPages;
-    if (totalPages && page > totalPages) setPage(totalPages);
-  }, [page, projects.data?.pagination.totalPages]);
+  usePaginationClamp(page, projects.data?.pagination.totalPages, setPage);
 
   const openAction = (action: ProjectAction, project: ProjectSummary) =>
     setActiveAction({ action, project });
@@ -104,90 +102,69 @@ export const ProjectListPage = () => {
   const hasNoResults = projects.data?.pagination.totalItems === 0 && Boolean(query);
 
   return (
-    <div className="flex flex-1 flex-col px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Biblioteca pessoal
-            </p>
-            <h1 className="font-heading text-4xl font-medium tracking-tight sm:text-5xl">
-              Projetos
-            </h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              Organize documentos relacionados por disciplina, idioma ou assunto.
-            </p>
-          </div>
-          <Button className="self-start sm:self-auto" onClick={() => setCreateOpen(true)}>
-            <PlusIcon aria-hidden="true" data-icon="inline-start" />
-            Novo projeto
-          </Button>
+    <ContentPage maxWidth="6xl">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Biblioteca pessoal
+          </p>
+          <h1 className="font-heading text-4xl font-medium tracking-tight sm:text-5xl">Projetos</h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+            Organize documentos relacionados por disciplina, idioma ou assunto.
+          </p>
         </div>
-
-        <div className="my-8 flex items-center gap-2 border-y py-3">
-          <div className="relative min-w-0 flex-1 sm:max-w-md">
-            <SearchIcon
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              aria-label="Pesquisar projetos"
-              className="h-9 pr-9 pl-9"
-              maxLength={100}
-              onChange={(event) => setSearchValue(event.target.value)}
-              placeholder="Pesquisar projetos"
-              type="text"
-              value={searchValue}
-            />
-            {searchValue && (
-              <Button
-                aria-label="Limpar pesquisa"
-                className="absolute top-1/2 right-1 -translate-y-1/2"
-                onClick={clearSearch}
-                size="icon-sm"
-                variant="ghost"
-              >
-                <XIcon aria-hidden="true" />
-              </Button>
-            )}
-          </div>
-          <div className="ml-auto">
-            <ViewModeToggle label="Visualização dos projetos" onChange={changeView} value={view} />
-          </div>
-        </div>
-
-        {projects.isPending && <ProjectListSkeleton view={view} />}
-        {projects.isError && <ProjectListError onRetry={() => void projects.refetch()} />}
-        {isEmptyLibrary && <EmptyProjects onCreate={() => setCreateOpen(true)} />}
-        {hasNoResults && <NoProjectResults onClear={clearSearch} />}
-        {hasProjects && view === "cards" && (
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {projects.data?.items.map((project) => (
-              <ProjectCard
-                key={project.id}
-                listLocation={listLocation}
-                onChangeCover={() => openAction("cover", project)}
-                onDelete={() => openAction("delete", project)}
-                onRename={() => openAction("rename", project)}
-                project={project}
-                query={query}
-              />
-            ))}
-          </div>
-        )}
-        {hasProjects && view === "table" && projects.data && (
-          <ProjectTable
-            listLocation={listLocation}
-            onAction={openAction}
-            projects={projects.data.items}
-            query={query}
-          />
-        )}
-        {projects.data && (
-          <ProjectPagination onPageChange={setPage} pagination={projects.data.pagination} />
-        )}
+        <Button className="self-start sm:self-auto" onClick={() => setCreateOpen(true)}>
+          <PlusIcon aria-hidden="true" data-icon="inline-start" />
+          Novo projeto
+        </Button>
       </div>
 
+      <div className="my-8 flex items-center gap-2 border-y py-3">
+        <SearchInput
+          aria-label="Pesquisar projetos"
+          className="h-9"
+          containerClassName="flex-1 sm:max-w-md"
+          maxLength={100}
+          onClear={clearSearch}
+          onValueChange={setSearchValue}
+          placeholder="Pesquisar projetos"
+          value={searchValue}
+        />
+        <div className="ml-auto">
+          <ViewModeToggle label="Visualização dos projetos" onChange={changeView} value={view} />
+        </div>
+      </div>
+
+      {projects.isPending && <ProjectListSkeleton view={view} />}
+      {projects.isError && <ProjectListError onRetry={() => void projects.refetch()} />}
+      {isEmptyLibrary && <EmptyProjects onCreate={() => setCreateOpen(true)} />}
+      {hasNoResults && <NoProjectResults onClear={clearSearch} />}
+      {hasProjects && view === "cards" && (
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {projects.data?.items.map((project) => (
+            <ProjectCard
+              key={project.id}
+              listLocation={listLocation}
+              onChangeCover={() => openAction("cover", project)}
+              onDelete={() => openAction("delete", project)}
+              onRename={() => openAction("rename", project)}
+              project={project}
+              query={query}
+            />
+          ))}
+        </div>
+      )}
+      {hasProjects && view === "table" && projects.data && (
+        <ProjectTable
+          listLocation={listLocation}
+          onAction={openAction}
+          projects={projects.data.items}
+          query={query}
+        />
+      )}
+      {projects.data && (
+        <ProjectPagination onPageChange={setPage} pagination={projects.data.pagination} />
+      )}
       <CreateProjectDialog onOpenChange={setCreateOpen} open={createOpen} />
       {activeAction?.action === "rename" && (
         <RenameProjectDialog
@@ -214,7 +191,7 @@ export const ProjectListPage = () => {
           project={activeAction.project}
         />
       )}
-    </div>
+    </ContentPage>
   );
 };
 

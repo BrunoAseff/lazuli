@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { paginationSchema, projectIdSchema } from "../projects/project-contracts.ts";
-import { documentContentSchema } from "../documents/document-contracts.ts";
+import {
+  documentContentSchema,
+  hasMeaningfulDocumentContent,
+  utf8ByteLength,
+} from "../documents/document-contracts.ts";
 import {
   createStudyCollectionSchema,
   STUDY_COLLECTION_MAX_PAGE_SIZE,
@@ -35,34 +39,10 @@ export const quizAttemptItemIdSchema = z.uuid();
 export const quizQuestionStatusSchema = z.enum(["active", "archived"]);
 export const quizQuestionSortSchema = z.enum(["updated", "created", "position"]);
 
-const utf8ByteLength = (value: string) => {
-  let bytes = 0;
-  for (const character of value) {
-    const point = character.codePointAt(0)!;
-    bytes += point <= 0x7f ? 1 : point <= 0x7ff ? 2 : point <= 0xffff ? 3 : 4;
-  }
-  return bytes;
-};
-const hasMeaningfulContent = (blocks: z.infer<typeof documentContentSchema>) => {
-  const pending = [...blocks];
-  while (pending.length) {
-    const block = pending.pop()!;
-    if (block.type === "image") return true;
-    if (
-      block.content?.some((item) =>
-        item.type === "text" ? item.text.trim() : item.content.some(({ text }) => text.trim()),
-      )
-    )
-      return true;
-    if (block.children) pending.push(...block.children);
-  }
-  return false;
-};
-
 export const quizQuestionContentSchema = documentContentSchema.superRefine((content, context) => {
   if (utf8ByteLength(JSON.stringify(content)) > QUIZ_MAX_CONTENT_BYTES)
     context.addIssue({ code: "custom", message: "A pergunta deve ter no máximo 256 KB." });
-  if (!hasMeaningfulContent(content))
+  if (!hasMeaningfulDocumentContent(content))
     context.addIssue({ code: "custom", message: "Informe uma pergunta." });
 });
 

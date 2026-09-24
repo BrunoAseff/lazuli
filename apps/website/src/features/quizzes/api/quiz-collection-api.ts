@@ -9,16 +9,10 @@ import {
 } from "@lazuli/shared";
 
 import { apiRequest as request } from "@/lib/api-client.ts";
+import { buildSearchParams } from "@/lib/search-params.ts";
 
 const toSearchParams = ({ page, pageSize, project, query, status }: QuizCollectionListQuery) => {
-  const params = new URLSearchParams({
-    page: String(page),
-    pageSize: String(pageSize),
-    status,
-  });
-  if (query) params.set("query", query);
-  if (project) params.set("project", project);
-  return params;
+  return buildSearchParams({ page, pageSize, project, query, status });
 };
 
 export const fetchQuizCollections = (

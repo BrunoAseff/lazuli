@@ -8,19 +8,20 @@ import {
 } from "@lazuli/shared";
 
 import { apiRequest } from "@/lib/api-client.ts";
+import { buildSearchParams } from "@/lib/search-params.ts";
 
 export const fetchReferences = (
   input: ReferenceListQuery,
   signal?: AbortSignal,
 ): Promise<ReferenceListResponse> => {
-  const params = new URLSearchParams({
-    page: String(input.page),
-    pageSize: String(input.pageSize),
+  const params = buildSearchParams({
+    anchorId: input.anchorId,
+    documentId: input.documentId,
+    page: input.page,
+    pageSize: input.pageSize,
+    targetId: input.targetId,
+    targetType: input.targetType,
   });
-  if (input.targetType) params.set("targetType", input.targetType);
-  if (input.targetId) params.set("targetId", input.targetId);
-  if (input.documentId) params.set("documentId", input.documentId);
-  if (input.anchorId) params.set("anchorId", input.anchorId);
   return apiRequest(`/api/references?${params}`, referenceListResponseSchema, { signal });
 };
 

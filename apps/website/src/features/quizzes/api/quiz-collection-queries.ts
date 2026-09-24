@@ -3,8 +3,9 @@ import type {
   QuizCollectionListQuery,
   UpdateQuizCollectionInput,
 } from "@lazuli/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
+import { useInvalidateQueryKey } from "@/hooks/use-invalidate-query-key.ts";
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import {
   fetchQuizCollections,
@@ -35,10 +36,7 @@ export const useQuizCollections = (input: QuizCollectionListQuery, enabled = tru
     queryFn: ({ signal }) => fetchQuizCollections(input, signal),
   });
 
-const useInvalidateCollections = () => {
-  const client = useQueryClient();
-  return () => client.invalidateQueries({ queryKey: quizCollectionKeys.lists() });
-};
+const useInvalidateCollections = () => useInvalidateQueryKey(quizCollectionKeys.lists());
 
 export const useCreateQuizCollection = () => {
   const invalidate = useInvalidateCollections();
