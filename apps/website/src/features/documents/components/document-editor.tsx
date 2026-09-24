@@ -498,112 +498,114 @@ export const DocumentEditor = ({
 
   return (
     <>
-      <header className="sticky top-0 z-20 bg-background/95 px-4 py-5 backdrop-blur sm:px-6">
-        <div className="flex h-9 items-center justify-end gap-2">
-          {contextualReturnTo && (
-            <Button
-              className="mr-auto"
-              onClick={() => void navigate(contextualReturnTo)}
-              size="sm"
-              variant="ghost"
-            >
-              <ArrowLeftIcon aria-hidden="true" /> Voltar
-            </Button>
-          )}
-          <DocumentReferencesButton onClick={() => setDocumentReferencesOpen(true)} />
-          <DocumentFind editorRef={editorContainerRef} showTrigger={false} />
-          <DocumentSaveStatus
-            onOpenConflict={() => setConflictDialogOpen(true)}
-            onRetry={() => {
-              if (!adjustingAnchorRef.current) setAutoSavePaused(false);
-              if (titleDirty) void finishTitle();
-              if (dirty) void save(false);
-            }}
-            state={saveState}
-          />
-        </div>
-      </header>
-      <main className="mx-auto w-full max-w-4xl px-5 pt-5 pb-12 sm:px-8 sm:pt-8">
-        <Textarea
-          aria-label="Título do documento"
-          autoComplete="off"
-          className="mb-7 min-h-14 w-full resize-none overflow-hidden border-transparent bg-transparent px-0 py-1 font-heading text-4xl leading-tight font-semibold shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:text-5xl md:text-5xl"
-          data-1p-ignore
-          data-lpignore="true"
-          maxLength={100}
-          onBlur={() => void finishTitle()}
-          onChange={(event) => setTitle(event.target.value)}
-          ref={titleElementRef}
-          rows={1}
-          value={title}
-        />
-        <div
-          onClickCapture={(event) => {
-            const target = event.target;
-            if (!(target instanceof Element)) return;
-
-            const sourceAnchor = target.closest<HTMLElement>(
-              ".lazuli-source-anchor[data-anchor-id]",
-            );
-            if (sourceAnchor && event.currentTarget.contains(sourceAnchor)) {
-              const anchorId = sourceAnchor.dataset.anchorId;
-              if (anchorId) setActiveAnchorId(anchorId);
-              return;
-            }
-
-            const imageReferenceTrigger = target.closest<HTMLElement>(
-              "[data-image-reference-trigger]",
-            );
-            if (imageReferenceTrigger && event.currentTarget.contains(imageReferenceTrigger)) {
-              const blockId = imageReferenceTrigger.dataset.imageReferenceTrigger;
-              const imageBlock = imageReferenceTrigger.closest<HTMLElement>(
-                ".bn-block-outer[data-id]",
-              );
-              if (blockId && imageBlock?.dataset.id === blockId) setActiveAnchorId(blockId);
-              return;
-            }
-
-            const link = target.closest("a[href]");
-            if (!link || !event.currentTarget.contains(link) || event.ctrlKey || event.metaKey)
-              return;
-            event.preventDefault();
-          }}
-          ref={editorContainerRef}
-        >
-          <BlockNoteView
-            className="lazuli-editor"
-            editor={editor}
-            formattingToolbar={false}
-            onChange={() => {
-              if (saveState !== "conflict") {
+      <div className="mr-1 h-full min-h-0 overflow-y-auto lazuli-thin-scrollbar">
+        <header className="sticky top-0 z-20 bg-card/92 px-4 backdrop-blur sm:px-6">
+          <div className="flex h-[3.75rem] items-center justify-end gap-2">
+            {contextualReturnTo && (
+              <Button
+                className="mr-auto"
+                onClick={() => void navigate(contextualReturnTo)}
+                size="sm"
+                variant="ghost"
+              >
+                <ArrowLeftIcon aria-hidden="true" /> Voltar
+              </Button>
+            )}
+            <DocumentReferencesButton onClick={() => setDocumentReferencesOpen(true)} />
+            <DocumentFind editorRef={editorContainerRef} showTrigger={false} />
+            <DocumentSaveStatus
+              onOpenConflict={() => setConflictDialogOpen(true)}
+              onRetry={() => {
                 if (!adjustingAnchorRef.current) setAutoSavePaused(false);
-                setSaveState("pending");
+                if (titleDirty) void finishTitle();
+                if (dirty) void save(false);
+              }}
+              state={saveState}
+            />
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-[52rem] px-5 pt-8 pb-24 sm:px-8 sm:pt-12">
+          <Textarea
+            aria-label="Título do documento"
+            autoComplete="off"
+            className="mb-8 min-h-16 w-full resize-none overflow-hidden border-transparent bg-transparent px-0 py-1 font-heading text-5xl leading-[1.02] font-normal tracking-[-0.04em] shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:text-6xl md:text-6xl"
+            data-1p-ignore
+            data-lpignore="true"
+            maxLength={100}
+            onBlur={() => void finishTitle()}
+            onChange={(event) => setTitle(event.target.value)}
+            ref={titleElementRef}
+            rows={1}
+            value={title}
+          />
+          <div
+            onClickCapture={(event) => {
+              const target = event.target;
+              if (!(target instanceof Element)) return;
+
+              const sourceAnchor = target.closest<HTMLElement>(
+                ".lazuli-source-anchor[data-anchor-id]",
+              );
+              if (sourceAnchor && event.currentTarget.contains(sourceAnchor)) {
+                const anchorId = sourceAnchor.dataset.anchorId;
+                if (anchorId) setActiveAnchorId(anchorId);
+                return;
               }
-              setImageImportError((current) => {
-                if (!current) return null;
-                const block = editor.getBlock(current.blockId);
-                if (
-                  !block ||
-                  block.type !== "image" ||
-                  String(block.props.url) !== current.sourceUrl
-                )
-                  return null;
-                return current;
-              });
-              setDirty(true);
+
+              const imageReferenceTrigger = target.closest<HTMLElement>(
+                "[data-image-reference-trigger]",
+              );
+              if (imageReferenceTrigger && event.currentTarget.contains(imageReferenceTrigger)) {
+                const blockId = imageReferenceTrigger.dataset.imageReferenceTrigger;
+                const imageBlock = imageReferenceTrigger.closest<HTMLElement>(
+                  ".bn-block-outer[data-id]",
+                );
+                if (blockId && imageBlock?.dataset.id === blockId) setActiveAnchorId(blockId);
+                return;
+              }
+
+              const link = target.closest("a[href]");
+              if (!link || !event.currentTarget.contains(link) || event.ctrlKey || event.metaKey)
+                return;
+              event.preventDefault();
             }}
-            shadCNComponents={blockNoteComponents}
-            theme="light"
+            ref={editorContainerRef}
           >
-            <FormattingToolbarController formattingToolbar={formattingToolbar} />
-          </BlockNoteView>
-        </div>
-        <p aria-live="assertive" className="sr-only">
-          {imageImportError?.message}
-        </p>
-      </main>
+            <BlockNoteView
+              className="lazuli-editor lazuli-document-editor"
+              editor={editor}
+              formattingToolbar={false}
+              onChange={() => {
+                if (saveState !== "conflict") {
+                  if (!adjustingAnchorRef.current) setAutoSavePaused(false);
+                  setSaveState("pending");
+                }
+                setImageImportError((current) => {
+                  if (!current) return null;
+                  const block = editor.getBlock(current.blockId);
+                  if (
+                    !block ||
+                    block.type !== "image" ||
+                    String(block.props.url) !== current.sourceUrl
+                  )
+                    return null;
+                  return current;
+                });
+                setDirty(true);
+              }}
+              shadCNComponents={blockNoteComponents}
+              theme="light"
+            >
+              <FormattingToolbarController formattingToolbar={formattingToolbar} />
+            </BlockNoteView>
+          </div>
+          <p aria-live="assertive" className="sr-only">
+            {imageImportError?.message}
+          </p>
+        </main>
+      </div>
       {(pendingTarget || adjustingAnchorId) && (
-        <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-xl border bg-popover px-4 py-3 shadow-lg">
+        <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-[var(--radius-overlay)] border bg-popover px-4 py-3 shadow-[var(--shadow-overlay)]">
           <p className="min-w-0 flex-1 text-sm">
             {adjustingAnchorId
               ? "Selecione o novo trecho desta referência."

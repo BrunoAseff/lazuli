@@ -87,27 +87,13 @@ export const ProjectListPage = () => {
 
   return (
     <ContentPage maxWidth="6xl">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Biblioteca pessoal
-          </p>
-          <h1 className="font-heading text-4xl font-medium tracking-tight sm:text-5xl">Projetos</h1>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-            Organize documentos relacionados por disciplina, idioma ou assunto.
-          </p>
-        </div>
-        <Button className="self-start sm:self-auto" onClick={() => setCreateOpen(true)}>
-          <PlusIcon aria-hidden="true" data-icon="inline-start" />
-          Novo projeto
-        </Button>
-      </div>
+      <h1 className="font-heading text-4xl font-medium tracking-tight sm:text-5xl">Projetos</h1>
 
-      <div className="my-8 flex items-center gap-2 border-y py-3">
+      <div className="my-7 flex flex-wrap items-center gap-2">
         <SearchInput
           aria-label="Pesquisar projetos"
           className="h-9"
-          containerClassName="flex-1 sm:max-w-md"
+          containerClassName="min-w-56 flex-1"
           maxLength={100}
           onClear={clearSearch}
           onValueChange={setSearchValue}
@@ -117,6 +103,10 @@ export const ProjectListPage = () => {
         <div className="ml-auto">
           <ViewModeToggle label="Visualização dos projetos" onChange={changeView} value={view} />
         </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <PlusIcon aria-hidden="true" data-icon="inline-start" />
+          Novo projeto
+        </Button>
       </div>
 
       {projects.isPending && <ProjectListSkeleton view={view} />}

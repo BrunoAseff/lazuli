@@ -211,14 +211,22 @@
   min-height: 100svh;
 }
 
+html:has(.project-workspace),
+body:has(.project-workspace),
+#app:has(.project-workspace) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .project-workspace {
   container-type: inline-size;
+  height: calc(100dvh - 3.5rem);
 }
 
 .project-workspace-grid {
   display: grid;
-  grid-template-columns: minmax(0, 64rem);
-  justify-content: center;
+  grid-template-columns: minmax(0, 1fr);
   transition: grid-template-columns 200ms ease-out;
   width: 100%;
 }
@@ -229,6 +237,8 @@
 
 .project-workspace-content {
   grid-column: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .project-files-trigger {
@@ -236,9 +246,12 @@
 }
 
 @container (min-width: 56rem) {
+  .project-workspace {
+    height: 100dvh;
+  }
+
   .project-workspace-grid {
-    grid-template-columns: 15rem minmax(0, 64rem);
-    justify-content: center;
+    grid-template-columns: 15.5rem minmax(0, 1fr);
   }
 
   .project-workspace-tree {
@@ -247,7 +260,7 @@
   }
 
   .project-workspace-grid[data-tree-collapsed="true"] {
-    grid-template-columns: 2.75rem minmax(0, 64rem);
+    grid-template-columns: 3rem minmax(0, 1fr);
   }
 
   .project-workspace-content {
@@ -257,26 +270,33 @@
   .project-files-trigger {
     display: none;
   }
-}
 
-@container (min-width: 94rem) {
-  .project-workspace-grid {
-    grid-template-columns: minmax(15rem, 1fr) minmax(0, 64rem) minmax(15rem, 1fr);
-    justify-content: stretch;
-  }
-
-  .project-workspace-tree {
-    justify-self: end;
-  }
-
-  .project-workspace-grid[data-tree-collapsed="true"] {
-    grid-template-columns: minmax(2.75rem, 1fr) minmax(0, 64rem) minmax(2.75rem, 1fr);
+  .project-home-back {
+    display: none;
   }
 }
 
 @container (max-width: 55.999rem) {
   .project-workspace-content main:has(.lazuli-editor) {
-    padding-inline: 4rem;
+    padding-inline: 3rem;
+  }
+}
+
+@container (max-width: 40rem) {
+  .project-workspace-content main:has(.lazuli-editor) {
+    padding-inline: 1.25rem;
+  }
+}
+
+@container (min-width: 56rem) {
+  .project-workspace-content {
+    height: calc(100dvh - 1rem);
+    min-height: 0;
+    margin: 0.5rem 0.5rem 0.5rem 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+    background: var(--card);
   }
 }
 
@@ -299,6 +319,32 @@
   min-height: 60vh;
   padding-inline: 0;
   background: transparent;
+}
+
+.lazuli-document-editor.bn-container {
+  font-family: var(--font-heading);
+  font-size: 1.0625rem;
+  line-height: 1.72;
+}
+
+.lazuli-document-editor .bn-editor {
+  min-height: 65vh;
+}
+
+.lazuli-document-editor .bn-inline-content {
+  line-height: 1.72;
+}
+
+.lazuli-document-editor [data-content-type="heading"] {
+  letter-spacing: -0.02em;
+}
+
+.lazuli-document-editor [data-content-type="heading"][data-level="1"] {
+  font-size: 2rem;
+}
+
+.lazuli-document-editor [data-content-type="heading"][data-level="2"] {
+  font-size: 1.625rem;
 }
 
 .lazuli-flashcard-editor .bn-editor {

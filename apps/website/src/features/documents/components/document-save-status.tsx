@@ -16,7 +16,7 @@ export const DocumentSaveStatus = ({
   if (state === "saved")
     return (
       <span className="flex h-9 items-center gap-2 text-sm text-muted-foreground" role="status">
-        <CloudCheckIcon className="size-4 text-emerald-700" /> Alterações salvas
+        <CloudCheckIcon className="size-4 text-success" /> Alterações salvas
       </span>
     );
   if (state === "saving")

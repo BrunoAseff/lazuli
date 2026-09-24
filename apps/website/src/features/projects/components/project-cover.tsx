@@ -1,6 +1,5 @@
 import type { ProjectCoverKey } from "@lazuli/shared";
-import { FolderIcon, FolderOpenIcon } from "lucide-react";
-
+import { ProjectClosedIcon, ProjectOpenIcon } from "@/components/domain-icons.ts";
 import { cn } from "@/lib/utils.ts";
 import { getProjectCover } from "../project-covers.ts";
 
@@ -26,9 +25,13 @@ export const ProjectCover = ({
         )}
       >
         {compact ? (
-          <FolderIcon aria-hidden="true" className="size-[1.125rem]" />
+          <ProjectClosedIcon aria-hidden="true" className="size-[1.125rem]" weight="duotone" />
         ) : (
-          <FolderOpenIcon aria-hidden="true" className={picker ? "size-5" : "size-8"} />
+          <ProjectOpenIcon
+            aria-hidden="true"
+            className={picker ? "size-5" : "size-8"}
+            weight="duotone"
+          />
         )}
       </div>
     );

@@ -14,7 +14,7 @@ export const ViewModeToggle = ({
   onChange: (value: ViewMode) => void;
   value: ViewMode;
 }) => (
-  <div aria-label={label} className="flex border p-0.5" role="group">
+  <div aria-label={label} className="flex items-center gap-1" role="group">
     <Tooltip>
       <TooltipTrigger asChild>
         <Button

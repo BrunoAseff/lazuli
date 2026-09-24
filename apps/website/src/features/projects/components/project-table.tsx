@@ -41,7 +41,7 @@ const ProjectTitleLink = ({
 };
 
 export const ProjectTable = ({ listLocation, onAction, projects, query }: ProjectTableProps) => (
-  <div className="overflow-hidden border bg-card">
+  <div className="overflow-hidden rounded-xl border bg-card">
     <table className="w-full table-fixed text-left text-sm">
       <thead className="border-b bg-muted/55 text-xs text-muted-foreground">
         <tr>
@@ -61,7 +61,7 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
       </thead>
       <tbody className="divide-y">
         {projects.map((project) => (
-          <tr className="group hover:bg-muted/25" key={project.id}>
+          <tr className="group transition-colors hover:bg-muted/25" key={project.id}>
             <td className="px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 <ProjectCover
@@ -86,7 +86,7 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
             </td>
             <td className="px-3 py-3 text-right">
               <ProjectActionsMenu
-                className="border-transparent bg-transparent shadow-none group-hover:border-border group-hover:bg-background group-hover:shadow-sm"
+                className="border-transparent bg-transparent shadow-none group-hover:border-border group-hover:bg-background"
                 onChangeCover={() => onAction("cover", project)}
                 onDelete={() => onAction("delete", project)}
                 onRename={() => onAction("rename", project)}

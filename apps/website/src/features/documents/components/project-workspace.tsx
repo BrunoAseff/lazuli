@@ -12,27 +12,32 @@ export const ProjectWorkspace = ({
   projectId,
   items,
   activeDocumentId,
+  projectTitle,
   children,
 }: {
   projectId: string;
   items: ProjectTreeItem[];
   activeDocumentId?: string;
+  projectTitle?: string;
   children: ReactNode;
 }) => {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   return (
-    <div className="project-workspace min-h-0 min-w-0 flex-1 overflow-x-clip bg-background">
-      <div className="project-workspace-grid min-h-full min-w-0" data-tree-collapsed={collapsed}>
+    <div className="project-workspace min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
+      <div
+        className="project-workspace-grid h-full min-h-0 min-w-0"
+        data-tree-collapsed={collapsed}
+      >
         <aside
           className={cn(
-            "project-workspace-tree sticky top-0 h-svh overflow-hidden py-5 transition-[width] duration-200 ease-out",
-            collapsed ? "w-11" : "w-60",
+            "project-workspace-tree sticky top-0 h-svh overflow-hidden py-2 transition-[width] duration-200 ease-out",
+            collapsed ? "w-12" : "w-[15.5rem]",
           )}
         >
           <div
             className={cn(
-              "h-full w-60 transition-opacity duration-150",
+              "h-full w-[15.5rem] transition-opacity duration-150",
               collapsed && "pointer-events-none opacity-0",
             )}
           >
@@ -41,11 +46,12 @@ export const ProjectWorkspace = ({
               items={items}
               onClose={() => setCollapsed(true)}
               projectId={projectId}
+              projectTitle={projectTitle}
             />
           </div>
           <div
             className={cn(
-              "pointer-events-none absolute top-5 right-0 flex h-11 items-center justify-end px-2 opacity-0 transition-opacity duration-150",
+              "pointer-events-none absolute top-2 right-0 flex h-11 items-center justify-end px-2 opacity-0 transition-opacity duration-150",
               collapsed && "pointer-events-auto opacity-100 delay-100",
             )}
           >
@@ -60,11 +66,11 @@ export const ProjectWorkspace = ({
             </Button>
           </div>
         </aside>
-        <div className="project-workspace-content min-h-full min-w-0">
+        <div className="project-workspace-content h-full min-h-0 min-w-0 overflow-hidden">
           <Popover onOpenChange={setOpen} open={open}>
             <PopoverTrigger asChild>
               <Button
-                className="project-files-trigger fixed right-4 bottom-4 z-30 size-11 rounded-full bg-background shadow-lg"
+                className="project-files-trigger fixed right-4 bottom-4 z-30 size-11 bg-card shadow-[var(--shadow-overlay)]"
                 size="icon-lg"
                 variant="outline"
               >
@@ -74,7 +80,7 @@ export const ProjectWorkspace = ({
             </PopoverTrigger>
             <PopoverContent
               align="end"
-              className="h-[min(70svh,34rem)] w-[min(calc(100vw-2rem),20rem)] overflow-hidden rounded-lg p-0 shadow-xl"
+              className="h-[min(72svh,36rem)] w-[min(calc(100vw-2rem),20rem)] overflow-hidden p-0 shadow-[var(--shadow-overlay)]"
               side="top"
               sideOffset={10}
             >
@@ -83,6 +89,7 @@ export const ProjectWorkspace = ({
                 items={items}
                 onNavigate={() => setOpen(false)}
                 projectId={projectId}
+                projectTitle={projectTitle}
               />
             </PopoverContent>
           </Popover>
