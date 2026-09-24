@@ -7,6 +7,7 @@ import { StudyCollectionIdentity } from "@/components/study-collection-identity.
 import { Button } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
 import { formatMediumDateTime } from "@/lib/date-format.ts";
+import type { StudyCollectionAction } from "@/lib/study-actions.ts";
 
 const practiceLabel = (collection: FlashcardCollectionSummary) => {
   if (collection.totalCards === 0) return "Sem prática agendada";
@@ -26,10 +27,7 @@ export const FlashcardCollectionList = ({
   query,
 }: {
   collections: FlashcardCollectionSummary[];
-  onAction: (
-    action: "archive" | "delete" | "edit" | "restore",
-    collection: FlashcardCollectionSummary,
-  ) => void;
+  onAction: (action: StudyCollectionAction, collection: FlashcardCollectionSummary) => void;
   onPractice: (collection: FlashcardCollectionSummary) => void;
   query: string;
 }) => (

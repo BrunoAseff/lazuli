@@ -1,6 +1,6 @@
 import { PROJECT_PAGE_SIZE, type ProjectSummary } from "@lazuli/shared";
 import { PlusIcon } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
 
 import { ContentPage } from "@/components/content-page.tsx";
@@ -8,6 +8,8 @@ import { SearchInput } from "@/components/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { parsePositivePage } from "@/lib/pagination.ts";
 import { usePaginationClamp } from "@/hooks/use-pagination-clamp.ts";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search.ts";
+import { mergeSearchParams } from "@/lib/search-params.ts";
 import { useProjects } from "../api/project-queries.ts";
 import { ProjectCard } from "../components/project-card.tsx";
 import {
@@ -24,9 +26,8 @@ import {
 } from "../components/project-list-states.tsx";
 import { ProjectPagination } from "../components/project-pagination.tsx";
 import { ProjectTable } from "../components/project-table.tsx";
-import { ViewModeToggle, type ViewMode } from "../components/view-mode-toggle.tsx";
-
-type ProjectAction = "cover" | "delete" | "rename";
+import { ViewModeToggle, type ViewMode } from "@/components/view-mode-toggle.tsx";
+import type { ProjectAction } from "../project-types.ts";
 
 const getInitialView = (): ViewMode =>
   localStorage.getItem("lazuli-project-view") === "table" ? "table" : "cards";
@@ -36,7 +37,9 @@ export const ProjectListPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("query")?.trim() ?? "";
   const page = parsePositivePage(searchParams.get("page"));
-  const [searchValue, setSearchValue] = useState(query);
+  const [searchValue, setSearchValue] = useDebouncedSearch(query, (value) => {
+    setSearchParams((current) => mergeSearchParams(current, { query: value || undefined }));
+  });
   const [view, setView] = useState<ViewMode>(getInitialView);
   const [createOpen, setCreateOpen] = useState(false);
   const [activeAction, setActiveAction] = useState<{
@@ -72,25 +75,6 @@ export const ProjectListPage = () => {
     setView(nextView);
     localStorage.setItem("lazuli-project-view", nextView);
   };
-
-  useEffect(() => setSearchValue(query), [query]);
-
-  useEffect(() => {
-    const normalized = searchValue.trim();
-    if (normalized === query) return;
-
-    const timeout = window.setTimeout(() => {
-      setSearchParams((current) => {
-        const next = new URLSearchParams(current);
-        if (normalized) next.set("query", normalized);
-        else next.delete("query");
-        next.delete("page");
-        return next;
-      });
-    }, 300);
-
-    return () => window.clearTimeout(timeout);
-  }, [query, searchValue, setSearchParams]);
 
   usePaginationClamp(page, projects.data?.pagination.totalPages, setPage);
 

@@ -1,3 +1,4 @@
+import type { StudyCollectionStatus } from "@lazuli/shared";
 import { ArchiveIcon, ArchiveRestoreIcon, MoveRightIcon, Trash2Icon } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -20,7 +21,7 @@ export const StudyItemSummaryBar = ({
   onDelete: () => void;
   onMove?: () => void;
   onToggleArchive: () => void;
-  status: "active" | "archived";
+  status: StudyCollectionStatus;
 }) => (
   <div
     className={`flex min-h-14 shrink-0 items-center border-y py-2 text-xs text-muted-foreground ${count ? "px-3" : "px-5"}`}

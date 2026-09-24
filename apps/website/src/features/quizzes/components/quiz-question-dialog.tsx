@@ -7,8 +7,6 @@ import {
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  ArchiveIcon,
-  ArchiveRestoreIcon,
   CheckCircle2Icon,
   CircleIcon,
   CopyIcon,
@@ -24,15 +22,10 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { StudyCollectionPicker } from "@/components/study-collection-picker.tsx";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
+  DiscardStudyItemChangesDialog,
+  StudyItemActionsPanel,
+  StudyItemDetails,
+} from "@/components/study-item-editor-controls.tsx";
 import {
   Dialog,
   DialogCancelButton,
@@ -43,13 +36,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet.tsx";
 import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
 import { resolveAssetUrl, releaseResolvedAssetUrls } from "@/features/assets/asset-api.ts";
 import { lazuliBlockNoteDictionary } from "@/features/documents/editor/blocknote-dictionary.ts";
@@ -61,6 +47,8 @@ import { RichContentField } from "@/components/rich-content-field.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
 import { cn } from "@/lib/utils.ts";
+import type { StudyItemAction } from "@/lib/study-actions.ts";
+import type { StudyEditorPresentation } from "@/lib/study-editor.ts";
 import { useQuizCollections } from "../api/quiz-collection-queries.ts";
 import { uploadQuizImage } from "../api/quiz-api.ts";
 import { useCreateQuizQuestion, useUpdateQuizQuestion } from "../api/quiz-queries.ts";
@@ -78,13 +66,13 @@ type QuizQuestionEditorProps = {
   collectionId?: string;
   initialContent?: LazuliDocumentBlock | QuizQuestionDetail["content"];
   initialOptions?: Option[];
-  onAction?: (action: "archive" | "delete" | "duplicate" | "move" | "restore") => void;
+  onAction?: (action: StudyItemAction) => void;
   onCreated?: (questionId: string) => void | boolean | Promise<void | boolean>;
   onDirtyChange?: (dirty: boolean) => void;
   onOpenChange: (open: boolean) => void;
   onSaved?: (questionId: string, collectionId: string) => void;
   open: boolean;
-  presentation: "dialog" | "panel";
+  presentation: StudyEditorPresentation;
   question?: QuizQuestionDetail;
   readOnly?: boolean;
   sourcePreview?: string;
@@ -448,28 +436,7 @@ const QuizQuestionEditor = ({
       )}
       {readOnly && <p className="mt-5 text-xs text-muted-foreground">Questão arquivada.</p>}
       {question && onAction && (
-        <section className="border-t pt-6">
-          <p className="mb-3 text-[0.6875rem] font-medium tracking-[0.12em] text-muted-foreground uppercase">
-            Ações
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              className="col-span-2 h-9 justify-start"
-              onClick={() => onAction(question.archivedAt ? "restore" : "archive")}
-              variant="outline"
-            >
-              {question.archivedAt ? <ArchiveRestoreIcon /> : <ArchiveIcon />}
-              {question.archivedAt ? "Restaurar" : "Arquivar"}
-            </Button>
-            <Button
-              className="col-span-2 h-9 justify-start text-destructive hover:text-destructive"
-              onClick={() => onAction("delete")}
-              variant="outline"
-            >
-              <Trash2Icon /> Excluir
-            </Button>
-          </div>
-        </section>
+        <StudyItemActionsPanel archived={Boolean(question.archivedAt)} onAction={onAction} />
       )}
     </>
   );
@@ -545,37 +512,21 @@ const QuizQuestionEditor = ({
               )}
             </div>
           </section>
-          <Sheet open={detailsSheetOpen} onOpenChange={setDetailsSheetOpen}>
-            <SheetContent className="w-[min(24rem,calc(100vw-1rem))] overflow-y-auto p-0 lazuli-thin-scrollbar">
-              <SheetHeader className="border-b px-5 py-5">
-                <SheetTitle>Detalhes</SheetTitle>
-                <SheetDescription>Organização e referências desta questão.</SheetDescription>
-              </SheetHeader>
-              <div className="px-5 pb-6">{details}</div>
-            </SheetContent>
-          </Sheet>
-          <aside className="hidden min-h-0 overflow-y-auto border-l bg-background px-5 py-5 lazuli-thin-scrollbar xl:block">
-            <h2 className="mb-6 font-heading text-xl font-normal">Detalhes</h2>
+          <StudyItemDetails
+            description="Organização e referências desta questão."
+            onOpenChange={setDetailsSheetOpen}
+            open={detailsSheetOpen}
+          >
             {details}
-          </aside>
+          </StudyItemDetails>
         </div>
       )}
-      <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
-            <AlertDialogDescription>
-              O conteúdo da questão ainda não foi salvo.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
-            <AlertDialogAction onClick={() => onOpenChange(false)} variant="destructive">
-              Descartar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DiscardStudyItemChangesDialog
+        description="O conteúdo da questão ainda não foi salvo."
+        onDiscard={() => onOpenChange(false)}
+        onOpenChange={setDiscardOpen}
+        open={discardOpen}
+      />
     </>
   );
 };

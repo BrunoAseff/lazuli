@@ -3,8 +3,9 @@ import { FolderOpenIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
 import { EmptyState } from "@/components/empty-state.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import type { ViewMode } from "@/components/view-mode-toggle.tsx";
 
-export const ProjectListSkeleton = ({ view }: { view: "cards" | "table" }) => {
+export const ProjectListSkeleton = ({ view }: { view: ViewMode }) => {
   if (view === "table") {
     return (
       <div aria-label="Carregando projetos" className="divide-y border" role="status">

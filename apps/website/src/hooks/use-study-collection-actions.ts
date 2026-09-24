@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
-export type StudyCollectionAction = "archive" | "delete" | "edit";
+import type { StudyCollectionAction } from "@/lib/study-actions.ts";
+
+type PendingStudyCollectionAction = Exclude<StudyCollectionAction, "restore">;
 
 export const useStudyCollectionActions = <Collection extends { id: string }>({
   getRestoreErrorMessage,
@@ -11,15 +13,12 @@ export const useStudyCollectionActions = <Collection extends { id: string }>({
   restore: (collectionId: string) => Promise<unknown>;
 }) => {
   const [activeAction, setActiveAction] = useState<{
-    action: StudyCollectionAction;
+    action: PendingStudyCollectionAction;
     collection: Collection;
   } | null>(null);
   const restoringIds = useRef(new Set<string>());
 
-  const handleAction = async (
-    action: StudyCollectionAction | "restore",
-    collection: Collection,
-  ) => {
+  const handleAction = async (action: StudyCollectionAction, collection: Collection) => {
     if (action !== "restore") {
       setActiveAction({ action, collection });
       return;

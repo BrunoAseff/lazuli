@@ -10,6 +10,7 @@ import {
 
 import { ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu.tsx";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu.tsx";
+import type { DocumentTreeCreateType } from "../document-tree-types.ts";
 
 export const DocumentTreeActions = ({
   context = false,
@@ -22,7 +23,7 @@ export const DocumentTreeActions = ({
 }: {
   context?: boolean;
   item: ProjectTreeItem;
-  onCreate: (type: "folder" | "document") => void;
+  onCreate: (type: DocumentTreeCreateType) => void;
   onDelete: () => void;
   onExport?: () => void;
   onImport?: () => void;

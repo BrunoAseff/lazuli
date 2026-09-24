@@ -3,19 +3,10 @@ import {
   flashcardCollectionListQuerySchema,
   type FlashcardCollectionSummary,
 } from "@lazuli/shared";
-import { Layers3Icon, PlusIcon } from "lucide-react";
+import { Layers3Icon } from "lucide-react";
 import { useState } from "react";
 
-import { PaginationControls } from "@/components/pagination-controls.tsx";
-import { ContentPage } from "@/components/content-page.tsx";
-import {
-  EmptyStudyCollections,
-  NoStudyCollectionResults,
-  StudyCollectionListError,
-  StudyCollectionListSkeleton,
-} from "@/components/study-collection-list-states.tsx";
-import { StudyCollectionToolbar } from "@/components/study-collection-toolbar.tsx";
-import { Button } from "@/components/ui/button.tsx";
+import { StudyCollectionListPage } from "@/components/study-collection-list-page.tsx";
 import { useStudyCollectionListState } from "@/hooks/use-study-collection-list-state.ts";
 import { usePaginationClamp } from "@/hooks/use-pagination-clamp.ts";
 import { useStudyCollectionActions } from "@/hooks/use-study-collection-actions.ts";
@@ -69,57 +60,41 @@ export const FlashcardCollectionListPage = () => {
   const noResults = collections.data?.pagination.totalItems === 0 && hasFilters;
 
   return (
-    <ContentPage>
-      <h1 className="font-heading text-4xl font-normal tracking-tight sm:text-5xl">Flashcards</h1>
-
-      <StudyCollectionToolbar
-        action={
-          <Button className="shrink-0" onClick={() => setCreateOpen(true)}>
-            <PlusIcon aria-hidden="true" data-icon="inline-start" />
-            <span className="hidden sm:inline">Nova coleção</span>
-          </Button>
-        }
+    <>
+      <StudyCollectionListPage
+        emptyDescription="Organize seus flashcards por disciplina, idioma ou assunto."
+        emptyIcon={Layers3Icon}
+        error={collections.isError}
+        loading={collections.isPending}
+        noResults={noResults}
+        onClearFilters={clearFilters}
         onClearSearch={() => {
           setSearchValue("");
           updateParams({ query: undefined });
         }}
+        onCreate={() => setCreateOpen(true)}
+        onPageChange={setPage}
         onProjectChange={(value) => updateParams({ project: value })}
+        onRetry={() => void collections.refetch()}
         onSearchChange={setSearchValue}
         onStatusChange={(value) => updateParams({ status: value })}
+        pagination={collections.data?.pagination}
+        paginationLabel="Paginação de coleções"
         project={project}
-        searchValue={searchValue}
         searchDisabled={isEmpty}
+        searchValue={searchValue}
         status={status}
-      />
-
-      {collections.isPending && <StudyCollectionListSkeleton />}
-      {collections.isError && (
-        <StudyCollectionListError onRetry={() => void collections.refetch()} />
-      )}
-      {isEmpty && (
-        <EmptyStudyCollections
-          archived={status === "archived"}
-          description="Organize seus flashcards por disciplina, idioma ou assunto."
-          icon={Layers3Icon}
-          onCreate={() => setCreateOpen(true)}
-        />
-      )}
-      {noResults && <NoStudyCollectionResults onClear={clearFilters} />}
-      {hasItems && collections.data && (
-        <FlashcardCollectionList
-          collections={collections.data.items}
-          onAction={(action, collection) => void handleAction(action, collection)}
-          onPractice={(collection) => setPracticeCollectionId(collection.id)}
-          query={query}
-        />
-      )}
-      {collections.data && (
-        <PaginationControls
-          label="Paginação de coleções"
-          onPageChange={setPage}
-          pagination={collections.data.pagination}
-        />
-      )}
+        title="Flashcards"
+      >
+        {hasItems && collections.data && (
+          <FlashcardCollectionList
+            collections={collections.data.items}
+            onAction={(action, collection) => void handleAction(action, collection)}
+            onPractice={(collection) => setPracticeCollectionId(collection.id)}
+            query={query}
+          />
+        )}
+      </StudyCollectionListPage>
       <FlashcardCollectionDialog onOpenChange={setCreateOpen} open={createOpen} />
       {practiceCollectionId && (
         <PracticeSetupDialog
@@ -153,7 +128,7 @@ export const FlashcardCollectionListPage = () => {
           open
         />
       )}
-    </ContentPage>
+    </>
   );
 };
 

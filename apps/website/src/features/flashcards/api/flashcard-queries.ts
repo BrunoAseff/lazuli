@@ -12,7 +12,6 @@ import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import { flashcardCollectionKeys } from "./flashcard-collection-queries.ts";
 import {
   fetchFlashcard,
-  fetchFlashcardCollection,
   fetchFlashcards,
   fetchPracticeAvailability,
   fetchPracticeSession,
@@ -26,6 +25,7 @@ import {
   previewFlashcardImport,
   removeFlashcard,
 } from "./flashcard-api.ts";
+import { fetchFlashcardCollection } from "./flashcard-collection-api.ts";
 
 export const flashcardKeys = {
   all: QUERY_KEY_ROOTS.flashcards,

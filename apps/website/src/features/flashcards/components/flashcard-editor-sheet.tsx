@@ -4,28 +4,15 @@ import {
   flashcardContentSchema,
   type FlashcardDetail,
 } from "@lazuli/shared";
-import {
-  ArchiveIcon,
-  ArchiveRestoreIcon,
-  CopyIcon,
-  LoaderCircleIcon,
-  MoveRightIcon,
-  SlidersHorizontalIcon,
-  Trash2Icon,
-} from "lucide-react";
+import { CopyIcon, LoaderCircleIcon, SlidersHorizontalIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
+  DiscardStudyItemChangesDialog,
+  StudyItemActionsPanel,
+  StudyItemDetails,
+} from "@/components/study-item-editor-controls.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { StudyCollectionPicker } from "@/components/study-collection-picker.tsx";
 import {
@@ -37,13 +24,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet.tsx";
 import { releaseResolvedAssetUrls, resolveAssetUrl } from "@/features/assets/asset-api.ts";
 import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
 import { lazuliBlockNoteDictionary } from "@/features/documents/editor/blocknote-dictionary.ts";
@@ -54,7 +34,8 @@ import {
 import { RichContentField } from "@/components/rich-content-field.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
-import { cn } from "@/lib/utils.ts";
+import type { StudyItemAction } from "@/lib/study-actions.ts";
+import type { StudyEditorPresentation } from "@/lib/study-editor.ts";
 import { useFlashcardCollections } from "../api/flashcard-collection-queries.ts";
 import { uploadFlashcardImage } from "../api/flashcard-api.ts";
 import { useCreateFlashcard, useUpdateFlashcard } from "../api/flashcard-queries.ts";
@@ -66,12 +47,12 @@ type FlashcardEditorProps = {
   initialAnswer?: FlashcardDetail["answer"] | LazuliDocumentBlock;
   initialQuestion?: FlashcardDetail["question"] | LazuliDocumentBlock;
   onCreated?: (cardId: string) => void | boolean | Promise<void | boolean>;
-  onAction?: (action: "archive" | "delete" | "duplicate" | "move" | "restore") => void;
+  onAction?: (action: StudyItemAction) => void;
   onOpenChange: (open: boolean) => void;
   onDirtyChange?: (dirty: boolean) => void;
   onSaved?: (cardId: string, collectionId: string) => void;
   open: boolean;
-  presentation: "dialog" | "panel";
+  presentation: StudyEditorPresentation;
   readOnly?: boolean;
   sourcePreview?: string;
 };
@@ -304,37 +285,7 @@ const FlashcardEditor = ({
       )}
       {readOnly && <p className="mt-5 text-xs text-muted-foreground">Coleção arquivada.</p>}
       {card && onAction && (
-        <section className="border-t pt-6">
-          <p className="mb-3 text-[0.6875rem] font-medium tracking-[0.12em] text-muted-foreground uppercase">
-            Ações
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {!card.archivedAt && (
-              <Button
-                className="h-9 justify-start"
-                onClick={() => onAction("move")}
-                variant="outline"
-              >
-                <MoveRightIcon /> Mover
-              </Button>
-            )}
-            <Button
-              className={cn("h-9 justify-start", card.archivedAt && "col-span-2")}
-              onClick={() => onAction(card.archivedAt ? "restore" : "archive")}
-              variant="outline"
-            >
-              {card.archivedAt ? <ArchiveRestoreIcon /> : <ArchiveIcon />}
-              {card.archivedAt ? "Restaurar" : "Arquivar"}
-            </Button>
-            <Button
-              className="col-span-2 h-9 justify-start text-destructive hover:text-destructive"
-              onClick={() => onAction("delete")}
-              variant="outline"
-            >
-              <Trash2Icon /> Excluir
-            </Button>
-          </div>
-        </section>
+        <StudyItemActionsPanel archived={Boolean(card.archivedAt)} canMove onAction={onAction} />
       )}
     </>
   );
@@ -452,35 +403,21 @@ const FlashcardEditor = ({
               )}
             </div>
           </section>
-          <Sheet open={detailsSheetOpen} onOpenChange={setDetailsSheetOpen}>
-            <SheetContent className="w-[min(24rem,calc(100vw-1rem))] overflow-y-auto p-0 lazuli-thin-scrollbar">
-              <SheetHeader className="border-b px-5 py-5">
-                <SheetTitle>Detalhes</SheetTitle>
-                <SheetDescription>Organização e referências deste flashcard.</SheetDescription>
-              </SheetHeader>
-              <div className="px-5 pb-6">{details}</div>
-            </SheetContent>
-          </Sheet>
-          <aside className="hidden min-h-0 overflow-y-auto border-l bg-background px-5 py-5 lazuli-thin-scrollbar xl:block">
-            <h2 className="mb-6 font-heading text-xl font-normal">Detalhes</h2>
+          <StudyItemDetails
+            description="Organização e referências deste flashcard."
+            onOpenChange={setDetailsSheetOpen}
+            open={detailsSheetOpen}
+          >
             {details}
-          </aside>
+          </StudyItemDetails>
         </div>
       )}
-      <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
-            <AlertDialogDescription>O conteúdo ainda não foi salvo.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
-            <AlertDialogAction onClick={() => onOpenChange(false)} variant="destructive">
-              Descartar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DiscardStudyItemChangesDialog
+        description="O conteúdo ainda não foi salvo."
+        onDiscard={() => onOpenChange(false)}
+        onOpenChange={setDiscardOpen}
+        open={discardOpen}
+      />
     </>
   );
 };
