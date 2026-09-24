@@ -29,6 +29,7 @@ describe("DocumentTreeToolbar", () => {
     const markup = renderToolbar(true);
 
     expect(markup).toContain('placeholder="Pesquisar arquivos"');
+    expect(markup).toContain('aria-label="Fechar pesquisa"');
     expect(markup).not.toContain('aria-label="Importar documentos"');
   });
 });

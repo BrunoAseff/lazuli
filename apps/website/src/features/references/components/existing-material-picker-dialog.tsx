@@ -136,7 +136,7 @@ export const ExistingMaterialPickerDialog = ({
         <div className="min-h-0 space-y-4 overflow-y-auto px-6 py-5 lazuli-thin-scrollbar">
           {sourcePreview && <ReferenceSourcePreview text={sourcePreview} />}
           {!collectionId && (
-            <div className="grid grid-cols-2 border p-1">
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/50 p-1">
               <Button
                 onClick={() => {
                   setType("flashcard");
@@ -179,11 +179,11 @@ export const ExistingMaterialPickerDialog = ({
               value={query}
             />
           </div>
-          <div className="max-h-72 divide-y overflow-y-auto border-y lazuli-thin-scrollbar">
+          <div className="max-h-72 space-y-1 overflow-y-auto rounded-xl border bg-card p-1.5 lazuli-thin-scrollbar">
             {!collectionId &&
               collections?.map((collection) => (
                 <button
-                  className="flex w-full items-center gap-3 px-2 py-3 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   key={collection.id}
                   onClick={() => {
                     setCollectionId(collection.id);
@@ -223,14 +223,17 @@ export const ExistingMaterialPickerDialog = ({
                 return (
                   <button
                     aria-pressed={active}
-                    className="flex w-full items-center gap-3 px-2 py-3 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      active && "bg-muted/65",
+                    )}
                     key={material.id}
                     onClick={() => toggle(target)}
                     type="button"
                   >
                     <span
                       className={cn(
-                        "flex size-4 shrink-0 items-center justify-center border",
+                        "flex size-4 shrink-0 items-center justify-center rounded-[0.3rem] border",
                         active && "border-primary bg-primary text-primary-foreground",
                       )}
                     >
@@ -252,7 +255,7 @@ export const ExistingMaterialPickerDialog = ({
             )}
           </div>
         </div>
-        <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4">
+        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
           <DialogCancelButton onClick={onCancel}>Cancelar</DialogCancelButton>
           <Button disabled={!selected.length || create.isPending} onClick={() => void save()}>
             {create.isPending && <LoaderCircleIcon aria-hidden="true" className="animate-spin" />}

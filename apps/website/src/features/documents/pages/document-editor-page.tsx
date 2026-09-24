@@ -14,11 +14,17 @@ export const DocumentEditorPage = () => {
   const document = useDocument(projectId, documentId);
   if (document.isPending)
     return (
-      <div className="flex flex-1">
-        <Skeleton className="hidden w-64 rounded-none lg:block" />
-        <div className="flex-1 space-y-5 p-8">
-          <Skeleton className="h-10 w-1/2" />
-          <Skeleton className="h-96 w-full" />
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex h-[3.75rem] items-center justify-end border-b px-6">
+          <Skeleton className="h-5 w-32" />
+        </div>
+        <div className="mx-auto w-full max-w-[52rem] space-y-8 px-8 py-12">
+          <Skeleton className="h-14 w-2/3" />
+          <div className="space-y-4">
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-5 w-11/12" />
+            <Skeleton className="h-5 w-4/5" />
+          </div>
         </div>
       </div>
     );
@@ -35,7 +41,7 @@ export const DocumentEditorPage = () => {
       </div>
     );
   return (
-    <div className="min-h-full">
+    <div className="h-full min-h-0 overflow-hidden">
       <DocumentEditor
         data={document.data}
         documentId={documentId}

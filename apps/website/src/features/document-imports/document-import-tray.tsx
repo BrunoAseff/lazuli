@@ -1,13 +1,15 @@
 import type { DocumentImport, StorageUsage } from "@lazuli/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2Icon, ChevronDownIcon, FileTextIcon, XIcon } from "lucide-react";
+import { CheckCircle2Icon, ChevronDownIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
+import { DocumentDomainIcon } from "@/components/domain-icons.ts";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
+import { cn } from "@/lib/utils.ts";
 import {
   abortDocumentImportUpload,
   cancelDocumentImport,
@@ -77,7 +79,7 @@ export const DocumentImportTray = ({
     setCompletedDismissedAt(dismissedAt);
   };
   return (
-    <section className="fixed right-4 bottom-4 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-lg border bg-popover shadow-xl">
+    <section className="fixed right-4 bottom-4 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[var(--radius-overlay)] border bg-popover shadow-[var(--shadow-overlay)]">
       <header className="flex h-12 items-center gap-2 border-b px-4">
         <p className="min-w-0 flex-1 font-medium">
           {active
@@ -116,9 +118,37 @@ export const DocumentImportTray = ({
                   : total
                     ? ((item.progressCurrent ?? 0) / total) * 100
                     : undefined;
+              const canOpen = item.status === "completed" && Boolean(item.resultDocumentId);
+              const openDocument = () => {
+                if (!item.resultDocumentId) return;
+                void navigate(`/documents/${item.projectId}/document/${item.resultDocumentId}`);
+              };
               return (
-                <div className="flex gap-3 rounded-md px-2 py-2.5" key={item.id}>
-                  <FileTextIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div
+                  aria-label={canOpen ? `Abrir ${item.originalName}` : undefined}
+                  className={cn(
+                    "flex gap-3 rounded-lg px-2 py-2.5 transition-colors",
+                    canOpen &&
+                      "cursor-pointer hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  )}
+                  key={item.id}
+                  onClick={canOpen ? openDocument : undefined}
+                  onKeyDown={
+                    canOpen
+                      ? (event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          openDocument();
+                        }
+                      : undefined
+                  }
+                  role={canOpen ? "link" : undefined}
+                  tabIndex={canOpen ? 0 : undefined}
+                >
+                  <DocumentDomainIcon
+                    className="mt-0.5 size-[1.125rem] shrink-0 text-muted-foreground"
+                    weight="duotone"
+                  />
                   <div className="min-w-0 flex-1">
                     <OverflowTooltip side="top" text={item.originalName}>
                       {(ref) => (
@@ -132,7 +162,7 @@ export const DocumentImportTray = ({
                     </OverflowTooltip>
                     <p className="text-xs text-muted-foreground">{statusText(item)}</p>
                     {item.warnings.length > 0 && (
-                      <p className="mt-1 line-clamp-2 text-xs text-amber-700">
+                      <p className="mt-1 line-clamp-2 text-xs text-warning">
                         {item.warnings[0]}
                         {item.warnings.length > 1 ? ` (+${item.warnings.length - 1})` : ""}
                       </p>
@@ -142,19 +172,7 @@ export const DocumentImportTray = ({
                     )}
                   </div>
                   {item.status === "completed" ? (
-                    <Button
-                      aria-label={`Abrir ${item.originalName}`}
-                      onClick={() => {
-                        if (item.resultDocumentId)
-                          void navigate(
-                            `/documents/${item.projectId}/document/${item.resultDocumentId}`,
-                          );
-                      }}
-                      size="icon-sm"
-                      variant="ghost"
-                    >
-                      <CheckCircle2Icon className="size-5 text-emerald-600" />
-                    </Button>
+                    <CheckCircle2Icon className="mt-0.5 size-5 shrink-0 text-success" />
                   ) : item.status === "failed" ? (
                     <Button
                       onClick={() =>

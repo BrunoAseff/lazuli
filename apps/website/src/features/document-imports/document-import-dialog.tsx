@@ -1,9 +1,10 @@
 import { DOCUMENT_IMPORT_MAX_ACTIVE } from "@lazuli/shared";
-import { FileTextIcon, PlusIcon, UploadCloudIcon, XIcon } from "lucide-react";
+import { PlusIcon, UploadCloudIcon, XIcon } from "lucide-react";
 import { useRef, useState, type DragEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
+import { DocumentDomainIcon } from "@/components/domain-icons.ts";
 import {
   Dialog,
   DialogCancelButton,
@@ -94,7 +95,7 @@ export const DocumentImportDialog = ({
         />
         <div
           className={cn(
-            "grid min-h-36 place-items-center rounded-lg border border-dashed p-5 text-center transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary",
+            "grid min-h-36 place-items-center rounded-xl border border-dashed p-5 text-center transition-colors hover:border-primary/55 hover:bg-primary-soft/45 hover:text-primary",
             dragging && "border-foreground bg-muted/50",
           )}
           onDragEnter={(event) => {
@@ -119,12 +120,15 @@ export const DocumentImportDialog = ({
         {files.length > 0 && (
           <div className="lazuli-thin-scrollbar max-h-60 space-y-2 overflow-y-auto pr-1">
             {files.map((item) => (
-              <div className="flex items-center gap-3 rounded-md border px-3 py-2" key={item.id}>
-                <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
-                <div className="flex min-w-0 flex-1 items-center">
+              <div className="flex items-center gap-3 rounded-lg border px-3 py-2" key={item.id}>
+                <DocumentDomainIcon
+                  className="size-[1.125rem] shrink-0 text-muted-foreground"
+                  weight="duotone"
+                />
+                <div className="flex min-w-0 flex-1 items-center overflow-hidden rounded-lg border bg-background transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/25">
                   <Input
                     aria-label={`Nome de ${item.originalName}`}
-                    className="h-8 min-w-0 border-r-0 pr-0"
+                    className="h-9 min-w-0 rounded-none border-0 bg-transparent pr-1 shadow-none focus-visible:border-0 focus-visible:ring-0"
                     maxLength={Math.max(1, 255 - item.extension.length)}
                     onChange={(event) =>
                       setFiles((current) =>
@@ -135,7 +139,7 @@ export const DocumentImportDialog = ({
                     }
                     value={item.title}
                   />
-                  <span className="flex h-8 items-center border border-l-0 bg-muted/40 pr-2 text-sm text-muted-foreground">
+                  <span className="flex h-9 shrink-0 items-center border-l bg-muted/45 px-2 text-sm text-muted-foreground">
                     {item.extension}
                   </span>
                 </div>

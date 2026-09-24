@@ -62,7 +62,7 @@ const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageB
           />
           <Button
             aria-label="Ver referências desta imagem"
-            className="absolute top-2 right-2 z-10 bg-background/90 shadow-sm"
+            className="absolute top-2 right-2 z-10 bg-background/90 shadow-none"
             data-image-reference-trigger={props.block.id}
             onMouseDown={(event) => event.preventDefault()}
             size="icon-sm"

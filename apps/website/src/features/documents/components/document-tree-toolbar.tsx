@@ -34,6 +34,8 @@ export const DocumentTreeToolbar = ({
     <div className="flex h-11 shrink-0 items-center gap-1 px-2">
       {searchOpen ? (
         <SearchInput
+          alwaysShowClear
+          clearLabel="Fechar pesquisa"
           autoFocus
           className="h-8"
           containerClassName="flex-1"

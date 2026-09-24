@@ -27,7 +27,7 @@ export const CoverPicker = ({ disabled, onChange, value }: CoverPickerProps) => 
           return (
             <label
               className={cn(
-                "group relative cursor-pointer overflow-hidden border bg-card transition-colors focus-within:ring-3 focus-within:ring-ring/40",
+                "group relative cursor-pointer overflow-hidden rounded-xl border bg-card transition-colors focus-within:ring-3 focus-within:ring-ring/40",
                 selected ? "border-primary ring-1 ring-primary" : "hover:border-foreground/35",
                 disabled && "cursor-not-allowed opacity-60",
               )}
