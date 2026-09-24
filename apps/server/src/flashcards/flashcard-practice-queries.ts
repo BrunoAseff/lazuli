@@ -5,7 +5,7 @@ import type {
 } from "@lazuli/shared";
 import { and, asc, count, eq, isNull, lte, max, sql } from "drizzle-orm";
 
-import type { Database } from "../database/client.ts";
+import type { Database, Transaction } from "../database/client.ts";
 import {
   flashcard,
   flashcardCollection,
@@ -21,8 +21,6 @@ import {
   scheduleFlashcardReview,
   type StoredSchedule,
 } from "./flashcard-scheduler.ts";
-
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 const scheduleSelection = {
   dueAt: flashcard.dueAt,

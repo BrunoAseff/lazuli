@@ -1,10 +1,10 @@
 import type { StudyCollectionStatus } from "@lazuli/shared";
-import { ArchiveIcon, FilterIcon, Layers3Icon, SearchIcon, XIcon } from "lucide-react";
+import { ArchiveIcon, FilterIcon, Layers3Icon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { ProjectFilter, type ProjectFilterValue } from "@/components/project-filter.tsx";
+import { SearchInput } from "@/components/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { cn } from "@/lib/utils.ts";
 
@@ -30,33 +30,17 @@ export const StudyCollectionToolbar = ({
   status: StudyCollectionStatus;
 }) => (
   <div className="my-7 flex items-center gap-2">
-    <div className="relative min-w-0 flex-1">
-      <SearchIcon
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-      />
-      <Input
-        aria-label="Pesquisar coleções"
-        className="h-9 pr-9 pl-9"
-        disabled={searchDisabled}
-        maxLength={100}
-        onChange={(event) => onSearchChange(event.target.value)}
-        placeholder="Pesquisar coleções"
-        type="text"
-        value={searchValue}
-      />
-      {searchValue && (
-        <Button
-          aria-label="Limpar pesquisa"
-          className="absolute top-1/2 right-1 -translate-y-1/2"
-          onClick={onClearSearch}
-          size="icon-sm"
-          variant="ghost"
-        >
-          <XIcon aria-hidden="true" />
-        </Button>
-      )}
-    </div>
+    <SearchInput
+      aria-label="Pesquisar coleções"
+      className="h-9"
+      containerClassName="flex-1"
+      disabled={searchDisabled}
+      maxLength={100}
+      onClear={onClearSearch}
+      onValueChange={onSearchChange}
+      placeholder="Pesquisar coleções"
+      value={searchValue}
+    />
     <Popover>
       <PopoverTrigger asChild>
         <Button aria-label="Filtrar coleções" className="shrink-0" variant="outline">

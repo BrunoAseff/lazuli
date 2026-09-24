@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { documentContentSchema } from "../documents/document-contracts.ts";
+import {
+  documentContentSchema,
+  hasMeaningfulDocumentContent,
+  utf8ByteLength,
+} from "../documents/document-contracts.ts";
 import { paginationSchema, projectIdSchema } from "../projects/project-contracts.ts";
 import {
   createStudyCollectionSchema,
@@ -38,37 +42,10 @@ export const flashcardSortSchema = z.enum(["updated", "created", "due"]);
 export const flashcardSrsStateSchema = z.enum(["new", "learning", "review", "relearning"]);
 export const flashcardPracticeStatusSchema = z.enum(["active", "completed", "abandoned"]);
 
-const hasMeaningfulContent = (blocks: z.infer<typeof documentContentSchema>) => {
-  const pending = [...blocks];
-  while (pending.length) {
-    const block = pending.pop()!;
-    if (block.type === "image") return true;
-    if (
-      block.content?.some((item) =>
-        item.type === "text"
-          ? Boolean(item.text.trim())
-          : item.content.some(({ text }) => Boolean(text.trim())),
-      )
-    )
-      return true;
-    if (block.children) pending.push(...block.children);
-  }
-  return false;
-};
-
-const utf8ByteLength = (value: string) => {
-  let bytes = 0;
-  for (const character of value) {
-    const point = character.codePointAt(0)!;
-    bytes += point <= 0x7f ? 1 : point <= 0x7ff ? 2 : point <= 0xffff ? 3 : 4;
-  }
-  return bytes;
-};
-
 export const flashcardContentSchema = documentContentSchema.superRefine((content, context) => {
   if (utf8ByteLength(JSON.stringify(content)) > FLASHCARD_MAX_CONTENT_BYTES)
     context.addIssue({ code: "custom", message: "O conteúdo deve ter no máximo 256 KB." });
-  if (!hasMeaningfulContent(content))
+  if (!hasMeaningfulDocumentContent(content))
     context.addIssue({ code: "custom", message: "Informe um conteúdo para o flashcard." });
 });
 

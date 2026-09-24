@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 
+import type { ViewMode } from "@/components/view-mode-toggle.tsx";
 import { cn } from "@/lib/utils.ts";
 
 export const StudyItemShell = ({
@@ -7,7 +8,7 @@ export const StudyItemShell = ({
   mode,
   ...props
 }: ComponentProps<"article"> & {
-  mode: "cards" | "table";
+  mode: ViewMode;
 }) => (
   <article
     className={cn(
@@ -26,7 +27,7 @@ export const StudyItemActions = ({
   mode,
   ...props
 }: ComponentProps<"div"> & {
-  mode: "cards" | "table";
+  mode: ViewMode;
 }) => (
   <div
     className={cn(mode === "cards" ? "absolute top-3 right-3" : "justify-self-end", className)}

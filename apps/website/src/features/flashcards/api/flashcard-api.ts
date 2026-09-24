@@ -4,8 +4,6 @@ import {
   type CreateFlashcardInput,
   type CreateFlashcardPracticeSessionInput,
   type FlashcardBatchInput,
-  type FlashcardCollectionSummary,
-  flashcardCollectionSummarySchema,
   type FlashcardDetail,
   flashcardDetailSchema,
   type FlashcardListQuery,
@@ -25,25 +23,20 @@ import {
 } from "@lazuli/shared";
 
 import { apiRequest } from "@/lib/api-client.ts";
+import { buildSearchParams } from "@/lib/search-params.ts";
 
 const collectionPath = (collectionId: string) =>
   `/api/flashcard-collections/${encodeURIComponent(collectionId)}`;
-
-export const fetchFlashcardCollection = (
-  collectionId: string,
-  signal?: AbortSignal,
-): Promise<FlashcardCollectionSummary> =>
-  apiRequest(collectionPath(collectionId), flashcardCollectionSummarySchema, { signal });
 
 export const fetchFlashcards = (
   collectionId: string,
   input: FlashcardListQuery,
   signal?: AbortSignal,
 ): Promise<FlashcardListResponse> => {
-  const params = new URLSearchParams({
+  const params = buildSearchParams({
     filter: input.filter,
-    page: String(input.page),
-    pageSize: String(input.pageSize),
+    page: input.page,
+    pageSize: input.pageSize,
     query: input.query,
     sort: input.sort,
     status: input.status,

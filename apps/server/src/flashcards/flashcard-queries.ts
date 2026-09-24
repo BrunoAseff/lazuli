@@ -16,21 +16,19 @@ import {
   isNotNull,
   isNull,
   lte,
+  ne,
   notInArray,
   or,
   sql,
 } from "drizzle-orm";
 
-import type { Database } from "../database/client.ts";
+import type { Database, QueryExecutor, Transaction } from "../database/client.ts";
 import { escapeLikePattern } from "../database/sql-search.ts";
 import { summarizeRichContent } from "../documents/rich-content-summary.ts";
-import { asset, flashcard, flashcardCollection, userStorage } from "../database/schema/index.ts";
-import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { asset, flashcard, flashcardCollection } from "../database/schema/index.ts";
+import { releaseStoredObjects } from "../storage/storage-cleanup.ts";
 import { deleteReferencesForTargets } from "../references/reference-queries.ts";
 import { plainTextFlashcardContent } from "./flashcard-import.ts";
-
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
-type Executor = Database | Transaction;
 
 const selection = {
   id: flashcard.id,
@@ -58,7 +56,7 @@ const serializeRow = <T extends Record<string, unknown>>(row: T) => ({
   answerHasImage: Boolean(row.answerHasImage),
 });
 
-const ownedCollection = async (db: Executor, userId: string, collectionId: string) => {
+const ownedCollection = async (db: QueryExecutor, userId: string, collectionId: string) => {
   const [row] = await db
     .select({ archivedAt: flashcardCollection.archivedAt, id: flashcardCollection.id })
     .from(flashcardCollection)
@@ -80,9 +78,12 @@ const cardWhere = (userId: string, collectionId: string, input: FlashcardListQue
           ? gt(flashcard.dueAt, now)
           : undefined,
     input.query
-      ? or(
-          sql<boolean>`unaccent(lower(${flashcard.questionText})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`,
-          sql<boolean>`unaccent(lower(${flashcard.answerText})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`,
+      ? and(
+          ne(flashcard.questionText, ""),
+          or(
+            sql<boolean>`unaccent(lower(${flashcard.questionText})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`,
+            sql<boolean>`unaccent(lower(${flashcard.answerText})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`,
+          ),
         )
       : undefined,
   );
@@ -143,7 +144,7 @@ export const listFlashcards = async (
 };
 
 export const getFlashcard = async (
-  db: Executor,
+  db: QueryExecutor,
   userId: string,
   collectionId: string,
   cardId: string,
@@ -231,24 +232,13 @@ const releaseRemovedAssets = async (
     )
     .for("update");
   if (!current.length) return;
-  await enqueueObjectDeletions(
-    tx,
-    current.map(({ objectKey }) => objectKey),
-  );
+  await releaseStoredObjects(tx, userId, current);
   await tx.delete(asset).where(
     inArray(
       asset.id,
       current.map(({ id }) => id),
     ),
   );
-  const bytes = current.reduce((sum, item) => sum + item.byteSize, 0);
-  await tx
-    .update(userStorage)
-    .set({
-      usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${bytes})`,
-      updatedAt: new Date(),
-    })
-    .where(eq(userStorage.userId, userId));
 };
 
 export const createFlashcard = async (
@@ -395,20 +385,7 @@ export const deleteCards = async (tx: Transaction, userId: string, ids: string[]
     .from(asset)
     .where(and(eq(asset.userId, userId), inArray(asset.flashcardId, ids)))
     .for("update");
-  if (stored.length) {
-    await enqueueObjectDeletions(
-      tx,
-      stored.map(({ objectKey }) => objectKey),
-    );
-    const bytes = stored.reduce((sum, item) => sum + item.byteSize, 0);
-    await tx
-      .update(userStorage)
-      .set({
-        usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${bytes})`,
-        updatedAt: new Date(),
-      })
-      .where(eq(userStorage.userId, userId));
-  }
+  await releaseStoredObjects(tx, userId, stored);
   await tx.delete(flashcard).where(inArray(flashcard.id, ids));
 };
 

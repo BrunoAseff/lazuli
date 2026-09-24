@@ -12,7 +12,6 @@ import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import { flashcardCollectionKeys } from "./flashcard-collection-queries.ts";
 import {
   fetchFlashcard,
-  fetchFlashcardCollection,
   fetchFlashcards,
   fetchPracticeAvailability,
   fetchPracticeSession,
@@ -26,6 +25,7 @@ import {
   previewFlashcardImport,
   removeFlashcard,
 } from "./flashcard-api.ts";
+import { fetchFlashcardCollection } from "./flashcard-collection-api.ts";
 
 export const flashcardKeys = {
   all: QUERY_KEY_ROOTS.flashcards,
@@ -162,9 +162,13 @@ export const useUpdateFlashcard = (collectionId: string, cardId: string) => {
 
 export const useDeleteFlashcard = (collectionId: string) => {
   const invalidate = useInvalidateFlashcards(collectionId);
+  const client = useQueryClient();
   return useMutation({
     mutationFn: (cardId: string) => removeFlashcard(collectionId, cardId),
-    onSuccess: () => invalidate(),
+    onSuccess: (_result, cardId) => {
+      client.removeQueries({ queryKey: flashcardKeys.detail(collectionId, cardId) });
+      return invalidate();
+    },
   });
 };
 

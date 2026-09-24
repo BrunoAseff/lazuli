@@ -2,7 +2,7 @@ import type { DocumentSummary } from "@lazuli/shared";
 import { FileTextIcon } from "lucide-react";
 import { Link } from "react-router";
 
-import type { ViewMode } from "@/features/projects/components/view-mode-toggle.tsx";
+import type { ViewMode } from "@/components/view-mode-toggle.tsx";
 import { formatProjectDate } from "@/features/projects/format-project-date.ts";
 
 export const RecentDocuments = ({

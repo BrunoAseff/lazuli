@@ -18,7 +18,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Database } from "../database/client.ts";
+import type { Database, QueryExecutor } from "../database/client.ts";
 import { escapeLikePattern } from "../database/sql-search.ts";
 import {
   flashcard,
@@ -51,9 +51,6 @@ type CollectionRow = {
   createdAt: Date;
   updatedAt: Date;
 };
-
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
-type QueryExecutor = Database | Transaction;
 
 const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[], now: Date) => {
   if (rows.length === 0) return [];

@@ -2,7 +2,6 @@ import {
   answerQuizAttemptItemSchema,
   createQuizAttemptSchema,
   createQuizQuestionSchema,
-  IMAGE_MAX_BYTES,
   quizAttemptIdSchema,
   quizAttemptItemIdSchema,
   quizCollectionIdSchema,
@@ -10,19 +9,15 @@ import {
   quizQuestionListQuerySchema,
   updateQuizQuestionSchema,
 } from "@lazuli/shared";
-import type { FastifyPluginAsync, FastifyReply } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
-import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
-import {
-  bufferedImageSource,
-  isImageUploadTooLargeError,
-  StorageLimitReachedError,
-  storeQuizImage,
-} from "../documents/document-image-storage.ts";
+import { storeStudyImage } from "../documents/document-image-storage.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
+import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
+import { handleStudyImageUpload } from "../routes/study-image-upload.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
   abandonQuizAttempt,
@@ -41,10 +36,6 @@ import {
 } from "./quiz-question-queries.ts";
 
 type Options = { auth: Auth; database: Database; storage: ObjectStorage; websiteUrl: string };
-const validationError = (reply: FastifyReply) =>
-  reply
-    .status(400)
-    .send({ code: "VALIDATION_ERROR", message: "Revise os dados informados e tente novamente." });
 const serializeQuestion = <T extends { archivedAt: Date | null; createdAt: Date; updatedAt: Date }>(
   value: T,
 ) => ({
@@ -58,22 +49,7 @@ export const createQuizRoutes =
   ({ auth, database, storage, websiteUrl }: Options): FastifyPluginAsync =>
   async (app) => {
     const limiter = createRequestRateLimiter({ limit: 160, windowMs: 10 * 60_000 });
-    const mutationSession = async (
-      request: Parameters<typeof requireSession>[1],
-      reply: FastifyReply,
-    ) => {
-      if (!requireTrustedOrigin(websiteUrl, request, reply)) return null;
-      const session = await requireSession(auth, request, reply);
-      if (!session) return null;
-      if (!limiter.consume(session.user.id)) {
-        reply.status(429).send({
-          code: "RATE_LIMITED",
-          message: "Muitas alterações foram feitas em pouco tempo. Aguarde e tente novamente.",
-        });
-        return null;
-      }
-      return session;
-    };
+    const mutationSession = createMutationAuthorizer(auth, websiteUrl, limiter);
     const parseQuestionParams = (params: unknown) => {
       const raw = params as { collectionId?: unknown; questionId?: unknown };
       return {
@@ -94,7 +70,7 @@ export const createQuizRoutes =
       if (!session) return;
       const { collectionId } = parseQuestionParams(request.params);
       const input = quizQuestionListQuerySchema.safeParse(request.query);
-      if (!collectionId.success || !input.success) return validationError(reply);
+      if (!collectionId.success || !input.success) return sendValidationError(reply);
       const result = await listQuizQuestions(
         database,
         session.user.id,
@@ -111,7 +87,7 @@ export const createQuizRoutes =
       const session = await requireSession(auth, request, reply);
       if (!session) return;
       const { collectionId, questionId } = parseQuestionParams(request.params);
-      if (!collectionId.success || !questionId.success) return validationError(reply);
+      if (!collectionId.success || !questionId.success) return sendValidationError(reply);
       const question = await getQuizQuestion(
         database,
         session.user.id,
@@ -129,7 +105,7 @@ export const createQuizRoutes =
       if (!session) return;
       const { collectionId } = parseQuestionParams(request.params);
       const input = createQuizQuestionSchema.safeParse(request.body);
-      if (!collectionId.success || !input.success) return validationError(reply);
+      if (!collectionId.success || !input.success) return sendValidationError(reply);
       const result = await createQuizQuestion(
         database,
         session.user.id,
@@ -159,7 +135,7 @@ export const createQuizRoutes =
         const { collectionId, questionId } = parseQuestionParams(request.params);
         const input = updateQuizQuestionSchema.safeParse(request.body);
         if (!collectionId.success || !questionId.success || !input.success)
-          return validationError(reply);
+          return sendValidationError(reply);
         const result = await updateQuizQuestion(
           database,
           session.user.id,
@@ -189,7 +165,7 @@ export const createQuizRoutes =
         const session = await mutationSession(request, reply);
         if (!session) return;
         const { collectionId, questionId } = parseQuestionParams(request.params);
-        if (!collectionId.success || !questionId.success) return validationError(reply);
+        if (!collectionId.success || !questionId.success) return sendValidationError(reply);
         if (
           !(await deleteQuizQuestion(database, session.user.id, collectionId.data, questionId.data))
         )
@@ -203,7 +179,7 @@ export const createQuizRoutes =
       const session = await requireSession(auth, request, reply);
       if (!session) return;
       const { collectionId } = parseQuestionParams(request.params);
-      if (!collectionId.success) return validationError(reply);
+      if (!collectionId.success) return sendValidationError(reply);
       const result = await getQuizAttemptAvailability(database, session.user.id, collectionId.data);
       return (
         result ??
@@ -217,7 +193,7 @@ export const createQuizRoutes =
       if (!session) return;
       const { collectionId } = parseQuestionParams(request.params);
       const input = createQuizAttemptSchema.safeParse(request.body);
-      if (!collectionId.success || !input.success) return validationError(reply);
+      if (!collectionId.success || !input.success) return sendValidationError(reply);
       const result = await createQuizAttempt(
         database,
         session.user.id,
@@ -253,7 +229,7 @@ export const createQuizRoutes =
       const session = await requireSession(auth, request, reply);
       if (!session) return;
       const { attemptId } = parseAttemptParams(request.params);
-      if (!attemptId.success) return validationError(reply);
+      if (!attemptId.success) return sendValidationError(reply);
       const attempt = await getQuizAttempt(database, session.user.id, attemptId.data);
       return (
         attempt ??
@@ -267,7 +243,8 @@ export const createQuizRoutes =
       if (!session) return;
       const { attemptId, itemId } = parseAttemptParams(request.params);
       const input = answerQuizAttemptItemSchema.safeParse(request.body);
-      if (!attemptId.success || !itemId.success || !input.success) return validationError(reply);
+      if (!attemptId.success || !itemId.success || !input.success)
+        return sendValidationError(reply);
       const result = await answerQuizAttemptItem(
         database,
         session.user.id,
@@ -275,7 +252,7 @@ export const createQuizRoutes =
         itemId.data,
         input.data,
       );
-      if (result.kind === "invalid-option") return validationError(reply);
+      if (result.kind === "invalid-option") return sendValidationError(reply);
       if (result.kind !== "ok")
         return reply
           .status(result.kind === "not-found" ? 404 : 409)
@@ -286,7 +263,7 @@ export const createQuizRoutes =
       const session = await mutationSession(request, reply);
       if (!session) return;
       const { attemptId } = parseAttemptParams(request.params);
-      if (!attemptId.success) return validationError(reply);
+      if (!attemptId.success) return sendValidationError(reply);
       const result = await completeQuizAttempt(database, session.user.id, attemptId.data);
       if (result.kind === "incomplete")
         return reply.status(409).send({
@@ -303,7 +280,7 @@ export const createQuizRoutes =
       const session = await mutationSession(request, reply);
       if (!session) return;
       const { attemptId } = parseAttemptParams(request.params);
-      if (!attemptId.success) return validationError(reply);
+      if (!attemptId.success) return sendValidationError(reply);
       if (!(await abandonQuizAttempt(database, session.user.id, attemptId.data)))
         return reply
           .status(404)
@@ -313,36 +290,14 @@ export const createQuizRoutes =
     app.post("/api/quiz-assets/images", async (request, reply) => {
       const session = await mutationSession(request, reply);
       if (!session) return;
-      try {
-        const part = await request.file({ limits: { files: 1, fileSize: IMAGE_MAX_BYTES } });
-        if (!part) return validationError(reply);
-        const created = await storeQuizImage({
-          database,
-          originalName: part.filename,
-          source: await bufferedImageSource(await part.toBuffer()),
-          storage,
-          userId: session.user.id,
-        });
-        if (!created)
-          return reply.status(415).send({
-            code: "UNSUPPORTED_IMAGE",
-            message: "Envie uma imagem PNG, JPEG, WebP ou GIF.",
-          });
-        return reply.status(201).send(created);
-      } catch (error) {
-        if (isImageUploadTooLargeError(error))
-          return reply
-            .status(413)
-            .send({ code: "IMAGE_TOO_LARGE", message: "A imagem deve ter no máximo 10 MB." });
-        if (error instanceof StorageLimitReachedError)
-          return reply.status(409).send({
-            code: "STORAGE_LIMIT_REACHED",
-            message: "Seu limite de armazenamento foi atingido.",
-          });
-        request.log.error({ err: error, userId: session.user.id }, "quiz image upload failed");
-        return reply
-          .status(500)
-          .send({ code: "INTERNAL_ERROR", message: "Não foi possível enviar a imagem." });
-      }
+      return handleStudyImageUpload({
+        database,
+        logMessage: "quiz image upload failed",
+        reply,
+        request,
+        storage,
+        storeImage: (input) => storeStudyImage({ ...input, kind: "quizzes" }),
+        userId: session.user.id,
+      });
     });
   };

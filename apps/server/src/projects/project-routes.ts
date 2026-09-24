@@ -4,12 +4,13 @@ import {
   projectListQuerySchema,
   updateProjectSchema,
 } from "@lazuli/shared";
-import type { FastifyPluginAsync, FastifyReply } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
+import { sendValidationError } from "../routes/route-helpers.ts";
 import {
   createProject,
   deleteProject,
@@ -24,12 +25,6 @@ type ProjectRoutesOptions = {
   database: Database;
   websiteUrl: string;
 };
-
-const sendValidationError = (reply: FastifyReply) =>
-  reply.status(400).send({
-    code: "VALIDATION_ERROR",
-    message: "Revise os dados informados e tente novamente.",
-  });
 
 const serializeProject = (value: NonNullable<Awaited<ReturnType<typeof getProject>>>) => ({
   ...value,

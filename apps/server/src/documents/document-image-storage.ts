@@ -78,14 +78,16 @@ export const storeDocumentImage = async ({
   });
 };
 
-export const storeFlashcardImage = async ({
+export const storeStudyImage = async ({
   database,
+  kind,
   originalName,
   source,
   storage,
   userId,
 }: {
   database: Database;
+  kind: "flashcards" | "quizzes";
   originalName: string;
   source: ImageSource;
   storage: ObjectStorage;
@@ -94,36 +96,13 @@ export const storeFlashcardImage = async ({
   return storeImage({
     assetTarget: {},
     database,
-    keyPrefix: `${userId}/flashcards/pending`,
+    keyPrefix: `${userId}/${kind}/pending`,
     originalName,
     source,
     storage,
     userId,
   });
 };
-
-export const storeQuizImage = async ({
-  database,
-  originalName,
-  source,
-  storage,
-  userId,
-}: {
-  database: Database;
-  originalName: string;
-  source: ImageSource;
-  storage: ObjectStorage;
-  userId: string;
-}) =>
-  storeImage({
-    assetTarget: {},
-    database,
-    keyPrefix: `${userId}/quizzes/pending`,
-    originalName,
-    source,
-    storage,
-    userId,
-  });
 
 const storeImage = async ({
   assetTarget,

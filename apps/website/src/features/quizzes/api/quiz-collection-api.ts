@@ -8,59 +8,22 @@ import {
   type UpdateQuizCollectionInput,
 } from "@lazuli/shared";
 
-import { apiRequest as request } from "@/lib/api-client.ts";
+import { createStudyCollectionApi } from "@/lib/study-collection-api.ts";
 
-const toSearchParams = ({ page, pageSize, project, query, status }: QuizCollectionListQuery) => {
-  const params = new URLSearchParams({
-    page: String(page),
-    pageSize: String(pageSize),
-    status,
-  });
-  if (query) params.set("query", query);
-  if (project) params.set("project", project);
-  return params;
-};
+const api = createStudyCollectionApi<
+  QuizCollectionSummary,
+  QuizCollectionListResponse,
+  CreateQuizCollectionInput,
+  UpdateQuizCollectionInput,
+  QuizCollectionListQuery
+>({
+  collectionSchema: quizCollectionSummarySchema,
+  listSchema: quizCollectionListResponseSchema,
+  path: "/api/quiz-collections",
+});
 
-export const fetchQuizCollections = (
-  input: QuizCollectionListQuery,
-  signal?: AbortSignal,
-): Promise<QuizCollectionListResponse> =>
-  request(`/api/quiz-collections?${toSearchParams(input)}`, quizCollectionListResponseSchema, {
-    signal,
-  });
-
-export const fetchQuizCollection = (
-  collectionId: string,
-  signal?: AbortSignal,
-): Promise<QuizCollectionSummary> =>
-  request(
-    `/api/quiz-collections/${encodeURIComponent(collectionId)}`,
-    quizCollectionSummarySchema,
-    { signal },
-  );
-
-export const postQuizCollection = (
-  input: CreateQuizCollectionInput,
-): Promise<QuizCollectionSummary> =>
-  request("/api/quiz-collections", quizCollectionSummarySchema, {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-
-export const patchQuizCollection = (
-  collectionId: string,
-  input: UpdateQuizCollectionInput,
-): Promise<QuizCollectionSummary> =>
-  request(
-    `/api/quiz-collections/${encodeURIComponent(collectionId)}`,
-    quizCollectionSummarySchema,
-    {
-      method: "PATCH",
-      body: JSON.stringify(input),
-    },
-  );
-
-export const removeQuizCollection = (collectionId: string): Promise<void> =>
-  request(`/api/quiz-collections/${encodeURIComponent(collectionId)}`, null, {
-    method: "DELETE",
-  });
+export const fetchQuizCollection = api.fetchCollection;
+export const fetchQuizCollections = api.fetchCollections;
+export const patchQuizCollection = api.patchCollection;
+export const postQuizCollection = api.postCollection;
+export const removeQuizCollection = api.removeCollection;

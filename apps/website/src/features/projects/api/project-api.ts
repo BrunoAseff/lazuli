@@ -10,13 +10,12 @@ import {
   type UpdateProjectInput,
 } from "@lazuli/shared";
 import { ApiError, apiRequest as request } from "@/lib/api-client.ts";
+import { buildSearchParams } from "@/lib/search-params.ts";
 
 export { ApiError as ProjectApiError };
 
 const toSearchParams = ({ page, pageSize, query }: ProjectListQuery) => {
-  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
-  if (query) params.set("query", query);
-  return params;
+  return buildSearchParams({ page, pageSize, query });
 };
 
 export const fetchProjects = (

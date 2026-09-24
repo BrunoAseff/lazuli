@@ -5,6 +5,7 @@ import {
   DOCUMENT_IMPORT_RATE_WINDOW_MS,
   STORAGE_BASIC_LIMIT_BYTES,
   type CreateDocumentImportInput,
+  type DocumentImportPhase,
 } from "@lazuli/shared";
 import { and, asc, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 
@@ -300,7 +301,7 @@ export const updateImportProgress = (
   db: Database,
   importId: string,
   workerId: string,
-  phase: "extracting" | "converting" | "finalizing",
+  phase: Exclude<DocumentImportPhase, "validating">,
   current: number | null,
   total: number | null,
 ) =>

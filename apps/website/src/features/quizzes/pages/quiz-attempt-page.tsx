@@ -46,6 +46,8 @@ import { useQuizCollection } from "../api/quiz-collection-queries.ts";
 export const QuizAttemptPage = () => {
   const { attemptId = "" } = useParams();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const requestedQuestion = params.get("question");
   const attemptQuery = useQuizAttempt(attemptId);
   const answer = useAnswerQuizAttempt(attemptId);
   const complete = useCompleteQuizAttempt(attemptId);
@@ -56,10 +58,33 @@ export const QuizAttemptPage = () => {
   const attempt = attemptQuery.data;
   useEffect(() => {
     if (attempt?.status === "active") {
+      const requestedIndex = attempt.items.findIndex(
+        ({ questionId }) => questionId === requestedQuestion,
+      );
+      if (requestedIndex >= 0) {
+        setIndex(requestedIndex);
+        return;
+      }
       const first = attempt.items.findIndex(({ selectedOptionId }) => !selectedOptionId);
       if (first >= 0) setIndex(first);
     }
   }, [attempt?.id]);
+  const activeItem = attempt?.status === "active" ? attempt.items[index] : undefined;
+  useEffect(() => {
+    if (!activeItem) return;
+    const requestedExists = attempt?.items.some(
+      ({ questionId }) => questionId === requestedQuestion,
+    );
+    if (requestedExists && requestedQuestion !== activeItem.questionId) return;
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.set("question", activeItem.questionId);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [activeItem?.questionId, attempt?.id, requestedQuestion, setParams]);
   if (attemptQuery.isPending)
     return (
       <main className="grid min-h-full place-items-center">
@@ -93,8 +118,8 @@ export const QuizAttemptPage = () => {
     }
   };
   return (
-    <main className="flex min-h-full flex-col px-5 py-6 sm:px-8 lg:px-12">
-      <div className="mx-auto w-full max-w-4xl">
+    <main className="flex min-h-full flex-col bg-background px-4 py-5 sm:px-8 sm:py-7 lg:px-12">
+      <div className="mx-auto w-full max-w-5xl rounded-xl border bg-card px-4 py-5 sm:px-7 lg:px-10">
         <header className="border-b pb-5">
           <div className="flex items-center justify-between gap-4">
             <Button
@@ -125,12 +150,14 @@ export const QuizAttemptPage = () => {
           >
             {attempt.items.map((navigationItem, itemIndex) => (
               <button
-                aria-label={`Questão ${itemIndex + 1}${navigationItem.selectedOptionId ? ", respondida" : ", pendente"}`}
+                aria-label={`Questão ${itemIndex + 1}${
+                  navigationItem.selectedOptionId ? ", respondida" : ", pendente"
+                }`}
                 aria-current={itemIndex === index ? "step" : undefined}
                 className={cn(
-                  "size-7 shrink-0 border text-xs tabular-nums",
+                  "size-7 shrink-0 rounded-md border text-xs tabular-nums transition-colors hover:border-primary/40 hover:bg-primary/5",
                   navigationItem.selectedOptionId && "bg-muted",
-                  itemIndex === index && "border-foreground font-semibold",
+                  itemIndex === index && "border-primary bg-primary/8 font-semibold",
                 )}
                 key={navigationItem.id}
                 onClick={() => {
@@ -145,20 +172,22 @@ export const QuizAttemptPage = () => {
           </div>
         </header>
         {reviewing ? (
-          <section className="py-8 sm:py-12">
+          <section className="py-7 sm:py-9">
             <h2 className="font-heading text-3xl">Revisar respostas</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Confira as questões antes de concluir. Respostas pendentes estão indicadas abaixo.
             </p>
-            <div className="mt-7 divide-y border-y">
+            <div className="mt-7 space-y-2">
               {attempt.items.map((reviewItem, itemIndex) => {
                 const selectedOption = reviewItem.options.find(
                   ({ id }) => id === reviewItem.selectedOptionId,
                 );
                 return (
                   <button
-                    aria-label={`Ir para a questão ${itemIndex + 1}${reviewItem.selectedOptionId ? ", respondida" : ", pendente"}`}
-                    className="flex w-full items-center gap-3 px-3 py-4 text-left transition-colors hover:bg-muted/60"
+                    aria-label={`Ir para a questão ${itemIndex + 1}${
+                      reviewItem.selectedOptionId ? ", respondida" : ", pendente"
+                    }`}
+                    className="flex w-full items-center gap-3 rounded-lg border bg-background px-3 py-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
                     key={reviewItem.id}
                     onClick={() => {
                       setIndex(itemIndex);
@@ -197,7 +226,7 @@ export const QuizAttemptPage = () => {
             )}
           </section>
         ) : (
-          <section className="py-8 sm:py-12">
+          <section className="py-7 sm:py-9">
             <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Questão {index + 1}
             </p>
@@ -207,8 +236,10 @@ export const QuizAttemptPage = () => {
                 <button
                   aria-pressed={item.selectedOptionId === option.id}
                   className={cn(
-                    "flex min-h-14 w-full items-center gap-3 border px-4 py-3 text-left transition-colors hover:border-foreground/40",
-                    item.selectedOptionId === option.id && "border-foreground bg-muted",
+                    "flex min-h-14 w-full items-center gap-3 rounded-lg border bg-background px-4 py-3 text-left transition-colors",
+                    item.selectedOptionId === option.id
+                      ? "border-primary bg-primary/8 hover:border-primary hover:bg-primary/8"
+                      : "hover:border-primary/40 hover:bg-primary/5",
                   )}
                   disabled={answer.isPending}
                   key={option.id}
@@ -351,8 +382,8 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
     ),
   );
   return (
-    <main className="flex min-h-full flex-col px-5 py-8 sm:px-8">
-      <div className="mx-auto w-full max-w-4xl">
+    <main className="flex min-h-full flex-col bg-background px-4 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto w-full max-w-4xl rounded-xl border bg-card px-5 py-7 sm:px-9">
         <header className="border-b pb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Resultado
@@ -364,7 +395,9 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
           <p className="mt-1 text-sm text-muted-foreground">
             Concluído em cerca de {durationMinutes} {durationMinutes === 1 ? "minuto" : "minutos"}
             {collection.data?.bestScoreRate !== null && collection.data?.bestScoreRate !== undefined
-              ? ` · Melhor pontuação da coleção: ${Math.round(collection.data.bestScoreRate * 100)}%`
+              ? ` · Melhor pontuação da coleção: ${Math.round(
+                  collection.data.bestScoreRate * 100,
+                )}%`
               : ""}
           </p>
           <div className="mt-5 flex justify-center gap-2">
@@ -384,7 +417,7 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
             </Button>
           </div>
         </header>
-        <section className="py-8">
+        <section className="pt-8">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="font-heading text-2xl">Revisão</h2>
             <span className="text-sm text-muted-foreground">
@@ -399,14 +432,14 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
               return (
                 <div
                   className={cn(
-                    "flex items-center gap-3 border px-4 py-3",
-                    correct && "border-emerald-700 bg-emerald-50",
+                    "flex items-center gap-3 rounded-lg border px-4 py-3",
+                    correct && "border-success bg-success/10",
                     selected && !correct && "border-destructive bg-destructive/5",
                   )}
                   key={option.id}
                 >
                   {correct ? (
-                    <CheckCircle2Icon className="size-5 text-emerald-700" />
+                    <CheckCircle2Icon className="size-5 text-success" />
                   ) : selected ? (
                     <XCircleIcon className="size-5 text-destructive" />
                   ) : (
@@ -417,7 +450,7 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
                     <span
                       className={cn(
                         "ml-auto text-xs font-medium",
-                        correct ? "text-emerald-800" : "text-destructive",
+                        correct ? "text-success" : "text-destructive",
                       )}
                     >
                       {selected && correct

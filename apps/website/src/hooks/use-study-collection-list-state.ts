@@ -3,13 +3,14 @@ import {
   studyCollectionProjectFilterSchema,
   type StudyCollectionStatus,
 } from "@lazuli/shared";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useSearchParams } from "react-router";
 
-const parsePage = (value: string | null) => {
-  const page = Number(value);
-  return Number.isInteger(page) && page > 0 ? page : 1;
-};
+import { parsePositivePage } from "@/lib/pagination.ts";
+import { mergeSearchParams } from "@/lib/search-params.ts";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search.ts";
+
+const collectionListDefaults = { status: "active" };
 
 export const useStudyCollectionListState = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,22 +23,21 @@ export const useStudyCollectionListState = () => {
     searchParams.get("project") ?? undefined,
   );
   const project = parsedProject.success ? parsedProject.data : undefined;
-  const page = parsePage(searchParams.get("page"));
-  const [searchValue, setSearchValue] = useState(query);
+  const page = parsePositivePage(searchParams.get("page"));
 
   const updateParams = useCallback(
     (changes: Record<string, string | undefined>, resetPage = true) => {
-      setSearchParams((current) => {
-        const next = new URLSearchParams(current);
-        for (const [key, value] of Object.entries(changes)) {
-          if (!value || (key === "status" && value === "active")) next.delete(key);
-          else next.set(key, value);
-        }
-        if (resetPage) next.delete("page");
-        return next;
-      });
+      setSearchParams((current) =>
+        mergeSearchParams(current, changes, {
+          defaults: collectionListDefaults,
+          resetPage,
+        }),
+      );
     },
     [setSearchParams],
+  );
+  const [searchValue, setSearchValue] = useDebouncedSearch(query, (value) =>
+    updateParams({ query: value || undefined }),
   );
   const setPage = useCallback(
     (nextPage: number) =>
@@ -54,14 +54,6 @@ export const useStudyCollectionListState = () => {
       return next;
     });
   }, [setSearchParams]);
-
-  useEffect(() => setSearchValue(query), [query]);
-  useEffect(() => {
-    const normalized = searchValue.trim();
-    if (normalized === query) return;
-    const timer = window.setTimeout(() => updateParams({ query: normalized || undefined }), 300);
-    return () => window.clearTimeout(timer);
-  }, [query, searchValue, updateParams]);
 
   return {
     clearFilters,

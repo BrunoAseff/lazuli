@@ -3,22 +3,10 @@ import type {
   FlashcardCollectionSummary,
   UpdateFlashcardCollectionInput,
 } from "@lazuli/shared";
-import { AlertTriangleIcon, ArchiveIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { StudyCollectionConfirmationDialog } from "@/components/study-collection-confirmation-dialog.tsx";
 import { StudyCollectionDialog } from "@/components/study-collection-dialog.tsx";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import {
   useCreateFlashcardCollection,
   useDeleteFlashcardCollection,
@@ -95,34 +83,21 @@ export const ArchiveFlashcardCollectionDialog = ({
     }
   };
   return (
-    <AlertDialog open={open} onOpenChange={(next) => !mutation.isPending && onOpenChange(next)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogMedia>
-            <ArchiveIcon aria-hidden="true" />
-          </AlertDialogMedia>
-          <AlertDialogTitle>Arquivar “{collection.title}”?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Seus {collection.totalCards}{" "}
-            {collection.totalCards === 1 ? "card será preservado" : "cards serão preservados"}. Você
-            poderá restaurar a coleção depois.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={mutation.isPending}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={mutation.isPending}
-            onClick={(event) => {
-              event.preventDefault();
-              void archive();
-            }}
-          >
-            {mutation.isPending && <Spinner />}
-            {mutation.isPending ? "Arquivando..." : "Arquivar coleção"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <StudyCollectionConfirmationDialog
+      description={
+        <>
+          Seus {collection.totalCards}{" "}
+          {collection.totalCards === 1 ? "card será preservado" : "cards serão preservados"}. Você
+          poderá restaurar a coleção depois.
+        </>
+      }
+      mode="archive"
+      onConfirm={archive}
+      onOpenChange={onOpenChange}
+      open={open}
+      pending={mutation.isPending}
+      title={`Arquivar “${collection.title}”?`}
+    />
   );
 };
 
@@ -149,35 +124,21 @@ export const DeleteFlashcardCollectionDialog = ({
     }
   };
   return (
-    <AlertDialog open={open} onOpenChange={(next) => !mutation.isPending && onOpenChange(next)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogMedia className="bg-destructive/10 text-destructive">
-            <AlertTriangleIcon aria-hidden="true" />
-          </AlertDialogMedia>
-          <AlertDialogTitle>Excluir “{collection.title}”?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {collection.totalCards === 0
-              ? "A coleção ainda não possui cards."
-              : `${collection.totalCards} ${collection.totalCards === 1 ? "card e seu histórico serão excluídos" : "cards e seus históricos serão excluídos"}.`}{" "}
-            Esta ação não pode ser desfeita.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={mutation.isPending}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={mutation.isPending}
-            onClick={(event) => {
-              event.preventDefault();
-              void remove();
-            }}
-            variant="destructive"
-          >
-            {mutation.isPending && <Spinner />}
-            {mutation.isPending ? "Excluindo..." : "Excluir coleção"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <StudyCollectionConfirmationDialog
+      description={
+        <>
+          {collection.totalCards === 0
+            ? "A coleção ainda não possui cards."
+            : `${collection.totalCards} ${collection.totalCards === 1 ? "card e seu histórico serão excluídos" : "cards e seus históricos serão excluídos"}.`}{" "}
+          Esta ação não pode ser desfeita.
+        </>
+      }
+      mode="delete"
+      onConfirm={remove}
+      onOpenChange={onOpenChange}
+      open={open}
+      pending={mutation.isPending}
+      title={`Excluir “${collection.title}”?`}
+    />
   );
 };

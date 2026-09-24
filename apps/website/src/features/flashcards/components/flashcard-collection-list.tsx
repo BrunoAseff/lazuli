@@ -6,18 +6,17 @@ import { StudyCollectionActions } from "@/components/study-collection-actions.ts
 import { StudyCollectionIdentity } from "@/components/study-collection-identity.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
-
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
+import { formatMediumDateTime } from "@/lib/date-format.ts";
+import type { StudyCollectionAction } from "@/lib/study-actions.ts";
 
 const practiceLabel = (collection: FlashcardCollectionSummary) => {
   if (collection.totalCards === 0) return "Sem prática agendada";
   if (collection.dueCards > 0)
-    return `${collection.dueCards} ${collection.dueCards === 1 ? "card disponível" : "cards disponíveis"}`;
+    return `${collection.dueCards} ${
+      collection.dueCards === 1 ? "card disponível" : "cards disponíveis"
+    }`;
   return collection.nextPracticeAt
-    ? `Próxima em ${dateFormatter.format(new Date(collection.nextPracticeAt))}`
+    ? `Próxima em ${formatMediumDateTime(collection.nextPracticeAt)}`
     : "Sem prática agendada";
 };
 
@@ -28,10 +27,7 @@ export const FlashcardCollectionList = ({
   query,
 }: {
   collections: FlashcardCollectionSummary[];
-  onAction: (
-    action: "archive" | "delete" | "edit" | "restore",
-    collection: FlashcardCollectionSummary,
-  ) => void;
+  onAction: (action: StudyCollectionAction, collection: FlashcardCollectionSummary) => void;
   onPractice: (collection: FlashcardCollectionSummary) => void;
   query: string;
 }) => (
@@ -40,22 +36,24 @@ export const FlashcardCollectionList = ({
       const progress = calculateFlashcardProgress(collection.studiedCards, collection.totalCards);
       return (
         <article
-          className="grid gap-4 rounded-xl border bg-card px-4 py-4 transition-colors hover:bg-accent/45 sm:px-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(11rem,0.75fr)_minmax(13rem,0.9fr)_auto] lg:items-center"
+          className="relative grid gap-4 rounded-xl border bg-card px-4 py-4 transition-colors hover:bg-accent/45 sm:px-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(11rem,0.75fr)_minmax(13rem,0.9fr)_auto] lg:items-center"
           key={collection.id}
         >
-          <StudyCollectionIdentity
-            href={`/flashcards/${collection.id}`}
-            icon={<FlashcardCollectionMark />}
-            metadata={
-              <>
-                {collection.project?.title ?? "Sem projeto"} · {collection.totalCards}{" "}
-                {collection.totalCards === 1 ? "card" : "cards"}
-              </>
-            }
-            projectTitle={collection.project?.title}
-            query={query}
-            title={collection.title}
-          />
+          <div className="min-w-0 pr-10 lg:pr-0">
+            <StudyCollectionIdentity
+              href={`/flashcards/${collection.id}`}
+              icon={<FlashcardCollectionMark />}
+              metadata={
+                <>
+                  {collection.project?.title ?? "Sem projeto"} · {collection.totalCards}{" "}
+                  {collection.totalCards === 1 ? "card" : "cards"}
+                </>
+              }
+              projectTitle={collection.project?.title}
+              query={query}
+              title={collection.title}
+            />
+          </div>
           <div>
             <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
               <span>
@@ -81,31 +79,35 @@ export const FlashcardCollectionList = ({
               <span>
                 {collection.reviewsLastSevenDays === 0
                   ? "Sem revisões nos últimos 7 dias"
-                  : `${collection.reviewsLastSevenDays} ${collection.reviewsLastSevenDays === 1 ? "revisão" : "revisões"} nos últimos 7 dias`}
+                  : `${collection.reviewsLastSevenDays} ${
+                      collection.reviewsLastSevenDays === 1 ? "revisão" : "revisões"
+                    } nos últimos 7 dias`}
               </span>
             </p>
           </div>
-          <div className="grid w-full min-w-40 grid-cols-[1fr_auto] items-center justify-self-stretch">
+          <div className="flex w-full items-center justify-end gap-2 justify-self-stretch lg:min-w-40">
             {!collection.archivedAt && (
               <Button
                 aria-label={`Praticar ${collection.title}`}
+                className="w-full lg:w-auto"
                 disabled={collection.dueCards === 0}
                 onClick={() => onPractice(collection)}
-                className="justify-self-center"
                 size="sm"
               >
                 <PlayIcon aria-hidden="true" />
                 Praticar
               </Button>
             )}
-            <StudyCollectionActions
-              archived={Boolean(collection.archivedAt)}
-              onArchive={() => onAction("archive", collection)}
-              onDelete={() => onAction("delete", collection)}
-              onEdit={() => onAction("edit", collection)}
-              onRestore={() => onAction("restore", collection)}
-              title={collection.title}
-            />
+            <div className="absolute top-3 right-3 lg:static">
+              <StudyCollectionActions
+                archived={Boolean(collection.archivedAt)}
+                onArchive={() => onAction("archive", collection)}
+                onDelete={() => onAction("delete", collection)}
+                onEdit={() => onAction("edit", collection)}
+                onRestore={() => onAction("restore", collection)}
+                title={collection.title}
+              />
+            </div>
           </div>
         </article>
       );

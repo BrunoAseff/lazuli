@@ -5,7 +5,7 @@ import type {
 } from "@lazuli/shared";
 import { and, count, desc, eq, gte, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
-import type { Database } from "../database/client.ts";
+import type { Database, QueryExecutor } from "../database/client.ts";
 import { escapeLikePattern } from "../database/sql-search.ts";
 import {
   asset,
@@ -14,10 +14,9 @@ import {
   quizAttemptAsset,
   quizCollection,
   quizQuestion,
-  userStorage,
 } from "../database/schema/index.ts";
 import { ownsProject } from "../projects/project-ownership.ts";
-import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { releaseStoredObjects } from "../storage/storage-cleanup.ts";
 import { deleteReferencesForTargets } from "../references/reference-queries.ts";
 
 const collectionSelection = {
@@ -39,9 +38,6 @@ type CollectionRow = {
   createdAt: Date;
   updatedAt: Date;
 };
-
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
-type QueryExecutor = Database | Transaction;
 
 const enrichCollections = async (
   database: QueryExecutor,
@@ -305,24 +301,13 @@ export const deleteQuizCollection = async (
       .returning({ id: quizCollection.id });
     if (!deleted) return false;
     if (ownedAssets.length) {
-      await enqueueObjectDeletions(
-        tx,
-        ownedAssets.map(({ objectKey }) => objectKey),
-      );
+      await releaseStoredObjects(tx, userId, ownedAssets);
       await tx.delete(asset).where(
         inArray(
           asset.id,
           ownedAssets.map(({ id }) => id),
         ),
       );
-      const bytes = ownedAssets.reduce((sum, item) => sum + item.byteSize, 0);
-      await tx
-        .update(userStorage)
-        .set({
-          usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${bytes})`,
-          updatedAt: new Date(),
-        })
-        .where(eq(userStorage.userId, userId));
     }
     return true;
   });

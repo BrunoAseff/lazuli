@@ -120,7 +120,7 @@ export const AppSidebar = () => {
       </SidebarContent>
 
       <SidebarFooter className="p-2">
-        <UserMenu user={session.user} />
+        <UserMenu mobile={isMobile} user={session.user} />
       </SidebarFooter>
     </Sidebar>
   );

@@ -1,5 +1,3 @@
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "medium",
-});
+import { formatMediumDate } from "@/lib/date-format.ts";
 
-export const formatProjectDate = (date: string) => dateFormatter.format(new Date(date));
+export const formatProjectDate = formatMediumDate;

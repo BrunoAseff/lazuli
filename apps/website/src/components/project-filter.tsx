@@ -5,15 +5,14 @@ import {
   FolderIcon,
   FolderXIcon,
   Layers3Icon,
-  SearchIcon,
   type LucideIcon,
 } from "lucide-react";
 import { type Ref, useEffect, useState } from "react";
 
 import { HighlightText } from "@/components/highlight-text.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
+import { SearchInput } from "@/components/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { useProject, useProjects } from "@/features/projects/api/project-queries.ts";
 import { cn } from "@/lib/utils.ts";
@@ -88,20 +87,15 @@ export const ProjectFilter = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-(--radix-popover-trigger-width) min-w-72 p-1.5">
-        <div className="relative mb-1.5">
-          <SearchIcon
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            aria-label="Pesquisar projetos"
-            className="h-9 pl-8"
-            maxLength={100}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Pesquisar projetos"
-            value={search}
-          />
-        </div>
+        <SearchInput
+          aria-label="Pesquisar projetos"
+          className="h-9"
+          containerClassName="mb-1.5"
+          maxLength={100}
+          onValueChange={setSearch}
+          placeholder="Pesquisar projetos"
+          value={search}
+        />
         <div className="lazuli-thin-scrollbar max-h-64 overflow-y-auto">
           {!query && (
             <div className="mb-1 space-y-1 border-b pb-1">

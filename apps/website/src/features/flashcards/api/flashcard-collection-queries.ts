@@ -3,8 +3,9 @@ import type {
   FlashcardCollectionListQuery,
   UpdateFlashcardCollectionInput,
 } from "@lazuli/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
+import { useInvalidateQueryKey } from "@/hooks/use-invalidate-query-key.ts";
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import {
   fetchFlashcardCollections,
@@ -27,10 +28,7 @@ export const useFlashcardCollections = (input: FlashcardCollectionListQuery, ena
     queryFn: ({ signal }) => fetchFlashcardCollections(input, signal),
   });
 
-const useInvalidateCollections = () => {
-  const client = useQueryClient();
-  return () => client.invalidateQueries({ queryKey: flashcardCollectionKeys.lists() });
-};
+const useInvalidateCollections = () => useInvalidateQueryKey(flashcardCollectionKeys.lists());
 
 export const useCreateFlashcardCollection = () => {
   const invalidate = useInvalidateCollections();

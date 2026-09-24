@@ -11,6 +11,7 @@ import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
+import { sendValidationError } from "../routes/route-helpers.ts";
 import {
   abandonPracticeSession,
   createPracticeSession,
@@ -20,12 +21,6 @@ import {
 } from "./flashcard-practice-queries.ts";
 
 type Options = { auth: Auth; database: Database; websiteUrl: string };
-
-const validationError = (reply: FastifyReply) =>
-  reply.status(400).send({
-    code: "VALIDATION_ERROR",
-    message: "Revise os dados informados e tente novamente.",
-  });
 
 const serializeSession = (
   session: NonNullable<Awaited<ReturnType<typeof getPracticeSession>>>,
@@ -83,7 +78,7 @@ export const createFlashcardPracticeRoutes = ({
       const parsed = flashcardCollectionIdSchema.safeParse(
         (request.params as { collectionId?: unknown }).collectionId,
       );
-      if (!parsed.success) return validationError(reply);
+      if (!parsed.success) return sendValidationError(reply);
       const result = await getPracticeAvailability(database, session.user.id, parsed.data);
       if (result.kind === "not-found")
         return reply
@@ -107,7 +102,7 @@ export const createFlashcardPracticeRoutes = ({
           (request.params as { collectionId?: unknown }).collectionId,
         );
         const input = createFlashcardPracticeSessionSchema.safeParse(request.body);
-        if (!collectionId.success || !input.success) return validationError(reply);
+        if (!collectionId.success || !input.success) return sendValidationError(reply);
         const result = await createPracticeSession(
           database,
           session.user.id,
@@ -149,7 +144,7 @@ export const createFlashcardPracticeRoutes = ({
       const parsed = flashcardPracticeSessionIdSchema.safeParse(
         (request.params as { sessionId?: unknown }).sessionId,
       );
-      if (!parsed.success) return validationError(reply);
+      if (!parsed.success) return sendValidationError(reply);
       const result = await getPracticeSession(database, session.user.id, parsed.data);
       if (!result)
         return reply
@@ -165,7 +160,7 @@ export const createFlashcardPracticeRoutes = ({
         (request.params as { sessionId?: unknown }).sessionId,
       );
       const input = submitFlashcardReviewSchema.safeParse(request.body);
-      if (!sessionId.success || !input.success) return validationError(reply);
+      if (!sessionId.success || !input.success) return sendValidationError(reply);
       const result = await submitPracticeReview(
         database,
         session.user.id,
@@ -195,7 +190,7 @@ export const createFlashcardPracticeRoutes = ({
       const parsed = flashcardPracticeSessionIdSchema.safeParse(
         (request.params as { sessionId?: unknown }).sessionId,
       );
-      if (!parsed.success) return validationError(reply);
+      if (!parsed.success) return sendValidationError(reply);
       if (!(await abandonPracticeSession(database, session.user.id, parsed.data)))
         return reply
           .status(404)
