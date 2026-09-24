@@ -5,14 +5,17 @@ import { Link, useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { Label } from "@/components/ui/label.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 import { registerSchema, type RegisterValues } from "@/features/auth/auth-schemas.ts";
 import { AuthFormHeader } from "@/features/auth/components/auth-form-header.tsx";
+import {
+  AuthEmailField,
+  AuthFormField,
+  AuthPasswordField,
+} from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
-import { PasswordInput } from "@/features/auth/components/password-input.tsx";
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
@@ -51,8 +54,7 @@ export const RegisterPage = () => {
       />
 
       <form className="grid gap-4" noValidate onSubmit={onSubmit}>
-        <div className="grid gap-2">
-          <Label htmlFor="name">Nome</Label>
+        <AuthFormField error={form.formState.errors.name?.message} id="name" label="Nome">
           <Input
             aria-describedby={form.formState.errors.name ? "name-error" : undefined}
             aria-invalid={Boolean(form.formState.errors.name)}
@@ -62,65 +64,29 @@ export const RegisterPage = () => {
             placeholder="Como devemos chamar você?"
             {...form.register("name")}
           />
-          {form.formState.errors.name && (
-            <p className="text-xs text-destructive" id="name-error">
-              {form.formState.errors.name.message}
-            </p>
-          )}
-        </div>
+        </AuthFormField>
 
-        <div className="grid gap-2">
-          <Label htmlFor="email">E-mail</Label>
-          <Input
-            aria-describedby={form.formState.errors.email ? "email-error" : undefined}
-            aria-invalid={Boolean(form.formState.errors.email)}
-            autoComplete="email"
-            className="h-11"
-            id="email"
-            inputMode="email"
-            placeholder="voce@exemplo.com"
-            {...form.register("email")}
-          />
-          {form.formState.errors.email && (
-            <p className="text-xs text-destructive" id="email-error">
-              {form.formState.errors.email.message}
-            </p>
-          )}
-        </div>
+        <AuthEmailField
+          error={form.formState.errors.email?.message}
+          placeholder="voce@exemplo.com"
+          {...form.register("email")}
+        />
 
-        <div className="grid gap-2">
-          <Label htmlFor="password">Senha</Label>
-          <PasswordInput
-            aria-describedby={form.formState.errors.password ? "password-error" : undefined}
-            aria-invalid={Boolean(form.formState.errors.password)}
-            autoComplete="new-password"
-            id="password"
-            {...form.register("password")}
-          />
-          {form.formState.errors.password && (
-            <p className="text-xs text-destructive" id="password-error">
-              {form.formState.errors.password.message}
-            </p>
-          )}
-        </div>
+        <AuthPasswordField
+          autoComplete="new-password"
+          error={form.formState.errors.password?.message}
+          id="password"
+          label="Senha"
+          {...form.register("password")}
+        />
 
-        <div className="grid gap-2">
-          <Label htmlFor="confirm-password">Confirmar senha</Label>
-          <PasswordInput
-            aria-describedby={
-              form.formState.errors.confirmPassword ? "confirm-password-error" : undefined
-            }
-            aria-invalid={Boolean(form.formState.errors.confirmPassword)}
-            autoComplete="new-password"
-            id="confirm-password"
-            {...form.register("confirmPassword")}
-          />
-          {form.formState.errors.confirmPassword && (
-            <p className="text-xs text-destructive" id="confirm-password-error">
-              {form.formState.errors.confirmPassword.message}
-            </p>
-          )}
-        </div>
+        <AuthPasswordField
+          autoComplete="new-password"
+          error={form.formState.errors.confirmPassword?.message}
+          id="confirm-password"
+          label="Confirmar senha"
+          {...form.register("confirmPassword")}
+        />
 
         {formError && (
           <p className="text-sm text-destructive" role="alert">
