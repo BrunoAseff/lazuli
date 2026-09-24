@@ -1,4 +1,8 @@
-import { normalizeProjectItemTitle, STORAGE_BASIC_LIMIT_BYTES } from "@lazuli/shared";
+import {
+  normalizeProjectItemTitle,
+  STORAGE_BASIC_LIMIT_BYTES,
+  type DocumentImportPhase,
+} from "@lazuli/shared";
 import { and, eq, inArray, max, sql } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 import { Worker } from "node:worker_threads";
@@ -260,7 +264,7 @@ const processImport = async (
   const bytes = await object.Body.transformToByteArray();
   let progressCurrent: number | null = null;
   let progressTotal: number | null = null;
-  let phase: "extracting" | "converting" = "extracting";
+  let phase: Extract<DocumentImportPhase, "extracting" | "converting"> = "extracting";
   const heartbeat = setInterval(() => {
     void updateImportProgress(db, job.id, workerId, phase, progressCurrent, progressTotal).catch(
       () => undefined,

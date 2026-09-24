@@ -10,7 +10,7 @@ import {
 import { and, asc, count, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 
-import type { Database } from "../database/client.ts";
+import type { Database, QueryExecutor, Transaction } from "../database/client.ts";
 import {
   document,
   flashcard,
@@ -22,9 +22,6 @@ import {
   studyMaterialReference,
   userStorage,
 } from "../database/schema/index.ts";
-
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
-type Executor = Database | Transaction;
 
 const referenceSelection = {
   id: studyMaterialReference.id,
@@ -46,7 +43,7 @@ const referenceSelection = {
   quizArchivedAt: quizQuestion.archivedAt,
 };
 
-const referenceBaseQuery = (db: Executor) =>
+const referenceBaseQuery = (db: QueryExecutor) =>
   db
     .select(referenceSelection)
     .from(studyMaterialReference)

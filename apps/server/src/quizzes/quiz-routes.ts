@@ -2,7 +2,6 @@ import {
   answerQuizAttemptItemSchema,
   createQuizAttemptSchema,
   createQuizQuestionSchema,
-  IMAGE_MAX_BYTES,
   quizAttemptIdSchema,
   quizAttemptItemIdSchema,
   quizCollectionIdSchema,
@@ -10,20 +9,15 @@ import {
   quizQuestionListQuerySchema,
   updateQuizQuestionSchema,
 } from "@lazuli/shared";
-import type { FastifyPluginAsync, FastifyReply } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
-import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
-import {
-  bufferedImageSource,
-  isImageUploadTooLargeError,
-  StorageLimitReachedError,
-  storeQuizImage,
-} from "../documents/document-image-storage.ts";
+import { storeStudyImage } from "../documents/document-image-storage.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
-import { sendValidationError } from "../routes/route-helpers.ts";
+import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
+import { handleStudyImageUpload } from "../routes/study-image-upload.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
   abandonQuizAttempt,
@@ -55,22 +49,7 @@ export const createQuizRoutes =
   ({ auth, database, storage, websiteUrl }: Options): FastifyPluginAsync =>
   async (app) => {
     const limiter = createRequestRateLimiter({ limit: 160, windowMs: 10 * 60_000 });
-    const mutationSession = async (
-      request: Parameters<typeof requireSession>[1],
-      reply: FastifyReply,
-    ) => {
-      if (!requireTrustedOrigin(websiteUrl, request, reply)) return null;
-      const session = await requireSession(auth, request, reply);
-      if (!session) return null;
-      if (!limiter.consume(session.user.id)) {
-        reply.status(429).send({
-          code: "RATE_LIMITED",
-          message: "Muitas alterações foram feitas em pouco tempo. Aguarde e tente novamente.",
-        });
-        return null;
-      }
-      return session;
-    };
+    const mutationSession = createMutationAuthorizer(auth, websiteUrl, limiter);
     const parseQuestionParams = (params: unknown) => {
       const raw = params as { collectionId?: unknown; questionId?: unknown };
       return {
@@ -311,36 +290,14 @@ export const createQuizRoutes =
     app.post("/api/quiz-assets/images", async (request, reply) => {
       const session = await mutationSession(request, reply);
       if (!session) return;
-      try {
-        const part = await request.file({ limits: { files: 1, fileSize: IMAGE_MAX_BYTES } });
-        if (!part) return sendValidationError(reply);
-        const created = await storeQuizImage({
-          database,
-          originalName: part.filename,
-          source: await bufferedImageSource(await part.toBuffer()),
-          storage,
-          userId: session.user.id,
-        });
-        if (!created)
-          return reply.status(415).send({
-            code: "UNSUPPORTED_IMAGE",
-            message: "Envie uma imagem PNG, JPEG, WebP ou GIF.",
-          });
-        return reply.status(201).send(created);
-      } catch (error) {
-        if (isImageUploadTooLargeError(error))
-          return reply
-            .status(413)
-            .send({ code: "IMAGE_TOO_LARGE", message: "A imagem deve ter no máximo 10 MB." });
-        if (error instanceof StorageLimitReachedError)
-          return reply.status(409).send({
-            code: "STORAGE_LIMIT_REACHED",
-            message: "Seu limite de armazenamento foi atingido.",
-          });
-        request.log.error({ err: error, userId: session.user.id }, "quiz image upload failed");
-        return reply
-          .status(500)
-          .send({ code: "INTERNAL_ERROR", message: "Não foi possível enviar a imagem." });
-      }
+      return handleStudyImageUpload({
+        database,
+        logMessage: "quiz image upload failed",
+        reply,
+        request,
+        storage,
+        storeImage: (input) => storeStudyImage({ ...input, kind: "quizzes" }),
+        userId: session.user.id,
+      });
     });
   };

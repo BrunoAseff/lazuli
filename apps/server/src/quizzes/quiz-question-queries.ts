@@ -17,7 +17,7 @@ import {
   sql,
 } from "drizzle-orm";
 
-import type { Database } from "../database/client.ts";
+import type { Database, QueryExecutor, Transaction } from "../database/client.ts";
 import { escapeLikePattern } from "../database/sql-search.ts";
 import {
   asset,
@@ -25,16 +25,12 @@ import {
   quizCollection,
   quizOption,
   quizQuestion,
-  userStorage,
 } from "../database/schema/index.ts";
-import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { releaseStoredObjects } from "../storage/storage-cleanup.ts";
 import { summarizeRichContent } from "../documents/rich-content-summary.ts";
 import { deleteReferencesForTargets } from "../references/reference-queries.ts";
 
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
-type Executor = Database | Transaction;
-
-const ownedCollection = async (db: Executor, userId: string, collectionId: string) => {
+const ownedCollection = async (db: QueryExecutor, userId: string, collectionId: string) => {
   const [row] = await db
     .select({ id: quizCollection.id, archivedAt: quizCollection.archivedAt })
     .from(quizCollection)
@@ -113,24 +109,13 @@ const releaseAssets = async (
         ),
       );
   if (!removable.length) return;
-  await enqueueObjectDeletions(
-    tx,
-    removable.map(({ objectKey }) => objectKey),
-  );
+  await releaseStoredObjects(tx, userId, removable);
   await tx.delete(asset).where(
     inArray(
       asset.id,
       removable.map(({ id }) => id),
     ),
   );
-  const bytes = removable.reduce((sum, item) => sum + item.byteSize, 0);
-  await tx
-    .update(userStorage)
-    .set({
-      usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${bytes})`,
-      updatedAt: new Date(),
-    })
-    .where(eq(userStorage.userId, userId));
 };
 
 const summarySelection = {
@@ -201,7 +186,7 @@ export const listQuizQuestions = async (
 };
 
 export const getQuizQuestion = async (
-  db: Executor,
+  db: QueryExecutor,
   userId: string,
   collectionId: string,
   questionId: string,

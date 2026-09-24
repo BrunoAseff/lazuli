@@ -299,5 +299,6 @@ export type AssetResponse = z.infer<typeof assetResponseSchema>;
 export type CreateDocumentImportInput = z.infer<typeof createDocumentImportSchema>;
 export type DocumentImport = z.infer<typeof documentImportSchema>;
 export type DocumentImportList = z.infer<typeof documentImportListSchema>;
+export type DocumentImportPhase = z.infer<typeof documentImportPhaseSchema>;
 export type DocumentImportStatus = z.infer<typeof documentImportStatusSchema>;
 export type StorageUsage = z.infer<typeof storageUsageSchema>;

@@ -8,21 +8,15 @@ import {
   importFlashcardsSchema,
   updateFlashcardSchema,
 } from "@lazuli/shared";
-import type { FastifyPluginAsync, FastifyReply } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
-import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
-import {
-  bufferedImageSource,
-  isImageUploadTooLargeError,
-  StorageLimitReachedError,
-  storeFlashcardImage,
-} from "../documents/document-image-storage.ts";
-import { IMAGE_MAX_BYTES } from "@lazuli/shared";
+import { storeStudyImage } from "../documents/document-image-storage.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
-import { sendValidationError } from "../routes/route-helpers.ts";
+import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
+import { handleStudyImageUpload } from "../routes/study-image-upload.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
   batchFlashcards,
@@ -79,22 +73,7 @@ export const createFlashcardRoutes = ({
 }: Options): FastifyPluginAsync =>
   async function flashcardRoutes(app) {
     const limiter = createRequestRateLimiter({ limit: 120, windowMs: 10 * 60_000 });
-    const authorizeMutation = async (
-      request: Parameters<typeof requireSession>[1],
-      reply: FastifyReply,
-    ) => {
-      if (!requireTrustedOrigin(websiteUrl, request, reply)) return null;
-      const session = await requireSession(auth, request, reply);
-      if (!session) return null;
-      if (!limiter.consume(session.user.id)) {
-        reply.status(429).send({
-          code: "RATE_LIMITED",
-          message: "Muitas alterações foram feitas em pouco tempo. Aguarde e tente novamente.",
-        });
-        return null;
-      }
-      return session;
-    };
+    const authorizeMutation = createMutationAuthorizer(auth, websiteUrl, limiter);
 
     app.get("/api/flashcard-collections/:collectionId/cards", async (request, reply) => {
       const session = await requireSession(auth, request, reply);
@@ -306,39 +285,14 @@ export const createFlashcardRoutes = ({
     app.post("/api/flashcard-assets/images", async (request, reply) => {
       const session = await authorizeMutation(request, reply);
       if (!session) return;
-      try {
-        const part = await request.file({ limits: { files: 1, fileSize: IMAGE_MAX_BYTES } });
-        if (!part) return sendValidationError(reply);
-        const created = await storeFlashcardImage({
-          database,
-          originalName: part.filename,
-          source: await bufferedImageSource(await part.toBuffer()),
-          storage,
-          userId: session.user.id,
-        });
-        if (!created)
-          return reply.status(415).send({
-            code: "UNSUPPORTED_IMAGE",
-            message: "Envie uma imagem PNG, JPEG, WebP ou GIF.",
-          });
-        return reply.status(201).send(created);
-      } catch (error) {
-        if (isImageUploadTooLargeError(error))
-          return reply
-            .status(413)
-            .send({ code: "IMAGE_TOO_LARGE", message: "A imagem deve ter no máximo 10 MB." });
-        if (error instanceof StorageLimitReachedError)
-          return reply.status(409).send({
-            code: "STORAGE_LIMIT_REACHED",
-            message: "Seu limite de armazenamento foi atingido.",
-          });
-        request.log.error(
-          { errorName: errorName(error), userId: session.user.id },
-          "flashcard image upload failed",
-        );
-        return reply
-          .status(500)
-          .send({ code: "INTERNAL_ERROR", message: "Não foi possível enviar a imagem." });
-      }
+      return handleStudyImageUpload({
+        database,
+        logMessage: "flashcard image upload failed",
+        reply,
+        request,
+        storage,
+        storeImage: (input) => storeStudyImage({ ...input, kind: "flashcards" }),
+        userId: session.user.id,
+      });
     });
   };

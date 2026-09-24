@@ -1,5 +1,6 @@
 import type {
   CreateProjectItemInput,
+  ProjectTreeItem,
   SaveDocumentContentInput,
   UpdateProjectItemInput,
 } from "@lazuli/shared";
@@ -16,14 +17,14 @@ import {
   storageObjectDeletion,
   userStorage,
 } from "../database/schema/index.ts";
-import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { enqueueObjectDeletions, releaseStoredObjects } from "../storage/storage-cleanup.ts";
 import { reconcileDocumentReferences } from "../references/reference-queries.ts";
 
 const ownedProject = (userId: string, projectId: string) =>
   and(eq(project.id, projectId), eq(project.userId, userId));
 
 export const isValidProjectItemParent = (
-  tree: Array<{ id: string; parentId: string | null; type: "folder" | "document" }>,
+  tree: Array<Pick<ProjectTreeItem, "id" | "parentId" | "type">>,
   itemId: string,
   parentId: string | null,
 ) => {
@@ -436,14 +437,7 @@ export const deleteOwnedAsset = async (db: Database, userId: string, assetId: st
       .where(and(eq(asset.id, assetId), eq(asset.userId, userId), isNull(asset.attachedAt)))
       .returning();
     if (!deleted) return null;
-    await enqueueObjectDeletions(tx, [deleted.objectKey]);
-    await tx
-      .update(userStorage)
-      .set({
-        usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${deleted.byteSize})`,
-        updatedAt: new Date(),
-      })
-      .where(eq(userStorage.userId, userId));
+    await releaseStoredObjects(tx, userId, [deleted]);
     return deleted;
   });
 };
@@ -459,26 +453,18 @@ export const cleanupUnattachedAssets = async (db: Database) =>
       .limit(50)
       .for("update", { skipLocked: true });
     if (!stale.length) return 0;
-    await enqueueObjectDeletions(
-      tx,
-      stale.map((item) => item.objectKey),
-    );
+    const staleByUser = new Map<string, typeof stale>();
+    for (const item of stale) {
+      const items = staleByUser.get(item.userId);
+      if (items) items.push(item);
+      else staleByUser.set(item.userId, [item]);
+    }
+    for (const [userId, items] of staleByUser) await releaseStoredObjects(tx, userId, items);
     await tx.delete(asset).where(
       inArray(
         asset.id,
         stale.map((item) => item.id),
       ),
     );
-    const releasedByUser = new Map<string, number>();
-    for (const item of stale)
-      releasedByUser.set(item.userId, (releasedByUser.get(item.userId) ?? 0) + item.byteSize);
-    for (const [userId, bytes] of releasedByUser)
-      await tx
-        .update(userStorage)
-        .set({
-          usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${bytes})`,
-          updatedAt: new Date(),
-        })
-        .where(eq(userStorage.userId, userId));
     return stale.length;
   });
