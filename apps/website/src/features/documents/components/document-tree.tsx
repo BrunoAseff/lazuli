@@ -41,6 +41,7 @@ import { documentLocation, safeReturnTo } from "../document-navigation.ts";
 import { DocumentTreeActions } from "./document-tree-actions.tsx";
 import { ProjectItemDeleteDialog } from "./project-item-delete-dialog.tsx";
 import { DocumentTreeToolbar } from "./document-tree-toolbar.tsx";
+import type { DocumentTreeCloseIcon, DocumentTreeCreateType } from "../document-tree-types.ts";
 
 type Props = {
   projectId: string;
@@ -48,12 +49,12 @@ type Props = {
   activeDocumentId?: string;
   onClose?: () => void;
   onNavigate?: () => void;
-  closeIcon?: "panel" | "x";
+  closeIcon?: DocumentTreeCloseIcon;
 };
 
 type PendingCreation = {
   parentId: string | null;
-  type: "folder" | "document";
+  type: DocumentTreeCreateType;
 };
 
 const treeItemPadding = (depth: number) => 12 + depth * 16;

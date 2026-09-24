@@ -5,15 +5,14 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 import { loginSchema, type LoginValues } from "@/features/auth/auth-schemas.ts";
 import { AuthFormHeader } from "@/features/auth/components/auth-form-header.tsx";
+import { AuthEmailField, AuthPasswordField } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
-import { PasswordInput } from "@/features/auth/components/password-input.tsx";
 
 type LocationState = {
   from?: string;
@@ -87,40 +86,19 @@ export const LoginPage = () => {
       )}
 
       <form className="grid gap-5" noValidate onSubmit={onSubmit}>
-        <div className="grid gap-2">
-          <Label htmlFor="email">E-mail</Label>
-          <Input
-            aria-describedby={form.formState.errors.email ? "email-error" : undefined}
-            aria-invalid={Boolean(form.formState.errors.email)}
-            autoComplete="email"
-            className="h-11"
-            id="email"
-            inputMode="email"
-            placeholder="voce@exemplo.com"
-            {...form.register("email")}
-          />
-          {form.formState.errors.email && (
-            <p className="text-xs text-destructive" id="email-error">
-              {form.formState.errors.email.message}
-            </p>
-          )}
-        </div>
+        <AuthEmailField
+          error={form.formState.errors.email?.message}
+          placeholder="voce@exemplo.com"
+          {...form.register("email")}
+        />
 
-        <div className="grid gap-2">
-          <Label htmlFor="password">Senha</Label>
-          <PasswordInput
-            aria-describedby={form.formState.errors.password ? "password-error" : undefined}
-            aria-invalid={Boolean(form.formState.errors.password)}
-            autoComplete="current-password"
-            id="password"
-            {...form.register("password")}
-          />
-          {form.formState.errors.password && (
-            <p className="text-xs text-destructive" id="password-error">
-              {form.formState.errors.password.message}
-            </p>
-          )}
-        </div>
+        <AuthPasswordField
+          autoComplete="current-password"
+          error={form.formState.errors.password?.message}
+          id="password"
+          label="Senha"
+          {...form.register("password")}
+        />
 
         <div className="flex items-center gap-3">
           <Checkbox

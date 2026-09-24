@@ -4,7 +4,7 @@ import {
   IMAGE_MAX_BYTES,
 } from "@lazuli/shared";
 
-import { ApiError } from "@/lib/api-client.ts";
+import { getApiErrorMessage } from "@/lib/api-client.ts";
 
 const megabytes = (bytes: number) => bytes / (1024 * 1024);
 
@@ -29,6 +29,4 @@ const messages: Record<string, string> = {
 };
 
 export const getFlashcardCollectionErrorMessage = (error: unknown, fallback: string) =>
-  error instanceof ApiError
-    ? ((error.code ? messages[error.code] : undefined) ?? fallback)
-    : fallback;
+  getApiErrorMessage(error, fallback, messages);

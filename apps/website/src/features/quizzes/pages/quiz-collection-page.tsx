@@ -1,6 +1,7 @@
 import {
   QUIZ_QUESTION_PAGE_SIZE,
   quizQuestionListQuerySchema,
+  type StudyCollectionStatus,
   type QuizQuestionDetail,
   type QuizQuestionSummary,
 } from "@lazuli/shared";
@@ -45,8 +46,16 @@ import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search.ts";
 import { cn } from "@/lib/utils.ts";
 import { parsePositivePage } from "@/lib/pagination.ts";
+import { mergeSearchParams } from "@/lib/search-params.ts";
+import type { StudyItemBatchAction } from "@/lib/study-actions.ts";
+import {
+  findReplacementStudyItemId,
+  type PendingStudyEditorState,
+  type StudyEditorState,
+} from "@/lib/study-editor.ts";
 import { useQuizCollection } from "../api/quiz-collection-queries.ts";
 import {
   useCreateQuizAttempt,
@@ -58,8 +67,7 @@ import {
 } from "../api/quiz-queries.ts";
 import { QuizQuestionPanel } from "../components/quiz-question-dialog.tsx";
 
-type EditorState = { type: "create" } | { type: "edit"; id: string } | null;
-type PendingEditor = Exclude<EditorState, null> | "close" | null;
+const quizQuestionListDefaults = { sort: "updated", status: "active" };
 
 export const QuizCollectionPage = () => {
   const { collectionId = "" } = useParams();
@@ -76,15 +84,30 @@ export const QuizCollectionPage = () => {
     page: parsePositivePage(params.get("page")),
     pageSize: QUIZ_QUESTION_PAGE_SIZE,
   });
-  const [search, setSearch] = useState(query);
+  const updateParams = (
+    changes: Record<string, string | undefined>,
+    resetPage = true,
+    replace = false,
+  ) =>
+    setParams(
+      (current) =>
+        mergeSearchParams(current, changes, {
+          defaults: quizQuestionListDefaults,
+          resetPage,
+        }),
+      { replace },
+    );
+  const [search, setSearch] = useDebouncedSearch(query, (value) =>
+    updateParams({ query: value || undefined }),
+  );
   const [selected, setSelected] = useState(new Set<string>());
-  const [editor, setEditor] = useState<EditorState>(null);
+  const [editor, setEditor] = useState<StudyEditorState>(null);
   const [duplicateSource, setDuplicateSource] = useState<QuizQuestionDetail | null>(null);
   const [editorDirty, setEditorDirty] = useState(false);
-  const [pendingEditor, setPendingEditor] = useState<PendingEditor>(null);
+  const [pendingEditor, setPendingEditor] = useState<PendingStudyEditorState>(null);
   const [pendingDelete, setPendingDelete] = useState<QuizQuestionSummary | null>(null);
   const [pendingArchive, setPendingArchive] = useState<QuizQuestionSummary | null>(null);
-  const [batchAction, setBatchAction] = useState<"archive" | "delete" | "restore" | null>(null);
+  const [batchAction, setBatchAction] = useState<StudyItemBatchAction | null>(null);
   const [startOpen, setStartOpen] = useState(() => params.get("start") === "true");
   const compact = useIsMobile();
   const collection = useQuizCollection(collectionId);
@@ -95,41 +118,12 @@ export const QuizCollectionPage = () => {
   const patchQuestion = usePatchQuizQuestion(collectionId);
   const start = useCreateQuizAttempt(collectionId);
 
-  const updateParams = (
-    changes: Record<string, string | undefined>,
-    resetPage = true,
-    replace = false,
-  ) =>
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        for (const [key, value] of Object.entries(changes)) {
-          if (
-            !value ||
-            (key === "status" && value === "active") ||
-            (key === "sort" && value === "updated")
-          )
-            next.delete(key);
-          else next.set(key, value);
-        }
-        if (resetPage) next.delete("page");
-        return next;
-      },
-      { replace },
-    );
-
   useEffect(() => {
     if (linkedQuestionId)
       setEditor(
         linkedQuestionId === "new" ? { type: "create" } : { type: "edit", id: linkedQuestionId },
       );
   }, [linkedQuestionId]);
-  useEffect(() => {
-    const normalized = search.trim();
-    if (normalized === query) return;
-    const timer = window.setTimeout(() => updateParams({ query: normalized || undefined }), 300);
-    return () => window.clearTimeout(timer);
-  }, [query, search]);
   useEffect(() => setSelected(new Set()), [input.page, input.query, input.status]);
   useEffect(() => {
     const totalPages = questions.data?.pagination.totalPages;
@@ -145,7 +139,7 @@ export const QuizCollectionPage = () => {
   }, [compact, editor, linkedQuestionId, questions.data?.items]);
 
   const activeId = editor?.type === "edit" ? editor.id : undefined;
-  const changeEditor = (next: Exclude<EditorState, null>) => {
+  const changeEditor = (next: Exclude<StudyEditorState, null>) => {
     if (editorDirty) return setPendingEditor(next);
     setDuplicateSource(null);
     setEditor(next);
@@ -158,12 +152,7 @@ export const QuizCollectionPage = () => {
   };
   const replacementQuestionId = (excluded: Set<string>) => {
     const visible = questions.data?.items ?? [];
-    const activeIndex = visible.findIndex(({ id }) => id === activeId);
-    const candidates =
-      activeIndex >= 0
-        ? [...visible.slice(activeIndex + 1), ...visible.slice(0, activeIndex)]
-        : visible;
-    return candidates.find(({ id }) => !excluded.has(id))?.id;
+    return findReplacementStudyItemId(visible, activeId, excluded);
   };
   const showReplacement = (replacementId?: string) => {
     if (replacementId) {
@@ -206,7 +195,7 @@ export const QuizCollectionPage = () => {
       toast.error("Não foi possível atualizar a questão.");
     }
   };
-  const performBatch = async (action: "archive" | "delete" | "restore") => {
+  const performBatch = async (action: StudyItemBatchAction) => {
     const selectedIds = new Set(selected);
     const replacesActive = Boolean(activeId && selectedIds.has(activeId));
     const replacementId = replacesActive ? replacementQuestionId(selectedIds) : undefined;
@@ -634,7 +623,7 @@ const QuizSummary = ({
   onDelete: () => void;
   onToggleArchive: () => void;
   selected: number;
-  status: "active" | "archived";
+  status: StudyCollectionStatus;
   summary: {
     totalQuestions: number;
     totalAttempts: number;

@@ -16,6 +16,15 @@ export class ApiError extends Error {
   }
 }
 
+export const getApiErrorMessage = (
+  error: unknown,
+  fallback: string,
+  messages: Readonly<Record<string, string>> = {},
+) => {
+  if (!(error instanceof ApiError)) return fallback;
+  return (error.code ? messages[error.code] : undefined) ?? fallback;
+};
+
 export const apiRequest = async <T>(
   path: string,
   schema: z.ZodType<T> | null,

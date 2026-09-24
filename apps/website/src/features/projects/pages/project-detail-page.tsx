@@ -14,15 +14,14 @@ import {
 } from "../components/project-dialogs.tsx";
 import { ProjectActionsMenu } from "../components/project-actions-menu.tsx";
 import { ProjectCover } from "../components/project-cover.tsx";
-import { ViewModeToggle, type ViewMode } from "../components/view-mode-toggle.tsx";
-
-type DetailAction = "cover" | "delete" | "rename" | null;
+import { ViewModeToggle, type ViewMode } from "@/components/view-mode-toggle.tsx";
+import type { ProjectAction } from "../project-types.ts";
 
 export const ProjectDetailPage = () => {
   const { projectId = "" } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const [action, setAction] = useState<DetailAction>(null);
+  const [action, setAction] = useState<ProjectAction | null>(null);
   const [documentView, setDocumentView] = useState<ViewMode>(() =>
     localStorage.getItem("lazuli-document-view") === "table" ? "table" : "cards",
   );

@@ -1,7 +1,4 @@
-type ProjectApiError = {
-  code?: string;
-  status?: number;
-};
+import { getApiErrorMessage } from "@/lib/api-client.ts";
 
 const messagesByCode: Record<string, string> = {
   PROJECT_CREATE_CONFLICT: "Não foi possível concluir esta criação. Tente novamente.",
@@ -12,11 +9,6 @@ const messagesByCode: Record<string, string> = {
 };
 
 export const getProjectErrorMessage = (
-  error: ProjectApiError | null,
+  error: unknown,
   fallback = "Não foi possível concluir esta ação. Tente novamente.",
-) => {
-  if (error?.code && messagesByCode[error.code]) {
-    return messagesByCode[error.code];
-  }
-  return fallback;
-};
+) => getApiErrorMessage(error, fallback, messagesByCode);

@@ -6,10 +6,11 @@ import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { formatProjectDate } from "../format-project-date.ts";
 import { ProjectActionsMenu } from "./project-actions-menu.tsx";
 import { ProjectCover } from "./project-cover.tsx";
+import type { ProjectAction } from "../project-types.ts";
 
 type ProjectTableProps = {
   listLocation: string;
-  onAction: (action: "cover" | "delete" | "rename", project: ProjectSummary) => void;
+  onAction: (action: ProjectAction, project: ProjectSummary) => void;
   projects: ProjectSummary[];
   query: string;
 };

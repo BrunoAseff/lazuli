@@ -21,6 +21,7 @@ import {
   type LazuliDocumentBlock,
 } from "@/features/documents/editor/document-schema.tsx";
 import { cn } from "@/lib/utils.ts";
+import { formatMediumDateTime } from "@/lib/date-format.ts";
 import { MaterialReferencesButton } from "@/features/references/components/material-references-dialog.tsx";
 import {
   usePracticeAvailability,
@@ -289,10 +290,7 @@ const PracticeSummary = ({
         {collection.data?.dueCards
           ? `${collection.data.dueCards} flashcards ainda estão disponíveis.`
           : collection.data?.nextPracticeAt
-            ? `Próxima revisão em ${new Intl.DateTimeFormat("pt-BR", {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }).format(new Date(collection.data.nextPracticeAt))}.`
+            ? `Próxima revisão em ${formatMediumDateTime(collection.data.nextPracticeAt)}.`
             : "Nenhuma outra revisão está agendada."}
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-2">

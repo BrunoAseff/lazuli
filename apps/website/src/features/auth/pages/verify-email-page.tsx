@@ -5,8 +5,6 @@ import { useForm } from "react-hook-form";
 import { Link, useLocation } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
-import { Label } from "@/components/ui/label.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
@@ -15,6 +13,7 @@ import {
   verificationEmailSchema,
 } from "@/features/auth/auth-schemas.ts";
 import { AuthFormHeader } from "@/features/auth/components/auth-form-header.tsx";
+import { AuthEmailField } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
 
 type LocationState = { email?: string };
@@ -72,23 +71,11 @@ export const VerifyEmailPage = () => {
       />
 
       <form className="grid gap-4" noValidate onSubmit={onSubmit}>
-        <div className="grid gap-2">
-          <Label htmlFor="verification-email">E-mail</Label>
-          <Input
-            aria-describedby={form.formState.errors.email ? "verification-email-error" : undefined}
-            aria-invalid={Boolean(form.formState.errors.email)}
-            autoComplete="email"
-            className="h-11"
-            id="verification-email"
-            inputMode="email"
-            {...form.register("email")}
-          />
-          {form.formState.errors.email && (
-            <p className="text-xs text-destructive" id="verification-email-error">
-              {form.formState.errors.email.message}
-            </p>
-          )}
-        </div>
+        <AuthEmailField
+          error={form.formState.errors.email?.message}
+          id="verification-email"
+          {...form.register("email")}
+        />
 
         {feedback && (
           <p

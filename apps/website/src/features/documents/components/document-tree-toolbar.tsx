@@ -9,6 +9,7 @@ import {
 
 import { SearchInput } from "@/components/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import type { DocumentTreeCloseIcon, DocumentTreeCreateType } from "../document-tree-types.ts";
 
 export const DocumentTreeToolbar = ({
   closeIcon,
@@ -20,9 +21,9 @@ export const DocumentTreeToolbar = ({
   search,
   searchOpen,
 }: {
-  closeIcon: "panel" | "x";
+  closeIcon: DocumentTreeCloseIcon;
   onClose?: () => void;
-  onCreate: (type: "folder" | "document") => void;
+  onCreate: (type: DocumentTreeCreateType) => void;
   onImport: () => void;
   onSearchChange: (value: string) => void;
   onSearchOpenChange: (open: boolean) => void;

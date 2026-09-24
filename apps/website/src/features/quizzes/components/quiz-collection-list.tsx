@@ -13,6 +13,7 @@ import { StudyCollectionIdentity } from "@/components/study-collection-identity.
 import { QuizCollectionMark } from "@/components/quiz-collection-mark.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { formatMediumDateTime } from "@/lib/date-format.ts";
+import type { StudyCollectionAction } from "@/lib/study-actions.ts";
 
 const scoreLabel = (score: QuizCollectionSummary["lastScore"]) =>
   score
@@ -25,10 +26,7 @@ export const QuizCollectionList = ({
   query,
 }: {
   collections: QuizCollectionSummary[];
-  onAction: (
-    action: "archive" | "delete" | "edit" | "restore",
-    collection: QuizCollectionSummary,
-  ) => void;
+  onAction: (action: StudyCollectionAction, collection: QuizCollectionSummary) => void;
   query: string;
 }) => (
   <div className="space-y-2">

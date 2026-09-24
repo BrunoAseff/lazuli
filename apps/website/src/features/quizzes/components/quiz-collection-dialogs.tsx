@@ -3,12 +3,10 @@ import type {
   QuizCollectionSummary,
   UpdateQuizCollectionInput,
 } from "@lazuli/shared";
-import { AlertTriangleIcon, ArchiveIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
+import { StudyCollectionConfirmationDialog } from "@/components/study-collection-confirmation-dialog.tsx";
 import { StudyCollectionDialog } from "@/components/study-collection-dialog.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import {
   useCreateQuizCollection,
   useDeleteQuizCollection,
@@ -86,13 +84,7 @@ export const ArchiveQuizCollectionDialog = ({
     }
   };
   return (
-    <ConfirmationDialog
-      actionLabel={
-        <>
-          {mutation.isPending && <Spinner />}
-          {mutation.isPending ? "Arquivando..." : "Arquivar coleção"}
-        </>
-      }
+    <StudyCollectionConfirmationDialog
       description={
         <>
           Suas {collection.totalQuestions}{" "}
@@ -102,11 +94,11 @@ export const ArchiveQuizCollectionDialog = ({
           . Você poderá restaurar a coleção depois.
         </>
       }
-      disabled={mutation.isPending}
-      media={<ArchiveIcon aria-hidden="true" />}
+      mode="archive"
       onConfirm={archive}
-      onOpenChange={(next) => !mutation.isPending && onOpenChange(next)}
+      onOpenChange={onOpenChange}
       open={open}
+      pending={mutation.isPending}
       title={`Arquivar “${collection.title}”?`}
     />
   );
@@ -135,13 +127,7 @@ export const DeleteQuizCollectionDialog = ({
     }
   };
   return (
-    <ConfirmationDialog
-      actionLabel={
-        <>
-          {mutation.isPending && <Spinner />}
-          {mutation.isPending ? "Excluindo..." : "Excluir coleção"}
-        </>
-      }
+    <StudyCollectionConfirmationDialog
       description={
         <>
           {collection.totalQuestions === 0
@@ -153,13 +139,11 @@ export const DeleteQuizCollectionDialog = ({
           Esta ação não pode ser desfeita.
         </>
       }
-      destructive
-      disabled={mutation.isPending}
-      media={<AlertTriangleIcon aria-hidden="true" />}
-      mediaClassName="bg-destructive/10 text-destructive"
+      mode="delete"
       onConfirm={remove}
-      onOpenChange={(next) => !mutation.isPending && onOpenChange(next)}
+      onOpenChange={onOpenChange}
       open={open}
+      pending={mutation.isPending}
       title={`Excluir “${collection.title}”?`}
     />
   );

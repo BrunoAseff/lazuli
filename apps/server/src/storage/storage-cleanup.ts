@@ -1,10 +1,8 @@
-import { asc, eq, inArray, lte } from "drizzle-orm";
+import { asc, eq, inArray, lte, sql } from "drizzle-orm";
 
-import type { Database } from "../database/client.ts";
-import { storageObjectDeletion } from "../database/schema/index.ts";
+import type { Database, Transaction } from "../database/client.ts";
+import { storageObjectDeletion, userStorage } from "../database/schema/index.ts";
 import type { ObjectStorage } from "./object-storage.ts";
-
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 export const enqueueObjectDeletions = async (
   database: Database | Transaction,
@@ -21,6 +19,26 @@ export const enqueueObjectDeletions = async (
       target: storageObjectDeletion.objectKey,
       set: { availableAt, updatedAt: new Date() },
     });
+};
+
+export const releaseStoredObjects = async (
+  database: Database | Transaction,
+  userId: string,
+  objects: { byteSize: number; objectKey: string }[],
+) => {
+  if (!objects.length) return;
+  await enqueueObjectDeletions(
+    database,
+    objects.map(({ objectKey }) => objectKey),
+  );
+  const releasedBytes = objects.reduce((sum, { byteSize }) => sum + byteSize, 0);
+  await database
+    .update(userStorage)
+    .set({
+      usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${releasedBytes})`,
+      updatedAt: new Date(),
+    })
+    .where(eq(userStorage.userId, userId));
 };
 
 export const processPendingObjectDeletions = async (

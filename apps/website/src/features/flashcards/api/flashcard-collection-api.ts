@@ -8,56 +8,25 @@ import {
   type UpdateFlashcardCollectionInput,
 } from "@lazuli/shared";
 
-import { ApiError, apiRequest as request } from "@/lib/api-client.ts";
-import { buildSearchParams } from "@/lib/search-params.ts";
+import { ApiError } from "@/lib/api-client.ts";
+import { createStudyCollectionApi } from "@/lib/study-collection-api.ts";
 
 export { ApiError as FlashcardCollectionApiError };
 
-const toSearchParams = ({
-  page,
-  pageSize,
-  project,
-  query,
-  status,
-}: FlashcardCollectionListQuery) => {
-  return buildSearchParams({
-    page,
-    pageSize,
-    project,
-    query,
-    status,
-  });
-};
+const api = createStudyCollectionApi<
+  FlashcardCollectionSummary,
+  FlashcardCollectionListResponse,
+  CreateFlashcardCollectionInput,
+  UpdateFlashcardCollectionInput,
+  FlashcardCollectionListQuery
+>({
+  collectionSchema: flashcardCollectionSummarySchema,
+  listSchema: flashcardCollectionListResponseSchema,
+  path: "/api/flashcard-collections",
+});
 
-export const fetchFlashcardCollections = (
-  input: FlashcardCollectionListQuery,
-  signal?: AbortSignal,
-): Promise<FlashcardCollectionListResponse> =>
-  request(
-    `/api/flashcard-collections?${toSearchParams(input)}`,
-    flashcardCollectionListResponseSchema,
-    { signal },
-  );
-
-export const postFlashcardCollection = (
-  input: CreateFlashcardCollectionInput,
-): Promise<FlashcardCollectionSummary> =>
-  request("/api/flashcard-collections", flashcardCollectionSummarySchema, {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-
-export const patchFlashcardCollection = (
-  collectionId: string,
-  input: UpdateFlashcardCollectionInput,
-): Promise<FlashcardCollectionSummary> =>
-  request(
-    `/api/flashcard-collections/${encodeURIComponent(collectionId)}`,
-    flashcardCollectionSummarySchema,
-    { method: "PATCH", body: JSON.stringify(input) },
-  );
-
-export const removeFlashcardCollection = (collectionId: string): Promise<void> =>
-  request(`/api/flashcard-collections/${encodeURIComponent(collectionId)}`, null, {
-    method: "DELETE",
-  });
+export const fetchFlashcardCollection = api.fetchCollection;
+export const fetchFlashcardCollections = api.fetchCollections;
+export const patchFlashcardCollection = api.patchCollection;
+export const postFlashcardCollection = api.postCollection;
+export const removeFlashcardCollection = api.removeCollection;

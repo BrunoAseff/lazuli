@@ -5,7 +5,7 @@ import {
 } from "@lazuli/shared";
 import { and, asc, count, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
 
-import type { Database } from "../database/client.ts";
+import type { Database, QueryExecutor, Transaction } from "../database/client.ts";
 import {
   asset,
   quizAttempt,
@@ -15,15 +15,11 @@ import {
   quizOption,
   quizQuestion,
   studyMaterialReference,
-  userStorage,
 } from "../database/schema/index.ts";
 import { summarizeRichContent } from "../documents/rich-content-summary.ts";
-import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { releaseStoredObjects } from "../storage/storage-cleanup.ts";
 
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
-type Executor = Database | Transaction;
-
-const ownedAttempt = async (db: Executor, userId: string, attemptId: string) => {
+const ownedAttempt = async (db: QueryExecutor, userId: string, attemptId: string) => {
   const [row] = await db
     .select({
       id: quizAttempt.id,
@@ -85,27 +81,16 @@ const releaseAbandonedAttemptContent = async (
     )
     .for("update");
   if (!removable.length) return;
-  await enqueueObjectDeletions(
-    tx,
-    removable.map(({ objectKey }) => objectKey),
-  );
+  await releaseStoredObjects(tx, userId, removable);
   await tx.delete(asset).where(
     inArray(
       asset.id,
       removable.map(({ id }) => id),
     ),
   );
-  const bytes = removable.reduce((sum, item) => sum + item.byteSize, 0);
-  await tx
-    .update(userStorage)
-    .set({
-      usedBytes: sql`greatest(0, ${userStorage.usedBytes} - ${bytes})`,
-      updatedAt: new Date(),
-    })
-    .where(eq(userStorage.userId, userId));
 };
 
-export const getQuizAttempt = async (db: Executor, userId: string, attemptId: string) => {
+export const getQuizAttempt = async (db: QueryExecutor, userId: string, attemptId: string) => {
   const attempt = await ownedAttempt(db, userId, attemptId);
   if (!attempt || attempt.status === "abandoned") return null;
   const rows = await db

@@ -46,8 +46,16 @@ import { Button } from "@/components/ui/button.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
+import { useDebouncedSearch } from "@/hooks/use-debounced-search.ts";
 import { cn } from "@/lib/utils.ts";
 import { parsePositivePage } from "@/lib/pagination.ts";
+import { mergeSearchParams } from "@/lib/search-params.ts";
+import type { StudyItemAction, StudyItemBatchAction } from "@/lib/study-actions.ts";
+import {
+  findReplacementStudyItemId,
+  type PendingStudyEditorState,
+  type StudyEditorState,
+} from "@/lib/study-editor.ts";
 import {
   useBatchFlashcards,
   useDeleteFlashcard,
@@ -61,9 +69,7 @@ import { FlashcardImportDialog } from "../components/flashcard-import-dialog.tsx
 import { PracticeSetupDialog } from "../components/practice-setup-dialog.tsx";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 
-type EditorState = { type: "create" } | { type: "edit"; cardId: string } | null;
-type PendingEditorState = Exclude<EditorState, null> | "close" | null;
-type CardAction = "archive" | "delete" | "duplicate" | "move" | "restore";
+const flashcardListDefaults = { filter: "all", sort: "updated", status: "active" };
 
 export const FlashcardCollectionPage = () => {
   const { collectionId = "" } = useParams();
@@ -81,12 +87,27 @@ export const FlashcardCollectionPage = () => {
     page: parsePositivePage(params.get("page")),
     pageSize: FLASHCARD_PAGE_SIZE,
   });
-  const [search, setSearch] = useState(query);
+  const updateParams = (
+    changes: Record<string, string | undefined>,
+    resetPage = true,
+    replace = false,
+  ) =>
+    setParams(
+      (current) =>
+        mergeSearchParams(current, changes, {
+          defaults: flashcardListDefaults,
+          resetPage,
+        }),
+      { replace },
+    );
+  const [search, setSearch] = useDebouncedSearch(query, (value) =>
+    updateParams({ query: value || undefined }),
+  );
   const [selected, setSelected] = useState(new Set<string>());
-  const [editor, setEditor] = useState<EditorState>(null);
+  const [editor, setEditor] = useState<StudyEditorState>(null);
   const [duplicateSource, setDuplicateSource] = useState<FlashcardDetail | null>(null);
   const [editorDirty, setEditorDirty] = useState(false);
-  const [pendingEditor, setPendingEditor] = useState<PendingEditorState>(null);
+  const [pendingEditor, setPendingEditor] = useState<PendingStudyEditorState>(null);
   const compact = useIsMobile();
   const [pendingDelete, setPendingDelete] = useState<FlashcardSummary | null>(null);
   const [pendingArchive, setPendingArchive] = useState<FlashcardSummary | null>(null);
@@ -99,46 +120,14 @@ export const FlashcardCollectionPage = () => {
   const [importOpen, setImportOpen] = useState(false);
   const collection = useFlashcardCollection(collectionId);
   const cards = useFlashcards(collectionId, input);
-  const detail = useFlashcard(collectionId, editor?.type === "edit" ? editor.cardId : null);
+  const detail = useFlashcard(collectionId, editor?.type === "edit" ? editor.id : null);
   const batch = useBatchFlashcards(collectionId);
   const remove = useDeleteFlashcard(collectionId);
 
-  const updateParams = (
-    changes: Record<string, string | undefined>,
-    resetPage = true,
-    replace = false,
-  ) =>
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        for (const [key, value] of Object.entries(changes)) {
-          if (
-            !value ||
-            (key === "filter" && value === "all") ||
-            (key === "sort" && value === "updated") ||
-            (key === "status" && value === "active")
-          )
-            next.delete(key);
-          else next.set(key, value);
-        }
-        if (resetPage) next.delete("page");
-        return next;
-      },
-      { replace },
-    );
-
   useEffect(() => {
     if (linkedCardId)
-      setEditor(
-        linkedCardId === "new" ? { type: "create" } : { type: "edit", cardId: linkedCardId },
-      );
+      setEditor(linkedCardId === "new" ? { type: "create" } : { type: "edit", id: linkedCardId });
   }, [linkedCardId]);
-  useEffect(() => {
-    const normalized = search.trim();
-    if (normalized === query) return;
-    const timer = window.setTimeout(() => updateParams({ query: normalized || undefined }), 300);
-    return () => window.clearTimeout(timer);
-  }, [query, search]);
   useEffect(() => setSelected(new Set()), [input.page, input.filter, input.query, input.status]);
   useEffect(() => {
     const totalPages = cards.data?.pagination.totalPages;
@@ -149,13 +138,13 @@ export const FlashcardCollectionPage = () => {
     if (compact || editor || linkedCardId || !cards.data?.items.length) return;
     const first = cards.data.items[0];
     if (!first) return;
-    setEditor({ type: "edit", cardId: first.id });
+    setEditor({ type: "edit", id: first.id });
     updateParams({ card: first.id }, false, true);
   }, [cards.data?.items, compact, editor, linkedCardId]);
 
   const openCard = (card: FlashcardSummary) => {
     if (activeId === card.id) return;
-    const next = { type: "edit" as const, cardId: card.id };
+    const next = { type: "edit" as const, id: card.id };
     if (editorDirty) {
       setPendingEditor(next);
       return;
@@ -180,16 +169,11 @@ export const FlashcardCollectionPage = () => {
   };
   const replacementCardId = (excluded: Set<string>) => {
     const visible = cards.data?.items ?? [];
-    const activeIndex = visible.findIndex(({ id }) => id === activeId);
-    const candidates =
-      activeIndex >= 0
-        ? [...visible.slice(activeIndex + 1), ...visible.slice(0, activeIndex)]
-        : visible;
-    return candidates.find(({ id }) => !excluded.has(id))?.id;
+    return findReplacementStudyItemId(visible, activeId, excluded);
   };
   const showReplacement = (replacementId?: string) => {
     if (replacementId) {
-      setEditor({ type: "edit", cardId: replacementId });
+      setEditor({ type: "edit", id: replacementId });
       updateParams({ card: replacementId }, false, true);
     } else {
       setEditor(null);
@@ -205,7 +189,7 @@ export const FlashcardCollectionPage = () => {
     updateParams({ card: undefined }, false, true);
   };
   const performCardAction = async (
-    action: CardAction,
+    action: StudyItemAction,
     card: FlashcardSummary,
     confirmed = false,
   ) => {
@@ -231,7 +215,7 @@ export const FlashcardCollectionPage = () => {
       );
     }
   };
-  const performBatch = async (type: "archive" | "delete" | "restore") => {
+  const performBatch = async (type: StudyItemBatchAction) => {
     if (!selected.size) return;
     const selectedIds = new Set(selected);
     const removesActiveCard = Boolean(activeId && selectedIds.has(activeId) && type !== "restore");
@@ -290,7 +274,7 @@ export const FlashcardCollectionPage = () => {
     );
 
   const summary = collection.data;
-  const activeId = editor?.type === "edit" ? editor.cardId : undefined;
+  const activeId = editor?.type === "edit" ? editor.id : undefined;
   const appliedFilters =
     Number(input.filter !== "all") +
     Number(input.sort !== "updated") +
@@ -521,7 +505,7 @@ export const FlashcardCollectionPage = () => {
                     void navigate(`/flashcards/${savedCollectionId}?card=${cardId}`);
                     return;
                   }
-                  setEditor({ type: "edit", cardId });
+                  setEditor({ type: "edit", id: cardId });
                   updateParams({ card: cardId }, false, true);
                 }}
                 open
@@ -665,7 +649,7 @@ export const FlashcardCollectionPage = () => {
             return;
           }
           setEditor(next);
-          updateParams({ card: next.type === "create" ? "new" : next.cardId }, false);
+          updateParams({ card: next.type === "create" ? "new" : next.id }, false);
         }}
         open={Boolean(pendingEditor)}
         onOpenChange={(open) => !open && setPendingEditor(null)}
