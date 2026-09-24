@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input.tsx";
 import { cn } from "@/lib/utils.ts";
 
 type SearchInputProps = Omit<ComponentProps<typeof Input>, "onChange" | "type" | "value"> & {
+  alwaysShowClear?: boolean;
+  clearLabel?: string;
   containerClassName?: string;
   onClear?: () => void;
   onValueChange: (value: string) => void;
@@ -13,6 +15,8 @@ type SearchInputProps = Omit<ComponentProps<typeof Input>, "onChange" | "type" |
 };
 
 export const SearchInput = ({
+  alwaysShowClear = false,
+  clearLabel = "Limpar pesquisa",
   className,
   containerClassName,
   onClear,
@@ -32,9 +36,9 @@ export const SearchInput = ({
       type="text"
       value={value}
     />
-    {value && (
+    {(value || alwaysShowClear) && (
       <Button
-        aria-label="Limpar pesquisa"
+        aria-label={clearLabel}
         className="absolute top-1/2 right-1 -translate-y-1/2"
         onClick={onClear ?? (() => onValueChange(""))}
         size="icon-sm"

@@ -27,7 +27,7 @@ export const ProjectActionsMenu = ({
     <DropdownMenuTrigger asChild>
       <Button
         aria-label="Abrir ações do projeto"
-        className={cn("bg-background bg-clip-border shadow-sm", className)}
+        className={cn("bg-card bg-clip-border shadow-none", className)}
         size="icon-sm"
         variant="outline"
       >

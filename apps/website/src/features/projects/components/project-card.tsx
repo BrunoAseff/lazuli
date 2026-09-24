@@ -1,7 +1,7 @@
 import type { ProjectSummary } from "@lazuli/shared";
-import { FileTextIcon } from "lucide-react";
 import { Link } from "react-router";
 
+import { DocumentDomainIcon } from "@/components/domain-icons.ts";
 import { Card } from "@/components/ui/card.tsx";
 import { formatProjectDate } from "../format-project-date.ts";
 import { HighlightText } from "@/components/highlight-text.tsx";
@@ -25,7 +25,7 @@ export const ProjectCard = ({
   project,
   query,
 }: ProjectCardProps) => (
-  <Card className="group/project-card relative gap-0 rounded-none py-0 transition-shadow hover:shadow-md focus-within:shadow-md">
+  <Card className="group/project-card relative gap-0 overflow-hidden py-0 transition-colors hover:border-foreground/30">
     <Link
       aria-label={`Abrir projeto ${project.title}`}
       className="block overflow-hidden outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -46,7 +46,7 @@ export const ProjectCard = ({
       </div>
       <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <FileTextIcon aria-hidden="true" className="size-3.5" />
+          <DocumentDomainIcon aria-hidden="true" className="size-4" weight="duotone" />
           {project.documentCount} {project.documentCount === 1 ? "documento" : "documentos"}
         </span>
         <time dateTime={project.updatedAt}>{formatProjectDate(project.updatedAt)}</time>

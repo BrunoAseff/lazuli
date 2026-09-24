@@ -285,7 +285,7 @@ const QuizQuestionEditor = ({
                 </p>
               </div>
             </div>
-            <div className="flex items-start gap-1">
+            <div className="flex h-9 items-center justify-end gap-1">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button

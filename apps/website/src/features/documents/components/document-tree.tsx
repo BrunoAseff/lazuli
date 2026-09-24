@@ -1,17 +1,15 @@
 import { normalizeProjectItemTitle, type ProjectTreeItem } from "@lazuli/shared";
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  FileTextIcon,
-  FolderIcon,
-  HomeIcon,
-  MoreHorizontalIcon,
-} from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon, HomeIcon, MoreHorizontalIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
+import {
+  DocumentDomainIcon,
+  ProjectClosedIcon,
+  ProjectOpenIcon,
+} from "@/components/domain-icons.ts";
 import { HighlightText } from "@/components/highlight-text.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import {
@@ -45,6 +43,7 @@ import type { DocumentTreeCloseIcon, DocumentTreeCreateType } from "../document-
 
 type Props = {
   projectId: string;
+  projectTitle?: string;
   items: ProjectTreeItem[];
   activeDocumentId?: string;
   onClose?: () => void;
@@ -61,6 +60,7 @@ const treeItemPadding = (depth: number) => 12 + depth * 16;
 
 export const DocumentTree = ({
   projectId,
+  projectTitle,
   items,
   activeDocumentId,
   onClose,
@@ -245,9 +245,16 @@ export const DocumentTree = ({
       >
         <span className="size-5 shrink-0" />
         {creating.type === "folder" ? (
-          <FolderIcon className="size-4 shrink-0 text-muted-foreground" />
+          <ProjectClosedIcon
+            className="size-[1.125rem] shrink-0 text-muted-foreground"
+            weight="duotone"
+          />
         ) : (
-          <FileTextIcon className="size-4 shrink-0 text-muted-foreground" data-tree-icon />
+          <DocumentDomainIcon
+            className="size-[1.125rem] shrink-0 text-muted-foreground"
+            data-tree-icon
+            weight="duotone"
+          />
         )}
         <Input
           aria-label={creating.type === "folder" ? "Nome da pasta" : "Nome do documento"}
@@ -360,9 +367,10 @@ export const DocumentTree = ({
                 <div
                   aria-grabbed={draggedId === item.id}
                   className={cn(
-                    "group relative flex h-9 cursor-pointer items-center gap-1 rounded-sm pr-3 text-sm transition-colors hover:bg-muted/60",
-                    isActive && "bg-muted font-medium text-foreground",
-                    isDropTarget && "bg-muted ring-1 ring-inset ring-foreground/20",
+                    "group relative flex h-8 cursor-pointer items-center gap-1.5 rounded-md pr-3 text-[0.875rem] transition-colors hover:bg-muted/60",
+                    isActive && "bg-muted text-foreground",
+                    isDropTarget &&
+                      "bg-primary-soft/35 outline-1 outline-offset-[-2px] outline-dashed outline-primary/70",
                     draggedId === item.id && "opacity-45",
                   )}
                   draggable={editing !== item.id}
@@ -432,11 +440,24 @@ export const DocumentTree = ({
                     <span className="size-5 shrink-0" />
                   )}
                   {isFolder ? (
-                    <FolderIcon className="size-4 shrink-0 text-muted-foreground" data-tree-icon />
+                    isOpen ? (
+                      <ProjectOpenIcon
+                        className="size-[1.125rem] shrink-0 text-muted-foreground"
+                        data-tree-icon
+                        weight="duotone"
+                      />
+                    ) : (
+                      <ProjectClosedIcon
+                        className="size-[1.125rem] shrink-0 text-muted-foreground"
+                        data-tree-icon
+                        weight="duotone"
+                      />
+                    )
                   ) : (
-                    <FileTextIcon
-                      className="size-4 shrink-0 text-muted-foreground"
+                    <DocumentDomainIcon
+                      className="size-[1.125rem] shrink-0 text-muted-foreground"
                       data-tree-icon
+                      weight="duotone"
                     />
                   )}
                   {label}
@@ -504,9 +525,17 @@ export const DocumentTree = ({
               </ContextMenuContent>
             </ContextMenu>
             {isFolder &&
-              isOpen &&
               ((children.get(item.id)?.length ?? 0) > 0 || creating?.parentId === item.id) && (
-                <div>{render(item.id, depth + 1)}</div>
+                <div
+                  aria-hidden={!isOpen}
+                  className={cn(
+                    "grid transition-[grid-template-rows,opacity] duration-150 ease-out",
+                    isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                  )}
+                  inert={!isOpen}
+                >
+                  <div className="min-h-0 overflow-hidden">{render(item.id, depth + 1)}</div>
+                </div>
               )}
           </div>
         );
@@ -517,6 +546,26 @@ export const DocumentTree = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-transparent">
+      <div className="px-3 pt-3 pb-1">
+        <Link
+          className="inline-flex h-7 items-center text-xs text-muted-foreground hover:text-foreground"
+          to="/documents"
+        >
+          ← Projetos
+        </Link>
+        {projectTitle && (
+          <OverflowTooltip side="right" text={projectTitle}>
+            {(ref) => (
+              <p
+                className="mt-1 truncate font-heading text-lg leading-6"
+                ref={ref as React.RefObject<HTMLParagraphElement>}
+              >
+                {projectTitle}
+              </p>
+            )}
+          </OverflowTooltip>
+        )}
+      </div>
       <DocumentTreeToolbar
         closeIcon={closeIcon}
         onClose={onClose}
@@ -530,8 +579,9 @@ export const DocumentTree = ({
       <div
         aria-label="Arquivos do projeto"
         className={cn(
-          "min-h-0 flex-1 overflow-auto rounded-md py-1 transition-colors",
-          dropTargetId === null && "bg-muted/40 ring-1 ring-inset ring-foreground/15",
+          "min-h-0 flex-1 overflow-auto rounded-lg px-1 py-1 transition-colors",
+          dropTargetId === null &&
+            "bg-primary-soft/25 outline-1 outline-offset-[-3px] outline-dashed outline-primary/65",
         )}
         onDragOver={(event) => {
           if (!draggedId || !canMove(draggedId, null)) return;
@@ -547,8 +597,8 @@ export const DocumentTree = ({
       >
         <div
           className={cn(
-            "mb-1 flex h-9 items-center gap-2 rounded-sm px-3 text-sm transition-colors hover:bg-muted/60",
-            !activeDocumentId && "bg-muted font-medium text-foreground",
+            "mb-1 flex h-8 items-center gap-2 rounded-md px-3 text-[0.875rem] transition-colors hover:bg-muted/60",
+            !activeDocumentId && "bg-muted text-foreground",
           )}
         >
           <HomeIcon className="size-4 shrink-0 text-muted-foreground" />

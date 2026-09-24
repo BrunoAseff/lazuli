@@ -1,8 +1,9 @@
-import { ArrowLeftIcon, FileTextIcon, TriangleAlertIcon } from "lucide-react";
+import { ArrowLeftIcon, TriangleAlertIcon } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";
+import { DocumentDomainIcon } from "@/components/domain-icons.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { RecentDocuments } from "@/features/documents/components/recent-documents.tsx";
 import { useProject, useProjectDocuments } from "../api/project-queries.ts";
@@ -40,9 +41,9 @@ export const ProjectDetailPage = () => {
     return (
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-5 pt-7 pb-8 sm:px-8 lg:px-12 lg:pt-7 lg:pb-10">
         <Skeleton className="h-5 w-28" />
-        <Skeleton className="aspect-[3/1] w-full rounded-none" />
+        <Skeleton className="aspect-[3/1] w-full rounded-xl" />
         <Skeleton className="h-12 w-1/2" />
-        <Skeleton className="h-64 w-full rounded-none" />
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
@@ -77,17 +78,17 @@ export const ProjectDetailPage = () => {
   const currentProject = project.data;
 
   return (
-    <div className="flex min-h-full flex-col px-5 pt-7 pb-8 sm:px-8 lg:px-12 lg:pt-7 lg:pb-10">
+    <div className="mr-1 flex h-full min-h-0 flex-col overflow-y-auto px-5 pt-7 pb-8 sm:px-8 lg:px-12 lg:pt-7 lg:pb-10 lazuli-thin-scrollbar">
       <div className="mx-auto w-full max-w-6xl">
         <Link
-          className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          className="project-home-back mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           to={backLocation}
         >
           <ArrowLeftIcon aria-hidden="true" className="size-4" />
           Projetos
         </Link>
 
-        <div className="relative overflow-hidden border bg-card">
+        <div className="relative overflow-hidden rounded-xl border bg-card">
           <ProjectCover className="max-h-72 min-h-44" coverKey={currentProject.coverKey} />
           <ProjectActionsMenu
             className="absolute top-3 right-3"
@@ -97,10 +98,7 @@ export const ProjectDetailPage = () => {
           />
         </div>
 
-        <div className="mt-7 flex flex-col gap-2 border-b pb-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Documentos / Projeto
-          </p>
+        <div className="mt-7 flex flex-col gap-1.5">
           <h1 className="font-heading text-4xl font-medium tracking-tight [overflow-wrap:anywhere] sm:text-5xl">
             {currentProject.title}
           </h1>
@@ -124,7 +122,7 @@ export const ProjectDetailPage = () => {
 
           {documents.isPending && (
             <div
-              className="mt-5 grid gap-px border bg-border"
+              className="mt-5 grid gap-px overflow-hidden rounded-xl border bg-border"
               role="status"
               aria-label="Carregando documentos"
             >
@@ -138,7 +136,7 @@ export const ProjectDetailPage = () => {
           )}
 
           {documents.isError && (
-            <div className="mt-5 border border-dashed p-8 text-center">
+            <div className="mt-5 rounded-xl border border-dashed p-8 text-center">
               <p className="text-sm text-muted-foreground">
                 Não foi possível carregar os documentos.
               </p>
@@ -149,15 +147,16 @@ export const ProjectDetailPage = () => {
           )}
 
           {documents.data?.items.length === 0 && (
-            <div className="mt-5 grid min-h-56 place-items-center border border-dashed bg-card/40 p-6 text-center">
+            <div className="mt-5 grid min-h-56 place-items-center rounded-xl border border-dashed bg-card/40 p-6 text-center">
               <div className="max-w-sm">
-                <FileTextIcon
+                <DocumentDomainIcon
                   aria-hidden="true"
-                  className="mx-auto mb-4 size-7 text-muted-foreground"
+                  className="mx-auto mb-4 size-8 text-muted-foreground"
+                  weight="duotone"
                 />
                 <h3 className="font-heading text-2xl font-medium">Nenhum documento ainda</h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Os documentos deste projeto serão criados e organizados aqui na próxima etapa.
+                  Crie ou importe documentos pela árvore de arquivos para começar.
                 </p>
               </div>
             </div>
