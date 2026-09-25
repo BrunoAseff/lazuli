@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from "react-router";
 
-import { BrandMark } from "@/components/brand-mark.tsx";
+import { BrandBadge } from "@/components/brand-mark.tsx";
 import {
   DocumentDomainIcon,
   FlashcardDomainIcon,
@@ -53,7 +53,7 @@ export const AppSidebar = () => {
           onClick={closeMobileNavigation}
           to="/documents"
         >
-          <BrandMark className="size-7" />
+          <BrandBadge />
           <span className="font-heading text-[1.35rem] font-medium tracking-[-0.02em]">Lazúli</span>
         </NavLink>
       </SidebarHeader>

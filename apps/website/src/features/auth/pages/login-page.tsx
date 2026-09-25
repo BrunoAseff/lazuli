@@ -3,7 +3,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 
-import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
@@ -13,6 +12,7 @@ import { loginSchema, type LoginValues } from "@/features/auth/auth-schemas.ts";
 import { AuthFormHeader } from "@/features/auth/components/auth-form-header.tsx";
 import { AuthEmailField, AuthPasswordField } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
+import { AuthSubmitButton } from "@/features/auth/components/auth-submit-button.tsx";
 
 type LocationState = {
   from?: string;
@@ -63,7 +63,7 @@ export const LoginPage = () => {
 
       {searchParams.get("verified") === "true" && !verificationError && (
         <p
-          className="mb-5 border border-primary/25 bg-primary/5 px-3 py-2.5 text-sm text-primary"
+          className="mb-5 rounded-[var(--radius)] border border-primary/25 bg-primary/5 px-3 py-2.5 text-sm text-primary"
           role="status"
         >
           E-mail confirmado. Agora você pode entrar.
@@ -72,7 +72,7 @@ export const LoginPage = () => {
 
       {verificationError && (
         <div
-          className="mb-5 border border-destructive/25 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+          className="mb-5 rounded-[var(--radius)] border border-destructive/25 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
           role="alert"
         >
           <p>{getAuthErrorMessage({ code: verificationError })}</p>
@@ -100,7 +100,7 @@ export const LoginPage = () => {
           {...form.register("password")}
         />
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Checkbox
             checked={form.watch("rememberMe")}
             id="remember-me"
@@ -126,14 +126,13 @@ export const LoginPage = () => {
           </div>
         )}
 
-        <Button
-          className="h-11 rounded-none"
+        <AuthSubmitButton
           disabled={!form.formState.isValid || form.formState.isSubmitting}
           type="submit"
         >
           {form.formState.isSubmitting && <Spinner aria-hidden="true" />}
           {form.formState.isSubmitting ? "Entrando…" : "Entrar"}
-        </Button>
+        </AuthSubmitButton>
       </form>
 
       <p className="mt-7 text-center text-sm text-muted-foreground">
