@@ -9,7 +9,7 @@ export const useDebouncedSearch = (
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
-  useEffect(() => setSearch(value), [value]);
+  useEffect(() => setSearch((current) => (current.trim() === value ? current : value)), [value]);
   useEffect(() => {
     const normalized = search.trim();
     if (normalized === value) return;
