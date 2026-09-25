@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
+import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
+import { EnvelopeSimpleOpenIcon } from "@phosphor-icons/react/EnvelopeSimpleOpen";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MailCheckIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation } from "react-router";
 
-import { Button } from "@/components/ui/button.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
@@ -15,6 +15,7 @@ import {
 import { AuthFormHeader } from "@/features/auth/components/auth-form-header.tsx";
 import { AuthEmailField } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
+import { AuthSubmitButton } from "@/features/auth/components/auth-submit-button.tsx";
 
 type LocationState = { email?: string };
 
@@ -62,8 +63,8 @@ export const VerifyEmailPage = () => {
 
   return (
     <AuthLayout>
-      <div className="mb-6 flex size-11 items-center justify-center border border-primary/20 bg-primary/5 text-primary">
-        <MailCheckIcon aria-hidden="true" className="size-5" />
+      <div className="mb-5 flex size-11 items-center justify-center rounded-[var(--radius)] border border-primary/25 bg-primary/5 text-primary">
+        <EnvelopeSimpleOpenIcon aria-hidden="true" className="size-6" weight="duotone" />
       </div>
       <AuthFormHeader
         description="Enviamos um link de confirmação para o seu e-mail. Abra a mensagem para ativar sua conta."
@@ -88,8 +89,7 @@ export const VerifyEmailPage = () => {
           </p>
         )}
 
-        <Button
-          className="h-11 rounded-none"
+        <AuthSubmitButton
           disabled={!form.formState.isValid || form.formState.isSubmitting || cooldown > 0}
           type="submit"
           variant="outline"
@@ -100,13 +100,14 @@ export const VerifyEmailPage = () => {
             : cooldown > 0
               ? `Reenviar em ${cooldown}s`
               : "Reenviar e-mail"}
-        </Button>
+        </AuthSubmitButton>
       </form>
 
       <Link
-        className="mt-5 inline-flex text-sm font-semibold text-foreground underline-offset-4 hover:underline"
+        className="mt-5 inline-flex w-fit items-center gap-1.5 text-sm font-normal text-muted-foreground transition-colors hover:text-foreground"
         to="/login"
       >
+        <ArrowLeftIcon aria-hidden="true" className="size-3.5" />
         Voltar para entrar
       </Link>
     </AuthLayout>

@@ -3,7 +3,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
 
-import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
@@ -16,6 +15,7 @@ import {
   AuthPasswordField,
 } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
+import { AuthSubmitButton } from "@/features/auth/components/auth-submit-button.tsx";
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
@@ -94,14 +94,14 @@ export const RegisterPage = () => {
           </p>
         )}
 
-        <Button
-          className="mt-1 h-11 rounded-none"
+        <AuthSubmitButton
+          className="mt-1"
           disabled={!form.formState.isValid || form.formState.isSubmitting}
           type="submit"
         >
           {form.formState.isSubmitting && <Spinner aria-hidden="true" />}
           {form.formState.isSubmitting ? "Criando conta…" : "Criar conta"}
-        </Button>
+        </AuthSubmitButton>
       </form>
 
       <p className="mt-7 text-center text-sm text-muted-foreground">
