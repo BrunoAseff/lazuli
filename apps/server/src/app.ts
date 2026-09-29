@@ -2,6 +2,9 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import Fastify from "fastify";
 
+import { createAiCreditReconciler } from "./ai-credits/ai-credit-reconciler.ts";
+import { createAiCreditRoutes } from "./ai-credits/ai-credit-routes.ts";
+import { createAiCreditService } from "./ai-credits/ai-credit-service.ts";
 import type { ServerEnv } from "./config.ts";
 import { createAuth } from "./auth/auth.ts";
 import { createDatabase } from "./database/client.ts";
@@ -29,6 +32,8 @@ export const buildApp = (env: ServerEnv) => {
   const auth = createAuth(env, database.db, app.log);
   const storage = createObjectStorage(env);
   const importWorker = createDocumentImportWorker(database.db, storage, app.log);
+  const aiCreditService = createAiCreditService(database.db);
+  const aiCreditReconciler = createAiCreditReconciler(aiCreditService, app.log);
 
   void app.register(cors, {
     credentials: true,
@@ -56,6 +61,7 @@ export const buildApp = (env: ServerEnv) => {
   });
 
   app.register(createAuthRoutes(auth, env));
+  app.register(createAiCreditRoutes({ auth, service: aiCreditService }));
   app.register(
     createProjectRoutes({
       auth,
@@ -116,6 +122,7 @@ export const buildApp = (env: ServerEnv) => {
   app.register(healthRoutes);
 
   app.addHook("onClose", async () => {
+    aiCreditReconciler.stop();
     await importWorker.stop();
     storage.destroy();
     await database.client.end({ timeout: 1 });
@@ -125,6 +132,7 @@ export const buildApp = (env: ServerEnv) => {
     app.addHook("onReady", async () => {
       await storage.ensureBucket();
       importWorker.start();
+      aiCreditReconciler.start();
     });
 
   return app;

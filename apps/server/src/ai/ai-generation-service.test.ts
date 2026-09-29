@@ -36,6 +36,7 @@ const createRecord = (overrides: Partial<AiGenerationRecord> = {}): AiGeneration
   createdAt: new Date(),
   effectiveModel: null,
   errorCode: null,
+  estimatedCredits: 20,
   estimatedCostMicroUsd: null,
   expiresAt: null,
   finishedAt: null,
@@ -48,12 +49,15 @@ const createRecord = (overrides: Partial<AiGenerationRecord> = {}): AiGeneration
   promptVersion: "foundation-draft-v1",
   provider: "fake",
   providerRequestId: null,
+  regenerationOfId: null,
   requestedItems: 2,
   requestedModel: "fake-luna",
   result: null,
   sourceIds: ["document-1"],
   startedAt: new Date(),
   status: "running",
+  reservedCredits: 20,
+  consumedCredits: 0,
   totalTokens: null,
   type: "foundation_draft",
   userId: "user-1",
@@ -100,6 +104,7 @@ describe("AI generation service", () => {
     expect(store.begin).toHaveBeenCalledWith(
       expect.objectContaining({
         contextFingerprint: expect.stringMatching(/^[a-f\d]{64}$/),
+        estimatedCredits: 20,
         sourceIds: ["document-1"],
       }),
     );
@@ -190,5 +195,34 @@ describe("AI generation service", () => {
       code: "AI_RATE_LIMITED",
     });
     expect(generate).not.toHaveBeenCalled();
+  });
+
+  it("does not call the provider when the account has insufficient credits", async () => {
+    const store = createStore({ kind: "insufficient-credits" });
+    const provider = createFakeAiProvider({ output: validDraft });
+    const generate = vi.spyOn(provider, "generateStructured");
+    const service = createAiGenerationService({ logger, provider, store });
+
+    await expect(service.generateFoundationDraft(input)).rejects.toMatchObject({
+      code: "AI_INSUFFICIENT_CREDITS",
+    });
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it("links a regeneration to the original operation without changing its context", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({ output: validDraft }),
+      store,
+    });
+
+    await service.generateFoundationDraft({ ...input, regenerateOperationId: "operation-root" });
+    expect(store.begin).toHaveBeenCalledWith(
+      expect.objectContaining({
+        estimatedCredits: 20,
+        regenerationOfId: "operation-root",
+      }),
+    );
   });
 });

@@ -1,0 +1,2 @@
+ALTER TABLE "ai_credit_ledger" DROP CONSTRAINT "ai_credit_ledger_amount_check";--> statement-breakpoint
+ALTER TABLE "ai_credit_ledger" ADD CONSTRAINT "ai_credit_ledger_amount_check" CHECK ("ai_credit_ledger"."amount" <> 0 and ("ai_credit_ledger"."type" = 'adjustment' or "ai_credit_ledger"."amount" > 0));

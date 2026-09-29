@@ -2,10 +2,13 @@ export const aiErrorCodes = [
   "AI_CONFIGURATION_ERROR",
   "AI_CONCURRENCY_LIMITED",
   "AI_INPUT_TOO_LARGE",
+  "AI_INSUFFICIENT_CREDITS",
   "AI_INVALID_OUTPUT",
   "AI_PROVIDER_UNAVAILABLE",
   "AI_RATE_LIMITED",
   "AI_REQUEST_FAILED",
+  "AI_REGENERATION_ACTIVE",
+  "AI_REGENERATION_LIMIT",
   "AI_TIMEOUT",
 ] as const;
 
@@ -15,10 +18,13 @@ const safeMessages: Record<AiErrorCode, string> = {
   AI_CONFIGURATION_ERROR: "A geração por IA não está configurada neste ambiente.",
   AI_CONCURRENCY_LIMITED: "Já existem gerações em andamento. Aguarde a conclusão.",
   AI_INPUT_TOO_LARGE: "O conteúdo selecionado é grande demais para esta geração.",
+  AI_INSUFFICIENT_CREDITS: "Você não possui créditos suficientes para esta geração.",
   AI_INVALID_OUTPUT: "A IA não retornou um material válido. Tente novamente.",
   AI_PROVIDER_UNAVAILABLE: "O serviço de IA está temporariamente indisponível.",
   AI_RATE_LIMITED: "Muitas gerações foram solicitadas em pouco tempo. Aguarde e tente novamente.",
   AI_REQUEST_FAILED: "Não foi possível concluir a geração por IA.",
+  AI_REGENERATION_ACTIVE: "Já existe uma nova tentativa em andamento para esta geração.",
+  AI_REGENERATION_LIMIT: "As três novas tentativas incluídas já foram utilizadas.",
   AI_TIMEOUT: "A geração demorou mais que o permitido. Tente novamente.",
 };
 

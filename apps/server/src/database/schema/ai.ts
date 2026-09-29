@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   check,
   index,
@@ -60,6 +61,12 @@ export const aiGeneration = pgTable(
     requestedItems: integer("requested_items").notNull(),
     validItems: integer("valid_items").default(0).notNull(),
     approvedItems: integer("approved_items").default(0).notNull(),
+    estimatedCredits: integer("estimated_credits").default(0).notNull(),
+    reservedCredits: integer("reserved_credits").default(0).notNull(),
+    consumedCredits: integer("consumed_credits").default(0).notNull(),
+    regenerationOfId: text("regeneration_of_id").references((): AnyPgColumn => aiGeneration.id, {
+      onDelete: "restrict",
+    }),
     inputTokens: integer("input_tokens"),
     cachedInputTokens: integer("cached_input_tokens"),
     outputTokens: integer("output_tokens"),
@@ -85,5 +92,10 @@ export const aiGeneration = pgTable(
       sql`${table.validItems} >= 0 and ${table.approvedItems} >= 0 and ${table.approvedItems} <= ${table.validItems}`,
     ),
     check("ai_generation_attempts_check", sql`${table.attempts} >= 0`),
+    check(
+      "ai_generation_credit_counts_check",
+      sql`${table.estimatedCredits} >= 0 and ${table.reservedCredits} >= 0 and ${table.consumedCredits} >= 0 and ${table.consumedCredits} <= ${table.estimatedCredits}`,
+    ),
+    index("ai_generation_regeneration_idx").on(table.regenerationOfId, table.status),
   ],
 );
