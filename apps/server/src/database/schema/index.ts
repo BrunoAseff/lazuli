@@ -1,3 +1,4 @@
+export * from "./ai.ts";
 export * from "./auth.ts";
 export * from "./documents.ts";
 export * from "./flashcards.ts";

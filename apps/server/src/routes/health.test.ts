@@ -6,6 +6,9 @@ import { buildApp } from "../app.ts";
 import type { ServerEnv } from "../config.ts";
 
 const testEnv: ServerEnv = {
+  AI_GENERATION_TIMEOUT_MS: 45_000,
+  AI_MODEL: "gpt-6-luna",
+  AI_REAL_CALLS_ENABLED: false,
   AUTH_EMAIL_FROM: "Lazúli <onboarding@resend.dev>",
   BETTER_AUTH_SECRET: "test-secret-with-at-least-thirty-two-characters",
   BETTER_AUTH_URL: "http://localhost:3001",
