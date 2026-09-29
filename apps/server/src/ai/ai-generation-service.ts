@@ -19,10 +19,12 @@ import {
   foundationDraftSchema,
   type FoundationDraft,
 } from "./ai-schemas.ts";
+import { estimateAiCredits } from "../ai-credits/ai-credit-config.ts";
 
 type FoundationGenerationInput = {
   blocks: AiSourceBlock[];
   idempotencyKey: string;
+  regenerateOperationId?: string;
   sourceIds: string[];
   userId: string;
 };
@@ -90,10 +92,12 @@ export const createAiGenerationService = ({
       contextFingerprint,
       id: operationId,
       idempotencyKey: input.idempotencyKey,
+      estimatedCredits: estimateAiCredits(2),
       origin: "internal",
       promptVersion: prompt.promptVersion,
       provider: provider.name,
       requestedItems: 2,
+      regenerationOfId: input.regenerateOperationId ?? null,
       requestedModel: provider.model,
       sourceIds,
       type: "foundation_draft",
@@ -101,7 +105,13 @@ export const createAiGenerationService = ({
     });
     if (admission.kind === "concurrency-limited")
       throw new AiGenerationError("AI_CONCURRENCY_LIMITED");
+    if (admission.kind === "insufficient-credits")
+      throw new AiGenerationError("AI_INSUFFICIENT_CREDITS");
     if (admission.kind === "rate-limited") throw new AiGenerationError("AI_RATE_LIMITED");
+    if (admission.kind === "regeneration-active")
+      throw new AiGenerationError("AI_REGENERATION_ACTIVE");
+    if (admission.kind === "regeneration-limit" || admission.kind === "regeneration-mismatch")
+      throw new AiGenerationError("AI_REGENERATION_LIMIT");
     if (admission.kind === "existing") {
       if (admission.operation.status === "running")
         return { kind: "in-progress", operationId: admission.operation.id };
