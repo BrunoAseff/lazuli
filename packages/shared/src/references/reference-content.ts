@@ -1,6 +1,29 @@
 import type { DocumentBlock } from "../documents/document-contracts.ts";
 import { readSourceAnchorId } from "../documents/source-anchor.ts";
 
+const normalizeText = (value: string) => value.replace(/\s+/g, " ").trim();
+
+export const getDocumentBlockText = (block: DocumentBlock) =>
+  normalizeText(
+    (block.content ?? [])
+      .flatMap((item) =>
+        item.type === "text" ? [item.text] : [item.content.map(({ text }) => text).join("")],
+      )
+      .join(""),
+  );
+
+export const collectDocumentTextBlocks = (blocks: DocumentBlock[]) => {
+  const result: Array<{ id: string; text: string }> = [];
+  const pending = [...blocks].reverse();
+  while (pending.length) {
+    const block = pending.pop()!;
+    const text = getDocumentBlockText(block);
+    if (text) result.push({ id: block.id, text });
+    if (block.children) pending.push(...[...block.children].reverse());
+  }
+  return result;
+};
+
 export const collectSourceAnchorIds = (blocks: DocumentBlock[]) => {
   const anchors = new Set<string>();
   const pending = [...blocks];
@@ -37,20 +60,23 @@ export const getReferenceSourcePreview = (
   anchorId: string | null,
   maxLength = 500,
 ) => {
-  const fragments: string[] = [];
+  const blockFragments: string[] = [];
   const pending = [...blocks].reverse();
   while (pending.length) {
     const block = pending.pop()!;
     if (anchorId && block.id === anchorId && block.type === "image") return "Imagem vinculada";
+    const fragments: string[] = [];
     for (const item of block.content ?? []) {
       const texts = item.type === "text" ? [item] : item.content;
       for (const text of texts) {
         if (!anchorId || readSourceAnchorId(text.styles) === anchorId) fragments.push(text.text);
       }
     }
+    const blockText = normalizeText(fragments.join(""));
+    if (blockText) blockFragments.push(blockText);
     if (block.children) pending.push(...[...block.children].reverse());
   }
-  const preview = fragments.join(" ").replace(/\s+/g, " ").trim();
+  const preview = normalizeText(blockFragments.join(" "));
   return preview.length > maxLength ? `${preview.slice(0, maxLength).trimEnd()}…` : preview;
 };
 

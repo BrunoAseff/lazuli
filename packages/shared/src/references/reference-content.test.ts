@@ -4,6 +4,7 @@ import type { DocumentBlock } from "../documents/document-contracts.ts";
 import {
   collectReferenceSourceIds,
   collectSourceAnchorIds,
+  getDocumentBlockText,
   getReferenceSourcePreview,
   removeSourceAnchors,
 } from "./reference-content.ts";
@@ -52,6 +53,20 @@ describe("reference content helpers", () => {
 
   it("builds a preview only from the selected textual reference", () => {
     expect(getReferenceSourcePreview(content, "anchor-two")).toBe("Dois");
+  });
+
+  it("does not insert spaces where styles split a word", () => {
+    const splitWord: DocumentBlock = {
+      id: "split-word",
+      type: "paragraph",
+      content: [
+        { type: "text", text: "exem", styles: { sourceAnchor: "anchor-split" } },
+        { type: "text", text: "plo", styles: { bold: true, sourceAnchor: "anchor-split" } },
+      ],
+    };
+
+    expect(getDocumentBlockText(splitWord)).toBe("exemplo");
+    expect(getReferenceSourcePreview([splitWord], "anchor-split")).toBe("exemplo");
   });
 
   it("identifies an image reference without requiring document navigation", () => {

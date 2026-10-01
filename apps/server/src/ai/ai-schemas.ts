@@ -41,3 +41,31 @@ export type FoundationDraft = z.infer<typeof foundationDraftSchema>;
 
 export const countFoundationDraftItems = (draft: FoundationDraft) =>
   draft.flashcards.length + draft.quizQuestions.length;
+
+export const selectionProviderDraftSchema = z
+  .object({
+    flashcards: z
+      .array(
+        generatedFlashcardSchema.extend({
+          evidence: z.string().trim().min(1).max(1_000),
+          warning: z.string().trim().max(500).nullable(),
+        }),
+      )
+      .max(5),
+    quizQuestions: z
+      .array(
+        generatedQuizQuestionSchema.and(
+          z.object({
+            evidence: z.string().trim().min(1).max(1_000),
+            warning: z.string().trim().max(500).nullable(),
+          }),
+        ),
+      )
+      .max(5),
+  })
+  .refine(
+    ({ flashcards, quizQuestions }) => flashcards.length + quizQuestions.length > 0,
+    "The generation must contain at least one material",
+  );
+
+export type SelectionProviderDraft = z.infer<typeof selectionProviderDraftSchema>;

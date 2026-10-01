@@ -9,6 +9,7 @@ export type AiTokenUsage = {
 
 export type AiStructuredGenerationRequest<T> = {
   idempotencyKey: string;
+  images?: Array<{ data: Uint8Array; mediaType: string }>;
   maxOutputTokens: number;
   prompt: string;
   schema: z.ZodType<T>;
