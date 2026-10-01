@@ -21,6 +21,21 @@ export const createOpenAiProvider = (env: ServerEnv): AiProvider => {
     requestTimeoutMs: config.requestTimeoutMs,
     async generateStructured(request) {
       try {
+        const messages = request.images?.length
+          ? [
+              {
+                role: "user" as const,
+                content: [
+                  { type: "text" as const, text: request.prompt },
+                  ...request.images.map(({ data, mediaType }) => ({
+                    type: "image" as const,
+                    image: data,
+                    mediaType: mediaType as `${string}/${string}`,
+                  })),
+                ],
+              },
+            ]
+          : undefined;
         const result = await generateText({
           abortSignal: AbortSignal.timeout(request.timeoutMs),
           headers: { "Idempotency-Key": request.idempotencyKey },
@@ -32,7 +47,7 @@ export const createOpenAiProvider = (env: ServerEnv): AiProvider => {
             name: request.schemaName,
             schema: request.schema,
           }),
-          prompt: request.prompt,
+          ...(messages ? { messages } : { prompt: request.prompt }),
           providerOptions: {
             openai: {
               reasoningEffort: "low",

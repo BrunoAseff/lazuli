@@ -2,10 +2,15 @@ import {
   normalizeProjectItemTitle,
   referenceTargetSchema,
   removeSourceAnchors,
+  AI_DOCUMENT_MAX_BLOCKS,
+  AI_DOCUMENT_MAX_TEXT_LENGTH,
+  collectDocumentTextBlocks,
+  type DocumentBlock,
 } from "@lazuli/shared";
+import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
+import { CheckIcon } from "@phosphor-icons/react/Check";
 import { FormattingToolbarController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
-import { ArrowLeftIcon, CheckIcon } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useBlocker, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -29,6 +34,10 @@ import {
 } from "@/features/assets/asset-api.ts";
 import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
 import { ApiError } from "@/lib/api-client.ts";
+import {
+  AiSelectionGenerationDialog,
+  type AiSelectionAction,
+} from "@/features/ai/components/ai-selection-generation-dialog.tsx";
 import { DocumentMaterialFlow } from "@/features/references/components/document-material-flow.tsx";
 import {
   DocumentReferencesButton,
@@ -81,6 +90,8 @@ export const DocumentEditor = ({
   const revisionRef = useRef(data.revision);
   const [title, setTitle] = useState(data.item.title);
   const [materialAction, setMaterialAction] = useState<DocumentMaterialAction | null>(null);
+  const [aiAction, setAiAction] = useState<AiSelectionAction | null>(null);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [linkAction, setLinkAction] = useState<Omit<DocumentMaterialAction, "kind"> | null>(null);
   const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
   const [documentReferencesOpen, setDocumentReferencesOpen] = useState(false);
@@ -109,6 +120,7 @@ export const DocumentEditor = ({
   );
   const cleanSnapshot = useRef(JSON.stringify(data.content));
   const savedTitle = useRef(data.item.title);
+  const titleDirty = normalizeProjectItemTitle(title) !== savedTitle.current;
   const cleanAssetUrls = useRef(collectAssetUrls(data.content as LazuliDocumentBlock));
   const createdAssetUrls = useRef(new Set<string>());
   const adjustmentSnapshot = useRef<LazuliDocumentBlock | null>(null);
@@ -117,6 +129,9 @@ export const DocumentEditor = ({
   const saveWaiters = useRef<Array<() => void>>([]);
   const retryAttempt = useRef(0);
   const retryTimer = useRef<number | null>(null);
+  const saveRef = useRef<(silent?: boolean, expectedRevision?: number) => Promise<boolean>>(
+    async () => false,
+  );
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const titleElementRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -144,6 +159,29 @@ export const DocumentEditor = ({
   const openMaterialFlow = useCallback((action: DocumentMaterialAction) => {
     setMaterialAction(action);
   }, []);
+  const openAiFlow = useCallback(
+    async (action: AiSelectionAction) => {
+      setAutoSavePaused(true);
+      if (action.anchorCreated && !(await saveRef.current(true))) {
+        if (action.anchorId) {
+          const next = removeSourceAnchors(
+            editor.document as LazuliDocumentBlock,
+            new Set([action.anchorId]),
+          ).content as LazuliDocumentBlock;
+          editor.replaceBlocks(editor.document, next);
+          const snapshot = JSON.stringify(next);
+          setDirty(snapshot !== cleanSnapshot.current);
+          setSaveState(snapshot === cleanSnapshot.current && !titleDirty ? "saved" : "pending");
+        }
+        setAutoSavePaused(false);
+        toast.error("Não foi possível preparar o trecho para a geração.");
+        return;
+      }
+      setAiAction(action);
+      setAiDialogOpen(true);
+    },
+    [editor, titleDirty],
+  );
   const finishAdjustment = useCallback(() => {
     adjustmentSnapshot.current = null;
     adjustingAnchorRef.current = null;
@@ -156,9 +194,10 @@ export const DocumentEditor = ({
       createDocumentFormattingToolbar(
         openMaterialFlow,
         setLinkAction,
+        openAiFlow,
         adjustingAnchorId ? { anchorId: adjustingAnchorId } : undefined,
       ),
-    [adjustingAnchorId, finishAdjustment, openMaterialFlow],
+    [adjustingAnchorId, openAiFlow, openMaterialFlow],
   );
   const selectPendingTarget = async () => {
     if (!pendingTarget) return;
@@ -225,6 +264,21 @@ export const DocumentEditor = ({
     setMaterialAction(null);
     setLinkAction(null);
   };
+  const closeAiFlow = (removeAnchor: boolean) => {
+    if (removeAnchor && aiAction?.anchorCreated && aiAction.anchorId) {
+      const next = removeSourceAnchors(
+        editor.document as LazuliDocumentBlock,
+        new Set([aiAction.anchorId]),
+      ).content as LazuliDocumentBlock;
+      editor.replaceBlocks(editor.document, next);
+      const snapshot = JSON.stringify(next);
+      setDirty(snapshot !== cleanSnapshot.current);
+      setSaveState(snapshot === cleanSnapshot.current && !titleDirty ? "saved" : "pending");
+    }
+    setAiAction(null);
+    setAiDialogOpen(false);
+    setAutoSavePaused(false);
+  };
   useEffect(() => releaseResolvedAssetUrls, [documentId]);
   useEffect(() => {
     if (!pendingTarget && !adjustingAnchorId) {
@@ -255,7 +309,6 @@ export const DocumentEditor = ({
     element.style.height = "0px";
     element.style.height = `${element.scrollHeight}px`;
   }, [title]);
-  const titleDirty = normalizeProjectItemTitle(title) !== savedTitle.current;
   const activeAnchorIsImage = Boolean(
     activeAnchorId && editor.getBlock(activeAnchorId)?.type === "image",
   );
@@ -416,7 +469,6 @@ export const DocumentEditor = ({
       for (const resolve of saveWaiters.current.splice(0)) resolve();
     }
   };
-  const saveRef = useRef(save);
   saveRef.current = save;
   useEffect(
     () => () => {
@@ -513,6 +565,40 @@ export const DocumentEditor = ({
             )}
             <DocumentReferencesButton onClick={() => setDocumentReferencesOpen(true)} />
             <DocumentFind editorRef={editorContainerRef} showTrigger={false} />
+            <Button
+              onClick={async () => {
+                const blocks = collectDocumentTextBlocks(editor.document as DocumentBlock[]);
+                const selectedText = blocks.map(({ text }) => text).join(" ");
+                if (!selectedText) {
+                  toast.error("Adicione conteúdo ao documento antes de gerar materiais.");
+                  return;
+                }
+                if (
+                  blocks.length > AI_DOCUMENT_MAX_BLOCKS ||
+                  selectedText.length > AI_DOCUMENT_MAX_TEXT_LENGTH
+                ) {
+                  toast.error(
+                    "Este documento é grande demais para uma única geração. Selecione um trecho.",
+                  );
+                  return;
+                }
+                if (dirty && !(await saveRef.current(true))) {
+                  toast.error("Salve as alterações do documento antes de gerar materiais.");
+                  return;
+                }
+                void openAiFlow({
+                  anchorId: null,
+                  anchorCreated: false,
+                  selectedText,
+                  sourceBlockIds: [],
+                  sourceScope: "document",
+                });
+              }}
+              size="sm"
+              variant="outline"
+            >
+              Gerar conteúdo
+            </Button>
             <DocumentSaveStatus
               onOpenConflict={() => setConflictDialogOpen(true)}
               onRetry={() => {
@@ -552,18 +638,6 @@ export const DocumentEditor = ({
                 return;
               }
 
-              const imageReferenceTrigger = target.closest<HTMLElement>(
-                "[data-image-reference-trigger]",
-              );
-              if (imageReferenceTrigger && event.currentTarget.contains(imageReferenceTrigger)) {
-                const blockId = imageReferenceTrigger.dataset.imageReferenceTrigger;
-                const imageBlock = imageReferenceTrigger.closest<HTMLElement>(
-                  ".bn-block-outer[data-id]",
-                );
-                if (blockId && imageBlock?.dataset.id === blockId) setActiveAnchorId(blockId);
-                return;
-              }
-
               const link = target.closest("a[href]");
               if (!link || !event.currentTarget.contains(link) || event.ctrlKey || event.metaKey)
                 return;
@@ -577,7 +651,7 @@ export const DocumentEditor = ({
               formattingToolbar={false}
               onChange={() => {
                 if (saveState !== "conflict") {
-                  if (!adjustingAnchorRef.current) setAutoSavePaused(false);
+                  if (!adjustingAnchorRef.current && !aiAction) setAutoSavePaused(false);
                   setSaveState("pending");
                 }
                 setImageImportError((current) => {
@@ -661,6 +735,32 @@ export const DocumentEditor = ({
         onComplete={() => closeMaterialFlow(false)}
         persistDocument={() => saveRef.current(true)}
       />
+      <AiSelectionGenerationDialog
+        action={aiAction}
+        documentId={documentId}
+        documentRevision={revisionRef.current}
+        getDocumentContent={() => editor.document as DocumentBlock[]}
+        open={aiDialogOpen}
+        onApproved={(nextRevision) => {
+          const snapshot = JSON.stringify(editor.document);
+          setRevision(nextRevision);
+          revisionRef.current = nextRevision;
+          cleanSnapshot.current = snapshot;
+          setDirty(false);
+          setSaveState(titleDirty ? "pending" : "saved");
+          closeAiFlow(false);
+        }}
+        onCancel={() => closeAiFlow(true)}
+        onMinimize={() => setAiDialogOpen(false)}
+      />
+      {aiAction && !aiDialogOpen && (
+        <Button
+          className="fixed right-5 bottom-5 z-40 shadow-[var(--shadow-overlay)]"
+          onClick={() => setAiDialogOpen(true)}
+        >
+          Continuar geração com IA
+        </Button>
+      )}
       {linkAction && !pendingTarget && (
         <ExistingMaterialPickerDialog
           onCancel={() => closeMaterialFlow(true, linkAction.anchorId, linkAction.anchorCreated)}

@@ -57,7 +57,7 @@ export interface AiGenerationStore {
   begin(
     input: BeginAiGenerationInput,
   ): Promise<
-    | { kind: "created"; operation: AiGenerationRecord }
+    | { kind: "created"; operation: AiGenerationRecord; regenerationCount: number }
     | { kind: "existing"; operation: AiGenerationRecord }
     | { kind: "concurrency-limited" }
     | { kind: "insufficient-credits" }
@@ -74,9 +74,19 @@ export interface AiGenerationStore {
     operationId: string;
     userId: string;
   }): Promise<void>;
+  get(userId: string, operationId: string): Promise<AiGenerationRecord | null>;
 }
 
 export const createAiGenerationStore = (database: Database): AiGenerationStore => ({
+  async get(userId, operationId) {
+    const [operation] = await database
+      .select()
+      .from(aiGeneration)
+      .where(and(eq(aiGeneration.id, operationId), eq(aiGeneration.userId, userId)))
+      .limit(1);
+    return operation ?? null;
+  },
+
   async begin(input) {
     return database.transaction(async (tx) => {
       // Serializes admission and balance changes for one account across server replicas.
@@ -95,6 +105,7 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
       if (existing) return { kind: "existing" as const, operation: existing };
 
       let regenerationOfId: string | null = null;
+      let regenerationCount = 0;
       if (input.regenerationOfId) {
         const [requestedParent] = await tx
           .select()
@@ -144,7 +155,8 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
               eq(aiGeneration.status, "succeeded"),
             ),
           );
-        if ((successfulRegenerations?.value ?? 0) >= AI_FREE_REGENERATIONS)
+        regenerationCount = successfulRegenerations?.value ?? 0;
+        if (regenerationCount >= AI_FREE_REGENERATIONS)
           return { kind: "regeneration-limit" as const };
       }
 
@@ -192,7 +204,11 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
           userId: input.userId,
         });
       }
-      return { kind: "created" as const, operation };
+      return {
+        kind: "created" as const,
+        operation,
+        regenerationCount: regenerationOfId ? regenerationCount + 1 : 0,
+      };
     });
   },
 

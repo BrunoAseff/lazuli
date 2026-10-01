@@ -8,6 +8,7 @@ import type {
   CompleteAiGenerationInput,
 } from "./ai-generation-store.ts";
 import { createAiGenerationService } from "./ai-generation-service.ts";
+import { createDevelopmentAiProvider } from "./development-ai-provider.ts";
 import { createFakeAiProvider } from "./fake-ai-provider.ts";
 
 const validDraft = {
@@ -26,6 +27,19 @@ const validDraft = {
       sourceBlockIds: ["block-1"],
     },
   ],
+};
+
+const validSelectionDraft = {
+  flashcards: [
+    {
+      answer: "Porque exige recuperar a informação da memória.",
+      evidence: "Recuperar uma ideia fortalece a memória.",
+      question: "Por que a recuperação ativa melhora a retenção?",
+      sourceBlockIds: ["block-1"],
+      warning: null,
+    },
+  ],
+  quizQuestions: [],
 };
 
 const createRecord = (overrides: Partial<AiGenerationRecord> = {}): AiGenerationRecord => ({
@@ -69,6 +83,7 @@ const createStore = (
   beginResult: Awaited<ReturnType<AiGenerationStore["begin"]>> = {
     kind: "created",
     operation: createRecord(),
+    regenerationCount: 0,
   },
 ) => {
   const begin = vi.fn<(input: BeginAiGenerationInput) => Promise<typeof beginResult>>();
@@ -77,6 +92,7 @@ const createStore = (
     begin,
     complete: vi.fn<(input: CompleteAiGenerationInput) => Promise<void>>().mockResolvedValue(),
     fail: vi.fn<AiGenerationStore["fail"]>().mockResolvedValue(),
+    get: vi.fn<AiGenerationStore["get"]>().mockResolvedValue(null),
   } satisfies AiGenerationStore;
 };
 
@@ -89,6 +105,153 @@ const input = {
 };
 
 describe("AI generation service", () => {
+  it("creates an editable selection draft and settles only its valid proposals", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({ output: validSelectionDraft }),
+      retryDelayMs: 0,
+      store,
+    });
+
+    const result = await service.generateSelectionDraft({
+      anchorId: "anchor-1",
+      blocks: input.blocks,
+      collectionId: "11111111-1111-4111-8111-111111111111",
+      documentId: "22222222-2222-4222-8222-222222222222",
+      documentRevision: 3,
+      guidance: "",
+      idempotencyKey: "33333333-3333-4333-8333-333333333333",
+      kind: "flashcard",
+      quantity: 2,
+      selectedText: input.blocks[0]!.text,
+      sourceScope: "selection",
+      sourceBlockIds: ["block-1"],
+      userId: input.userId,
+    });
+
+    expect(result).toMatchObject({
+      kind: "completed",
+      reused: false,
+      draft: {
+        approved: false,
+        consumedCredits: 10,
+        regenerationCount: 0,
+        requestedItems: 2,
+      },
+    });
+    expect(store.complete).toHaveBeenCalledWith(expect.objectContaining({ validItems: 1 }));
+  });
+
+  it("generates a development draft from a whole document with more than ten blocks", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createDevelopmentAiProvider(),
+      retryDelayMs: 0,
+      store,
+    });
+    const blocks = Array.from({ length: 20 }, (_, index) => ({
+      id: `block-${index + 1}`,
+      text: `Conteúdo relevante do bloco ${index + 1}.`,
+    }));
+
+    const result = await service.generateSelectionDraft({
+      anchorId: null,
+      blocks,
+      collectionId: "11111111-1111-4111-8111-111111111111",
+      documentId: "22222222-2222-4222-8222-222222222222",
+      documentRevision: 3,
+      guidance: "",
+      idempotencyKey: "33333333-3333-4333-8333-333333333333",
+      kind: "flashcard",
+      quantity: 1,
+      selectedText: blocks.map(({ text }) => text).join(" "),
+      sourceScope: "document",
+      sourceBlockIds: blocks.map(({ id }) => id),
+      userId: input.userId,
+    });
+
+    expect(result).toMatchObject({
+      draft: { flashcards: [{ question: "Qual é a ideia central deste trecho?" }] },
+      kind: "completed",
+    });
+    expect(store.complete).toHaveBeenCalledWith(expect.objectContaining({ validItems: 1 }));
+  });
+
+  it("uses explicit simulated content for images while real AI calls are disabled", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createDevelopmentAiProvider(),
+      retryDelayMs: 0,
+      store,
+    });
+
+    const result = await service.generateSelectionDraft({
+      anchorId: "image-block-1",
+      blocks: [{ id: "image-block-1", text: "Imagem selecionada" }],
+      collectionId: "11111111-1111-4111-8111-111111111111",
+      documentId: "22222222-2222-4222-8222-222222222222",
+      documentRevision: 3,
+      guidance: "",
+      idempotencyKey: "33333333-3333-4333-8333-333333333333",
+      images: [{ data: new Uint8Array([1, 2, 3]), mediaType: "image/png" }],
+      kind: "flashcard",
+      quantity: 1,
+      selectedText: "Imagem selecionada",
+      sourceScope: "image",
+      sourceBlockIds: ["image-block-1"],
+      userId: input.userId,
+    });
+
+    expect(result).toMatchObject({
+      draft: {
+        flashcards: [
+          {
+            answer: "Conteúdo visual simulado no ambiente de desenvolvimento.",
+            question: "Qual é a ideia central desta imagem?",
+          },
+        ],
+      },
+      kind: "completed",
+    });
+  });
+
+  it("does not consume additional credits for a free regeneration", async () => {
+    const store = createStore({
+      kind: "created",
+      operation: createRecord({ regenerationOfId: "operation-root", reservedCredits: 0 }),
+      regenerationCount: 2,
+    });
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({ output: validSelectionDraft }),
+      store,
+    });
+
+    const result = await service.generateSelectionDraft({
+      anchorId: "anchor-1",
+      blocks: input.blocks,
+      collectionId: "11111111-1111-4111-8111-111111111111",
+      documentId: "22222222-2222-4222-8222-222222222222",
+      documentRevision: 3,
+      guidance: "",
+      idempotencyKey: "33333333-3333-4333-8333-333333333333",
+      kind: "flashcard",
+      quantity: 1,
+      regenerateOperationId: "operation-root",
+      selectedText: input.blocks[0]!.text,
+      sourceScope: "selection",
+      sourceBlockIds: ["block-1"],
+      userId: input.userId,
+    });
+
+    expect(result).toMatchObject({
+      draft: { consumedCredits: 0, regenerationCount: 2 },
+    });
+  });
+
   it("persists validated output and usage without persisting source content", async () => {
     const store = createStore();
     const service = createAiGenerationService({

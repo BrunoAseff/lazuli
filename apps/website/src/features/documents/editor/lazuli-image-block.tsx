@@ -6,7 +6,8 @@ import {
   type ReactCustomBlockRenderProps,
   useResolveUrl,
 } from "@blocknote/react";
-import { ImageOffIcon, Link2Icon, Trash2Icon } from "lucide-react";
+import { ImageBrokenIcon } from "@phosphor-icons/react/ImageBroken";
+import { TrashIcon } from "@phosphor-icons/react/Trash";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -25,7 +26,7 @@ const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageB
   return (
     <ResizableFileBlockWrapper
       {...(props as any)}
-      buttonIcon={<ImageOffIcon aria-hidden size={24} />}
+      buttonIcon={<ImageBrokenIcon aria-hidden size={24} weight="duotone" />}
     >
       {pendingUpload ? (
         <div className="lazuli-image-uploading" contentEditable={false}>
@@ -33,7 +34,7 @@ const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageB
         </div>
       ) : loadFailed || resolutionFailed ? (
         <div className="lazuli-broken-image" contentEditable={false}>
-          <ImageOffIcon aria-hidden />
+          <ImageBrokenIcon aria-hidden weight="duotone" />
           <div>
             <p>Não foi possível exibir esta imagem.</p>
             <p>O arquivo pode estar indisponível ou protegido pelo site de origem.</p>
@@ -45,33 +46,20 @@ const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageB
             size="sm"
             variant="ghost"
           >
-            <Trash2Icon aria-hidden />
+            <TrashIcon aria-hidden />
             Remover
           </Button>
         </div>
       ) : (
-        <>
-          <img
-            alt={props.block.props.name || ""}
-            className="bn-visual-media"
-            contentEditable={false}
-            draggable={false}
-            onError={() => setLoadFailed(true)}
-            src={source}
-            width={props.block.props.previewWidth}
-          />
-          <Button
-            aria-label="Ver referências desta imagem"
-            className="absolute top-2 right-2 z-10 bg-background/90 shadow-none"
-            data-image-reference-trigger={props.block.id}
-            onMouseDown={(event) => event.preventDefault()}
-            size="icon-sm"
-            type="button"
-            variant="outline"
-          >
-            <Link2Icon aria-hidden="true" className="size-4 text-primary" />
-          </Button>
-        </>
+        <img
+          alt={props.block.props.name || ""}
+          className="bn-visual-media"
+          contentEditable={false}
+          draggable={false}
+          onError={() => setLoadFailed(true)}
+          src={source}
+          width={props.block.props.previewWidth}
+        />
       )}
     </ResizableFileBlockWrapper>
   );

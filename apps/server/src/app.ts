@@ -5,6 +5,11 @@ import Fastify from "fastify";
 import { createAiCreditReconciler } from "./ai-credits/ai-credit-reconciler.ts";
 import { createAiCreditRoutes } from "./ai-credits/ai-credit-routes.ts";
 import { createAiCreditService } from "./ai-credits/ai-credit-service.ts";
+import { createAiGenerationRoutes } from "./ai/ai-generation-routes.ts";
+import { createAiGenerationService } from "./ai/ai-generation-service.ts";
+import { createAiGenerationStore } from "./ai/ai-generation-store.ts";
+import { createDevelopmentAiProvider } from "./ai/development-ai-provider.ts";
+import { createOpenAiProvider } from "./ai/openai-provider.ts";
 import type { ServerEnv } from "./config.ts";
 import { createAuth } from "./auth/auth.ts";
 import { createDatabase } from "./database/client.ts";
@@ -34,6 +39,11 @@ export const buildApp = (env: ServerEnv) => {
   const importWorker = createDocumentImportWorker(database.db, storage, app.log);
   const aiCreditService = createAiCreditService(database.db);
   const aiCreditReconciler = createAiCreditReconciler(aiCreditService, app.log);
+  const aiGenerationService = createAiGenerationService({
+    logger: app.log,
+    provider: env.AI_REAL_CALLS_ENABLED ? createOpenAiProvider(env) : createDevelopmentAiProvider(),
+    store: createAiGenerationStore(database.db),
+  });
 
   void app.register(cors, {
     credentials: true,
@@ -62,6 +72,15 @@ export const buildApp = (env: ServerEnv) => {
 
   app.register(createAuthRoutes(auth, env));
   app.register(createAiCreditRoutes({ auth, service: aiCreditService }));
+  app.register(
+    createAiGenerationRoutes({
+      auth,
+      database: database.db,
+      service: aiGenerationService,
+      storage,
+      websiteUrl: env.WEBSITE_URL,
+    }),
+  );
   app.register(
     createProjectRoutes({
       auth,

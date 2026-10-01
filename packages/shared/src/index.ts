@@ -1,5 +1,6 @@
 export const APP_NAME = "Lazúli";
 
+export * from "./ai/ai-contracts.ts";
 export * from "./documents/document-contracts.ts";
 export * from "./documents/source-anchor.ts";
 export * from "./flashcards/flashcard-contracts.ts";
