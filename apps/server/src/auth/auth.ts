@@ -27,6 +27,12 @@ export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBa
     databaseHooks: {
       user: {
         create: {
+          after: async (user) => {
+            await database
+              .insert(schema.aiCreditAccount)
+              .values({ userId: user.id })
+              .onConflictDoNothing();
+          },
           before: async (user) => {
             const name = normalizeAccountName(user.name);
 

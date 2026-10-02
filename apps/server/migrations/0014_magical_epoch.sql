@@ -1,0 +1,1 @@
+ALTER TABLE "ai_generation" ADD COLUMN "provider_request_id" text;
