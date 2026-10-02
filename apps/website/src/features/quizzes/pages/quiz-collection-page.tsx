@@ -31,6 +31,7 @@ import { StudyItemSummaryBar } from "@/components/study-item-summary-bar.tsx";
 import { StudyItemListState } from "@/components/study-item-list-state.tsx";
 import { StudyItemTitle } from "@/components/study-item-title.tsx";
 import { StudySummaryMetric } from "@/components/study-summary-metric.tsx";
+import { AiCollectionGenerationAction } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -348,6 +349,12 @@ export const QuizCollectionPage = () => {
                 )}
               </PopoverContent>
             </Popover>
+            <AiCollectionGenerationAction
+              collectionId={collectionId}
+              disabled={Boolean(summary.archivedAt)}
+              iconOnly
+              kind="quizQuestion"
+            />
             <Button
               aria-label="Nova questão"
               disabled={Boolean(summary.archivedAt)}
