@@ -48,7 +48,7 @@ export const aiCreditLedger = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     generationId: text("generation_id").references(() => aiGeneration.id, {
-      onDelete: "restrict",
+      onDelete: "no action",
     }),
     type: aiCreditEventType("type").notNull(),
     amount: integer("amount").notNull(),

@@ -27,7 +27,7 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
     // development fixture uses the first blocks deterministically instead of
     // returning every block from a whole document and violating the contract.
     const sourceBlockIds = blocks.slice(0, 10).map(({ id }) => id);
-    const quantity = Math.max(1, Math.min(5, generation?.quantity ?? 1));
+    const quantity = Math.max(1, Math.min(10, generation?.quantity ?? 1));
     const summary = isImageGeneration
       ? "Conteúdo visual simulado no ambiente de desenvolvimento."
       : source.length > 220
@@ -51,7 +51,12 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
           ? Array.from({ length: quantity }, (_, index) => ({
               correctOptionIndex: 0,
               evidence: summary,
-              options: [summary, "Uma afirmação que não é sustentada pelo trecho."],
+              options: [
+                summary,
+                "Uma afirmação que contradiz a ideia central da fonte.",
+                "Uma informação relacionada, mas não sustentada pela fonte.",
+                "Nenhuma das afirmações apresentadas é sustentada pela fonte.",
+              ],
               prompt: isImageGeneration
                 ? `Qual alternativa descreve a imagem${quantity > 1 ? ` (${index + 1})` : ""}?`
                 : `Qual alternativa é sustentada pelo trecho${quantity > 1 ? ` (${index + 1})` : ""}?`,

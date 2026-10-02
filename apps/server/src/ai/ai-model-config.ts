@@ -1,3 +1,5 @@
+import { AI_DOCUMENT_MAX_BLOCKS, AI_DOCUMENT_MAX_TEXT_LENGTH } from "@lazuli/shared";
+
 import type { ServerEnv } from "../config.ts";
 
 export const AI_PROVIDER = "openai" as const;
@@ -5,10 +7,12 @@ export const AI_DRAFT_TTL_MS = 24 * 60 * 60 * 1_000;
 export const AI_MAX_CONCURRENT_GENERATIONS_PER_USER = 2;
 export const AI_MAX_GENERATIONS_PER_WINDOW = 30;
 export const AI_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1_000;
-export const AI_MAX_CONTEXT_BYTES = 96 * 1_024;
-export const AI_MAX_CONTEXT_BLOCKS = 400;
+// JSON and UTF-8 can require substantially more bytes than the normalized text.
+// Keep transport limits derived from the public document limits so both layers agree.
+export const AI_MAX_CONTEXT_BYTES = AI_DOCUMENT_MAX_TEXT_LENGTH * 4 + AI_DOCUMENT_MAX_BLOCKS * 256;
+export const AI_MAX_CONTEXT_BLOCKS = AI_DOCUMENT_MAX_BLOCKS;
 export const AI_MAX_OUTPUT_TOKENS = 6_000;
-export const AI_MAX_SOURCE_IDS = 400;
+export const AI_MAX_SOURCE_IDS = AI_DOCUMENT_MAX_BLOCKS + 1;
 
 export type AiModelConfig = {
   model: "gpt-6-luna";

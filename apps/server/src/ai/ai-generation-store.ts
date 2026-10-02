@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, gt, or, sql } from "drizzle-orm";
 
 import {
   AI_FREE_REGENERATIONS,
@@ -36,6 +36,7 @@ export type BeginAiGenerationInput = Pick<
   | "userId"
 > & {
   estimatedCredits: number;
+  initialResult?: unknown;
   regenerationOfId: string | null;
 };
 
@@ -67,6 +68,7 @@ export interface AiGenerationStore {
     | { kind: "regeneration-mismatch" }
   >;
   complete(input: CompleteAiGenerationInput): Promise<void>;
+  discardCollection(userId: string, operationId: string): Promise<boolean>;
   fail(input: {
     attempts: number;
     code: AiErrorCode;
@@ -75,9 +77,59 @@ export interface AiGenerationStore {
     userId: string;
   }): Promise<void>;
   get(userId: string, operationId: string): Promise<AiGenerationRecord | null>;
+  findLatestCollection(userId: string, collectionId: string): Promise<AiGenerationRecord | null>;
 }
 
+const collectionGenerationPredicate = (collectionId: string) => sql`(
+  ${aiGeneration.result} ->> 'collectionId' = ${collectionId}
+  or ${aiGeneration.result} -> 'job' ->> 'collectionId' = ${collectionId}
+)`;
+
+const getCollectionId = (result: unknown) => {
+  if (!result || typeof result !== "object" || !("job" in result)) return null;
+  const job = (result as { job?: unknown }).job;
+  if (!job || typeof job !== "object" || !("collectionId" in job)) return null;
+  const collectionId = (job as { collectionId?: unknown }).collectionId;
+  return typeof collectionId === "string" ? collectionId : null;
+};
+
 export const createAiGenerationStore = (database: Database): AiGenerationStore => ({
+  async discardCollection(userId, operationId) {
+    const discarded = await database
+      .update(aiGeneration)
+      .set({ expiresAt: new Date() })
+      .where(
+        and(
+          eq(aiGeneration.id, operationId),
+          eq(aiGeneration.userId, userId),
+          eq(aiGeneration.type, "collection_generation"),
+          eq(aiGeneration.status, "succeeded"),
+          eq(aiGeneration.approvedItems, 0),
+        ),
+      )
+      .returning({ id: aiGeneration.id });
+    return discarded.length > 0;
+  },
+
+  async findLatestCollection(userId, collectionId) {
+    const now = new Date();
+    const [operation] = await database
+      .select()
+      .from(aiGeneration)
+      .where(
+        and(
+          eq(aiGeneration.userId, userId),
+          eq(aiGeneration.type, "collection_generation"),
+          eq(aiGeneration.approvedItems, 0),
+          collectionGenerationPredicate(collectionId),
+          or(eq(aiGeneration.status, "running"), gt(aiGeneration.expiresAt, now)),
+        ),
+      )
+      .orderBy(desc(aiGeneration.createdAt))
+      .limit(1);
+    return operation ?? null;
+  },
+
   async get(userId, operationId) {
     const [operation] = await database
       .select()
@@ -103,6 +155,28 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
         .orderBy(desc(aiGeneration.createdAt))
         .limit(1);
       if (existing) return { kind: "existing" as const, operation: existing };
+
+      const collectionId =
+        input.type === "collection_generation" ? getCollectionId(input.initialResult) : null;
+      if (collectionId) {
+        const now = new Date();
+        const [activeCollectionGeneration] = await tx
+          .select()
+          .from(aiGeneration)
+          .where(
+            and(
+              eq(aiGeneration.userId, input.userId),
+              eq(aiGeneration.type, "collection_generation"),
+              eq(aiGeneration.approvedItems, 0),
+              collectionGenerationPredicate(collectionId),
+              or(eq(aiGeneration.status, "running"), gt(aiGeneration.expiresAt, now)),
+            ),
+          )
+          .orderBy(desc(aiGeneration.createdAt))
+          .limit(1);
+        if (activeCollectionGeneration)
+          return { kind: "existing" as const, operation: activeCollectionGeneration };
+      }
 
       let regenerationOfId: string | null = null;
       let regenerationCount = 0;
@@ -181,9 +255,15 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
       if (account.availableBalance < reservedCredits)
         return { kind: "insufficient-credits" as const };
 
+      const { initialResult, ...generationInput } = input;
       const [operation] = await tx
         .insert(aiGeneration)
-        .values({ ...input, regenerationOfId, reservedCredits })
+        .values({
+          ...generationInput,
+          result: initialResult,
+          regenerationOfId,
+          reservedCredits,
+        })
         .returning();
       if (!operation) throw new Error("AI generation operation was not created");
       if (reservedCredits > 0) {
@@ -274,6 +354,8 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
           outputTokens: input.usage.outputTokens,
           providerRequestId: input.providerRequestId,
           result: input.result,
+          leaseOwner: null,
+          leasedUntil: null,
           consumedCredits,
           reservedCredits: 0,
           status: "succeeded",
@@ -323,6 +405,8 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
           errorCode: input.code,
           finishedAt: new Date(),
           latencyMs: input.latencyMs,
+          leaseOwner: null,
+          leasedUntil: null,
           reservedCredits: 0,
           status: "failed",
         })
