@@ -10,7 +10,7 @@ describe("AI structured output schema", () => {
         quizQuestions: [
           {
             correctOptionIndex: 0,
-            options: ["Correta", "Incorreta"],
+            options: ["Correta", "Incorreta A", "Incorreta B", "Incorreta C"],
             prompt: "Qual é correta?",
             sourceBlockIds: ["block-1"],
           },

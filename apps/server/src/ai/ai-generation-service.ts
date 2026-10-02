@@ -1,5 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
-import { aiSelectionDraftSchema, type AiSelectionDraft } from "@lazuli/shared";
+import {
+  aiCollectionDraftSchema,
+  aiSelectionDraftSchema,
+  type AiSelectionDraft,
+} from "@lazuli/shared";
 
 import type { Logger } from "pino";
 
@@ -13,10 +17,16 @@ import {
   AI_MAX_SOURCE_IDS,
   estimateAiCostMicroUsd,
 } from "./ai-model-config.ts";
-import { createFoundationPrompt, createSelectionPrompt, type AiSourceBlock } from "./ai-prompts.ts";
+import {
+  createCollectionPrompt,
+  createFoundationPrompt,
+  createSelectionPrompt,
+  type AiSourceBlock,
+} from "./ai-prompts.ts";
 import type { AiProvider } from "./ai-provider.ts";
 import {
   countFoundationDraftItems,
+  collectionProviderDraftSchema,
   foundationDraftSchema,
   selectionProviderDraftSchema,
   type FoundationDraft,
@@ -46,6 +56,22 @@ type SelectionGenerationInput = {
   selectedText: string;
   sourceScope: "selection" | "image" | "document";
   sourceBlockIds: string[];
+  userId: string;
+};
+
+export type CollectionGenerationJob = {
+  collectionId: string;
+  documentId: string;
+  documentRevision: number;
+  guidance: string;
+  kind: "flashcard" | "quizQuestion";
+  quantity: number;
+  sourceBlockIds: string[];
+  sourceScope: "document" | "section";
+};
+
+type CollectionGenerationInput = CollectionGenerationJob & {
+  idempotencyKey: string;
   userId: string;
 };
 
@@ -100,6 +126,13 @@ const parseStoredSelectionDraft = (operation: AiGenerationRecord) =>
     consumedCredits: operation.consumedCredits,
   });
 
+const parseStoredCollectionDraft = (operation: AiGenerationRecord) =>
+  aiCollectionDraftSchema.parse({
+    ...(operation.result as object),
+    approved: operation.approvedItems > 0,
+    consumedCredits: operation.consumedCredits,
+  });
+
 export const createAiGenerationService = ({
   logger,
   provider,
@@ -110,287 +143,508 @@ export const createAiGenerationService = ({
   provider: AiProvider;
   retryDelayMs?: number;
   store: AiGenerationStore;
-}) => ({
-  async getSelectionDraft(userId: string, operationId: string) {
+}) => {
+  const getCollectionDraft = async (userId: string, operationId: string) => {
     const operation = await store.get(userId, operationId);
-    if (!operation || operation.type !== "selection_generation") return null;
+    if (!operation || operation.type !== "collection_generation") return null;
     if (operation.status === "running")
-      return { kind: "in-progress" as const, operationId: operation.id };
+      return {
+        kind: operation.leaseOwner ? ("processing" as const) : ("queued" as const),
+        operationId: operation.id,
+      };
     if (operation.status === "failed") throw storedError(operation.errorCode);
     return {
-      draft: parseStoredSelectionDraft(operation),
+      draft: parseStoredCollectionDraft(operation),
       kind: "completed" as const,
       operationId: operation.id,
       reused: true,
     };
-  },
+  };
 
-  async generateSelectionDraft(
-    input: SelectionGenerationInput,
-  ): Promise<SelectionGenerationResult> {
-    assertInputLimits({
-      blocks: input.blocks,
-      idempotencyKey: input.idempotencyKey,
-      sourceIds: [input.documentId, ...input.sourceBlockIds],
-      userId: input.userId,
-    });
-    const prompt = createSelectionPrompt(input);
-    const sourceIds = [input.documentId, ...input.sourceBlockIds];
-    const contextFingerprint = fingerprint({
-      blocks: input.blocks,
-      collectionId: input.collectionId,
-      documentId: input.documentId,
-      guidance: input.guidance,
-      kind: input.kind,
-      quantity: input.quantity,
-      selectedText: input.selectedText,
-      sourceScope: input.sourceScope,
-      sourceBlockIds: input.sourceBlockIds,
-    });
-    const operationId = randomUUID();
-    const admission = await store.begin({
-      contextFingerprint,
-      id: operationId,
-      idempotencyKey: input.idempotencyKey,
-      estimatedCredits: estimateAiCredits(input.quantity),
-      origin: "document_selection",
-      promptVersion: prompt.promptVersion,
-      provider: provider.name,
-      requestedItems: input.quantity,
-      regenerationOfId: input.regenerateOperationId ?? null,
-      requestedModel: provider.model,
-      sourceIds,
-      type: "selection_generation",
-      userId: input.userId,
-    });
-    if (admission.kind === "concurrency-limited")
-      throw new AiGenerationError("AI_CONCURRENCY_LIMITED");
-    if (admission.kind === "insufficient-credits")
-      throw new AiGenerationError("AI_INSUFFICIENT_CREDITS");
-    if (admission.kind === "rate-limited") throw new AiGenerationError("AI_RATE_LIMITED");
-    if (admission.kind === "regeneration-active")
-      throw new AiGenerationError("AI_REGENERATION_ACTIVE");
-    if (admission.kind === "regeneration-limit" || admission.kind === "regeneration-mismatch")
-      throw new AiGenerationError("AI_REGENERATION_LIMIT");
-    if (admission.kind === "existing") {
-      if (admission.operation.status === "running")
-        return { kind: "in-progress", operationId: admission.operation.id };
-      if (admission.operation.status === "failed") throw storedError(admission.operation.errorCode);
-      return {
-        draft: parseStoredSelectionDraft(admission.operation),
-        kind: "completed",
-        operationId: admission.operation.id,
-        reused: true,
-      };
-    }
+  return {
+    discardCollectionDraft: (userId: string, operationId: string) =>
+      store.discardCollection(userId, operationId),
 
-    const startedAt = Date.now();
-    let attempts = 0;
-    try {
-      while (attempts < 2) {
-        attempts += 1;
-        try {
-          const result = await provider.generateStructured({
-            idempotencyKey: input.idempotencyKey,
-            images: input.images,
-            maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
-            prompt: prompt.prompt,
-            schema: selectionProviderDraftSchema,
-            schemaDescription: `${input.quantity} materiais do tipo ${input.kind} baseados exclusivamente na seleção.`,
-            schemaName: "lazuli_selection_draft",
-            system: prompt.system,
-            timeoutMs: provider.requestTimeoutMs,
-            userIdentifier: anonymousUserIdentifier(input.userId),
-          });
-          const generated = selectionProviderDraftSchema.parse(result.output);
-          assertReferencedBlocksExist(generated, input.blocks);
-          const proposals =
-            input.kind === "flashcard" ? generated.flashcards : generated.quizQuestions;
-          if (proposals.length === 0 || proposals.length > input.quantity)
-            throw new AiGenerationError("AI_INVALID_OUTPUT");
-          const expiresAt = new Date(Date.now() + AI_DRAFT_TTL_MS);
-          const draft = aiSelectionDraftSchema.parse({
-            operationId,
-            kind: input.kind,
+    async failCollectionDraft(userId: string, operationId: string, error: unknown) {
+      const normalized = normalizeAiError(error);
+      await store.fail({
+        attempts: 1,
+        code: normalized.code,
+        latencyMs: 0,
+        operationId,
+        userId,
+      });
+    },
+
+    getCollectionDraft,
+
+    async getLatestCollectionDraft(userId: string, collectionId: string) {
+      const operation = await store.findLatestCollection(userId, collectionId);
+      if (!operation) return null;
+      return getCollectionDraft(userId, operation.id);
+    },
+
+    async enqueueCollectionDraft(input: CollectionGenerationInput) {
+      const contextFingerprint = fingerprint({
+        collectionId: input.collectionId,
+        documentId: input.documentId,
+        documentRevision: input.documentRevision,
+        guidance: input.guidance,
+        kind: input.kind,
+        quantity: input.quantity,
+        sourceBlockIds: input.sourceBlockIds,
+      });
+      const operationId = randomUUID();
+      const admission = await store.begin({
+        contextFingerprint,
+        id: operationId,
+        idempotencyKey: input.idempotencyKey,
+        estimatedCredits: estimateAiCredits(input.quantity),
+        initialResult: {
+          job: {
             collectionId: input.collectionId,
             documentId: input.documentId,
             documentRevision: input.documentRevision,
-            anchorId: input.anchorId,
-            sourceScope: input.sourceScope,
+            guidance: input.guidance,
+            kind: input.kind,
+            quantity: input.quantity,
             sourceBlockIds: input.sourceBlockIds,
-            sourceText: input.selectedText,
-            requestedItems: input.quantity,
-            consumedCredits: input.regenerateOperationId ? 0 : proposals.length * 10,
-            regenerationCount: admission.regenerationCount,
-            expiresAt: expiresAt.toISOString(),
-            approved: false,
-            flashcards: generated.flashcards.map((item) => ({ ...item, id: randomUUID() })),
-            quizQuestions: generated.quizQuestions.map((item) => ({ ...item, id: randomUUID() })),
-          });
-          const latencyMs = Date.now() - startedAt;
-          await store.complete({
-            attempts,
-            effectiveModel: result.effectiveModel,
-            estimatedCostMicroUsd: estimateAiCostMicroUsd(result.usage),
-            expiresAt,
-            latencyMs,
-            operationId,
-            providerRequestId: result.providerRequestId,
-            result: draft,
-            usage: result.usage,
-            userId: input.userId,
-            validItems: proposals.length,
-          });
-          return { draft, kind: "completed", operationId, reused: false };
-        } catch (error) {
-          const normalized = normalizeAiError(error);
-          if (!normalized.retryable || attempts >= 2) throw normalized;
-          await pause(retryDelayMs);
-        }
-      }
-      throw new AiGenerationError("AI_REQUEST_FAILED");
-    } catch (error) {
-      const normalized = normalizeAiError(error);
-      await store.fail({
-        attempts,
-        code: normalized.code,
-        latencyMs: Date.now() - startedAt,
-        operationId,
+            sourceScope: input.sourceBlockIds.length ? "section" : "document",
+          } satisfies CollectionGenerationJob,
+        },
+        origin: "collection",
+        promptVersion: "collection-draft-v1",
+        provider: provider.name,
+        requestedItems: input.quantity,
+        regenerationOfId: null,
+        requestedModel: provider.model,
+        sourceIds: [input.documentId, ...input.sourceBlockIds],
+        type: "collection_generation",
         userId: input.userId,
       });
-      throw normalized;
-    }
-  },
+      if (admission.kind === "concurrency-limited")
+        throw new AiGenerationError("AI_CONCURRENCY_LIMITED");
+      if (admission.kind === "insufficient-credits")
+        throw new AiGenerationError("AI_INSUFFICIENT_CREDITS");
+      if (admission.kind === "rate-limited") throw new AiGenerationError("AI_RATE_LIMITED");
+      if (
+        admission.kind === "regeneration-active" ||
+        admission.kind === "regeneration-limit" ||
+        admission.kind === "regeneration-mismatch"
+      )
+        throw new AiGenerationError("AI_REGENERATION_LIMIT");
+      if (admission.kind === "existing") {
+        if (admission.operation.status === "failed")
+          throw storedError(admission.operation.errorCode);
+        if (admission.operation.status === "succeeded")
+          return {
+            kind: "completed" as const,
+            draft: parseStoredCollectionDraft(admission.operation),
+          };
+        return {
+          kind: admission.operation.leaseOwner ? ("processing" as const) : ("queued" as const),
+          operationId: admission.operation.id,
+        };
+      }
+      return { kind: "queued" as const, operationId };
+    },
 
-  async generateFoundationDraft(
-    input: FoundationGenerationInput,
-  ): Promise<FoundationGenerationResult> {
-    assertInputLimits(input);
-    const prompt = createFoundationPrompt(input.blocks);
-    const sourceIds = [...new Set(input.sourceIds)].sort();
-    const contextFingerprint = fingerprint({ blocks: input.blocks, sourceIds });
-    const operationId = randomUUID();
-    const admission = await store.begin({
-      contextFingerprint,
-      id: operationId,
-      idempotencyKey: input.idempotencyKey,
-      estimatedCredits: estimateAiCredits(2),
-      origin: "internal",
-      promptVersion: prompt.promptVersion,
-      provider: provider.name,
-      requestedItems: 2,
-      regenerationOfId: input.regenerateOperationId ?? null,
-      requestedModel: provider.model,
-      sourceIds,
-      type: "foundation_draft",
-      userId: input.userId,
-    });
-    if (admission.kind === "concurrency-limited")
-      throw new AiGenerationError("AI_CONCURRENCY_LIMITED");
-    if (admission.kind === "insufficient-credits")
-      throw new AiGenerationError("AI_INSUFFICIENT_CREDITS");
-    if (admission.kind === "rate-limited") throw new AiGenerationError("AI_RATE_LIMITED");
-    if (admission.kind === "regeneration-active")
-      throw new AiGenerationError("AI_REGENERATION_ACTIVE");
-    if (admission.kind === "regeneration-limit" || admission.kind === "regeneration-mismatch")
-      throw new AiGenerationError("AI_REGENERATION_LIMIT");
-    if (admission.kind === "existing") {
-      if (admission.operation.status === "running")
-        return { kind: "in-progress", operationId: admission.operation.id };
-      if (admission.operation.status === "failed") throw storedError(admission.operation.errorCode);
-      const draft = foundationDraftSchema.parse(admission.operation.result);
+    async processCollectionDraft({
+      blocks,
+      job,
+      operationId,
+      userId,
+    }: {
+      blocks: AiSourceBlock[];
+      job: CollectionGenerationJob;
+      operationId: string;
+      userId: string;
+    }) {
+      assertInputLimits({
+        blocks,
+        idempotencyKey: operationId,
+        sourceIds: [job.documentId, ...job.sourceBlockIds],
+        userId,
+      });
+      const prompt = createCollectionPrompt({ ...job, blocks });
+      const startedAt = Date.now();
+      let attempts = 0;
+      try {
+        while (attempts < 2) {
+          attempts += 1;
+          try {
+            const result = await provider.generateStructured({
+              idempotencyKey: operationId,
+              maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
+              prompt: prompt.prompt,
+              schema: collectionProviderDraftSchema,
+              schemaDescription: `${job.quantity} materiais diversos do tipo ${job.kind}.`,
+              schemaName: "lazuli_collection_draft",
+              system: prompt.system,
+              timeoutMs: provider.requestTimeoutMs,
+              userIdentifier: anonymousUserIdentifier(userId),
+            });
+            const generated = collectionProviderDraftSchema.parse(result.output);
+            assertReferencedBlocksExist(generated, blocks);
+            const proposals =
+              job.kind === "flashcard" ? generated.flashcards : generated.quizQuestions;
+            if (!proposals.length || proposals.length > job.quantity)
+              throw new AiGenerationError("AI_INVALID_OUTPUT");
+            const expiresAt = new Date(Date.now() + AI_DRAFT_TTL_MS);
+            const sourceById = new Map(blocks.map((block) => [block.id, block.text]));
+            const draft = aiCollectionDraftSchema.parse({
+              operationId,
+              kind: job.kind,
+              collectionId: job.collectionId,
+              documentId: job.documentId,
+              documentRevision: job.documentRevision,
+              anchorId: null,
+              sourceScope: job.sourceScope,
+              sourceBlockIds: blocks.map(({ id }) => id),
+              sourceText: blocks.map(({ text }) => text).join(" "),
+              requestedItems: job.quantity,
+              consumedCredits: proposals.length * 10,
+              regenerationCount: 0,
+              expiresAt: expiresAt.toISOString(),
+              approved: false,
+              flashcards: generated.flashcards.map((item) => ({
+                ...item,
+                id: randomUUID(),
+                evidence:
+                  item.evidence ||
+                  item.sourceBlockIds
+                    .map((id) => sourceById.get(id))
+                    .filter(Boolean)
+                    .join(" "),
+              })),
+              quizQuestions: generated.quizQuestions.map((item) => ({
+                ...item,
+                id: randomUUID(),
+                evidence:
+                  item.evidence ||
+                  item.sourceBlockIds
+                    .map((id) => sourceById.get(id))
+                    .filter(Boolean)
+                    .join(" "),
+              })),
+            });
+            await store.complete({
+              attempts,
+              effectiveModel: result.effectiveModel,
+              estimatedCostMicroUsd: estimateAiCostMicroUsd(result.usage),
+              expiresAt,
+              latencyMs: Date.now() - startedAt,
+              operationId,
+              providerRequestId: result.providerRequestId,
+              result: draft,
+              usage: result.usage,
+              userId,
+              validItems: proposals.length,
+            });
+            return;
+          } catch (error) {
+            const normalized = normalizeAiError(error);
+            if (!normalized.retryable || attempts >= 2) throw normalized;
+            await pause(retryDelayMs);
+          }
+        }
+      } catch (error) {
+        const normalized = normalizeAiError(error);
+        await store.fail({
+          attempts,
+          code: normalized.code,
+          latencyMs: Date.now() - startedAt,
+          operationId,
+          userId,
+        });
+        throw normalized;
+      }
+    },
+
+    async getSelectionDraft(userId: string, operationId: string) {
+      const operation = await store.get(userId, operationId);
+      if (!operation || operation.type !== "selection_generation") return null;
+      if (operation.status === "running")
+        return { kind: "in-progress" as const, operationId: operation.id };
+      if (operation.status === "failed") throw storedError(operation.errorCode);
       return {
-        draft,
-        kind: "completed",
-        operationId: admission.operation.id,
+        draft: parseStoredSelectionDraft(operation),
+        kind: "completed" as const,
+        operationId: operation.id,
         reused: true,
       };
-    }
+    },
 
-    const startedAt = Date.now();
-    let attempts = 0;
-    try {
-      while (attempts < 2) {
-        attempts += 1;
-        try {
-          const result = await provider.generateStructured({
-            idempotencyKey: input.idempotencyKey,
-            maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
-            prompt: prompt.prompt,
-            schema: foundationDraftSchema,
-            schemaDescription: "Um flashcard e uma questão de múltipla escolha baseados na fonte.",
-            schemaName: "lazuli_foundation_draft",
-            system: prompt.system,
-            timeoutMs: provider.requestTimeoutMs,
-            userIdentifier: anonymousUserIdentifier(input.userId),
-          });
-          const draft = foundationDraftSchema.parse(result.output);
-          assertReferencedBlocksExist(draft, input.blocks);
-          const latencyMs = Date.now() - startedAt;
-          const validItems = countFoundationDraftItems(draft);
-          await store.complete({
-            attempts,
-            effectiveModel: result.effectiveModel,
-            estimatedCostMicroUsd: estimateAiCostMicroUsd(result.usage),
-            expiresAt: new Date(Date.now() + AI_DRAFT_TTL_MS),
-            latencyMs,
-            operationId,
-            providerRequestId: result.providerRequestId,
-            result: draft,
-            usage: result.usage,
-            userId: input.userId,
-            validItems,
-          });
-          logger.info(
-            {
-              attempts,
-              inputTokens: result.usage.inputTokens,
-              latencyMs,
-              operationId,
-              outputTokens: result.usage.outputTokens,
-              provider: provider.name,
-              requestedModel: provider.model,
-              userId: input.userId,
-              validItems,
-            },
-            "AI generation completed",
-          );
-          return { draft, kind: "completed", operationId, reused: false };
-        } catch (error) {
-          const normalized = normalizeAiError(error);
-          if (!normalized.retryable || attempts >= 2) throw normalized;
-          logger.warn(
-            { code: normalized.code, operationId, provider: provider.name, userId: input.userId },
-            "AI generation transient failure; retrying once",
-          );
-          await pause(retryDelayMs);
-        }
-      }
-      throw new AiGenerationError("AI_REQUEST_FAILED");
-    } catch (error) {
-      const normalized = normalizeAiError(error);
-      const latencyMs = Date.now() - startedAt;
-      await store.fail({
-        attempts,
-        code: normalized.code,
-        latencyMs,
-        operationId,
+    async generateSelectionDraft(
+      input: SelectionGenerationInput,
+    ): Promise<SelectionGenerationResult> {
+      assertInputLimits({
+        blocks: input.blocks,
+        idempotencyKey: input.idempotencyKey,
+        sourceIds: [input.documentId, ...input.sourceBlockIds],
         userId: input.userId,
       });
-      logger.error(
-        {
+      const prompt = createSelectionPrompt(input);
+      const sourceIds = [input.documentId, ...input.sourceBlockIds];
+      const contextFingerprint = fingerprint({
+        blocks: input.blocks,
+        collectionId: input.collectionId,
+        documentId: input.documentId,
+        guidance: input.guidance,
+        kind: input.kind,
+        quantity: input.quantity,
+        selectedText: input.selectedText,
+        sourceScope: input.sourceScope,
+        sourceBlockIds: input.sourceBlockIds,
+      });
+      const operationId = randomUUID();
+      const admission = await store.begin({
+        contextFingerprint,
+        id: operationId,
+        idempotencyKey: input.idempotencyKey,
+        estimatedCredits: estimateAiCredits(input.quantity),
+        origin: "document_selection",
+        promptVersion: prompt.promptVersion,
+        provider: provider.name,
+        requestedItems: input.quantity,
+        regenerationOfId: input.regenerateOperationId ?? null,
+        requestedModel: provider.model,
+        sourceIds,
+        type: "selection_generation",
+        userId: input.userId,
+      });
+      if (admission.kind === "concurrency-limited")
+        throw new AiGenerationError("AI_CONCURRENCY_LIMITED");
+      if (admission.kind === "insufficient-credits")
+        throw new AiGenerationError("AI_INSUFFICIENT_CREDITS");
+      if (admission.kind === "rate-limited") throw new AiGenerationError("AI_RATE_LIMITED");
+      if (admission.kind === "regeneration-active")
+        throw new AiGenerationError("AI_REGENERATION_ACTIVE");
+      if (admission.kind === "regeneration-limit" || admission.kind === "regeneration-mismatch")
+        throw new AiGenerationError("AI_REGENERATION_LIMIT");
+      if (admission.kind === "existing") {
+        if (admission.operation.status === "running")
+          return { kind: "in-progress", operationId: admission.operation.id };
+        if (admission.operation.status === "failed")
+          throw storedError(admission.operation.errorCode);
+        return {
+          draft: parseStoredSelectionDraft(admission.operation),
+          kind: "completed",
+          operationId: admission.operation.id,
+          reused: true,
+        };
+      }
+
+      const startedAt = Date.now();
+      let attempts = 0;
+      try {
+        while (attempts < 2) {
+          attempts += 1;
+          try {
+            const result = await provider.generateStructured({
+              idempotencyKey: input.idempotencyKey,
+              images: input.images,
+              maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
+              prompt: prompt.prompt,
+              schema: selectionProviderDraftSchema,
+              schemaDescription: `${input.quantity} materiais do tipo ${input.kind} baseados exclusivamente na seleção.`,
+              schemaName: "lazuli_selection_draft",
+              system: prompt.system,
+              timeoutMs: provider.requestTimeoutMs,
+              userIdentifier: anonymousUserIdentifier(input.userId),
+            });
+            const generated = selectionProviderDraftSchema.parse(result.output);
+            assertReferencedBlocksExist(generated, input.blocks);
+            const proposals =
+              input.kind === "flashcard" ? generated.flashcards : generated.quizQuestions;
+            if (proposals.length === 0 || proposals.length > input.quantity)
+              throw new AiGenerationError("AI_INVALID_OUTPUT");
+            const expiresAt = new Date(Date.now() + AI_DRAFT_TTL_MS);
+            const draft = aiSelectionDraftSchema.parse({
+              operationId,
+              kind: input.kind,
+              collectionId: input.collectionId,
+              documentId: input.documentId,
+              documentRevision: input.documentRevision,
+              anchorId: input.anchorId,
+              sourceScope: input.sourceScope,
+              sourceBlockIds: input.sourceBlockIds,
+              sourceText: input.selectedText,
+              requestedItems: input.quantity,
+              consumedCredits: input.regenerateOperationId ? 0 : proposals.length * 10,
+              regenerationCount: admission.regenerationCount,
+              expiresAt: expiresAt.toISOString(),
+              approved: false,
+              flashcards: generated.flashcards.map((item) => ({ ...item, id: randomUUID() })),
+              quizQuestions: generated.quizQuestions.map((item) => ({ ...item, id: randomUUID() })),
+            });
+            const latencyMs = Date.now() - startedAt;
+            await store.complete({
+              attempts,
+              effectiveModel: result.effectiveModel,
+              estimatedCostMicroUsd: estimateAiCostMicroUsd(result.usage),
+              expiresAt,
+              latencyMs,
+              operationId,
+              providerRequestId: result.providerRequestId,
+              result: draft,
+              usage: result.usage,
+              userId: input.userId,
+              validItems: proposals.length,
+            });
+            return { draft, kind: "completed", operationId, reused: false };
+          } catch (error) {
+            const normalized = normalizeAiError(error);
+            if (!normalized.retryable || attempts >= 2) throw normalized;
+            await pause(retryDelayMs);
+          }
+        }
+        throw new AiGenerationError("AI_REQUEST_FAILED");
+      } catch (error) {
+        const normalized = normalizeAiError(error);
+        await store.fail({
+          attempts,
+          code: normalized.code,
+          latencyMs: Date.now() - startedAt,
+          operationId,
+          userId: input.userId,
+        });
+        throw normalized;
+      }
+    },
+
+    async generateFoundationDraft(
+      input: FoundationGenerationInput,
+    ): Promise<FoundationGenerationResult> {
+      assertInputLimits(input);
+      const prompt = createFoundationPrompt(input.blocks);
+      const sourceIds = [...new Set(input.sourceIds)].sort();
+      const contextFingerprint = fingerprint({ blocks: input.blocks, sourceIds });
+      const operationId = randomUUID();
+      const admission = await store.begin({
+        contextFingerprint,
+        id: operationId,
+        idempotencyKey: input.idempotencyKey,
+        estimatedCredits: estimateAiCredits(2),
+        origin: "internal",
+        promptVersion: prompt.promptVersion,
+        provider: provider.name,
+        requestedItems: 2,
+        regenerationOfId: input.regenerateOperationId ?? null,
+        requestedModel: provider.model,
+        sourceIds,
+        type: "foundation_draft",
+        userId: input.userId,
+      });
+      if (admission.kind === "concurrency-limited")
+        throw new AiGenerationError("AI_CONCURRENCY_LIMITED");
+      if (admission.kind === "insufficient-credits")
+        throw new AiGenerationError("AI_INSUFFICIENT_CREDITS");
+      if (admission.kind === "rate-limited") throw new AiGenerationError("AI_RATE_LIMITED");
+      if (admission.kind === "regeneration-active")
+        throw new AiGenerationError("AI_REGENERATION_ACTIVE");
+      if (admission.kind === "regeneration-limit" || admission.kind === "regeneration-mismatch")
+        throw new AiGenerationError("AI_REGENERATION_LIMIT");
+      if (admission.kind === "existing") {
+        if (admission.operation.status === "running")
+          return { kind: "in-progress", operationId: admission.operation.id };
+        if (admission.operation.status === "failed")
+          throw storedError(admission.operation.errorCode);
+        const draft = foundationDraftSchema.parse(admission.operation.result);
+        return {
+          draft,
+          kind: "completed",
+          operationId: admission.operation.id,
+          reused: true,
+        };
+      }
+
+      const startedAt = Date.now();
+      let attempts = 0;
+      try {
+        while (attempts < 2) {
+          attempts += 1;
+          try {
+            const result = await provider.generateStructured({
+              idempotencyKey: input.idempotencyKey,
+              maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
+              prompt: prompt.prompt,
+              schema: foundationDraftSchema,
+              schemaDescription:
+                "Um flashcard e uma questão de múltipla escolha baseados na fonte.",
+              schemaName: "lazuli_foundation_draft",
+              system: prompt.system,
+              timeoutMs: provider.requestTimeoutMs,
+              userIdentifier: anonymousUserIdentifier(input.userId),
+            });
+            const draft = foundationDraftSchema.parse(result.output);
+            assertReferencedBlocksExist(draft, input.blocks);
+            const latencyMs = Date.now() - startedAt;
+            const validItems = countFoundationDraftItems(draft);
+            await store.complete({
+              attempts,
+              effectiveModel: result.effectiveModel,
+              estimatedCostMicroUsd: estimateAiCostMicroUsd(result.usage),
+              expiresAt: new Date(Date.now() + AI_DRAFT_TTL_MS),
+              latencyMs,
+              operationId,
+              providerRequestId: result.providerRequestId,
+              result: draft,
+              usage: result.usage,
+              userId: input.userId,
+              validItems,
+            });
+            logger.info(
+              {
+                attempts,
+                inputTokens: result.usage.inputTokens,
+                latencyMs,
+                operationId,
+                outputTokens: result.usage.outputTokens,
+                provider: provider.name,
+                requestedModel: provider.model,
+                userId: input.userId,
+                validItems,
+              },
+              "AI generation completed",
+            );
+            return { draft, kind: "completed", operationId, reused: false };
+          } catch (error) {
+            const normalized = normalizeAiError(error);
+            if (!normalized.retryable || attempts >= 2) throw normalized;
+            logger.warn(
+              { code: normalized.code, operationId, provider: provider.name, userId: input.userId },
+              "AI generation transient failure; retrying once",
+            );
+            await pause(retryDelayMs);
+          }
+        }
+        throw new AiGenerationError("AI_REQUEST_FAILED");
+      } catch (error) {
+        const normalized = normalizeAiError(error);
+        const latencyMs = Date.now() - startedAt;
+        await store.fail({
           attempts,
           code: normalized.code,
           latencyMs,
           operationId,
-          provider: provider.name,
           userId: input.userId,
-        },
-        "AI generation failed",
-      );
-      throw normalized;
-    }
-  },
-});
+        });
+        logger.error(
+          {
+            attempts,
+            code: normalized.code,
+            latencyMs,
+            operationId,
+            provider: provider.name,
+            userId: input.userId,
+          },
+          "AI generation failed",
+        );
+        throw normalized;
+      }
+    },
+  };
+};
 
 export type AiGenerationService = ReturnType<typeof createAiGenerationService>;

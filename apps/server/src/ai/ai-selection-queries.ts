@@ -1,4 +1,5 @@
 import {
+  aiCollectionDraftSchema,
   aiSelectionDraftSchema,
   AI_DOCUMENT_MAX_BLOCKS,
   AI_DOCUMENT_MAX_TEXT_LENGTH,
@@ -9,10 +10,11 @@ import {
   readSourceAnchorId,
   STORAGE_BASIC_LIMIT_BYTES,
   type ApproveAiSelectionGenerationInput,
+  type CreateAiCollectionGenerationInput,
   type CreateAiSelectionGenerationInput,
   type DocumentBlock,
 } from "@lazuli/shared";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { isDeepStrictEqual } from "node:util";
 import { randomUUID } from "node:crypto";
 
@@ -154,19 +156,68 @@ export const prepareAiSelectionGeneration = async (
   const sourceText = normalize(
     input.sourceBlockIds.map((id) => getDocumentBlockText(blocks.get(id)!)).join(" "),
   );
-  if (
-    !sourceText.toLocaleLowerCase("pt-BR").includes(input.selectedText.toLocaleLowerCase("pt-BR"))
-  )
+  const selectedText = normalize(input.selectedText);
+  if (!sourceText.toLocaleLowerCase("pt-BR").includes(selectedText.toLocaleLowerCase("pt-BR")))
     return { kind: "source-changed" as const };
   return {
     kind: "ok" as const,
     // The model receives only the exact user selection. Whole touched blocks are
     // used exclusively to verify that the client did not invent the source.
-    blocks: [{ id: input.sourceBlockIds[0]!, text: input.selectedText }],
+    blocks: [{ id: input.sourceBlockIds[0]!, text: selectedText }],
     documentRevision: ownedDocument.revision,
-    selectedText: input.selectedText,
+    selectedText,
     sourceBlockIds: input.sourceBlockIds,
   };
+};
+
+export const prepareAiCollectionGeneration = async (
+  db: Database,
+  userId: string,
+  input: CreateAiCollectionGenerationInput,
+) => {
+  const [ownedDocument] = await db
+    .select({ content: document.content, revision: document.revision })
+    .from(document)
+    .innerJoin(projectItem, eq(projectItem.id, document.id))
+    .innerJoin(project, eq(project.id, projectItem.projectId))
+    .where(and(eq(document.id, input.documentId), eq(project.userId, userId)))
+    .limit(1);
+  if (!ownedDocument) return { kind: "not-found" as const };
+  if (ownedDocument.revision !== input.expectedRevision)
+    return { kind: "conflict" as const, revision: ownedDocument.revision };
+  const collectionTable = input.kind === "flashcard" ? flashcardCollection : quizCollection;
+  const [collection] = await db
+    .select({ id: collectionTable.id })
+    .from(collectionTable)
+    .where(
+      and(
+        eq(collectionTable.id, input.collectionId),
+        eq(collectionTable.userId, userId),
+        sql`${collectionTable.archivedAt} is null`,
+      ),
+    )
+    .limit(1);
+  if (!collection) return { kind: "collection-not-found" as const };
+  const content = ownedDocument.content as DocumentBlock[];
+  const blocks = input.sourceBlockIds.length
+    ? (() => {
+        const found = findBlocks(content, new Set(input.sourceBlockIds));
+        return input.sourceBlockIds
+          .map((id) => found.get(id))
+          .filter((block): block is DocumentBlock => Boolean(block))
+          .map((block) => ({ id: block.id, text: normalize(getDocumentBlockText(block)) }))
+          .filter(({ text }) => Boolean(text));
+      })()
+    : collectDocumentTextBlocks(content);
+  if (
+    !blocks.length ||
+    (input.sourceBlockIds.length && blocks.length !== input.sourceBlockIds.length)
+  )
+    return { kind: "source-changed" as const };
+  const sourceText = normalize(blocks.map(({ text }) => text).join(" "));
+  if (blocks.length > AI_DOCUMENT_MAX_BLOCKS || sourceText.length > AI_DOCUMENT_MAX_TEXT_LENGTH)
+    return { kind: "source-too-large" as const };
+  return { kind: "ok" as const, blocks, documentRevision: ownedDocument.revision };
 };
 
 export const approveAiSelectionGeneration = async (
@@ -176,18 +227,38 @@ export const approveAiSelectionGeneration = async (
   input: ApproveAiSelectionGenerationInput,
 ) =>
   db.transaction(async (tx) => {
-    const [operation] = await tx
+    const [requestedOperation] = await tx
       .select()
       .from(aiGeneration)
       .where(and(eq(aiGeneration.id, operationId), eq(aiGeneration.userId, userId)))
-      .limit(1)
+      .limit(1);
+    if (!requestedOperation) return { kind: "not-found" as const };
+    const chainRootId = requestedOperation.regenerationOfId ?? requestedOperation.id;
+    const chain = await tx
+      .select()
+      .from(aiGeneration)
+      .where(
+        and(
+          eq(aiGeneration.userId, userId),
+          or(eq(aiGeneration.id, chainRootId), eq(aiGeneration.regenerationOfId, chainRootId)),
+        ),
+      )
+      .orderBy(aiGeneration.createdAt)
       .for("update");
-    if (!operation || operation.type !== "selection_generation" || operation.status !== "succeeded")
+    const operation = chain.find(({ id }) => id === operationId);
+    if (
+      !operation ||
+      !["selection_generation", "collection_generation"].includes(operation.type) ||
+      operation.status !== "succeeded"
+    )
       return { kind: "not-found" as const };
-    if (operation.approvedItems > 0) return { kind: "already-approved" as const };
+    if (chain.some(({ approvedItems }) => approvedItems > 0))
+      return { kind: "already-approved" as const };
     if (operation.expiresAt && operation.expiresAt <= new Date())
       return { kind: "expired" as const };
-    const draft = aiSelectionDraftSchema.parse({
+    const draftSchema =
+      operation.type === "collection_generation" ? aiCollectionDraftSchema : aiSelectionDraftSchema;
+    const draft = draftSchema.parse({
       ...(operation.result as object),
       approved: false,
       consumedCredits: operation.consumedCredits,
@@ -232,6 +303,7 @@ export const approveAiSelectionGeneration = async (
     )
       return { kind: "conflict" as const, revision: ownedDocument.revision };
     if (draft.sourceScope === "selection") {
+      if (!input.anchoredContent) return { kind: "source-changed" as const };
       if (
         !draft.anchorId ||
         !collectReferenceSourceIds(input.anchoredContent).has(draft.anchorId) ||
@@ -247,11 +319,15 @@ export const approveAiSelectionGeneration = async (
       )
         return { kind: "source-changed" as const };
     } else if (draft.sourceScope === "image") {
+      if (!input.anchoredContent) return { kind: "source-changed" as const };
       if (!isDeepStrictEqual(ownedDocument.content, input.anchoredContent))
         return { kind: "source-changed" as const };
       const image = draft.anchorId ? findBlock(input.anchoredContent, draft.anchorId) : null;
       if (!image || image.type !== "image") return { kind: "source-changed" as const };
-    } else if (!isDeepStrictEqual(ownedDocument.content, input.anchoredContent))
+    } else if (
+      operation.type === "selection_generation" &&
+      (!input.anchoredContent || !isDeepStrictEqual(ownedDocument.content, input.anchoredContent))
+    )
       return { kind: "source-changed" as const };
 
     let firstQuizPosition = 0;
@@ -294,7 +370,8 @@ export const approveAiSelectionGeneration = async (
     }
 
     const now = new Date();
-    const contentByteSize = Buffer.byteLength(JSON.stringify(input.anchoredContent));
+    const anchoredContent = input.anchoredContent ?? (ownedDocument.content as DocumentBlock[]);
+    const contentByteSize = Buffer.byteLength(JSON.stringify(anchoredContent));
     const storageDelta = contentByteSize - ownedDocument.contentByteSize;
     await tx.insert(userStorage).values({ userId }).onConflictDoNothing();
     const [usage] = await tx
@@ -310,12 +387,12 @@ export const approveAiSelectionGeneration = async (
     let revision = ownedDocument.revision;
     if (
       draft.sourceScope === "selection" &&
-      !isDeepStrictEqual(ownedDocument.content, input.anchoredContent)
+      !isDeepStrictEqual(ownedDocument.content, anchoredContent)
     ) {
       const [saved] = await tx
         .update(document)
         .set({
-          content: input.anchoredContent,
+          content: anchoredContent,
           contentByteSize,
           revision: sql`${document.revision} + 1`,
           updatedAt: now,

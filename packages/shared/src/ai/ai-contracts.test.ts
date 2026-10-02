@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   AI_SELECTION_MAX_ITEMS,
+  aiQuizProposalSchema,
   approveAiSelectionGenerationSchema,
   createAiSelectionGenerationSchema,
 } from "./ai-contracts.ts";
@@ -11,6 +12,19 @@ const paragraph = (id: string, text: string) => [
 ];
 
 describe("AI selection contracts", () => {
+  it("keeps persisted two-option drafts readable after provider rules become stricter", () => {
+    expect(
+      aiQuizProposalSchema.safeParse({
+        correctOptionIndex: 0,
+        evidence: "Trecho usado para produzir a questão.",
+        id: "44444444-4444-4444-8444-444444444444",
+        options: ["Correta", "Incorreta"],
+        prompt: "Qual alternativa está correta?",
+        warning: null,
+      }).success,
+    ).toBe(true);
+  });
+
   it("limits generation volume and source size at the shared boundary", () => {
     const result = createAiSelectionGenerationSchema.safeParse({
       anchorId: "anchor-1",
