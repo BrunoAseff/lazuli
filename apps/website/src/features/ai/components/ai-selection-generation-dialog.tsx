@@ -6,28 +6,22 @@ import {
   type DocumentBlock,
 } from "@lazuli/shared";
 import { ArrowClockwiseIcon } from "@phosphor-icons/react/ArrowClockwise";
-import { CheckIcon } from "@phosphor-icons/react/Check";
 import { CircleNotchIcon } from "@phosphor-icons/react/CircleNotch";
 import { CoinsIcon } from "@phosphor-icons/react/Coins";
-import { WarningCircleIcon } from "@phosphor-icons/react/WarningCircle";
-import { Trash2Icon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Checkbox } from "@/components/ui/checkbox.tsx";
 import {
   Dialog,
-  DialogCancelButton,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import {
   Select,
@@ -40,6 +34,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { useFlashcardCollections } from "@/features/flashcards/api/flashcard-collection-queries.ts";
 import { useQuizCollections } from "@/features/quizzes/api/quiz-collection-queries.ts";
+import { hasDuplicateQuizOptionTexts } from "@/features/quizzes/components/quiz-alternatives-field.tsx";
+import type { AiEditableQuizProposal } from "./ai-quiz-proposal-editor.tsx";
+import { AiProposalReviewList } from "./ai-proposal-review-list.tsx";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
 import { cn } from "@/lib/utils.ts";
 import {
@@ -58,15 +55,9 @@ export type AiSelectionAction = {
 };
 
 type EditableFlashcard = AiSelectionDraft["flashcards"][number] & { selected: boolean };
-type EditableQuiz = AiSelectionDraft["quizQuestions"][number] & { selected: boolean };
+type EditableQuiz = AiSelectionDraft["quizQuestions"][number] &
+  AiEditableQuizProposal & { selected: boolean };
 type DiscardTarget = { id: string; kind: AiMaterialKind } | null;
-
-const normalizeOption = (value: string) => value.trim().toLocaleLowerCase("pt-BR");
-
-const hasDuplicateOptions = (options: string[]) => {
-  const normalized = options.map(normalizeOption).filter(Boolean);
-  return new Set(normalized).size !== normalized.length;
-};
 
 const textContent = (text: string): DocumentBlock[] => [
   {
@@ -128,10 +119,14 @@ export const AiSelectionGenerationDialog = ({
   const createGeneration = useCreateAiSelectionGeneration();
   const generation = useAiGeneration(operationId);
   const approve = useApproveAiGeneration(operationId);
-  const collections =
-    kind === "flashcard"
-      ? (flashcardCollections.data?.items ?? [])
-      : (quizCollections.data?.items ?? []);
+  const collections = useMemo(
+    () =>
+      kind === "flashcard"
+        ? (flashcardCollections.data?.items ?? [])
+        : (quizCollections.data?.items ?? []),
+    [flashcardCollections.data?.items, kind, quizCollections.data?.items],
+  );
+  const appliedOperationId = useRef("");
   const cost = quantity * AI_CREDITS_PER_ITEM;
 
   useEffect(() => {
@@ -153,12 +148,15 @@ export const AiSelectionGenerationDialog = ({
       setDiscardTarget(null);
       setRegenerationConfirmationOpen(false);
       setSourceExpanded(false);
+      appliedOperationId.current = "";
     }
   }, [action]);
 
   useEffect(() => {
     const result = generation.data;
     if (result?.status !== "completed") return;
+    if (appliedOperationId.current === result.draft.operationId) return;
+    appliedOperationId.current = result.draft.operationId;
     setDraft(result.draft);
     setFlashcards(result.draft.flashcards.map((item) => ({ ...item, selected: true })));
     setQuizQuestions(result.draft.quizQuestions.map((item) => ({ ...item, selected: true })));
@@ -171,7 +169,7 @@ export const AiSelectionGenerationDialog = ({
     [draft?.kind, flashcards, quizQuestions],
   );
   const selectedQuizHasDuplicateOptions = quizQuestions.some(
-    ({ options, selected }) => selected && hasDuplicateOptions(options),
+    ({ options, selected }) => selected && hasDuplicateQuizOptionTexts(options),
   );
 
   const clearGenerationUrl = () => {
@@ -260,9 +258,9 @@ export const AiSelectionGenerationDialog = ({
           draft.kind === "quizQuestion"
             ? quizQuestions
                 .filter(({ selected }) => selected)
-                .map(({ correctOptionIndex, id, options, prompt }) => ({
+                .map(({ content, correctOptionIndex, id, options, prompt }) => ({
                   id,
-                  content: textContent(prompt),
+                  content: content ?? textContent(prompt),
                   options: options.map((text, index) => ({
                     id: crypto.randomUUID(),
                     text,
@@ -448,191 +446,21 @@ export const AiSelectionGenerationDialog = ({
                   </Button>
                 </div>
 
-                {flashcards.map((item, index) => (
-                  <article
-                    className={cn(
-                      "grid gap-4 rounded-[var(--radius)] border p-4 transition-colors",
-                      !item.selected && "opacity-55",
-                    )}
-                    key={item.id}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <label className="flex items-center gap-2 font-medium">
-                        <Checkbox
-                          checked={item.selected}
-                          onCheckedChange={(checked) =>
-                            setFlashcards((current) =>
-                              current.map((candidate) =>
-                                candidate.id === item.id
-                                  ? { ...candidate, selected: checked === true }
-                                  : candidate,
-                              ),
-                            )
-                          }
-                        />
-                        Flashcard {index + 1}
-                      </label>
-                      <Button
-                        aria-label="Descartar proposta"
-                        onClick={() => setDiscardTarget({ id: item.id, kind: "flashcard" })}
-                        size="icon-sm"
-                        variant="ghost"
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor={`question-${item.id}`}>Pergunta</Label>
-                      <Textarea
-                        id={`question-${item.id}`}
-                        onChange={(event) =>
-                          setFlashcards((current) =>
-                            current.map((candidate) =>
-                              candidate.id === item.id
-                                ? { ...candidate, question: event.target.value }
-                                : candidate,
-                            ),
-                          )
-                        }
-                        value={item.question}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor={`answer-${item.id}`}>Resposta</Label>
-                      <Textarea
-                        id={`answer-${item.id}`}
-                        onChange={(event) =>
-                          setFlashcards((current) =>
-                            current.map((candidate) =>
-                              candidate.id === item.id
-                                ? { ...candidate, answer: event.target.value }
-                                : candidate,
-                            ),
-                          )
-                        }
-                        value={item.answer}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">Fonte: “{item.evidence}”</p>
-                    {item.warning && (
-                      <p className="flex gap-2 text-xs text-warning-foreground">
-                        <WarningCircleIcon className="size-4 shrink-0" /> {item.warning}
-                      </p>
-                    )}
-                  </article>
-                ))}
-
-                {quizQuestions.map((item, index) => (
-                  <article
-                    className={cn(
-                      "grid gap-4 rounded-[var(--radius)] border p-4 transition-colors",
-                      !item.selected && "opacity-55",
-                    )}
-                    key={item.id}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <label className="flex items-center gap-2 font-medium">
-                        <Checkbox
-                          checked={item.selected}
-                          onCheckedChange={(checked) =>
-                            setQuizQuestions((current) =>
-                              current.map((candidate) =>
-                                candidate.id === item.id
-                                  ? { ...candidate, selected: checked === true }
-                                  : candidate,
-                              ),
-                            )
-                          }
-                        />
-                        Questão {index + 1}
-                      </label>
-                      <Button
-                        aria-label="Descartar proposta"
-                        onClick={() => setDiscardTarget({ id: item.id, kind: "quizQuestion" })}
-                        size="icon-sm"
-                        variant="ghost"
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor={`prompt-${item.id}`}>Pergunta</Label>
-                      <Textarea
-                        id={`prompt-${item.id}`}
-                        onChange={(event) =>
-                          setQuizQuestions((current) =>
-                            current.map((candidate) =>
-                              candidate.id === item.id
-                                ? { ...candidate, prompt: event.target.value }
-                                : candidate,
-                            ),
-                          )
-                        }
-                        value={item.prompt}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Alternativas</Label>
-                      {item.options.map((option, optionIndex) => (
-                        <div className="flex items-center gap-2" key={`${item.id}-${optionIndex}`}>
-                          <button
-                            aria-label="Marcar como resposta correta"
-                            className={cn(
-                              "grid size-8 shrink-0 place-items-center rounded-full border transition-colors",
-                              optionIndex === item.correctOptionIndex &&
-                                "border-success bg-success/10 text-success",
-                            )}
-                            onClick={() =>
-                              setQuizQuestions((current) =>
-                                current.map((candidate) =>
-                                  candidate.id === item.id
-                                    ? { ...candidate, correctOptionIndex: optionIndex }
-                                    : candidate,
-                                ),
-                              )
-                            }
-                            type="button"
-                          >
-                            {optionIndex === item.correctOptionIndex && (
-                              <CheckIcon className="size-4" />
-                            )}
-                          </button>
-                          <Input
-                            aria-label={`Alternativa ${optionIndex + 1}`}
-                            onChange={(event) =>
-                              setQuizQuestions((current) =>
-                                current.map((candidate) =>
-                                  candidate.id === item.id
-                                    ? {
-                                        ...candidate,
-                                        options: candidate.options.map((value, valueIndex) =>
-                                          valueIndex === optionIndex ? event.target.value : value,
-                                        ),
-                                      }
-                                    : candidate,
-                                ),
-                              )
-                            }
-                            value={option}
-                          />
-                        </div>
-                      ))}
-                      <div
-                        className={cn(
-                          "grid transition-[grid-template-rows,opacity] duration-150",
-                          hasDuplicateOptions(item.options)
-                            ? "grid-rows-[1fr] opacity-100"
-                            : "grid-rows-[0fr] opacity-0",
-                        )}
-                      >
-                        <p className="overflow-hidden text-xs text-destructive">
-                          Cada alternativa deve possuir um texto diferente.
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Fonte: “{item.evidence}”</p>
-                  </article>
-                ))}
+                <AiProposalReviewList
+                  flashcards={flashcards}
+                  onFlashcardChange={(id, change) =>
+                    setFlashcards((current) =>
+                      current.map((item) => (item.id === id ? { ...item, ...change } : item)),
+                    )
+                  }
+                  onQuizChange={(id, change) =>
+                    setQuizQuestions((current) =>
+                      current.map((item) => (item.id === id ? { ...item, ...change } : item)),
+                    )
+                  }
+                  onRemove={(id, kind) => setDiscardTarget({ id, kind })}
+                  quizQuestions={quizQuestions}
+                />
               </div>
             )}
 
@@ -650,13 +478,15 @@ export const AiSelectionGenerationDialog = ({
           </div>
 
           <DialogFooter className="mx-0 mb-0 shrink-0 rounded-none border-t px-6 py-4">
-            <DialogCancelButton
+            <Button
               className="w-full min-w-0 shrink sm:w-auto"
               disabled={createGeneration.isPending || approve.isPending}
               onClick={close}
+              type="button"
+              variant="outline"
             >
               {draft ? "Fechar" : "Cancelar"}
-            </DialogCancelButton>
+            </Button>
             {draft ? (
               <Button
                 className="w-full min-w-0 shrink sm:w-auto"

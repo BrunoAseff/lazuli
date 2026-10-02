@@ -11,6 +11,7 @@ export const AI_SELECTION_MAX_BLOCKS = 20;
 export const AI_DOCUMENT_MAX_BLOCKS = 400;
 export const AI_DOCUMENT_MAX_TEXT_LENGTH = 80_000;
 export const AI_SELECTION_MAX_ITEMS = 5;
+export const AI_COLLECTION_MAX_ITEMS = 10;
 export const AI_CREDITS_PER_ITEM = 10;
 
 export const aiMaterialKindSchema = z.enum(["flashcard", "quizQuestion"]);
@@ -78,6 +79,8 @@ export const aiQuizProposalSchema = z
   .object({
     id: z.uuid(),
     prompt: generatedTextSchema,
+    // Drafts remain compatible with previously generated and manually edited
+    // questions. Provider output is validated separately and must contain 4–6.
     options: z.array(generatedTextSchema.max(1_000)).min(2).max(6),
     correctOptionIndex: z.number().int().min(0).max(5),
     evidence: generatedTextSchema.max(1_000),
@@ -118,6 +121,35 @@ export const aiSelectionDraftSchema = z.object({
   quizQuestions: z.array(aiQuizProposalSchema).max(AI_SELECTION_MAX_ITEMS),
 });
 
+export const createAiCollectionGenerationSchema = z
+  .object({
+    idempotencyKey: z.uuid(),
+    documentId: z.uuid(),
+    expectedRevision: z.number().int().nonnegative(),
+    kind: aiMaterialKindSchema,
+    collectionId: studyCollectionIdSchema,
+    quantity: z.number().int().min(1).max(AI_COLLECTION_MAX_ITEMS),
+    guidance: z.string().trim().max(500).default(""),
+    sourceBlockIds: z
+      .array(z.string().trim().min(1).max(128))
+      .max(AI_DOCUMENT_MAX_BLOCKS)
+      .default([]),
+  })
+  .strict();
+
+export const aiCollectionDraftSchema = aiSelectionDraftSchema.extend({
+  requestedItems: z.number().int().min(1).max(AI_COLLECTION_MAX_ITEMS),
+  sourceScope: z.enum(["document", "section"]),
+  flashcards: z.array(aiFlashcardProposalSchema).max(AI_COLLECTION_MAX_ITEMS),
+  quizQuestions: z.array(aiQuizProposalSchema).max(AI_COLLECTION_MAX_ITEMS),
+});
+
+export const aiCollectionGenerationResponseSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("none") }),
+  z.object({ status: z.enum(["queued", "processing"]), operationId: aiGenerationIdSchema }),
+  z.object({ status: z.literal("completed"), draft: aiCollectionDraftSchema }),
+]);
+
 export const aiSelectionGenerationResponseSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("running"), operationId: aiGenerationIdSchema }),
   z.object({ status: z.literal("completed"), draft: aiSelectionDraftSchema }),
@@ -154,9 +186,9 @@ const approvedQuizSchema = z
 export const approveAiSelectionGenerationSchema = z
   .object({
     expectedRevision: z.number().int().nonnegative(),
-    anchoredContent: documentContentSchema,
-    flashcards: z.array(approvedFlashcardSchema).max(AI_SELECTION_MAX_ITEMS).default([]),
-    quizQuestions: z.array(approvedQuizSchema).max(AI_SELECTION_MAX_ITEMS).default([]),
+    anchoredContent: documentContentSchema.optional(),
+    flashcards: z.array(approvedFlashcardSchema).max(AI_COLLECTION_MAX_ITEMS).default([]),
+    quizQuestions: z.array(approvedQuizSchema).max(AI_COLLECTION_MAX_ITEMS).default([]),
   })
   .strict()
   .refine(({ flashcards, quizQuestions }) => flashcards.length + quizQuestions.length > 0, {
@@ -171,4 +203,6 @@ export const approveAiSelectionGenerationResponseSchema = z.object({
 export type AiMaterialKind = z.infer<typeof aiMaterialKindSchema>;
 export type CreateAiSelectionGenerationInput = z.infer<typeof createAiSelectionGenerationSchema>;
 export type AiSelectionDraft = z.infer<typeof aiSelectionDraftSchema>;
+export type CreateAiCollectionGenerationInput = z.infer<typeof createAiCollectionGenerationSchema>;
+export type AiCollectionDraft = z.infer<typeof aiCollectionDraftSchema>;
 export type ApproveAiSelectionGenerationInput = z.infer<typeof approveAiSelectionGenerationSchema>;

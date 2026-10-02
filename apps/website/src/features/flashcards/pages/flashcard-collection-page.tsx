@@ -33,6 +33,7 @@ import { SearchInput } from "@/components/search-input.tsx";
 import { StudyItemSummaryBar } from "@/components/study-item-summary-bar.tsx";
 import { StudyItemListState } from "@/components/study-item-list-state.tsx";
 import { StudySummaryMetric } from "@/components/study-summary-metric.tsx";
+import { AiCollectionGenerationAction } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -43,6 +44,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
@@ -400,23 +407,31 @@ export const FlashcardCollectionPage = () => {
                 )}
               </PopoverContent>
             </Popover>
-            <Button
-              aria-label="Importar flashcards"
+            <AiCollectionGenerationAction
+              collectionId={collectionId}
               disabled={Boolean(summary.archivedAt)}
-              onClick={() => setImportOpen(true)}
-              size="icon"
-              variant="outline"
-            >
-              <UploadIcon />
-            </Button>
-            <Button
-              aria-label="Novo flashcard"
-              disabled={Boolean(summary.archivedAt)}
-              onClick={createCard}
-              size="icon"
-            >
-              <PlusIcon />
-            </Button>
+              iconOnly
+              kind="flashcard"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  aria-label="Adicionar flashcards"
+                  disabled={Boolean(summary.archivedAt)}
+                  size="icon"
+                >
+                  <PlusIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={createCard}>
+                  <PlusIcon /> Novo flashcard
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setImportOpen(true)}>
+                  <UploadIcon /> Importar arquivo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <SelectionBar
             count={selected.size}

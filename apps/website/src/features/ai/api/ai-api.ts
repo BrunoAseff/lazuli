@@ -1,7 +1,9 @@
 import {
+  aiCollectionGenerationResponseSchema,
   aiSelectionGenerationResponseSchema,
   approveAiSelectionGenerationResponseSchema,
   type ApproveAiSelectionGenerationInput,
+  type CreateAiCollectionGenerationInput,
   type CreateAiSelectionGenerationInput,
 } from "@lazuli/shared";
 import { z } from "zod";
@@ -21,6 +23,27 @@ export const createAiSelectionGeneration = (input: CreateAiSelectionGenerationIn
     body: JSON.stringify(input),
     method: "POST",
   });
+
+export const createAiCollectionGeneration = (input: CreateAiCollectionGenerationInput) =>
+  apiRequest("/api/ai/collection-generations", aiCollectionGenerationResponseSchema, {
+    body: JSON.stringify(input),
+    method: "POST",
+  });
+
+export const fetchLatestAiCollectionGeneration = (collectionId: string, signal?: AbortSignal) =>
+  apiRequest(
+    `/api/ai/collection-generations/latest?collectionId=${encodeURIComponent(collectionId)}`,
+    aiCollectionGenerationResponseSchema,
+    { signal },
+  );
+
+export const fetchAiCollectionGeneration = (operationId: string, signal?: AbortSignal) =>
+  apiRequest(`/api/ai/generations/${operationId}`, aiCollectionGenerationResponseSchema, {
+    signal,
+  });
+
+export const discardAiCollectionGeneration = (operationId: string) =>
+  apiRequest(`/api/ai/collection-generations/${operationId}`, null, { method: "DELETE" });
 
 export const fetchAiGeneration = (operationId: string, signal?: AbortSignal) =>
   apiRequest(`/api/ai/generations/${operationId}`, aiSelectionGenerationResponseSchema, {

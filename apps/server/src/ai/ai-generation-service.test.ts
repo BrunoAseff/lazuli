@@ -22,7 +22,12 @@ const validDraft = {
   quizQuestions: [
     {
       correctOptionIndex: 1,
-      options: ["Reler sem testar", "Recuperar a informação"],
+      options: [
+        "Reler sem testar",
+        "Recuperar a informação",
+        "Copiar o conteúdo",
+        "Ignorar o feedback",
+      ],
       prompt: "Qual prática exige esforço ativo de memória?",
       sourceBlockIds: ["block-1"],
     },
@@ -45,7 +50,9 @@ const validSelectionDraft = {
 const createRecord = (overrides: Partial<AiGenerationRecord> = {}): AiGenerationRecord => ({
   approvedItems: 0,
   attempts: 0,
+  availableAt: new Date(),
   cachedInputTokens: null,
+  cancelRequestedAt: null,
   contextFingerprint: "fingerprint",
   createdAt: new Date(),
   effectiveModel: null,
@@ -58,6 +65,8 @@ const createRecord = (overrides: Partial<AiGenerationRecord> = {}): AiGeneration
   idempotencyKey: "request-1",
   inputTokens: null,
   latencyMs: null,
+  leaseOwner: null,
+  leasedUntil: null,
   origin: "internal",
   outputTokens: null,
   promptVersion: "foundation-draft-v1",
@@ -91,8 +100,12 @@ const createStore = (
   return {
     begin,
     complete: vi.fn<(input: CompleteAiGenerationInput) => Promise<void>>().mockResolvedValue(),
+    discardCollection: vi.fn<AiGenerationStore["discardCollection"]>().mockResolvedValue(false),
     fail: vi.fn<AiGenerationStore["fail"]>().mockResolvedValue(),
     get: vi.fn<AiGenerationStore["get"]>().mockResolvedValue(null),
+    findLatestCollection: vi
+      .fn<AiGenerationStore["findLatestCollection"]>()
+      .mockResolvedValue(null),
   } satisfies AiGenerationStore;
 };
 
@@ -105,6 +118,134 @@ const input = {
 };
 
 describe("AI generation service", () => {
+  it("reads collection drafts created before quizzes required four generated alternatives", async () => {
+    const legacyDraft = {
+      anchorId: null,
+      approved: false,
+      collectionId: "11111111-1111-4111-8111-111111111111",
+      consumedCredits: 10,
+      documentId: "22222222-2222-4222-8222-222222222222",
+      documentRevision: 3,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      flashcards: [],
+      kind: "quizQuestion",
+      operationId: "33333333-3333-4333-8333-333333333333",
+      quizQuestions: [
+        {
+          correctOptionIndex: 0,
+          evidence: "Trecho usado para produzir a questão.",
+          id: "44444444-4444-4444-8444-444444444444",
+          options: ["Correta", "Incorreta"],
+          prompt: "Qual alternativa está correta?",
+          warning: null,
+        },
+      ],
+      regenerationCount: 0,
+      requestedItems: 1,
+      sourceBlockIds: ["block-1"],
+      sourceScope: "document",
+      sourceText: "Trecho usado para produzir a questão.",
+    };
+    const record = createRecord({
+      consumedCredits: 10,
+      expiresAt: new Date(Date.now() + 60_000),
+      id: legacyDraft.operationId,
+      origin: "collection",
+      result: legacyDraft,
+      status: "succeeded",
+      type: "collection_generation",
+      validItems: 1,
+    });
+    const store = createStore();
+    store.findLatestCollection.mockResolvedValue(record);
+    store.get.mockResolvedValue(record);
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({ output: validSelectionDraft }),
+      store,
+    });
+
+    await expect(
+      service.getLatestCollectionDraft("user-1", legacyDraft.collectionId),
+    ).resolves.toMatchObject({
+      draft: { quizQuestions: [{ options: ["Correta", "Incorreta"] }] },
+      kind: "completed",
+    });
+  });
+
+  it("queues a collection batch without calling the provider in the request", async () => {
+    const store = createStore();
+    const provider = createFakeAiProvider({ output: validSelectionDraft });
+    const generate = vi.spyOn(provider, "generateStructured");
+    const service = createAiGenerationService({ logger, provider, store });
+
+    await expect(
+      service.enqueueCollectionDraft({
+        collectionId: "11111111-1111-4111-8111-111111111111",
+        documentId: "22222222-2222-4222-8222-222222222222",
+        documentRevision: 3,
+        guidance: "",
+        idempotencyKey: "33333333-3333-4333-8333-333333333333",
+        kind: "flashcard",
+        quantity: 5,
+        sourceBlockIds: ["block-1"],
+        sourceScope: "section",
+        userId: input.userId,
+      }),
+    ).resolves.toMatchObject({ kind: "queued" });
+    expect(generate).not.toHaveBeenCalled();
+    expect(store.begin).toHaveBeenCalledWith(
+      expect.objectContaining({
+        estimatedCredits: 50,
+        initialResult: {
+          job: expect.objectContaining({
+            collectionId: "11111111-1111-4111-8111-111111111111",
+            quantity: 5,
+          }),
+        },
+        type: "collection_generation",
+      }),
+    );
+  });
+
+  it("processes a collection batch and settles only valid returned materials", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({ output: validSelectionDraft }),
+      retryDelayMs: 0,
+      store,
+    });
+
+    await service.processCollectionDraft({
+      blocks: input.blocks,
+      job: {
+        collectionId: "11111111-1111-4111-8111-111111111111",
+        documentId: "22222222-2222-4222-8222-222222222222",
+        documentRevision: 3,
+        guidance: "",
+        kind: "flashcard",
+        quantity: 5,
+        sourceBlockIds: ["block-1"],
+        sourceScope: "section",
+      },
+      operationId: "33333333-3333-4333-8333-333333333333",
+      userId: input.userId,
+    });
+
+    expect(store.complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operationId: "33333333-3333-4333-8333-333333333333",
+        result: expect.objectContaining({
+          consumedCredits: 10,
+          requestedItems: 5,
+          sourceScope: "section",
+        }),
+        validItems: 1,
+      }),
+    );
+  });
+
   it("creates an editable selection draft and settles only its valid proposals", async () => {
     const store = createStore();
     const service = createAiGenerationService({

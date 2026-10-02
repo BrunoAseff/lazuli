@@ -4,22 +4,11 @@ import {
   quizQuestionContentSchema,
   type QuizQuestionDetail,
 } from "@lazuli/shared";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  CheckCircle2Icon,
-  CircleIcon,
-  CopyIcon,
-  LoaderCircleIcon,
-  PlusIcon,
-  SlidersHorizontalIcon,
-  Trash2Icon,
-} from "lucide-react";
+import { CopyIcon, LoaderCircleIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
 import { StudyCollectionPicker } from "@/components/study-collection-picker.tsx";
 import {
   DiscardStudyItemChangesDialog,
@@ -35,7 +24,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
 import { resolveAssetUrl, releaseResolvedAssetUrls } from "@/features/assets/asset-api.ts";
 import { lazuliBlockNoteDictionary } from "@/features/documents/editor/blocknote-dictionary.ts";
@@ -46,18 +34,19 @@ import {
 import { RichContentField } from "@/components/rich-content-field.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
-import { cn } from "@/lib/utils.ts";
 import type { StudyItemAction } from "@/lib/study-actions.ts";
 import type { StudyEditorPresentation } from "@/lib/study-editor.ts";
 import { useQuizCollections } from "../api/quiz-collection-queries.ts";
 import { uploadQuizImage } from "../api/quiz-api.ts";
 import { useCreateQuizQuestion, useUpdateQuizQuestion } from "../api/quiz-queries.ts";
 import { QuizCollectionDialog } from "./quiz-collection-dialogs.tsx";
+import {
+  QuizAlternativesField,
+  quizOptionsAreValid,
+  type QuizOptionDraft,
+} from "./quiz-alternatives-field.tsx";
 
-type Option = { id: string; text: string; isCorrect: boolean };
-const normalizeOptionText = (text: string) => text.trim().toLocaleLowerCase("pt-BR");
-
-const newOptions = (): Option[] => [
+const newOptions = (): QuizOptionDraft[] => [
   { id: crypto.randomUUID(), text: "", isCorrect: true },
   { id: crypto.randomUUID(), text: "", isCorrect: false },
 ];
@@ -65,7 +54,7 @@ const newOptions = (): Option[] => [
 type QuizQuestionEditorProps = {
   collectionId?: string;
   initialContent?: LazuliDocumentBlock | QuizQuestionDetail["content"];
-  initialOptions?: Option[];
+  initialOptions?: QuizOptionDraft[];
   onAction?: (action: StudyItemAction) => void;
   onCreated?: (questionId: string) => void | boolean | Promise<void | boolean>;
   onDirtyChange?: (dirty: boolean) => void;
@@ -96,7 +85,7 @@ const QuizQuestionEditor = ({
   const [targetCollectionId, setTargetCollectionId] = useState(
     question?.collectionId ?? collectionId ?? "",
   );
-  const [options, setOptions] = useState<Option[]>(
+  const [options, setOptions] = useState<QuizOptionDraft[]>(
     question?.options.map(({ id, isCorrect, text }) => ({
       id,
       isCorrect,
@@ -138,29 +127,7 @@ const QuizQuestionEditor = ({
     [],
   );
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
-  const duplicateOptionIds = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const { text } of options) {
-      const normalized = normalizeOptionText(text);
-      if (normalized) counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
-    }
-    return new Set(
-      options
-        .filter(({ text }) => {
-          const normalized = normalizeOptionText(text);
-          return normalized && (counts.get(normalized) ?? 0) > 1;
-        })
-        .map(({ id }) => id),
-    );
-  }, [options]);
-  const hasValidOptionCount = options.length >= 2 && options.length <= 6;
-  const hasEmptyOption = options.some(({ text }) => !text.trim());
-  const hasSingleCorrectOption = options.filter(({ isCorrect }) => isCorrect).length === 1;
-  const optionsValid =
-    hasValidOptionCount &&
-    !hasEmptyOption &&
-    hasSingleCorrectOption &&
-    duplicateOptionIds.size === 0;
+  const optionsValid = useMemo(() => quizOptionsAreValid(options), [options]);
   const requestClose = () => {
     if (presentation === "panel") return;
     if (dirty) setDiscardOpen(true);
@@ -245,149 +212,15 @@ const QuizQuestionEditor = ({
     />
   );
   const alternatives = (
-    <fieldset className="space-y-3">
-      <legend className="mb-2 text-sm font-medium">Alternativas</legend>
-      {options.map((option, index) => {
-        const duplicated = duplicateOptionIds.has(option.id);
-        const errorId = `quiz-option-${option.id}-error`;
-        return (
-          <div
-            className="grid gap-x-2 rounded-lg border bg-background p-2 sm:grid-cols-[minmax(0,1fr)_auto]"
-            key={option.id}
-          >
-            <div className="min-w-0">
-              <Input
-                aria-describedby={duplicated ? errorId : undefined}
-                aria-invalid={duplicated}
-                aria-label={`Alternativa ${index + 1}`}
-                disabled={readOnly}
-                maxLength={1000}
-                onChange={(event) => {
-                  setDirty(true);
-                  setOptions((current) =>
-                    current.map((item) =>
-                      item.id === option.id ? { ...item, text: event.target.value } : item,
-                    ),
-                  );
-                }}
-                placeholder={`Alternativa ${index + 1}`}
-                value={option.text}
-              />
-              <div
-                aria-live="polite"
-                className={cn(
-                  "grid transition-[grid-template-rows,opacity] duration-150 ease-out",
-                  duplicated ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-                )}
-              >
-                <p className="min-h-0 overflow-hidden pt-1 text-xs text-destructive" id={errorId}>
-                  Esta alternativa está repetida.
-                </p>
-              </div>
-            </div>
-            <div className="flex h-9 items-center justify-end gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-label={
-                      option.isCorrect ? "Resposta correta" : "Marcar como resposta correta"
-                    }
-                    aria-pressed={option.isCorrect}
-                    className={cn(
-                      option.isCorrect &&
-                        "border-success/60 bg-success/5 text-success hover:border-success/70 hover:bg-success/15 hover:text-success",
-                    )}
-                    disabled={readOnly}
-                    onClick={() => {
-                      setDirty(true);
-                      setOptions((current) =>
-                        current.map((item) => ({
-                          ...item,
-                          isCorrect: item.id === option.id,
-                        })),
-                      );
-                    }}
-                    size="icon-sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    {option.isCorrect ? <CheckCircle2Icon /> : <CircleIcon />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {option.isCorrect ? "Resposta correta" : "Marcar como correta"}
-                </TooltipContent>
-              </Tooltip>
-              <Button
-                aria-label={`Mover alternativa ${index + 1} para cima`}
-                disabled={readOnly || index === 0}
-                onClick={() => {
-                  setDirty(true);
-                  setOptions((current) => {
-                    const next = [...current];
-                    [next[index - 1], next[index]] = [next[index]!, next[index - 1]!];
-                    return next;
-                  });
-                }}
-                size="icon-sm"
-                variant="ghost"
-              >
-                <ArrowUpIcon />
-              </Button>
-              <Button
-                aria-label={`Mover alternativa ${index + 1} para baixo`}
-                disabled={readOnly || index === options.length - 1}
-                onClick={() => {
-                  setDirty(true);
-                  setOptions((current) => {
-                    const next = [...current];
-                    [next[index], next[index + 1]] = [next[index + 1]!, next[index]!];
-                    return next;
-                  });
-                }}
-                size="icon-sm"
-                variant="ghost"
-              >
-                <ArrowDownIcon />
-              </Button>
-              <Button
-                aria-label={`Remover alternativa ${index + 1}`}
-                disabled={readOnly || options.length <= 2}
-                onClick={() => {
-                  setDirty(true);
-                  setOptions((current) => current.filter(({ id }) => id !== option.id));
-                }}
-                size="icon-sm"
-                variant="ghost"
-              >
-                <Trash2Icon />
-              </Button>
-            </div>
-          </div>
-        );
-      })}
-      {touched && (!hasValidOptionCount || hasEmptyOption || !hasSingleCorrectOption) && (
-        <p className="text-xs text-destructive" role="alert">
-          Preencha de duas a seis alternativas e marque uma única resposta correta.
-        </p>
-      )}
-      {!readOnly && (
-        <Button
-          className="h-11 w-full border-dashed hover:border-primary hover:bg-primary/5 hover:text-primary"
-          disabled={options.length >= 6}
-          onClick={() => {
-            setDirty(true);
-            setOptions((current) => [
-              ...current,
-              { id: crypto.randomUUID(), text: "", isCorrect: false },
-            ]);
-          }}
-          variant="outline"
-        >
-          <PlusIcon /> Adicionar alternativa
-        </Button>
-      )}
-    </fieldset>
+    <QuizAlternativesField
+      onChange={(next) => {
+        setDirty(true);
+        setOptions(next);
+      }}
+      options={options}
+      readOnly={readOnly}
+      touched={touched}
+    />
   );
   const fields = (
     <>

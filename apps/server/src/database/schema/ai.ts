@@ -65,7 +65,7 @@ export const aiGeneration = pgTable(
     reservedCredits: integer("reserved_credits").default(0).notNull(),
     consumedCredits: integer("consumed_credits").default(0).notNull(),
     regenerationOfId: text("regeneration_of_id").references((): AnyPgColumn => aiGeneration.id, {
-      onDelete: "restrict",
+      onDelete: "no action",
     }),
     inputTokens: integer("input_tokens"),
     cachedInputTokens: integer("cached_input_tokens"),
@@ -76,6 +76,10 @@ export const aiGeneration = pgTable(
     attempts: integer("attempts").default(0).notNull(),
     errorCode: text("error_code"),
     result: jsonb("result").$type<unknown>(),
+    availableAt: timestamp("available_at", { withTimezone: true }).defaultNow().notNull(),
+    leaseOwner: text("lease_owner"),
+    leasedUntil: timestamp("leased_until", { withTimezone: true }),
+    cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
@@ -97,5 +101,11 @@ export const aiGeneration = pgTable(
       sql`${table.estimatedCredits} >= 0 and ${table.reservedCredits} >= 0 and ${table.consumedCredits} >= 0 and ${table.consumedCredits} <= ${table.estimatedCredits}`,
     ),
     index("ai_generation_regeneration_idx").on(table.regenerationOfId, table.status),
+    index("ai_generation_claim_idx").on(
+      table.type,
+      table.status,
+      table.availableAt,
+      table.createdAt,
+    ),
   ],
 );
