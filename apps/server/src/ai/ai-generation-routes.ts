@@ -1,9 +1,11 @@
 import {
   aiGenerationIdSchema,
   approveAiSelectionGenerationSchema,
+  createAiCollectionGenerationSchema,
   createAiSelectionGenerationSchema,
 } from "@lazuli/shared";
 import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
 
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
@@ -15,6 +17,7 @@ import type { AiGenerationService } from "./ai-generation-service.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
   approveAiSelectionGeneration,
+  prepareAiCollectionGeneration,
   prepareAiSelectionGeneration,
 } from "./ai-selection-queries.ts";
 
@@ -40,6 +43,15 @@ const serializeGeneration = (
   result.kind === "in-progress"
     ? { status: "running" as const, operationId: result.operationId }
     : { status: "completed" as const, draft: result.draft };
+
+const serializeCollectionGeneration = (
+  result: Awaited<ReturnType<AiGenerationService["getCollectionDraft"]>>,
+) => {
+  if (!result) return null;
+  return result.kind === "completed"
+    ? { status: "completed" as const, draft: result.draft }
+    : { status: result.kind, operationId: result.operationId };
+};
 
 export const createAiGenerationRoutes = ({
   auth,
@@ -109,18 +121,90 @@ export const createAiGenerationRoutes = ({
       }
     });
 
+    app.post("/api/ai/collection-generations", async (request, reply) => {
+      const session = await authorizeMutation(request, reply);
+      if (!session) return;
+      const input = createAiCollectionGenerationSchema.safeParse(request.body);
+      if (!input.success) return sendValidationError(reply);
+      const prepared = await prepareAiCollectionGeneration(database, session.user.id, input.data);
+      if (prepared.kind === "not-found" || prepared.kind === "collection-not-found")
+        return reply
+          .status(404)
+          .send({ code: "AI_SOURCE_NOT_FOUND", message: "A fonte ou coleção não foi encontrada." });
+      if (prepared.kind === "conflict" || prepared.kind === "source-changed")
+        return reply.status(409).send({
+          code: "AI_SOURCE_CHANGED",
+          message: "O documento mudou. Escolha a fonte novamente.",
+        });
+      if (prepared.kind === "source-too-large")
+        return reply.status(422).send({
+          code: "AI_INPUT_TOO_LARGE",
+          message: "Este documento é grande demais. Escolha uma seção menor.",
+        });
+      try {
+        const result = await service.enqueueCollectionDraft({
+          ...input.data,
+          documentRevision: prepared.documentRevision,
+          sourceScope: input.data.sourceBlockIds.length ? "section" : "document",
+          userId: session.user.id,
+        });
+        return reply
+          .status(result.kind === "completed" ? 201 : 202)
+          .send(
+            result.kind === "completed"
+              ? { status: "completed", draft: result.draft }
+              : { status: result.kind, operationId: result.operationId },
+          );
+      } catch (error) {
+        return sendAiError(reply, error);
+      }
+    });
+
+    app.get("/api/ai/collection-generations/latest", async (request, reply) => {
+      const session = await requireSession(auth, request, reply);
+      if (!session) return;
+      const collectionId = collectionIdFrom(request.query);
+      if (!collectionId.success) return sendValidationError(reply);
+      try {
+        const result = await service.getLatestCollectionDraft(session.user.id, collectionId.data);
+        return result ? serializeCollectionGeneration(result) : { status: "none" as const };
+      } catch (error) {
+        return sendAiError(reply, error);
+      }
+    });
+
+    app.delete("/api/ai/collection-generations/:operationId", async (request, reply) => {
+      const session = await authorizeMutation(request, reply);
+      if (!session) return;
+      const operationId = operationIdFrom(request.params);
+      if (!operationId.success) return sendValidationError(reply);
+      const discarded = await service.discardCollectionDraft(session.user.id, operationId.data);
+      if (!discarded)
+        return reply.status(404).send({
+          code: "AI_GENERATION_NOT_FOUND",
+          message: "Este rascunho não foi encontrado.",
+        });
+      return reply.status(204).send();
+    });
+
     app.get("/api/ai/generations/:operationId", async (request, reply) => {
       const session = await requireSession(auth, request, reply);
       if (!session) return;
       const operationId = operationIdFrom(request.params);
       if (!operationId.success) return sendValidationError(reply);
       try {
-        const result = await service.getSelectionDraft(session.user.id, operationId.data);
+        const result =
+          (await service.getSelectionDraft(session.user.id, operationId.data)) ??
+          (await service.getCollectionDraft(session.user.id, operationId.data));
         if (!result)
           return reply
             .status(404)
             .send({ code: "AI_GENERATION_NOT_FOUND", message: "Esta geração não foi encontrada." });
-        return serializeGeneration(result);
+        if (result.kind === "completed")
+          return { status: "completed" as const, draft: result.draft };
+        return result.kind === "in-progress"
+          ? { status: "running" as const, operationId: result.operationId }
+          : { status: result.kind, operationId: result.operationId };
       } catch (error) {
         return sendAiError(reply, error);
       }
@@ -167,3 +251,5 @@ export const createAiGenerationRoutes = ({
       return { createdIds: result.createdIds, revision: result.revision };
     });
   };
+const collectionIdFrom = (query: unknown) =>
+  z.uuid().safeParse((query as { collectionId?: unknown }).collectionId);

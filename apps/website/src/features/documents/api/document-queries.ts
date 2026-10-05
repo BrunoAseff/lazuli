@@ -44,8 +44,9 @@ export const useProjectTree = (projectId: string, enabled = true) =>
     queryKey: documentKeys.tree(projectId),
     queryFn: ({ signal }) => fetchProjectTree(projectId, signal),
   });
-export const useDocument = (projectId: string, documentId: string) =>
+export const useDocument = (projectId: string, documentId: string, enabled = true) =>
   useQuery({
+    enabled: enabled && Boolean(projectId && documentId),
     queryKey: documentKeys.detail(projectId, documentId),
     queryFn: ({ signal }) => fetchDocument(projectId, documentId, signal),
   });

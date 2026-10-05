@@ -6,6 +6,7 @@ import { createAiCreditReconciler } from "./ai-credits/ai-credit-reconciler.ts";
 import { createAiCreditRoutes } from "./ai-credits/ai-credit-routes.ts";
 import { createAiCreditService } from "./ai-credits/ai-credit-service.ts";
 import { createAiGenerationRoutes } from "./ai/ai-generation-routes.ts";
+import { createAiCollectionWorker } from "./ai/ai-collection-worker.ts";
 import { createAiGenerationService } from "./ai/ai-generation-service.ts";
 import { createAiGenerationStore } from "./ai/ai-generation-store.ts";
 import { createDevelopmentAiProvider } from "./ai/development-ai-provider.ts";
@@ -44,6 +45,7 @@ export const buildApp = (env: ServerEnv) => {
     provider: env.AI_REAL_CALLS_ENABLED ? createOpenAiProvider(env) : createDevelopmentAiProvider(),
     store: createAiGenerationStore(database.db),
   });
+  const aiCollectionWorker = createAiCollectionWorker(database.db, aiGenerationService, app.log);
 
   void app.register(cors, {
     credentials: true,
@@ -142,6 +144,7 @@ export const buildApp = (env: ServerEnv) => {
 
   app.addHook("onClose", async () => {
     aiCreditReconciler.stop();
+    aiCollectionWorker.stop();
     await importWorker.stop();
     storage.destroy();
     await database.client.end({ timeout: 1 });
@@ -151,6 +154,7 @@ export const buildApp = (env: ServerEnv) => {
     app.addHook("onReady", async () => {
       await storage.ensureBucket();
       importWorker.start();
+      aiCollectionWorker.start();
       aiCreditReconciler.start();
     });
 

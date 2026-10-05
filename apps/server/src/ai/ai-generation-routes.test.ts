@@ -9,6 +9,7 @@ import { createAiGenerationRoutes } from "./ai-generation-routes.ts";
 
 const queries = vi.hoisted(() => ({
   approveAiSelectionGeneration: vi.fn(),
+  prepareAiCollectionGeneration: vi.fn(),
   prepareAiSelectionGeneration: vi.fn(),
 }));
 vi.mock("./ai-selection-queries.ts", () => queries);
@@ -29,6 +30,16 @@ const requestBody = {
   sourceScope: "selection",
   sourceBlockIds: ["block-1"],
 };
+const collectionRequestBody = {
+  collectionId,
+  documentId,
+  expectedRevision: 2,
+  guidance: "",
+  idempotencyKey: "55555555-5555-4555-8555-555555555555",
+  kind: "flashcard",
+  quantity: 5,
+  sourceBlockIds: ["block-1"],
+};
 const session = {
   session: { id: "session-1" },
   user: { email: "ana@example.com", id: "user-1", name: "Ana" },
@@ -44,8 +55,12 @@ const apps: ReturnType<typeof Fastify>[] = [];
 const register = async (serviceOverrides: Partial<AiGenerationService> = {}) => {
   const generateSelectionDraft = vi.fn().mockResolvedValue({ kind: "in-progress", operationId });
   const service = {
+    discardCollectionDraft: vi.fn().mockResolvedValue(false),
+    enqueueCollectionDraft: vi.fn().mockResolvedValue({ kind: "queued", operationId }),
     generateFoundationDraft: vi.fn(),
     generateSelectionDraft,
+    getCollectionDraft: vi.fn().mockResolvedValue(null),
+    getLatestCollectionDraft: vi.fn().mockResolvedValue(null),
     getSelectionDraft: vi.fn().mockResolvedValue(null),
     ...serviceOverrides,
   } as unknown as AiGenerationService;
@@ -66,6 +81,77 @@ const register = async (serviceOverrides: Partial<AiGenerationService> = {}) => 
 afterEach(async () => {
   vi.clearAllMocks();
   await Promise.all(apps.splice(0).map((app) => app.close()));
+});
+
+describe("AI collection generation routes", () => {
+  it("queues a persistent batch after rebuilding the authorized source", async () => {
+    queries.prepareAiCollectionGeneration.mockResolvedValue({
+      blocks: [{ id: "block-1", text: "Conteúdo autorizado da seção." }],
+      documentRevision: 2,
+      kind: "ok",
+    });
+    const enqueueCollectionDraft = vi.fn().mockResolvedValue({ kind: "queued", operationId });
+    const { app } = await register({ enqueueCollectionDraft });
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "POST",
+      payload: collectionRequestBody,
+      url: "/api/ai/collection-generations",
+    });
+
+    expect(response.statusCode).toBe(202);
+    expect(response.json()).toEqual({ operationId, status: "queued" });
+    expect(enqueueCollectionDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collectionId,
+        documentRevision: 2,
+        sourceBlockIds: ["block-1"],
+        sourceScope: "section",
+        userId: "user-1",
+      }),
+    );
+  });
+
+  it("rejects an oversized source before reserving credits", async () => {
+    queries.prepareAiCollectionGeneration.mockResolvedValue({ kind: "source-too-large" });
+    const enqueueCollectionDraft = vi.fn();
+    const { app } = await register({ enqueueCollectionDraft });
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "POST",
+      payload: collectionRequestBody,
+      url: "/api/ai/collection-generations",
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(enqueueCollectionDraft).not.toHaveBeenCalled();
+  });
+
+  it("returns the latest queued batch for the authenticated user", async () => {
+    const getLatestCollectionDraft = vi.fn().mockResolvedValue({ kind: "queued", operationId });
+    const { app } = await register({ getLatestCollectionDraft });
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/ai/collection-generations/latest?collectionId=${collectionId}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ operationId, status: "queued" });
+    expect(getLatestCollectionDraft).toHaveBeenCalledWith("user-1", collectionId);
+  });
+
+  it("discards an owned completed batch", async () => {
+    const discardCollectionDraft = vi.fn().mockResolvedValue(true);
+    const { app } = await register({ discardCollectionDraft });
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "DELETE",
+      url: `/api/ai/collection-generations/${operationId}`,
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(discardCollectionDraft).toHaveBeenCalledWith("user-1", operationId);
+  });
 });
 
 describe("AI selection generation routes", () => {
