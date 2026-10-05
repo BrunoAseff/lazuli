@@ -40,6 +40,42 @@ const collectionRequestBody = {
   quantity: 5,
   sourceBlockIds: ["block-1"],
 };
+const approvalRequestBody = {
+  anchoredContent: [
+    {
+      content: [
+        {
+          styles: { sourceAnchor: "anchor-1" },
+          text: requestBody.selectedText,
+          type: "text",
+        },
+      ],
+      id: "block-1",
+      type: "paragraph",
+    },
+  ],
+  expectedRevision: 2,
+  flashcards: [
+    {
+      answer: [
+        {
+          content: [{ styles: {}, text: "Resposta", type: "text" }],
+          id: "answer-1",
+          type: "paragraph",
+        },
+      ],
+      id: "55555555-5555-4555-8555-555555555555",
+      question: [
+        {
+          content: [{ styles: {}, text: "Pergunta?", type: "text" }],
+          id: "question-1",
+          type: "paragraph",
+        },
+      ],
+    },
+  ],
+  quizQuestions: [],
+};
 const session = {
   session: { id: "session-1" },
   user: { email: "ana@example.com", id: "user-1", name: "Ana" },
@@ -252,42 +288,7 @@ describe("AI selection generation routes", () => {
     const response = await app.inject({
       headers: { origin: "http://localhost:3000" },
       method: "POST",
-      payload: {
-        anchoredContent: [
-          {
-            content: [
-              {
-                styles: { sourceAnchor: "anchor-1" },
-                text: requestBody.selectedText,
-                type: "text",
-              },
-            ],
-            id: "block-1",
-            type: "paragraph",
-          },
-        ],
-        expectedRevision: 2,
-        flashcards: [
-          {
-            answer: [
-              {
-                content: [{ styles: {}, text: "Resposta", type: "text" }],
-                id: "answer-1",
-                type: "paragraph",
-              },
-            ],
-            id: "55555555-5555-4555-8555-555555555555",
-            question: [
-              {
-                content: [{ styles: {}, text: "Pergunta?", type: "text" }],
-                id: "question-1",
-                type: "paragraph",
-              },
-            ],
-          },
-        ],
-        quizQuestions: [],
-      },
+      payload: approvalRequestBody,
       url: `/api/ai/generations/${operationId}/approve`,
     });
 
@@ -302,5 +303,27 @@ describe("AI selection generation routes", () => {
       operationId,
       expect.any(Object),
     );
+  });
+
+  it("reports the material whose reference cannot be anchored", async () => {
+    queries.approveAiSelectionGeneration.mockResolvedValue({
+      itemId: approvalRequestBody.flashcards[0]!.id,
+      kind: "reference-unanchorable",
+    });
+    const { app } = await register();
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "POST",
+      payload: approvalRequestBody,
+      url: `/api/ai/generations/${operationId}/approve`,
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      code: "AI_REFERENCE_UNANCHORABLE",
+      itemId: approvalRequestBody.flashcards[0]!.id,
+      message:
+        "Não foi possível vincular uma referência ao trecho escolhido. Ajuste a referência e tente novamente.",
+    });
   });
 });

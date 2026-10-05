@@ -102,7 +102,8 @@ export const useDiscardAiCollectionGeneration = (collectionId: string) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: discardAiCollectionGeneration,
-    onSuccess: async () => {
+    onSuccess: async (_result, operationId) => {
+      client.removeQueries({ exact: true, queryKey: aiKeys.collectionGeneration(operationId) });
       client.setQueryData(aiKeys.latestCollectionGeneration(collectionId), { status: "none" });
       await client.invalidateQueries({ queryKey: aiKeys.latestCollectionGeneration(collectionId) });
     },

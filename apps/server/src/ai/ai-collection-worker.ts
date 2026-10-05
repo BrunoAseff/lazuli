@@ -7,7 +7,10 @@ import { AiGenerationError } from "./ai-errors.ts";
 import type { AiGenerationService, CollectionGenerationJob } from "./ai-generation-service.ts";
 import { prepareAiCollectionGeneration } from "./ai-selection-queries.ts";
 
-const LEASE_MS = 2 * 60_000;
+// A collection generation may make two provider requests before settling.
+// Keep an abandoned lease long enough that another worker cannot claim it mid-request.
+const LEASE_MS = 5 * 60_000;
+const MAX_CLAIM_ATTEMPTS = 3;
 const POLL_MS = 750;
 
 const readJob = (result: unknown): CollectionGenerationJob | null => {
@@ -65,9 +68,24 @@ export const createAiCollectionWorker = (
   const run = async () => {
     let claimed: Awaited<ReturnType<typeof claimNext>> = null;
     let generationStarted = false;
+    const settleFailure = async (error: unknown) => {
+      if (!claimed) return;
+      try {
+        await service.failCollectionDraft(claimed.userId, claimed.id, error);
+      } catch (settlementError) {
+        logger.error(
+          { err: settlementError, operationId: claimed.id, workerId },
+          "AI collection worker could not settle failed claim",
+        );
+      }
+    };
     try {
       claimed = await claimNext(db, workerId);
       if (!claimed) return;
+      if (claimed.attempts >= MAX_CLAIM_ATTEMPTS) {
+        await settleFailure(new AiGenerationError("AI_REQUEST_FAILED"));
+        return;
+      }
       const job = readJob(claimed.result);
       if (!job) throw new AiGenerationError("AI_REQUEST_FAILED");
       if (claimed.cancelRequestedAt) throw new AiGenerationError("AI_REQUEST_FAILED");
@@ -88,8 +106,7 @@ export const createAiCollectionWorker = (
     } catch (error) {
       // processCollectionDraft owns provider retries and final settlement. Errors
       // raised before that boundary still need to release the reservation here.
-      if (claimed && !generationStarted)
-        await service.failCollectionDraft(claimed.userId, claimed.id, error);
+      if (claimed && !generationStarted) await settleFailure(error);
       logger.error({ err: error, workerId }, "AI collection worker iteration failed");
     } finally {
       schedule();

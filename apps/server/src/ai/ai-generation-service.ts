@@ -329,16 +329,16 @@ export const createAiGenerationService = ({
       operationId: string;
       userId: string;
     }) {
-      assertInputLimits({
-        blocks,
-        idempotencyKey: operationId,
-        sourceIds: [job.documentId, ...job.sourceBlockIds],
-        userId,
-      });
-      const prompt = createCollectionPrompt({ ...job, blocks });
       const startedAt = Date.now();
       let attempts = 0;
       try {
+        assertInputLimits({
+          blocks,
+          idempotencyKey: operationId,
+          sourceIds: [job.documentId, ...job.sourceBlockIds],
+          userId,
+        });
+        const prompt = createCollectionPrompt({ ...job, blocks });
         while (attempts < 2) {
           attempts += 1;
           try {

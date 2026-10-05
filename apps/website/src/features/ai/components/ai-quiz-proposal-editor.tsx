@@ -63,10 +63,7 @@ export const AiQuizProposalEditor = ({
     const content = editor.document as DocumentBlock[];
     onChange({
       content,
-      correctOptionIndex: Math.max(
-        0,
-        nextOptions.findIndex(({ isCorrect }) => isCorrect),
-      ),
+      correctOptionIndex: nextOptions.findIndex(({ isCorrect }) => isCorrect),
       options: nextOptions.map(({ text }) => text),
       prompt: collectDocumentTextBlocks(content)
         .map(({ text }) => text)

@@ -219,7 +219,7 @@ export const AiCollectionGenerationDialog = ({
         collectionId,
         quantity,
         guidance,
-        sourceBlockIds: selectedSection?.ids ?? [],
+        sourceBlockIds: wholeDocumentEligible ? [] : (selectedSection?.ids ?? []),
       });
       if (response.status === "completed") {
         setDraft(response.draft);
@@ -274,6 +274,7 @@ export const AiCollectionGenerationDialog = ({
       });
       toast.success(`${saved.createdIds.length} materiais adicionados à coleção.`);
       clearAiReviewSession(draft.operationId);
+      appliedOperationId.current = "";
       setDraft(null);
       setOperationId("");
       onOpenChange(false);
@@ -287,6 +288,7 @@ export const AiCollectionGenerationDialog = ({
     try {
       await discard.mutateAsync(draft.operationId);
       clearAiReviewSession(draft.operationId);
+      appliedOperationId.current = "";
       setDraft(null);
       setOperationId("");
       setFlashcards([]);
@@ -302,9 +304,10 @@ export const AiCollectionGenerationDialog = ({
     flashcards.some(({ answer, question, selected }) =>
       selected ? !answer.trim() || !question.trim() : false,
     ) ||
-    quizQuestions.some(({ options, prompt, selected }) =>
+    quizQuestions.some(({ correctOptionIndex, options, prompt, selected }) =>
       selected
         ? !prompt.trim() ||
+          correctOptionIndex < 0 ||
           options.some((option) => !option.trim()) ||
           hasDuplicateQuizOptionTexts(options)
         : false,
