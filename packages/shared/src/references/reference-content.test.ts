@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { DocumentBlock } from "../documents/document-contracts.ts";
 import {
+  addSourceAnchorToQuote,
   collectReferenceSourceIds,
   collectSourceAnchorIds,
   getDocumentBlockText,
@@ -25,6 +26,80 @@ const content: DocumentBlock[] = [
 ];
 
 describe("reference content helpers", () => {
+  it("anchors an exact quote split across styled text", () => {
+    const source: DocumentBlock[] = [
+      {
+        id: "paragraph",
+        type: "paragraph",
+        content: [
+          { type: "text", text: "Recuperação ", styles: { bold: true } },
+          { type: "text", text: "ativa melhora a memória.", styles: {} },
+        ],
+      },
+    ];
+    const result = addSourceAnchorToQuote(source, {
+      anchorId: "generated-anchor",
+      blockId: "paragraph",
+      quote: "Recuperação ativa melhora",
+    });
+    expect(result.kind).toBe("ok");
+    if (result.kind !== "ok") return;
+    expect(getReferenceSourcePreview(result.content, "generated-anchor")).toBe(
+      "Recuperação ativa melhora",
+    );
+    expect(source[0]?.content).toHaveLength(2);
+  });
+
+  it("reuses an existing anchor for the same passage", () => {
+    const result = addSourceAnchorToQuote(content, {
+      anchorId: "ignored-anchor",
+      blockId: "one",
+      quote: "Um",
+    });
+    expect(result).toMatchObject({ anchorId: "anchor-one", changed: false, kind: "ok" });
+  });
+
+  it("rejects an ambiguous quote instead of linking the wrong passage", () => {
+    const repeated: DocumentBlock[] = [
+      {
+        id: "repeated",
+        type: "paragraph",
+        content: [{ type: "text", text: "conceito e conceito", styles: {} }],
+      },
+    ];
+    expect(
+      addSourceAnchorToQuote(repeated, {
+        anchorId: "anchor",
+        blockId: "repeated",
+        quote: "conceito",
+      }),
+    ).toEqual({ kind: "ambiguous" });
+  });
+
+  it("normalizes whitespace while preserving the exact styled passage", () => {
+    const source: DocumentBlock[] = [
+      {
+        id: "whitespace",
+        type: "paragraph",
+        content: [
+          { type: "text", text: "Uma ideia\n\t", styles: {} },
+          { type: "text", text: "importante permanece.", styles: { italic: true } },
+        ],
+      },
+    ];
+    const result = addSourceAnchorToQuote(source, {
+      anchorId: "normalized-anchor",
+      blockId: "whitespace",
+      quote: "Uma ideia importante",
+    });
+
+    expect(result.kind).toBe("ok");
+    if (result.kind !== "ok") return;
+    expect(getReferenceSourcePreview(result.content, "normalized-anchor")).toBe(
+      "Uma ideia importante",
+    );
+  });
+
   it("collects anchors from plain and linked text", () => {
     expect(collectSourceAnchorIds(content)).toEqual(new Set(["anchor-one", "anchor-two"]));
   });
