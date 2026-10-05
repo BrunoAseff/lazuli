@@ -103,3 +103,16 @@ export const collectionProviderDraftSchema = z
     ({ flashcards, quizQuestions }) => flashcards.length + quizQuestions.length > 0,
     "The generation must contain at least one material",
   );
+
+const materialImprovementBaseSchema = z.object({
+  warning: z.string().trim().max(500).nullable(),
+});
+
+export const flashcardImprovementProviderDraftSchema = materialImprovementBaseSchema.extend({
+  question: generatedTextSchema,
+  answer: generatedTextSchema,
+});
+
+export const quizImprovementProviderDraftSchema = materialImprovementBaseSchema
+  .extend(generatedQuizQuestionObjectSchema.shape)
+  .superRefine(validateGeneratedQuizQuestion);

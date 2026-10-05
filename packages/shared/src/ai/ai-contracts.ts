@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { REFERENCE_MAX_PER_TARGET } from "../references/reference-contracts.ts";
 
 import { documentContentSchema } from "../documents/document-contracts.ts";
 import { flashcardContentSchema } from "../flashcards/flashcard-contracts.ts";
@@ -16,6 +17,14 @@ export const AI_CREDITS_PER_ITEM = 10;
 export const AI_MAX_REFERENCES_PER_ITEM = 3;
 
 export const aiMaterialKindSchema = z.enum(["flashcard", "quizQuestion"]);
+export const aiImprovementIntentSchema = z.enum([
+  "clarify",
+  "reduceAmbiguity",
+  "concise",
+  "splitConcepts",
+  "improveOptions",
+  "reviewFromSource",
+]);
 export const aiGenerationIdSchema = z.uuid();
 
 const selectionSourceBlockIdsSchema = z
@@ -230,8 +239,133 @@ export const approveAiSelectionGenerationResponseSchema = z.object({
 });
 
 export type AiMaterialKind = z.infer<typeof aiMaterialKindSchema>;
+export type AiImprovementIntent = z.infer<typeof aiImprovementIntentSchema>;
 export type CreateAiSelectionGenerationInput = z.infer<typeof createAiSelectionGenerationSchema>;
 export type AiSelectionDraft = z.infer<typeof aiSelectionDraftSchema>;
 export type CreateAiCollectionGenerationInput = z.infer<typeof createAiCollectionGenerationSchema>;
 export type AiCollectionDraft = z.infer<typeof aiCollectionDraftSchema>;
 export type ApproveAiSelectionGenerationInput = z.infer<typeof approveAiSelectionGenerationSchema>;
+
+const improvementRequestBaseSchema = z
+  .object({
+    idempotencyKey: z.uuid(),
+    intent: aiImprovementIntentSchema,
+    guidance: z.string().trim().max(500).default(""),
+    regenerateOperationId: aiGenerationIdSchema.optional(),
+  })
+  .strict();
+
+export const createAiMaterialImprovementSchema = z.discriminatedUnion("kind", [
+  improvementRequestBaseSchema.extend({
+    kind: z.literal("flashcard"),
+    collectionId: studyCollectionIdSchema,
+    materialId: z.uuid(),
+  }),
+  improvementRequestBaseSchema.extend({
+    kind: z.literal("quizQuestion"),
+    collectionId: studyCollectionIdSchema,
+    materialId: z.uuid(),
+  }),
+]);
+
+const improvementReferenceSchema = z.object({
+  id: z.uuid(),
+  documentId: z.uuid(),
+  documentTitle: z.string(),
+  projectId: z.uuid(),
+  projectTitle: z.string(),
+  anchorId: z.string().nullable(),
+  sourcePreview: z.string().nullable(),
+});
+
+const improvementDraftBaseSchema = z.object({
+  operationId: aiGenerationIdSchema,
+  collectionId: studyCollectionIdSchema,
+  materialId: z.uuid(),
+  materialUpdatedAt: z.iso.datetime(),
+  intent: aiImprovementIntentSchema,
+  guidance: z.string(),
+  consumedCredits: z.number().int().nonnegative(),
+  regenerationCount: z.number().int().nonnegative(),
+  expiresAt: z.iso.datetime(),
+  approved: z.boolean(),
+  references: z.array(improvementReferenceSchema).max(REFERENCE_MAX_PER_TARGET),
+  warning: z.string().trim().max(500).nullable(),
+});
+
+export const aiMaterialImprovementDraftSchema = z.discriminatedUnion("kind", [
+  improvementDraftBaseSchema.extend({
+    kind: z.literal("flashcard"),
+    current: z.object({ question: flashcardContentSchema, answer: flashcardContentSchema }),
+    proposed: z.object({ question: generatedTextSchema, answer: generatedTextSchema }),
+  }),
+  improvementDraftBaseSchema.extend({
+    kind: z.literal("quizQuestion"),
+    current: z.object({
+      content: quizQuestionContentSchema,
+      options: z.array(quizOptionInputSchema).min(2).max(6),
+    }),
+    proposed: z
+      .object({
+        prompt: generatedTextSchema,
+        options: z.array(generatedTextSchema.max(1_000)).min(2).max(6),
+        correctOptionIndex: z.number().int().min(0).max(5),
+      })
+      .superRefine((question, context) => {
+        if (question.correctOptionIndex >= question.options.length)
+          context.addIssue({
+            code: "custom",
+            path: ["correctOptionIndex"],
+            message: "A resposta correta deve apontar para uma alternativa existente.",
+          });
+      }),
+  }),
+]);
+
+export const aiMaterialImprovementResponseSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("running"), operationId: aiGenerationIdSchema }),
+  z.object({ status: z.literal("completed"), draft: aiMaterialImprovementDraftSchema }),
+]);
+
+export const applyAiMaterialImprovementSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("flashcard"),
+      expectedUpdatedAt: z.iso.datetime(),
+      question: flashcardContentSchema,
+      answer: flashcardContentSchema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("quizQuestion"),
+      expectedUpdatedAt: z.iso.datetime(),
+      content: quizQuestionContentSchema,
+      options: z.array(quizOptionInputSchema).min(2).max(6),
+    })
+    .strict()
+    .superRefine(({ options }, context) => {
+      if (options.filter(({ isCorrect }) => isCorrect).length !== 1)
+        context.addIssue({
+          code: "custom",
+          path: ["options"],
+          message: "Escolha exatamente uma alternativa correta.",
+        });
+      const normalized = options.map(({ text }) => text.trim().toLocaleLowerCase("pt-BR"));
+      if (new Set(normalized).size !== normalized.length)
+        context.addIssue({
+          code: "custom",
+          path: ["options"],
+          message: "As alternativas devem ser diferentes.",
+        });
+    }),
+]);
+
+export const applyAiMaterialImprovementResponseSchema = z.object({
+  materialId: z.uuid(),
+  updatedAt: z.iso.datetime(),
+});
+
+export type CreateAiMaterialImprovementInput = z.infer<typeof createAiMaterialImprovementSchema>;
+export type AiMaterialImprovementDraft = z.infer<typeof aiMaterialImprovementDraftSchema>;
+export type ApplyAiMaterialImprovementInput = z.infer<typeof applyAiMaterialImprovementSchema>;

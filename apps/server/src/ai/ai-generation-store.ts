@@ -69,6 +69,7 @@ export interface AiGenerationStore {
   >;
   complete(input: CompleteAiGenerationInput): Promise<void>;
   discardCollection(userId: string, operationId: string): Promise<boolean>;
+  discardMaterialImprovement(userId: string, operationId: string): Promise<boolean>;
   fail(input: {
     attempts: number;
     code: AiErrorCode;
@@ -93,23 +94,34 @@ const getCollectionId = (result: unknown) => {
   return typeof collectionId === "string" ? collectionId : null;
 };
 
+const discardSucceededDraft = async (
+  database: Database,
+  userId: string,
+  operationId: string,
+  type: "collection_generation" | "material_improvement",
+) => {
+  const discarded = await database
+    .update(aiGeneration)
+    .set({ expiresAt: new Date() })
+    .where(
+      and(
+        eq(aiGeneration.id, operationId),
+        eq(aiGeneration.userId, userId),
+        eq(aiGeneration.type, type),
+        eq(aiGeneration.status, "succeeded"),
+        eq(aiGeneration.approvedItems, 0),
+      ),
+    )
+    .returning({ id: aiGeneration.id });
+  return discarded.length > 0;
+};
+
 export const createAiGenerationStore = (database: Database): AiGenerationStore => ({
-  async discardCollection(userId, operationId) {
-    const discarded = await database
-      .update(aiGeneration)
-      .set({ expiresAt: new Date() })
-      .where(
-        and(
-          eq(aiGeneration.id, operationId),
-          eq(aiGeneration.userId, userId),
-          eq(aiGeneration.type, "collection_generation"),
-          eq(aiGeneration.status, "succeeded"),
-          eq(aiGeneration.approvedItems, 0),
-        ),
-      )
-      .returning({ id: aiGeneration.id });
-    return discarded.length > 0;
-  },
+  discardCollection: (userId, operationId) =>
+    discardSucceededDraft(database, userId, operationId, "collection_generation"),
+
+  discardMaterialImprovement: (userId, operationId) =>
+    discardSucceededDraft(database, userId, operationId, "material_improvement"),
 
   async findLatestCollection(userId, collectionId) {
     const now = new Date();
