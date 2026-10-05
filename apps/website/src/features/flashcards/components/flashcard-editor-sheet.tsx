@@ -5,6 +5,7 @@ import {
   type FlashcardDetail,
 } from "@lazuli/shared";
 import { CopyIcon, LoaderCircleIcon, SlidersHorizontalIcon } from "lucide-react";
+import { MagicWandIcon } from "@phosphor-icons/react/MagicWand";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -34,6 +35,7 @@ import {
 import { RichContentField } from "@/components/rich-content-field.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
+import { AiMaterialImprovementDialog } from "@/features/ai/components/ai-material-improvement-dialog.tsx";
 import type { StudyItemAction } from "@/lib/study-actions.ts";
 import type { StudyEditorPresentation } from "@/lib/study-editor.ts";
 import { useFlashcardCollections } from "../api/flashcard-collection-queries.ts";
@@ -78,6 +80,7 @@ const FlashcardEditor = ({
   const [dirty, setDirty] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [detailsSheetOpen, setDetailsSheetOpen] = useState(false);
+  const [improvementOpen, setImprovementOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ answer?: string; question?: string }>({});
   const createdUrls = useRef(new Set<string>());
   const committed = useRef(false);
@@ -271,6 +274,15 @@ const FlashcardEditor = ({
       Salvar
     </Button>
   );
+  const improveButton = card && !readOnly && (
+    <Button
+      disabled={dirty || isPending}
+      onClick={() => setImprovementOpen(true)}
+      variant="outline"
+    >
+      <MagicWandIcon aria-hidden="true" /> Melhorar com IA
+    </Button>
+  );
   const details = (
     <>
       {collectionPicker}
@@ -327,6 +339,7 @@ const FlashcardEditor = ({
                   Salvar e criar outro
                 </Button>
               )}
+              {improveButton}
               {saveButton}
             </DialogFooter>
           </DialogContent>
@@ -389,6 +402,7 @@ const FlashcardEditor = ({
               />
               {!readOnly && (
                 <div className="mt-8 flex justify-end gap-2">
+                  {improveButton}
                   {card && onAction && (
                     <Button
                       disabled={dirty}
@@ -418,6 +432,13 @@ const FlashcardEditor = ({
         onOpenChange={setDiscardOpen}
         open={discardOpen}
       />
+      {card && (
+        <AiMaterialImprovementDialog
+          material={{ kind: "flashcard", value: card }}
+          onOpenChange={setImprovementOpen}
+          open={improvementOpen}
+        />
+      )}
     </>
   );
 };
