@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { AI_DOCUMENT_MAX_BLOCKS } from "@lazuli/shared";
 
 import { AiGenerationError } from "./ai-errors.ts";
 import type {
@@ -258,6 +259,44 @@ describe("AI generation service", () => {
     );
   });
 
+  it("settles an oversized collection source through the normal failure path", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({ output: validSelectionDraft }),
+      store,
+    });
+
+    await expect(
+      service.processCollectionDraft({
+        blocks: Array.from({ length: AI_DOCUMENT_MAX_BLOCKS + 1 }, (_, index) => ({
+          id: `block-${index}`,
+          text: "Conteúdo",
+        })),
+        job: {
+          collectionId: "11111111-1111-4111-8111-111111111111",
+          documentId: "22222222-2222-4222-8222-222222222222",
+          documentRevision: 3,
+          guidance: "",
+          kind: "flashcard",
+          quantity: 1,
+          sourceBlockIds: [],
+          sourceScope: "document",
+        },
+        operationId: "33333333-3333-4333-8333-333333333333",
+        userId: input.userId,
+      }),
+    ).rejects.toMatchObject({ code: "AI_INPUT_TOO_LARGE" });
+
+    expect(store.complete).not.toHaveBeenCalled();
+    expect(store.fail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "AI_INPUT_TOO_LARGE",
+        operationId: "33333333-3333-4333-8333-333333333333",
+      }),
+    );
+  });
+
   it("creates an editable selection draft and settles only its valid proposals", async () => {
     const store = createStore();
     const service = createAiGenerationService({
@@ -419,7 +458,10 @@ describe("AI generation service", () => {
     });
     const blocks = Array.from({ length: 20 }, (_, index) => ({
       id: `block-${index + 1}`,
-      text: `Conteúdo relevante do bloco ${index + 1}.`,
+      text:
+        index === 0
+          ? `Conteúdo relevante do bloco 1. ${"Detalhe complementar. ".repeat(12)}Conclusão singular do bloco.`
+          : `Conteúdo relevante do bloco ${index + 1}.`,
     }));
 
     const result = await service.generateSelectionDraft({
@@ -442,6 +484,8 @@ describe("AI generation service", () => {
       draft: { flashcards: [{ question: "Qual é a ideia central deste trecho?" }] },
       kind: "completed",
     });
+    if (result.kind === "completed")
+      expect(result.draft.flashcards[0]!.references[0]!.quote.length).toBeLessThanOrEqual(120);
     expect(store.complete).toHaveBeenCalledWith(expect.objectContaining({ validItems: 1 }));
   });
 

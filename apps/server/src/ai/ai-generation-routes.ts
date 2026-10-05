@@ -274,6 +274,13 @@ export const createAiGenerationRoutes = ({
           code: "AI_SOURCE_CHANGED",
           message: "O documento mudou. Selecione o trecho novamente.",
         });
+      if (result.kind === "reference-unanchorable")
+        return reply.status(409).send({
+          code: "AI_REFERENCE_UNANCHORABLE",
+          message:
+            "Não foi possível vincular uma referência ao trecho escolhido. Ajuste a referência e tente novamente.",
+          itemId: result.itemId,
+        });
       if (result.kind === "collection-not-found")
         return reply
           .status(404)

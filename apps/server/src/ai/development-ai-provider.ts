@@ -5,6 +5,14 @@ const readTag = (prompt: string, tag: string) => {
   return match?.[1] ? JSON.parse(match[1]) : null;
 };
 
+const shortLiteralExcerpt = (value: string, maxLength = 120) => {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  const tail = normalized.slice(-maxLength);
+  const firstWordEnd = tail.indexOf(" ");
+  return (firstWordEnd === -1 ? tail : tail.slice(firstWordEnd + 1)).trim();
+};
+
 export const createDevelopmentAiProvider = (): AiProvider => ({
   model: "development-fixture",
   name: "development",
@@ -34,7 +42,7 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
         ? `${source.slice(0, 217)}…`
         : source;
     const references = blocks[0]
-      ? [{ blockId: blocks[0].id, quote: blocks[0].text.slice(0, 1_000) }]
+      ? [{ blockId: blocks[0].id, quote: shortLiteralExcerpt(blocks[0].text) }]
       : [];
     const output = {
       flashcards:

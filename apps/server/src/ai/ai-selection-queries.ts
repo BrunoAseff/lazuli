@@ -429,6 +429,20 @@ export const approveAiSelectionGeneration = async (
     let anchoredContent = input.anchoredContent ?? (ownedDocument.content as DocumentBlock[]);
     const referenceAnchors = new Map<string, Array<string | null>>();
     let draftAnchorUsed = false;
+    const submittedItemsUseOriginalAnchor = submittedItems.some((item) => {
+      const proposal = proposalById.get(item.id);
+      if (!proposal) return false;
+      const originalReferences = new Set(
+        proposal.references.map(({ blockId, quote }) => `${blockId}:${normalize(quote)}`),
+      );
+      return item.references.some(
+        (reference) =>
+          reference.scope === "selection" &&
+          originalReferences.has(`${reference.blockId}:${normalize(reference.quote)}`),
+      );
+    });
+    if (draft.sourceScope === "selection" && draft.anchorId && !submittedItemsUseOriginalAnchor)
+      anchoredContent = removeSourceAnchors(anchoredContent, new Set([draft.anchorId])).content;
     for (const item of submittedItems) {
       if (!item.references.length) continue;
       const proposal = proposalById.get(item.id);
@@ -442,9 +456,12 @@ export const approveAiSelectionGeneration = async (
           anchors.push(null);
           continue;
         }
+        const isUnchangedProposalReference = originalReferences.has(
+          `${reference.blockId}:${normalize(reference.quote)}`,
+        );
         const isOriginalSourceReference =
           (draft.sourceScope === "selection" || draft.sourceScope === "image") &&
-          originalReferences.has(`${reference.blockId}:${normalize(reference.quote)}`);
+          isUnchangedProposalReference;
         if (isOriginalSourceReference) {
           if (!draft.anchorId) return { kind: "source-changed" as const };
           anchors.push(draft.anchorId);
@@ -457,7 +474,25 @@ export const approveAiSelectionGeneration = async (
           quote: reference.quote,
           anchorId: randomUUID(),
         });
-        if (applied.kind !== "ok") return { kind: "source-changed" as const };
+        if (applied.kind !== "ok" && isUnchangedProposalReference) {
+          // A generated document/section quote may overlap anchors owned by other
+          // materials. Keep the approved material linked to its document instead
+          // of making an untouched proposal impossible to save.
+          anchors.push(null);
+          continue;
+        }
+        if (applied.kind !== "ok")
+          return { kind: "reference-unanchorable" as const, itemId: item.id };
+        if (applied.anchorId === draft.anchorId) {
+          const anchoredText = normalize(
+            getReferenceSourcePreview(anchoredContent, draft.anchorId, Number.MAX_SAFE_INTEGER),
+          );
+          // A narrower edited passage must not silently keep the broader source anchor.
+          // An exact match may safely keep the source anchor and must survive cleanup.
+          if (anchoredText !== normalize(reference.quote))
+            return { kind: "reference-unanchorable" as const, itemId: item.id };
+          draftAnchorUsed = true;
+        }
         anchoredContent = applied.content;
         anchors.push(applied.anchorId);
       }

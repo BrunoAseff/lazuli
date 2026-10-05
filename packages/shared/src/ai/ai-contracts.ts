@@ -72,7 +72,7 @@ export const aiReferenceProposalSchema = z
   .object({
     scope: z.enum(["selection", "document"]).default("selection"),
     blockId: z.string().trim().max(128).nullable().default(null),
-    quote: z.string().trim().max(1_000).default(""),
+    quote: z.string().trim().max(AI_SELECTION_MAX_TEXT_LENGTH).default(""),
   })
   .superRefine((reference, context) => {
     if (reference.scope !== "selection") return;
