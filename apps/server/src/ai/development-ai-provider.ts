@@ -33,6 +33,9 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
       : source.length > 220
         ? `${source.slice(0, 217)}…`
         : source;
+    const references = blocks[0]
+      ? [{ blockId: blocks[0].id, quote: blocks[0].text.slice(0, 1_000) }]
+      : [];
     const output = {
       flashcards:
         generation?.kind === "flashcard"
@@ -43,6 +46,7 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
                 ? `Qual é a ideia central desta imagem${quantity > 1 ? ` (${index + 1})` : ""}?`
                 : `Qual é a ideia central deste trecho${quantity > 1 ? ` (${index + 1})` : ""}?`,
               sourceBlockIds,
+              references,
               warning: null,
             }))
           : [],
@@ -61,6 +65,7 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
                 ? `Qual alternativa descreve a imagem${quantity > 1 ? ` (${index + 1})` : ""}?`
                 : `Qual alternativa é sustentada pelo trecho${quantity > 1 ? ` (${index + 1})` : ""}?`,
               sourceBlockIds,
+              references,
               warning: null,
             }))
           : [],

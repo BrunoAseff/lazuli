@@ -17,6 +17,7 @@ import type { AiGenerationService } from "./ai-generation-service.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
   approveAiSelectionGeneration,
+  getAiDocumentSourceMetadata,
   prepareAiCollectionGeneration,
   prepareAiSelectionGeneration,
 } from "./ai-selection-queries.ts";
@@ -51,6 +52,18 @@ const serializeCollectionGeneration = (
   return result.kind === "completed"
     ? { status: "completed" as const, draft: result.draft }
     : { status: result.kind, operationId: result.operationId };
+};
+
+const enrichStoredDraftSource = async <
+  T extends { draft: { documentId: string; projectId: string | null } },
+>(
+  database: Database,
+  userId: string,
+  result: T,
+) => {
+  if (result.draft.projectId) return result;
+  const source = await getAiDocumentSourceMetadata(database, userId, result.draft.documentId);
+  return source ? { ...result, draft: { ...result.draft, ...source } } : result;
 };
 
 export const createAiGenerationRoutes = ({
@@ -104,18 +117,26 @@ export const createAiGenerationRoutes = ({
         const result = await service.generateSelectionDraft({
           ...input.data,
           blocks: prepared.blocks,
+          documentTitle: prepared.documentTitle,
           documentRevision: prepared.documentRevision,
           images:
             prepared.imageAsset && imageBytes
               ? [{ data: imageBytes, mediaType: prepared.imageAsset.mimeType }]
               : undefined,
           selectedText: prepared.selectedText,
+          projectId: prepared.projectId,
+          projectTitle: prepared.projectTitle,
           sourceBlockIds: prepared.sourceBlockIds,
           userId: session.user.id,
         });
+        const response = serializeGeneration(result);
         return reply
           .status(result.kind === "completed" ? 201 : 202)
-          .send(serializeGeneration(result));
+          .send(
+            response.status === "completed"
+              ? await enrichStoredDraftSource(database, session.user.id, response)
+              : response,
+          );
       } catch (error) {
         return sendAiError(reply, error);
       }
@@ -144,16 +165,23 @@ export const createAiGenerationRoutes = ({
       try {
         const result = await service.enqueueCollectionDraft({
           ...input.data,
+          documentTitle: prepared.documentTitle,
           documentRevision: prepared.documentRevision,
+          projectId: prepared.projectId,
+          projectTitle: prepared.projectTitle,
           sourceScope: input.data.sourceBlockIds.length ? "section" : "document",
           userId: session.user.id,
         });
+        const response =
+          result.kind === "completed"
+            ? { status: "completed" as const, draft: result.draft }
+            : { status: result.kind, operationId: result.operationId };
         return reply
           .status(result.kind === "completed" ? 201 : 202)
           .send(
-            result.kind === "completed"
-              ? { status: "completed", draft: result.draft }
-              : { status: result.kind, operationId: result.operationId },
+            response.status === "completed"
+              ? await enrichStoredDraftSource(database, session.user.id, response)
+              : response,
           );
       } catch (error) {
         return sendAiError(reply, error);
@@ -167,7 +195,11 @@ export const createAiGenerationRoutes = ({
       if (!collectionId.success) return sendValidationError(reply);
       try {
         const result = await service.getLatestCollectionDraft(session.user.id, collectionId.data);
-        return result ? serializeCollectionGeneration(result) : { status: "none" as const };
+        if (!result) return { status: "none" as const };
+        const response = serializeCollectionGeneration(result);
+        return response?.status === "completed"
+          ? enrichStoredDraftSource(database, session.user.id, response)
+          : response;
       } catch (error) {
         return sendAiError(reply, error);
       }
@@ -201,7 +233,10 @@ export const createAiGenerationRoutes = ({
             .status(404)
             .send({ code: "AI_GENERATION_NOT_FOUND", message: "Esta geração não foi encontrada." });
         if (result.kind === "completed")
-          return { status: "completed" as const, draft: result.draft };
+          return enrichStoredDraftSource(database, session.user.id, {
+            status: "completed" as const,
+            draft: result.draft,
+          });
         return result.kind === "in-progress"
           ? { status: "running" as const, operationId: result.operationId }
           : { status: result.kind, operationId: result.operationId };

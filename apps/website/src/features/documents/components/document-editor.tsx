@@ -38,6 +38,7 @@ import {
   AiSelectionGenerationDialog,
   type AiSelectionAction,
 } from "@/features/ai/components/ai-selection-generation-dialog.tsx";
+import { updateAiReviewReference } from "@/features/ai/ai-review-session.ts";
 import { DocumentMaterialFlow } from "@/features/references/components/document-material-flow.tsx";
 import {
   DocumentReferencesButton,
@@ -114,10 +115,38 @@ export const DocumentEditor = ({
     const value = new URLSearchParams(location.search).get("referenceReturnTo");
     return value?.startsWith("/") && !value.startsWith("//") ? value : null;
   }, [location.search]);
+  const pendingAiReference = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const operationId = params.get("aiReferenceOperationId");
+    const proposalId = params.get("aiReferenceProposalId");
+    const kind = params.get("aiReferenceKind");
+    const referenceIndex = Number(params.get("aiReferenceIndex"));
+    const returnTo = safeReturnTo(params.get("aiReferenceReturnTo"));
+    if (
+      !operationId ||
+      !proposalId ||
+      (kind !== "flashcard" && kind !== "quizQuestion") ||
+      !Number.isInteger(referenceIndex) ||
+      referenceIndex < 0 ||
+      !returnTo
+    )
+      return null;
+    return {
+      kind: kind as "flashcard" | "quizQuestion",
+      operationId,
+      proposalId,
+      referenceIndex,
+      returnTo,
+    };
+  }, [location.search]);
   const contextualReturnTo = useMemo(
     () => safeReturnTo(new URLSearchParams(location.search).get("returnTo")),
     [location.search],
   );
+  useEffect(() => {
+    if (aiAction && !pendingAiReference && new URLSearchParams(location.search).get("aiGeneration"))
+      setAiDialogOpen(true);
+  }, [aiAction, location.search, pendingAiReference]);
   const cleanSnapshot = useRef(JSON.stringify(data.content));
   const savedTitle = useRef(data.item.title);
   const titleDirty = normalizeProjectItemTitle(title) !== savedTitle.current;
@@ -232,6 +261,32 @@ export const DocumentEditor = ({
       toast.error("Não foi possível vincular o trecho.");
     }
   };
+  const selectPendingAiReference = () => {
+    if (!pendingAiReference) return;
+    const selection = getDocumentReferenceSelection(editor);
+    if (!selection || selection.imageBlockId) {
+      toast.error("Selecione um trecho de texto antes de salvar.");
+      return;
+    }
+    if (selection.sourceBlockIds.length !== 1) {
+      toast.error("Selecione um trecho dentro de um único bloco.");
+      return;
+    }
+    const updated = updateAiReviewReference({
+      blockId: selection.sourceBlockIds[0]!,
+      kind: pendingAiReference.kind,
+      operationId: pendingAiReference.operationId,
+      proposalId: pendingAiReference.proposalId,
+      quote: selection.selectedText,
+      referenceIndex: pendingAiReference.referenceIndex,
+    });
+    if (!updated) {
+      toast.error("Não foi possível atualizar a referência desta proposta.");
+      return;
+    }
+    toast.success("Trecho da referência ajustado.");
+    void navigate(pendingAiReference.returnTo, { replace: true });
+  };
   const applyAdjustment = () => {
     if (!adjustingAnchorId || !editor.getSelectedText().trim()) {
       toast.error("Selecione o novo trecho antes de salvar.");
@@ -281,7 +336,7 @@ export const DocumentEditor = ({
   };
   useEffect(() => releaseResolvedAssetUrls, [documentId]);
   useEffect(() => {
-    if (!pendingTarget && !adjustingAnchorId) {
+    if (!pendingTarget && !pendingAiReference && !adjustingAnchorId) {
       setPendingSelectionAvailable(false);
       return;
     }
@@ -289,7 +344,7 @@ export const DocumentEditor = ({
       setPendingSelectionAvailable(Boolean(getDocumentReferenceSelection(editor)));
     update();
     return editor.onSelectionChange(update);
-  }, [adjustingAnchorId, editor, pendingTarget]);
+  }, [adjustingAnchorId, editor, pendingAiReference, pendingTarget]);
   useEffect(() => {
     const anchorId = new URLSearchParams(location.search).get("anchor");
     if (!anchorId) return;
@@ -300,6 +355,19 @@ export const DocumentEditor = ({
       anchor?.scrollIntoView({ behavior: "smooth", block: "center" });
       anchor?.setAttribute("data-reference-target", "true");
       window.setTimeout(() => anchor?.removeAttribute("data-reference-target"), 2_000);
+    });
+    return () => window.clearTimeout(timer);
+  }, [documentId, location.search]);
+  useEffect(() => {
+    const blockId = new URLSearchParams(location.search).get("block");
+    if (!blockId) return;
+    const timer = window.setTimeout(() => {
+      const block = Array.from(
+        editorContainerRef.current?.querySelectorAll<HTMLElement>(".bn-block-outer[data-id]") ?? [],
+      ).find((element) => element.dataset.id === blockId);
+      block?.scrollIntoView({ behavior: "smooth", block: "center" });
+      block?.setAttribute("data-reference-target", "true");
+      window.setTimeout(() => block?.removeAttribute("data-reference-target"), 2_000);
     });
     return () => window.clearTimeout(timer);
   }, [documentId, location.search]);
@@ -678,18 +746,24 @@ export const DocumentEditor = ({
           </p>
         </main>
       </div>
-      {(pendingTarget || adjustingAnchorId) && (
+      {(pendingTarget || pendingAiReference || adjustingAnchorId) && (
         <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-[var(--radius-overlay)] border bg-popover px-4 py-3 shadow-[var(--shadow-overlay)]">
           <p className="min-w-0 flex-1 text-sm">
             {adjustingAnchorId
               ? "Selecione o novo trecho desta referência."
-              : "Selecione no documento o trecho que deseja vincular."}
+              : pendingAiReference
+                ? "Selecione o novo trecho da referência sugerida."
+                : "Selecione no documento o trecho que deseja vincular."}
           </p>
           <Button
             onClick={
               adjustingAnchorId
                 ? cancelAdjustment
-                : () => void navigate(referenceReturnTo ?? location.pathname, { replace: true })
+                : () =>
+                    void navigate(
+                      pendingAiReference?.returnTo ?? referenceReturnTo ?? location.pathname,
+                      { replace: true },
+                    )
             }
             size="sm"
             variant="outline"
@@ -699,11 +773,15 @@ export const DocumentEditor = ({
           <Button
             disabled={!pendingSelectionAvailable}
             onClick={() =>
-              adjustingAnchorId ? applyAdjustment() : setPendingLinkConfirmationOpen(true)
+              adjustingAnchorId
+                ? applyAdjustment()
+                : pendingAiReference
+                  ? selectPendingAiReference()
+                  : setPendingLinkConfirmationOpen(true)
             }
             size="sm"
           >
-            {adjustingAnchorId ? "Salvar trecho" : "Vincular trecho"}
+            {adjustingAnchorId || pendingAiReference ? "Salvar trecho" : "Vincular trecho"}
           </Button>
         </div>
       )}
@@ -741,11 +819,23 @@ export const DocumentEditor = ({
         documentRevision={revisionRef.current}
         getDocumentContent={() => editor.document as DocumentBlock[]}
         open={aiDialogOpen}
-        onApproved={(nextRevision) => {
-          const snapshot = JSON.stringify(editor.document);
-          setRevision(nextRevision);
-          revisionRef.current = nextRevision;
+        onApproved={async () => {
+          let remote: Awaited<ReturnType<typeof fetchDocument>>;
+          try {
+            remote = await fetchDocument(projectId, documentId);
+          } catch {
+            // Approval has already committed the generated materials and source anchors.
+            // Reload instead of leaving stale local content that autosave could overwrite.
+            window.location.reload();
+            return;
+          }
+          const nextContent = remote.content as LazuliDocumentBlock;
+          editor.replaceBlocks(editor.document, nextContent);
+          const snapshot = JSON.stringify(nextContent);
+          setRevision(remote.revision);
+          revisionRef.current = remote.revision;
           cleanSnapshot.current = snapshot;
+          cleanAssetUrls.current = collectAssetUrls(nextContent);
           setDirty(false);
           setSaveState(titleDirty ? "pending" : "saved");
           closeAiFlow(false);

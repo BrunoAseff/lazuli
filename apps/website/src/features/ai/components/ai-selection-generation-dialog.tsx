@@ -9,7 +9,7 @@ import { ArrowClockwiseIcon } from "@phosphor-icons/react/ArrowClockwise";
 import { CircleNotchIcon } from "@phosphor-icons/react/CircleNotch";
 import { CoinsIcon } from "@phosphor-icons/react/Coins";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
@@ -39,6 +39,11 @@ import type { AiEditableQuizProposal } from "./ai-quiz-proposal-editor.tsx";
 import { AiProposalReviewList } from "./ai-proposal-review-list.tsx";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
 import { cn } from "@/lib/utils.ts";
+import {
+  clearAiReviewSession,
+  readAiReviewSession,
+  writeAiReviewSession,
+} from "../ai-review-session.ts";
 import {
   useAiCreditBalance,
   useAiGeneration,
@@ -91,11 +96,12 @@ export const AiSelectionGenerationDialog = ({
   documentRevision: number;
   getDocumentContent: () => DocumentBlock[];
   open: boolean;
-  onApproved: (revision: number) => void;
+  onApproved: (revision: number) => Promise<void> | void;
   onCancel: () => void;
   onMinimize: () => void;
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [kind, setKind] = useState<AiMaterialKind>("flashcard");
   const [collectionId, setCollectionId] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -128,6 +134,19 @@ export const AiSelectionGenerationDialog = ({
   );
   const appliedOperationId = useRef("");
   const cost = quantity * AI_CREDITS_PER_ITEM;
+  const persistReview = () => {
+    if (!draft?.projectId) return;
+    writeAiReviewSession(draft.operationId, {
+      flashcards,
+      quizQuestions,
+      source: {
+        documentId: draft.documentId,
+        documentTitle: draft.documentTitle,
+        projectId: draft.projectId,
+        projectTitle: draft.projectTitle,
+      },
+    });
+  };
 
   useEffect(() => {
     setCollectionId((current) =>
@@ -158,9 +177,20 @@ export const AiSelectionGenerationDialog = ({
     if (appliedOperationId.current === result.draft.operationId) return;
     appliedOperationId.current = result.draft.operationId;
     setDraft(result.draft);
-    setFlashcards(result.draft.flashcards.map((item) => ({ ...item, selected: true })));
-    setQuizQuestions(result.draft.quizQuestions.map((item) => ({ ...item, selected: true })));
+    const saved = readAiReviewSession(result.draft.operationId);
+    setFlashcards(
+      saved?.flashcards ?? result.draft.flashcards.map((item) => ({ ...item, selected: true })),
+    );
+    setQuizQuestions(
+      saved?.quizQuestions ??
+        result.draft.quizQuestions.map((item) => ({ ...item, selected: true })),
+    );
   }, [generation.data]);
+
+  useEffect(() => {
+    if (!draft || !draft.projectId) return;
+    persistReview();
+  }, [draft, flashcards, quizQuestions]);
 
   const selectedCount = useMemo(
     () =>
@@ -248,17 +278,20 @@ export const AiSelectionGenerationDialog = ({
           draft.kind === "flashcard"
             ? flashcards
                 .filter(({ selected }) => selected)
-                .map(({ answer, id, question }) => ({
+                .map(({ answer, id, question, references }) => ({
                   id,
                   question: textContent(question),
                   answer: textContent(answer),
+                  references: references.filter(
+                    ({ quote, scope }) => scope === "document" || quote.trim(),
+                  ),
                 }))
             : [],
         quizQuestions:
           draft.kind === "quizQuestion"
             ? quizQuestions
                 .filter(({ selected }) => selected)
-                .map(({ content, correctOptionIndex, id, options, prompt }) => ({
+                .map(({ content, correctOptionIndex, id, options, prompt, references }) => ({
                   id,
                   content: content ?? textContent(prompt),
                   options: options.map((text, index) => ({
@@ -266,10 +299,14 @@ export const AiSelectionGenerationDialog = ({
                     text,
                     isCorrect: index === correctOptionIndex,
                   })),
+                  references: references.filter(
+                    ({ quote, scope }) => scope === "document" || quote.trim(),
+                  ),
                 }))
             : [],
       });
       clearGenerationUrl();
+      clearAiReviewSession(draft.operationId);
       const collectionPath =
         draft.kind === "flashcard"
           ? `/flashcards/${draft.collectionId}`
@@ -287,7 +324,7 @@ export const AiSelectionGenerationDialog = ({
           },
         },
       );
-      onApproved(result.revision);
+      await onApproved(result.revision);
     } catch (error) {
       toast.error(
         getApiErrorMessage(error, "Não foi possível salvar os materiais.", generationMessages),
@@ -453,13 +490,25 @@ export const AiSelectionGenerationDialog = ({
                       current.map((item) => (item.id === id ? { ...item, ...change } : item)),
                     )
                   }
+                  onNavigateReference={() => {
+                    persistReview();
+                    onMinimize();
+                  }}
                   onQuizChange={(id, change) =>
                     setQuizQuestions((current) =>
                       current.map((item) => (item.id === id ? { ...item, ...change } : item)),
                     )
                   }
                   onRemove={(id, kind) => setDiscardTarget({ id, kind })}
+                  operationId={draft.operationId}
                   quizQuestions={quizQuestions}
+                  returnTo={`${location.pathname}${location.search}`}
+                  source={{
+                    documentId: draft.documentId,
+                    documentTitle: draft.documentTitle,
+                    projectId: draft.projectId ?? "",
+                    projectTitle: draft.projectTitle,
+                  }}
                 />
               </div>
             )}
@@ -547,6 +596,7 @@ export const AiSelectionGenerationDialog = ({
             setQuizQuestions((current) => current.filter(({ id }) => id !== discardTarget.id));
           setDiscardTarget(null);
           if (remainingCount === 0) {
+            if (draft) clearAiReviewSession(draft.operationId);
             clearGenerationUrl();
             setDraft(null);
             onCancel();
