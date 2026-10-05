@@ -39,6 +39,7 @@ const validSelectionDraft = {
     {
       answer: "Porque exige recuperar a informação da memória.",
       evidence: "Recuperar uma ideia fortalece a memória.",
+      references: [{ blockId: "block-1", quote: "Recuperar uma ideia fortalece a memória." }],
       question: "Por que a recuperação ativa melhora a retenção?",
       sourceBlockIds: ["block-1"],
       warning: null,
@@ -238,6 +239,17 @@ describe("AI generation service", () => {
         operationId: "33333333-3333-4333-8333-333333333333",
         result: expect.objectContaining({
           consumedCredits: 10,
+          flashcards: [
+            expect.objectContaining({
+              references: [
+                {
+                  blockId: "block-1",
+                  quote: "Recuperar uma ideia fortalece a memória.",
+                  scope: "selection",
+                },
+              ],
+            }),
+          ],
           requestedItems: 5,
           sourceScope: "section",
         }),
@@ -279,9 +291,122 @@ describe("AI generation service", () => {
         consumedCredits: 10,
         regenerationCount: 0,
         requestedItems: 2,
+        flashcards: [
+          expect.objectContaining({
+            references: [
+              {
+                blockId: "block-1",
+                quote: "Recuperar uma ideia fortalece a memória.",
+                scope: "selection",
+              },
+            ],
+          }),
+        ],
       },
     });
     expect(store.complete).toHaveBeenCalledWith(expect.objectContaining({ validItems: 1 }));
+  });
+
+  it("keeps a generated material but rejects evidence outside the authorized source", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({
+        output: {
+          ...validSelectionDraft,
+          flashcards: [
+            {
+              ...validSelectionDraft.flashcards[0]!,
+              references: [{ blockId: "invented-block", quote: "Texto inventado" }],
+              sourceBlockIds: ["invented-block"],
+            },
+          ],
+        },
+      }),
+      retryDelayMs: 0,
+      store,
+    });
+
+    await service.processCollectionDraft({
+      blocks: input.blocks,
+      job: {
+        collectionId: "11111111-1111-4111-8111-111111111111",
+        documentId: "22222222-2222-4222-8222-222222222222",
+        documentRevision: 3,
+        guidance: "",
+        kind: "flashcard",
+        quantity: 1,
+        sourceBlockIds: [],
+        sourceScope: "document",
+      },
+      operationId: "33333333-3333-4333-8333-333333333333",
+      userId: input.userId,
+    });
+
+    expect(store.complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          flashcards: [
+            expect.objectContaining({
+              references: [],
+              referenceWarning:
+                "A referência sugerida não foi encontrada literalmente no documento.",
+            }),
+          ],
+        }),
+        validItems: 1,
+      }),
+    );
+  });
+
+  it("keeps a generated material but rejects an ambiguous literal reference", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({
+        output: {
+          ...validSelectionDraft,
+          flashcards: [
+            {
+              ...validSelectionDraft.flashcards[0]!,
+              references: [{ blockId: "block-1", quote: "conceito" }],
+            },
+          ],
+        },
+      }),
+      retryDelayMs: 0,
+      store,
+    });
+
+    await service.processCollectionDraft({
+      blocks: [{ id: "block-1", text: "conceito relacionado a outro conceito" }],
+      job: {
+        collectionId: "11111111-1111-4111-8111-111111111111",
+        documentId: "22222222-2222-4222-8222-222222222222",
+        documentRevision: 3,
+        guidance: "",
+        kind: "flashcard",
+        quantity: 1,
+        sourceBlockIds: [],
+        sourceScope: "document",
+      },
+      operationId: "33333333-3333-4333-8333-333333333333",
+      userId: input.userId,
+    });
+
+    expect(store.complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          flashcards: [
+            expect.objectContaining({
+              references: [],
+              referenceWarning:
+                "A referência sugerida não foi encontrada literalmente no documento.",
+            }),
+          ],
+        }),
+      }),
+    );
   });
 
   it("generates a development draft from a whole document with more than ten blocks", async () => {

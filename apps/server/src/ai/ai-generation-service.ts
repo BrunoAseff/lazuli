@@ -18,6 +18,7 @@ import {
   estimateAiCostMicroUsd,
 } from "./ai-model-config.ts";
 import {
+  COLLECTION_PROMPT_VERSION,
   createCollectionPrompt,
   createFoundationPrompt,
   createSelectionPrompt,
@@ -46,12 +47,15 @@ type SelectionGenerationInput = {
   blocks: AiSourceBlock[];
   collectionId: string;
   documentId: string;
+  documentTitle?: string;
   documentRevision: number;
   guidance: string;
   idempotencyKey: string;
   images?: Array<{ data: Uint8Array; mediaType: string }>;
   kind: "flashcard" | "quizQuestion";
   quantity: number;
+  projectId?: string;
+  projectTitle?: string;
   regenerateOperationId?: string;
   selectedText: string;
   sourceScope: "selection" | "image" | "document";
@@ -62,10 +66,13 @@ type SelectionGenerationInput = {
 export type CollectionGenerationJob = {
   collectionId: string;
   documentId: string;
+  documentTitle?: string;
   documentRevision: number;
   guidance: string;
   kind: "flashcard" | "quizQuestion";
   quantity: number;
+  projectId?: string;
+  projectTitle?: string;
   sourceBlockIds: string[];
   sourceScope: "document" | "section";
 };
@@ -112,6 +119,65 @@ const assertReferencedBlocksExist = (draft: FoundationDraft, blocks: AiSourceBlo
   ];
   if (references.some((blockId) => !allowedIds.has(blockId)))
     throw new AiGenerationError("AI_INVALID_OUTPUT");
+};
+
+const normalizeEvidence = (value: string) => value.replace(/\s+/g, " ").trim();
+
+const validatedReferences = (
+  references: Array<{ blockId: string; quote: string }>,
+  blocks: AiSourceBlock[],
+) => {
+  const sourceById = new Map(blocks.map((block) => [block.id, normalizeEvidence(block.text)]));
+  const seen = new Set<string>();
+  return references.filter(({ blockId, quote }) => {
+    const source = sourceById.get(blockId);
+    const normalizedQuote = normalizeEvidence(quote);
+    const key = `${blockId}:${normalizedQuote}`;
+    const firstMatch = source?.indexOf(normalizedQuote) ?? -1;
+    if (
+      !source ||
+      !normalizedQuote ||
+      firstMatch === -1 ||
+      source.indexOf(normalizedQuote, firstMatch + 1) !== -1 ||
+      seen.has(key)
+    )
+      return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const proposalReferences = ({
+  blocks,
+  references,
+  sourceScope,
+  sourceText,
+}: {
+  blocks: AiSourceBlock[];
+  references: Array<{ blockId: string; quote: string }>;
+  sourceScope: "document" | "image" | "section" | "selection";
+  sourceText: string;
+}) => {
+  if (sourceScope === "selection" || sourceScope === "image")
+    return blocks[0] ? [{ blockId: blocks[0].id, quote: sourceText }] : [];
+  return validatedReferences(references, blocks);
+};
+
+const withValidatedReferences = <
+  T extends { references: Array<{ blockId: string; quote: string }> },
+>(
+  item: T,
+  blocks: AiSourceBlock[],
+) => {
+  const references = validatedReferences(item.references, blocks);
+  return {
+    ...item,
+    references,
+    referenceWarning:
+      references.length > 0
+        ? null
+        : "A referência sugerida não foi encontrada literalmente no documento.",
+  };
 };
 
 const storedError = (errorCode: string | null) => {
@@ -204,16 +270,19 @@ export const createAiGenerationService = ({
           job: {
             collectionId: input.collectionId,
             documentId: input.documentId,
+            documentTitle: input.documentTitle,
             documentRevision: input.documentRevision,
             guidance: input.guidance,
             kind: input.kind,
             quantity: input.quantity,
+            projectId: input.projectId,
+            projectTitle: input.projectTitle,
             sourceBlockIds: input.sourceBlockIds,
             sourceScope: input.sourceBlockIds.length ? "section" : "document",
           } satisfies CollectionGenerationJob,
         },
         origin: "collection",
-        promptVersion: "collection-draft-v1",
+        promptVersion: COLLECTION_PROMPT_VERSION,
         provider: provider.name,
         requestedItems: input.quantity,
         regenerationOfId: null,
@@ -285,7 +354,6 @@ export const createAiGenerationService = ({
               userIdentifier: anonymousUserIdentifier(userId),
             });
             const generated = collectionProviderDraftSchema.parse(result.output);
-            assertReferencedBlocksExist(generated, blocks);
             const proposals =
               job.kind === "flashcard" ? generated.flashcards : generated.quizQuestions;
             if (!proposals.length || proposals.length > job.quantity)
@@ -297,18 +365,21 @@ export const createAiGenerationService = ({
               kind: job.kind,
               collectionId: job.collectionId,
               documentId: job.documentId,
+              documentTitle: job.documentTitle,
               documentRevision: job.documentRevision,
               anchorId: null,
               sourceScope: job.sourceScope,
               sourceBlockIds: blocks.map(({ id }) => id),
               sourceText: blocks.map(({ text }) => text).join(" "),
               requestedItems: job.quantity,
+              projectId: job.projectId,
+              projectTitle: job.projectTitle,
               consumedCredits: proposals.length * 10,
               regenerationCount: 0,
               expiresAt: expiresAt.toISOString(),
               approved: false,
               flashcards: generated.flashcards.map((item) => ({
-                ...item,
+                ...withValidatedReferences(item, blocks),
                 id: randomUUID(),
                 evidence:
                   item.evidence ||
@@ -318,7 +389,7 @@ export const createAiGenerationService = ({
                     .join(" "),
               })),
               quizQuestions: generated.quizQuestions.map((item) => ({
-                ...item,
+                ...withValidatedReferences(item, blocks),
                 id: randomUUID(),
                 evidence:
                   item.evidence ||
@@ -454,7 +525,6 @@ export const createAiGenerationService = ({
               userIdentifier: anonymousUserIdentifier(input.userId),
             });
             const generated = selectionProviderDraftSchema.parse(result.output);
-            assertReferencedBlocksExist(generated, input.blocks);
             const proposals =
               input.kind === "flashcard" ? generated.flashcards : generated.quizQuestions;
             if (proposals.length === 0 || proposals.length > input.quantity)
@@ -465,18 +535,53 @@ export const createAiGenerationService = ({
               kind: input.kind,
               collectionId: input.collectionId,
               documentId: input.documentId,
+              documentTitle: input.documentTitle,
               documentRevision: input.documentRevision,
               anchorId: input.anchorId,
               sourceScope: input.sourceScope,
               sourceBlockIds: input.sourceBlockIds,
               sourceText: input.selectedText,
               requestedItems: input.quantity,
+              projectId: input.projectId,
+              projectTitle: input.projectTitle,
               consumedCredits: input.regenerateOperationId ? 0 : proposals.length * 10,
               regenerationCount: admission.regenerationCount,
               expiresAt: expiresAt.toISOString(),
               approved: false,
-              flashcards: generated.flashcards.map((item) => ({ ...item, id: randomUUID() })),
-              quizQuestions: generated.quizQuestions.map((item) => ({ ...item, id: randomUUID() })),
+              flashcards: generated.flashcards.map((item) => {
+                const references = proposalReferences({
+                  blocks: input.blocks,
+                  references: item.references,
+                  sourceScope: input.sourceScope,
+                  sourceText: input.selectedText,
+                });
+                return {
+                  ...item,
+                  id: randomUUID(),
+                  references,
+                  referenceWarning:
+                    references.length > 0
+                      ? null
+                      : "A referência sugerida não foi encontrada literalmente no documento.",
+                };
+              }),
+              quizQuestions: generated.quizQuestions.map((item) => {
+                const references = proposalReferences({
+                  blocks: input.blocks,
+                  references: item.references,
+                  sourceScope: input.sourceScope,
+                  sourceText: input.selectedText,
+                });
+                return {
+                  ...item,
+                  id: randomUUID(),
+                  references,
+                  referenceWarning:
+                    references.length > 0
+                      ? null
+                      : "A referência sugerida não foi encontrada literalmente no documento.",
+                };
+              }),
             });
             const latencyMs = Date.now() - startedAt;
             await store.complete({

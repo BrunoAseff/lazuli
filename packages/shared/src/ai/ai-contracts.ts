@@ -13,6 +13,7 @@ export const AI_DOCUMENT_MAX_TEXT_LENGTH = 80_000;
 export const AI_SELECTION_MAX_ITEMS = 5;
 export const AI_COLLECTION_MAX_ITEMS = 10;
 export const AI_CREDITS_PER_ITEM = 10;
+export const AI_MAX_REFERENCES_PER_ITEM = 3;
 
 export const aiMaterialKindSchema = z.enum(["flashcard", "quizQuestion"]);
 export const aiGenerationIdSchema = z.uuid();
@@ -67,11 +68,32 @@ export const createAiSelectionGenerationSchema = z.discriminatedUnion("sourceSco
 
 const generatedTextSchema = z.string().trim().min(1).max(4_000);
 
+export const aiReferenceProposalSchema = z
+  .object({
+    scope: z.enum(["selection", "document"]).default("selection"),
+    blockId: z.string().trim().max(128).nullable().default(null),
+    quote: z.string().trim().max(1_000).default(""),
+  })
+  .superRefine((reference, context) => {
+    if (reference.scope !== "selection") return;
+    if (!reference.blockId)
+      context.addIssue({ code: "custom", path: ["blockId"], message: "Informe o bloco." });
+    if (!reference.quote)
+      context.addIssue({ code: "custom", path: ["quote"], message: "Informe o trecho." });
+  });
+
+const proposalReferencesSchema = z
+  .array(aiReferenceProposalSchema)
+  .max(AI_MAX_REFERENCES_PER_ITEM)
+  .default([]);
+
 export const aiFlashcardProposalSchema = z.object({
   id: z.uuid(),
   question: generatedTextSchema,
   answer: generatedTextSchema,
   evidence: generatedTextSchema.max(1_000),
+  references: proposalReferencesSchema,
+  referenceWarning: z.string().trim().max(500).nullable().default(null),
   warning: z.string().trim().max(500).nullable(),
 });
 
@@ -84,6 +106,8 @@ export const aiQuizProposalSchema = z
     options: z.array(generatedTextSchema.max(1_000)).min(2).max(6),
     correctOptionIndex: z.number().int().min(0).max(5),
     evidence: generatedTextSchema.max(1_000),
+    references: proposalReferencesSchema,
+    referenceWarning: z.string().trim().max(500).nullable().default(null),
     warning: z.string().trim().max(500).nullable(),
   })
   .superRefine((question, context) => {
@@ -107,6 +131,9 @@ export const aiSelectionDraftSchema = z.object({
   kind: aiMaterialKindSchema,
   collectionId: studyCollectionIdSchema,
   documentId: z.uuid(),
+  projectId: z.uuid().nullable().default(null),
+  projectTitle: z.string().trim().max(100).default("Projeto"),
+  documentTitle: z.string().trim().max(100).default("Documento"),
   documentRevision: z.number().int().nonnegative(),
   sourceScope: z.enum(["selection", "image", "document"]).default("selection"),
   anchorId: z.string().min(1).max(128).nullable(),
@@ -159,6 +186,7 @@ const approvedFlashcardSchema = z.object({
   id: z.uuid(),
   question: flashcardContentSchema,
   answer: flashcardContentSchema,
+  references: proposalReferencesSchema,
 });
 
 const approvedQuizSchema = z
@@ -166,6 +194,7 @@ const approvedQuizSchema = z
     id: z.uuid(),
     content: quizQuestionContentSchema,
     options: z.array(quizOptionInputSchema).min(2).max(6),
+    references: proposalReferencesSchema,
   })
   .superRefine(({ options }, context) => {
     if (options.filter(({ isCorrect }) => isCorrect).length !== 1)

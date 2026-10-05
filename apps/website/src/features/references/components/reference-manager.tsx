@@ -5,7 +5,7 @@ import {
 } from "@lazuli/shared";
 import { CheckIcon, FileTextIcon, Link2Icon, LoaderCircleIcon, PlusIcon } from "lucide-react";
 import { useMemo, useState, type Ref } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { HighlightText } from "@/components/highlight-text.tsx";
@@ -26,6 +26,7 @@ import { useProjectTree } from "@/features/documents/api/document-queries.ts";
 import { documentLocation } from "@/features/documents/document-navigation.ts";
 import { useCreateReferences, useReferences } from "../api/reference-queries.ts";
 import { ReferenceDeleteButton } from "./reference-delete-button.tsx";
+import { ReferenceDocumentRow } from "./reference-document-row.tsx";
 
 export const ReferenceManager = ({
   disabled = false,
@@ -99,35 +100,24 @@ export const ReferenceManager = ({
             )}
             <div className="divide-y">
               {references.data?.items.map((reference) => (
-                <div className="flex min-w-0 items-center gap-3 py-3" key={reference.id}>
-                  <FileTextIcon aria-hidden="true" className="size-4 shrink-0 text-primary" />
-                  <div className="min-w-0 flex-1">
-                    <OverflowTooltip text={reference.documentTitle}>
-                      {(ref) => (
-                        <Link
-                          className="block truncate text-sm font-medium underline underline-offset-4"
-                          ref={ref as Ref<HTMLAnchorElement>}
-                          to={documentLocation({
-                            anchorId: reference.anchorId,
-                            documentId: reference.documentId,
-                            projectId: reference.projectId,
-                            returnTo: returnTo ?? `${location.pathname}${location.search}`,
-                          })}
-                        >
-                          {reference.documentTitle}
-                        </Link>
-                      )}
-                    </OverflowTooltip>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {reference.projectTitle} ·{" "}
-                      {reference.anchorId ? "Trecho" : "Documento inteiro"}
-                    </p>
-                  </div>
-                  <ReferenceDeleteButton
-                    label={`Remover referência de ${reference.documentTitle}`}
-                    referenceId={reference.id}
-                  />
-                </div>
+                <ReferenceDocumentRow
+                  documentTitle={reference.documentTitle}
+                  href={documentLocation({
+                    anchorId: reference.anchorId,
+                    documentId: reference.documentId,
+                    projectId: reference.projectId,
+                    returnTo: returnTo ?? `${location.pathname}${location.search}`,
+                  })}
+                  key={reference.id}
+                  projectTitle={reference.projectTitle}
+                  scope={reference.anchorId ? "selection" : "document"}
+                  trailing={
+                    <ReferenceDeleteButton
+                      label={`Remover referência de ${reference.documentTitle}`}
+                      referenceId={reference.id}
+                    />
+                  }
+                />
               ))}
             </div>
           </div>

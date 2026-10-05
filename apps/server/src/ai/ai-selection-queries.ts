@@ -1,6 +1,7 @@
 import {
   aiCollectionDraftSchema,
   aiSelectionDraftSchema,
+  addSourceAnchorToQuote,
   AI_DOCUMENT_MAX_BLOCKS,
   AI_DOCUMENT_MAX_TEXT_LENGTH,
   collectDocumentTextBlocks,
@@ -8,6 +9,7 @@ import {
   getDocumentBlockText,
   getReferenceSourcePreview,
   readSourceAnchorId,
+  removeSourceAnchors,
   STORAGE_BASIC_LIMIT_BYTES,
   type ApproveAiSelectionGenerationInput,
   type CreateAiCollectionGenerationInput,
@@ -76,13 +78,38 @@ const findBlock = (content: DocumentBlock[], blockId: string) => {
 const assetIdFromUrl = (value: unknown) =>
   typeof value === "string" ? value.match(/^\/api\/assets\/([^/]+)\/content$/)?.[1] : undefined;
 
+export const getAiDocumentSourceMetadata = async (
+  db: Database,
+  userId: string,
+  documentId: string,
+) => {
+  const [source] = await db
+    .select({
+      documentTitle: projectItem.title,
+      projectId: project.id,
+      projectTitle: project.title,
+    })
+    .from(document)
+    .innerJoin(projectItem, eq(projectItem.id, document.id))
+    .innerJoin(project, eq(project.id, projectItem.projectId))
+    .where(and(eq(document.id, documentId), eq(project.userId, userId)))
+    .limit(1);
+  return source ?? null;
+};
+
 export const prepareAiSelectionGeneration = async (
   db: Database,
   userId: string,
   input: CreateAiSelectionGenerationInput,
 ) => {
   const [ownedDocument] = await db
-    .select({ content: document.content, revision: document.revision })
+    .select({
+      content: document.content,
+      documentTitle: projectItem.title,
+      projectId: project.id,
+      projectTitle: project.title,
+      revision: document.revision,
+    })
     .from(document)
     .innerJoin(projectItem, eq(projectItem.id, document.id))
     .innerJoin(project, eq(project.id, projectItem.projectId))
@@ -114,7 +141,10 @@ export const prepareAiSelectionGeneration = async (
     return {
       kind: "ok" as const,
       blocks,
+      documentTitle: ownedDocument.documentTitle,
       documentRevision: ownedDocument.revision,
+      projectId: ownedDocument.projectId,
+      projectTitle: ownedDocument.projectTitle,
       selectedText: sourceText,
       sourceBlockIds: blocks.map(({ id }) => id),
     };
@@ -145,9 +175,12 @@ export const prepareAiSelectionGeneration = async (
     return {
       kind: "ok" as const,
       blocks: [{ id: block.id, text: label }],
+      documentTitle: ownedDocument.documentTitle,
       documentRevision: ownedDocument.revision,
       imageAsset: ownedAsset,
       selectedText: label,
+      projectId: ownedDocument.projectId,
+      projectTitle: ownedDocument.projectTitle,
       sourceBlockIds: [block.id],
     };
   }
@@ -164,7 +197,10 @@ export const prepareAiSelectionGeneration = async (
     // The model receives only the exact user selection. Whole touched blocks are
     // used exclusively to verify that the client did not invent the source.
     blocks: [{ id: input.sourceBlockIds[0]!, text: selectedText }],
+    documentTitle: ownedDocument.documentTitle,
     documentRevision: ownedDocument.revision,
+    projectId: ownedDocument.projectId,
+    projectTitle: ownedDocument.projectTitle,
     selectedText,
     sourceBlockIds: input.sourceBlockIds,
   };
@@ -176,7 +212,13 @@ export const prepareAiCollectionGeneration = async (
   input: CreateAiCollectionGenerationInput,
 ) => {
   const [ownedDocument] = await db
-    .select({ content: document.content, revision: document.revision })
+    .select({
+      content: document.content,
+      documentTitle: projectItem.title,
+      projectId: project.id,
+      projectTitle: project.title,
+      revision: document.revision,
+    })
     .from(document)
     .innerJoin(projectItem, eq(projectItem.id, document.id))
     .innerJoin(project, eq(project.id, projectItem.projectId))
@@ -217,7 +259,14 @@ export const prepareAiCollectionGeneration = async (
   const sourceText = normalize(blocks.map(({ text }) => text).join(" "));
   if (blocks.length > AI_DOCUMENT_MAX_BLOCKS || sourceText.length > AI_DOCUMENT_MAX_TEXT_LENGTH)
     return { kind: "source-too-large" as const };
-  return { kind: "ok" as const, blocks, documentRevision: ownedDocument.revision };
+  return {
+    kind: "ok" as const,
+    blocks,
+    documentTitle: ownedDocument.documentTitle,
+    documentRevision: ownedDocument.revision,
+    projectId: ownedDocument.projectId,
+    projectTitle: ownedDocument.projectTitle,
+  };
 };
 
 export const approveAiSelectionGeneration = async (
@@ -282,6 +331,13 @@ export const approveAiSelectionGeneration = async (
       new Set(submittedIds).size !== submittedIds.length
     )
       return { kind: "invalid-items" as const };
+    const proposalById = new Map(
+      (draft.kind === "flashcard" ? draft.flashcards : draft.quizQuestions).map((item) => [
+        item.id,
+        item,
+      ]),
+    );
+    const submittedItems = draft.kind === "flashcard" ? input.flashcards : input.quizQuestions;
 
     const [ownedDocument] = await tx
       .select({
@@ -370,7 +426,45 @@ export const approveAiSelectionGeneration = async (
     }
 
     const now = new Date();
-    const anchoredContent = input.anchoredContent ?? (ownedDocument.content as DocumentBlock[]);
+    let anchoredContent = input.anchoredContent ?? (ownedDocument.content as DocumentBlock[]);
+    const referenceAnchors = new Map<string, Array<string | null>>();
+    let draftAnchorUsed = false;
+    for (const item of submittedItems) {
+      if (!item.references.length) continue;
+      const proposal = proposalById.get(item.id);
+      if (!proposal) return { kind: "invalid-items" as const };
+      const originalReferences = new Set(
+        proposal.references.map(({ blockId, quote }) => `${blockId}:${normalize(quote)}`),
+      );
+      const anchors: Array<string | null> = [];
+      for (const reference of item.references) {
+        if (reference.scope === "document") {
+          anchors.push(null);
+          continue;
+        }
+        const isOriginalSourceReference =
+          (draft.sourceScope === "selection" || draft.sourceScope === "image") &&
+          originalReferences.has(`${reference.blockId}:${normalize(reference.quote)}`);
+        if (isOriginalSourceReference) {
+          if (!draft.anchorId) return { kind: "source-changed" as const };
+          anchors.push(draft.anchorId);
+          draftAnchorUsed = true;
+          continue;
+        }
+        if (!reference.blockId || !reference.quote) return { kind: "source-changed" as const };
+        const applied = addSourceAnchorToQuote(anchoredContent, {
+          blockId: reference.blockId,
+          quote: reference.quote,
+          anchorId: randomUUID(),
+        });
+        if (applied.kind !== "ok") return { kind: "source-changed" as const };
+        anchoredContent = applied.content;
+        anchors.push(applied.anchorId);
+      }
+      referenceAnchors.set(item.id, [...new Set(anchors)]);
+    }
+    if (draft.sourceScope === "selection" && draft.anchorId && !draftAnchorUsed)
+      anchoredContent = removeSourceAnchors(anchoredContent, new Set([draft.anchorId])).content;
     const contentByteSize = Buffer.byteLength(JSON.stringify(anchoredContent));
     const storageDelta = contentByteSize - ownedDocument.contentByteSize;
     await tx.insert(userStorage).values({ userId }).onConflictDoNothing();
@@ -385,10 +479,7 @@ export const approveAiSelectionGeneration = async (
     )
       return { kind: "quota" as const };
     let revision = ownedDocument.revision;
-    if (
-      draft.sourceScope === "selection" &&
-      !isDeepStrictEqual(ownedDocument.content, anchoredContent)
-    ) {
+    if (!isDeepStrictEqual(ownedDocument.content, anchoredContent)) {
       const [saved] = await tx
         .update(document)
         .set({
@@ -451,16 +542,17 @@ export const approveAiSelectionGeneration = async (
       }
     }
 
-    await tx.insert(studyMaterialReference).values(
-      submittedIds.map((id) => ({
+    const references = submittedIds.flatMap((id) =>
+      (referenceAnchors.get(id) ?? []).map((anchorId) => ({
         id: randomUUID(),
         userId,
         documentId: draft.documentId,
-        anchorId: draft.anchorId,
+        anchorId,
         flashcardId: draft.kind === "flashcard" ? id : null,
         quizQuestionId: draft.kind === "quizQuestion" ? id : null,
       })),
     );
+    if (references.length) await tx.insert(studyMaterialReference).values(references);
 
     await tx
       .update(aiGeneration)

@@ -13,7 +13,8 @@ import {
 import { CircleNotchIcon } from "@phosphor-icons/react/CircleNotch";
 import { CoinsIcon } from "@phosphor-icons/react/Coins";
 import { MagicWandIcon } from "@phosphor-icons/react/MagicWand";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -46,6 +47,11 @@ import { useProjects } from "@/features/projects/api/project-queries.ts";
 import { hasDuplicateQuizOptionTexts } from "@/features/quizzes/components/quiz-alternatives-field.tsx";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
 import { cn } from "@/lib/utils.ts";
+import {
+  clearAiReviewSession,
+  readAiReviewSession,
+  writeAiReviewSession,
+} from "../ai-review-session.ts";
 import type { AiEditableQuizProposal } from "./ai-quiz-proposal-editor.tsx";
 import { AiProposalReviewList } from "./ai-proposal-review-list.tsx";
 import {
@@ -107,6 +113,8 @@ export const AiCollectionGenerationDialog = ({
   const [draft, setDraft] = useState<AiCollectionDraft | null>(null);
   const [flashcards, setFlashcards] = useState<EditableFlashcard[]>([]);
   const [quizQuestions, setQuizQuestions] = useState<EditableQuiz[]>([]);
+  const location = useLocation();
+  const appliedOperationId = useRef("");
   const projects = useProjects(
     { page: 1, pageSize: PROJECT_MAX_PAGE_SIZE, query: "" },
     open && !draft,
@@ -151,14 +159,40 @@ export const AiCollectionGenerationDialog = ({
       ? flashcards.filter(({ selected }) => selected).length
       : quizQuestions.filter(({ selected }) => selected).length;
   const cost = quantity * AI_CREDITS_PER_ITEM;
+  const persistReview = () => {
+    if (!draft?.projectId) return;
+    writeAiReviewSession(draft.operationId, {
+      flashcards,
+      quizQuestions,
+      source: {
+        documentId: draft.documentId,
+        documentTitle: draft.documentTitle,
+        projectId: draft.projectId,
+        projectTitle: draft.projectTitle,
+      },
+    });
+  };
 
   useEffect(() => {
     if (!open || result?.status !== "completed") return;
+    if (appliedOperationId.current === result.draft.operationId) return;
+    appliedOperationId.current = result.draft.operationId;
     setDraft(result.draft);
     setOperationId(result.draft.operationId);
-    setFlashcards(result.draft.flashcards.map((item) => ({ ...item, selected: true })));
-    setQuizQuestions(result.draft.quizQuestions.map((item) => ({ ...item, selected: true })));
+    const saved = readAiReviewSession(result.draft.operationId);
+    setFlashcards(
+      saved?.flashcards ?? result.draft.flashcards.map((item) => ({ ...item, selected: true })),
+    );
+    setQuizQuestions(
+      saved?.quizQuestions ??
+        result.draft.quizQuestions.map((item) => ({ ...item, selected: true })),
+    );
   }, [open, result]);
+
+  useEffect(() => {
+    if (!draft || !draft.projectId) return;
+    persistReview();
+  }, [draft, flashcards, quizQuestions]);
 
   useEffect(() => {
     if (!projectId) {
@@ -211,17 +245,20 @@ export const AiCollectionGenerationDialog = ({
           kind === "flashcard"
             ? flashcards
                 .filter(({ selected }) => selected)
-                .map(({ answer, id, question }) => ({
+                .map(({ answer, id, question, references }) => ({
                   id,
                   question: textContent(question),
                   answer: textContent(answer),
+                  references: references.filter(
+                    ({ quote, scope }) => scope === "document" || quote.trim(),
+                  ),
                 }))
             : [],
         quizQuestions:
           kind === "quizQuestion"
             ? quizQuestions
                 .filter(({ selected }) => selected)
-                .map(({ content, correctOptionIndex, id, options, prompt }) => ({
+                .map(({ content, correctOptionIndex, id, options, prompt, references }) => ({
                   id,
                   content: content ?? textContent(prompt),
                   options: options.map((text, index) => ({
@@ -229,10 +266,14 @@ export const AiCollectionGenerationDialog = ({
                     text,
                     isCorrect: index === correctOptionIndex,
                   })),
+                  references: references.filter(
+                    ({ quote, scope }) => scope === "document" || quote.trim(),
+                  ),
                 }))
             : [],
       });
       toast.success(`${saved.createdIds.length} materiais adicionados à coleção.`);
+      clearAiReviewSession(draft.operationId);
       setDraft(null);
       setOperationId("");
       onOpenChange(false);
@@ -245,6 +286,7 @@ export const AiCollectionGenerationDialog = ({
     if (!draft) return;
     try {
       await discard.mutateAsync(draft.operationId);
+      clearAiReviewSession(draft.operationId);
       setDraft(null);
       setOperationId("");
       setFlashcards([]);
@@ -267,6 +309,9 @@ export const AiCollectionGenerationDialog = ({
           hasDuplicateQuizOptionTexts(options)
         : false,
     );
+  const reviewReturnTo = draft
+    ? `${location.pathname}?${new URLSearchParams({ aiGeneration: draft.operationId })}`
+    : `${location.pathname}${location.search}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -293,6 +338,7 @@ export const AiCollectionGenerationDialog = ({
                   items.map((item) => (item.id === id ? { ...item, ...change } : item)),
                 )
               }
+              onNavigateReference={persistReview}
               onQuizChange={(id, change) =>
                 setQuizQuestions((items) =>
                   items.map((item) => (item.id === id ? { ...item, ...change } : item)),
@@ -303,7 +349,15 @@ export const AiCollectionGenerationDialog = ({
                   setFlashcards((items) => items.filter((item) => item.id !== id));
                 else setQuizQuestions((items) => items.filter((item) => item.id !== id));
               }}
+              operationId={draft.operationId}
               quizQuestions={quizQuestions}
+              returnTo={reviewReturnTo}
+              source={{
+                documentId: draft.documentId,
+                documentTitle: draft.documentTitle,
+                projectId: draft.projectId ?? "",
+                projectTitle: draft.projectTitle,
+              }}
             />
           ) : queryError ? (
             <div className="grid min-h-72 place-items-center text-center">
@@ -494,11 +548,28 @@ export const AiCollectionGenerationAction = ({
   kind: AiMaterialKind;
 }) => {
   const [open, setOpen] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const requestedOperationId = params.get("aiGeneration");
   const latest = useLatestAiCollectionGeneration(collectionId, !disabled);
   const busy = latest.data?.status === "queued" || latest.data?.status === "processing";
   const ready = latest.data?.status === "completed";
   const material = kind === "flashcard" ? "flashcards" : "questões";
   const label = busy ? "Gerando…" : ready ? "Revisar geração" : "Gerar com IA";
+  useEffect(() => {
+    if (requestedOperationId) setOpen(true);
+  }, [requestedOperationId]);
+  const changeOpen = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen && requestedOperationId)
+      setParams(
+        (current) => {
+          const updated = new URLSearchParams(current);
+          updated.delete("aiGeneration");
+          return updated;
+        },
+        { replace: true },
+      );
+  };
   const trigger = (
     <Button
       aria-label={ready ? `Revisar ${material} gerados por IA` : `Gerar ${material} com IA`}
@@ -528,7 +599,7 @@ export const AiCollectionGenerationAction = ({
       <AiCollectionGenerationDialog
         collectionId={collectionId}
         kind={kind}
-        onOpenChange={setOpen}
+        onOpenChange={changeOpen}
         open={open}
       />
     </>

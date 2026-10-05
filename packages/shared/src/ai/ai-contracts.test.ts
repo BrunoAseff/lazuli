@@ -113,4 +113,42 @@ describe("AI selection contracts", () => {
         ]),
       );
   });
+
+  it("limits references submitted for one approved material", () => {
+    const result = approveAiSelectionGenerationSchema.safeParse({
+      anchoredContent: paragraph("source-1", "Trecho suficientemente longo para geração."),
+      expectedRevision: 1,
+      flashcards: [
+        {
+          answer: paragraph("answer-1", "Resposta"),
+          id: "44444444-4444-4444-8444-444444444444",
+          question: paragraph("question-1", "Pergunta?"),
+          references: Array.from({ length: 4 }, (_, index) => ({
+            blockId: `source-${index}`,
+            quote: `Trecho ${index}`,
+          })),
+        },
+      ],
+      quizQuestions: [],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a whole-document reference without a synthetic quote", () => {
+    const result = approveAiSelectionGenerationSchema.safeParse({
+      expectedRevision: 1,
+      flashcards: [
+        {
+          answer: paragraph("answer-1", "Resposta"),
+          id: "44444444-4444-4444-8444-444444444444",
+          question: paragraph("question-1", "Pergunta?"),
+          references: [{ scope: "document", blockId: null, quote: "" }],
+        },
+      ],
+      quizQuestions: [],
+    });
+
+    expect(result.success).toBe(true);
+  });
 });

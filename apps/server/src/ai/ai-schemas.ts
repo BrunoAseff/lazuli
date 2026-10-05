@@ -2,6 +2,15 @@ import { z } from "zod";
 
 const generatedTextSchema = z.string().trim().min(1).max(4_000);
 const sourceBlockIdsSchema = z.array(z.string().trim().min(1).max(128)).max(10);
+const generatedReferencesSchema = z
+  .array(
+    z.object({
+      blockId: z.string().trim().min(1).max(128),
+      quote: z.string().trim().min(1).max(1_000),
+    }),
+  )
+  .min(1)
+  .max(3);
 
 export const generatedFlashcardSchema = z.object({
   answer: generatedTextSchema,
@@ -42,6 +51,7 @@ export const generatedQuizQuestionSchema = generatedQuizQuestionObjectSchema.sup
 const reviewedGeneratedQuizQuestionSchema = generatedQuizQuestionObjectSchema
   .extend({
     evidence: z.string().trim().min(1).max(1_000),
+    references: generatedReferencesSchema,
     warning: z.string().trim().max(500).nullable(),
   })
   .superRefine(validateGeneratedQuizQuestion);
@@ -62,6 +72,7 @@ export const selectionProviderDraftSchema = z
       .array(
         generatedFlashcardSchema.extend({
           evidence: z.string().trim().min(1).max(1_000),
+          references: generatedReferencesSchema,
           warning: z.string().trim().max(500).nullable(),
         }),
       )
@@ -81,6 +92,7 @@ export const collectionProviderDraftSchema = z
       .array(
         generatedFlashcardSchema.extend({
           evidence: z.string().trim().min(1).max(1_000),
+          references: generatedReferencesSchema,
           warning: z.string().trim().max(500).nullable(),
         }),
       )
