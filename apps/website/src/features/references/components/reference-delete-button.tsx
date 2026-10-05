@@ -26,13 +26,39 @@ export const ReferenceDeleteButton = ({
   onRemoved?: () => void | Promise<void>;
   referenceId: string;
 }) => {
-  const [open, setOpen] = useState(false);
   const remove = useDeleteReference();
+  return (
+    <ConfirmReferenceRemovalButton
+      disabled={disabled || remove.isPending}
+      label={label}
+      onConfirm={async () => {
+        try {
+          await remove.mutateAsync(referenceId);
+          await onRemoved?.();
+          toast.success("Referência removida.");
+        } catch {
+          toast.error("Não foi possível remover a referência.");
+        }
+      }}
+    />
+  );
+};
+
+export const ConfirmReferenceRemovalButton = ({
+  disabled,
+  label = "Remover referência",
+  onConfirm,
+}: {
+  disabled?: boolean;
+  label?: string;
+  onConfirm: () => void | Promise<void>;
+}) => {
+  const [open, setOpen] = useState(false);
   return (
     <>
       <Button
         aria-label={label}
-        disabled={disabled || remove.isPending}
+        disabled={disabled}
         onClick={() => setOpen(true)}
         size="icon-sm"
         type="button"
@@ -51,15 +77,10 @@ export const ReferenceDeleteButton = ({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              disabled={remove.isPending}
+              disabled={disabled}
               onClick={async () => {
-                try {
-                  await remove.mutateAsync(referenceId);
-                  await onRemoved?.();
-                  toast.success("Referência removida.");
-                } catch {
-                  toast.error("Não foi possível remover a referência.");
-                }
+                await onConfirm();
+                setOpen(false);
               }}
               variant="destructive"
             >
