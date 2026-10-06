@@ -27,3 +27,4 @@ dist-ssr
 *.sw?
 codex
 /references
+/backups
