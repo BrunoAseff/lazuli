@@ -137,6 +137,16 @@ export const applyAiMaterialImprovement = async (
       const answer = summarizeRichContent(input.answer);
       if (question.assetIds.length || answer.assetIds.length)
         return { kind: "invalid-assets" as const };
+      const [current] = await tx
+        .select({ updatedAt: flashcard.updatedAt })
+        .from(flashcard)
+        .where(
+          and(eq(flashcard.id, draft.materialId), eq(flashcard.collectionId, draft.collectionId)),
+        )
+        .limit(1)
+        .for("update");
+      if (!current || current.updatedAt.getTime() !== expectedUpdatedAt.getTime())
+        return { kind: "conflict" as const };
       const [updated] = await tx
         .update(flashcard)
         .set({
@@ -147,17 +157,26 @@ export const applyAiMaterialImprovement = async (
           updatedAt,
         })
         .where(
-          and(
-            eq(flashcard.id, draft.materialId),
-            eq(flashcard.collectionId, draft.collectionId),
-            eq(flashcard.updatedAt, expectedUpdatedAt),
-          ),
+          and(eq(flashcard.id, draft.materialId), eq(flashcard.collectionId, draft.collectionId)),
         )
         .returning({ id: flashcard.id });
       if (!updated) return { kind: "conflict" as const };
     } else if (input.kind === "quizQuestion" && draft.kind === "quizQuestion") {
       const content = summarizeRichContent(input.content);
       if (content.assetIds.length) return { kind: "invalid-assets" as const };
+      const [current] = await tx
+        .select({ updatedAt: quizQuestion.updatedAt })
+        .from(quizQuestion)
+        .where(
+          and(
+            eq(quizQuestion.id, draft.materialId),
+            eq(quizQuestion.collectionId, draft.collectionId),
+          ),
+        )
+        .limit(1)
+        .for("update");
+      if (!current || current.updatedAt.getTime() !== expectedUpdatedAt.getTime())
+        return { kind: "conflict" as const };
       const [updated] = await tx
         .update(quizQuestion)
         .set({ content: input.content, contentText: content.text, updatedAt })
@@ -165,7 +184,6 @@ export const applyAiMaterialImprovement = async (
           and(
             eq(quizQuestion.id, draft.materialId),
             eq(quizQuestion.collectionId, draft.collectionId),
-            eq(quizQuestion.updatedAt, expectedUpdatedAt),
           ),
         )
         .returning({ id: quizQuestion.id });
