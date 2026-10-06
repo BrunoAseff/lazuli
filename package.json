@@ -10,6 +10,7 @@
     "db:up": "docker compose up -d postgres minio",
     "db:backup": "bash tools/backup-postgres.sh",
     "deploy:smoke": "node tools/smoke-production.mjs",
+    "deploy:website": "wrangler deploy",
     "docker:build": "docker build -t lazuli-server .",
     "ready": "vp check && vp test && vp run -r build",
     "dev": "vp run --filter './apps/*' dev",
@@ -18,7 +19,8 @@
     "prepare": "vp config"
   },
   "devDependencies": {
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "wrangler": "catalog:"
   },
   "engines": {
     "node": ">=22.12.0"
