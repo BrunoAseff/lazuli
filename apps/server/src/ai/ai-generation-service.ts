@@ -1,7 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   aiCollectionDraftSchema,
+  aiMaterialImprovementDraftSchema,
   aiSelectionDraftSchema,
+  type AiMaterialImprovementDraft,
+  type AiImprovementIntent,
   type AiSelectionDraft,
 } from "@lazuli/shared";
 
@@ -21,6 +24,7 @@ import {
   COLLECTION_PROMPT_VERSION,
   createCollectionPrompt,
   createFoundationPrompt,
+  createMaterialImprovementPrompt,
   createSelectionPrompt,
   type AiSourceBlock,
 } from "./ai-prompts.ts";
@@ -29,6 +33,8 @@ import {
   countFoundationDraftItems,
   collectionProviderDraftSchema,
   foundationDraftSchema,
+  flashcardImprovementProviderDraftSchema,
+  quizImprovementProviderDraftSchema,
   selectionProviderDraftSchema,
   type FoundationDraft,
 } from "./ai-schemas.ts";
@@ -60,6 +66,22 @@ type SelectionGenerationInput = {
   selectedText: string;
   sourceScope: "selection" | "image" | "document";
   sourceBlockIds: string[];
+  userId: string;
+};
+
+type MaterialImprovementInput = {
+  collectionId: string;
+  current: unknown;
+  promptCurrent: unknown;
+  guidance: string;
+  idempotencyKey: string;
+  intent: AiImprovementIntent;
+  kind: "flashcard" | "quizQuestion";
+  materialId: string;
+  materialUpdatedAt: string;
+  references: AiMaterialImprovementDraft["references"];
+  regenerateOperationId?: string;
+  sources: AiSourceBlock[];
   userId: string;
 };
 
@@ -199,6 +221,13 @@ const parseStoredCollectionDraft = (operation: AiGenerationRecord) =>
     consumedCredits: operation.consumedCredits,
   });
 
+const parseStoredMaterialImprovementDraft = (operation: AiGenerationRecord) =>
+  aiMaterialImprovementDraftSchema.parse({
+    ...(operation.result as object),
+    approved: operation.approvedItems > 0,
+    consumedCredits: operation.consumedCredits,
+  });
+
 export const createAiGenerationService = ({
   logger,
   provider,
@@ -228,6 +257,166 @@ export const createAiGenerationService = ({
   };
 
   return {
+    discardMaterialImprovementDraft: (userId: string, operationId: string) =>
+      store.discardMaterialImprovement(userId, operationId),
+
+    async getMaterialImprovementDraft(userId: string, operationId: string) {
+      const operation = await store.get(userId, operationId);
+      if (!operation || operation.type !== "material_improvement") return null;
+      if (operation.status === "running")
+        return { kind: "in-progress" as const, operationId: operation.id };
+      if (operation.status === "failed") throw storedError(operation.errorCode);
+      return {
+        draft: parseStoredMaterialImprovementDraft(operation),
+        kind: "completed" as const,
+        operationId: operation.id,
+        reused: true,
+      };
+    },
+
+    async generateMaterialImprovementDraft(input: MaterialImprovementInput) {
+      const prompt = createMaterialImprovementPrompt({
+        current: input.promptCurrent,
+        guidance: input.guidance,
+        intent: input.intent,
+        kind: input.kind,
+        sources: input.sources,
+      });
+      const contextFingerprint = fingerprint({
+        collectionId: input.collectionId,
+        current: input.current,
+        promptCurrent: input.promptCurrent,
+        guidance: input.guidance,
+        intent: input.intent,
+        kind: input.kind,
+        materialId: input.materialId,
+        materialUpdatedAt: input.materialUpdatedAt,
+        sources: input.sources,
+      });
+      const operationId = randomUUID();
+      const admission = await store.begin({
+        contextFingerprint,
+        id: operationId,
+        idempotencyKey: input.idempotencyKey,
+        estimatedCredits: estimateAiCredits(1),
+        origin: "material",
+        promptVersion: prompt.promptVersion,
+        provider: provider.name,
+        requestedItems: 1,
+        regenerationOfId: input.regenerateOperationId ?? null,
+        requestedModel: provider.model,
+        sourceIds: [input.materialId, ...input.references.map(({ documentId }) => documentId)],
+        type: "material_improvement",
+        userId: input.userId,
+      });
+      if (admission.kind === "concurrency-limited")
+        throw new AiGenerationError("AI_CONCURRENCY_LIMITED");
+      if (admission.kind === "insufficient-credits")
+        throw new AiGenerationError("AI_INSUFFICIENT_CREDITS");
+      if (admission.kind === "rate-limited") throw new AiGenerationError("AI_RATE_LIMITED");
+      if (admission.kind === "regeneration-active")
+        throw new AiGenerationError("AI_REGENERATION_ACTIVE");
+      if (admission.kind === "regeneration-limit" || admission.kind === "regeneration-mismatch")
+        throw new AiGenerationError("AI_REGENERATION_LIMIT");
+      if (admission.kind === "existing") {
+        if (admission.operation.status === "running")
+          return { kind: "in-progress" as const, operationId: admission.operation.id };
+        if (admission.operation.status === "failed")
+          throw storedError(admission.operation.errorCode);
+        return {
+          draft: parseStoredMaterialImprovementDraft(admission.operation),
+          kind: "completed" as const,
+          operationId: admission.operation.id,
+          reused: true,
+        };
+      }
+
+      const startedAt = Date.now();
+      let attempts = 0;
+      try {
+        while (attempts < 2) {
+          attempts += 1;
+          try {
+            const request = {
+              idempotencyKey: input.idempotencyKey,
+              maxOutputTokens: AI_MAX_OUTPUT_TOKENS,
+              prompt: prompt.prompt,
+              schemaDescription: "Uma versão melhorada de um único material de estudo.",
+              schemaName: "lazuli_material_improvement",
+              system: prompt.system,
+              timeoutMs: provider.requestTimeoutMs,
+              userIdentifier: anonymousUserIdentifier(input.userId),
+            };
+            const generatedResult =
+              input.kind === "flashcard"
+                ? {
+                    kind: "flashcard" as const,
+                    result: await provider.generateStructured({
+                      ...request,
+                      schema: flashcardImprovementProviderDraftSchema,
+                    }),
+                  }
+                : {
+                    kind: "quizQuestion" as const,
+                    result: await provider.generateStructured({
+                      ...request,
+                      schema: quizImprovementProviderDraftSchema,
+                    }),
+                  };
+            const result = generatedResult.result;
+            const generated = result.output;
+            const expiresAt = new Date(Date.now() + AI_DRAFT_TTL_MS);
+            const draft = aiMaterialImprovementDraftSchema.parse({
+              operationId,
+              collectionId: input.collectionId,
+              materialId: input.materialId,
+              materialUpdatedAt: input.materialUpdatedAt,
+              intent: input.intent,
+              guidance: input.guidance,
+              consumedCredits: input.regenerateOperationId ? 0 : 10,
+              regenerationCount: admission.regenerationCount,
+              expiresAt: expiresAt.toISOString(),
+              approved: false,
+              references: input.references,
+              warning: generated.warning,
+              kind: input.kind,
+              current: input.current,
+              proposed: generated,
+            });
+            await store.complete({
+              attempts,
+              effectiveModel: result.effectiveModel,
+              estimatedCostMicroUsd: estimateAiCostMicroUsd(result.usage),
+              expiresAt,
+              latencyMs: Date.now() - startedAt,
+              operationId,
+              providerRequestId: result.providerRequestId,
+              result: draft,
+              usage: result.usage,
+              userId: input.userId,
+              validItems: 1,
+            });
+            return { draft, kind: "completed" as const, operationId, reused: false };
+          } catch (error) {
+            const normalized = normalizeAiError(error);
+            if (!normalized.retryable || attempts >= 2) throw normalized;
+            await pause(retryDelayMs);
+          }
+        }
+        throw new AiGenerationError("AI_REQUEST_FAILED");
+      } catch (error) {
+        const normalized = normalizeAiError(error);
+        await store.fail({
+          attempts,
+          code: normalized.code,
+          latencyMs: Date.now() - startedAt,
+          operationId,
+          userId: input.userId,
+        });
+        throw normalized;
+      }
+    },
+
     discardCollectionDraft: (userId: string, operationId: string) =>
       store.discardCollection(userId, operationId),
 
@@ -329,16 +518,16 @@ export const createAiGenerationService = ({
       operationId: string;
       userId: string;
     }) {
-      assertInputLimits({
-        blocks,
-        idempotencyKey: operationId,
-        sourceIds: [job.documentId, ...job.sourceBlockIds],
-        userId,
-      });
-      const prompt = createCollectionPrompt({ ...job, blocks });
       const startedAt = Date.now();
       let attempts = 0;
       try {
+        assertInputLimits({
+          blocks,
+          idempotencyKey: operationId,
+          sourceIds: [job.documentId, ...job.sourceBlockIds],
+          userId,
+        });
+        const prompt = createCollectionPrompt({ ...job, blocks });
         while (attempts < 2) {
           attempts += 1;
           try {

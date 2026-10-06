@@ -5,6 +5,7 @@ import {
   type QuizQuestionDetail,
 } from "@lazuli/shared";
 import { CopyIcon, LoaderCircleIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
+import { MagicWandIcon } from "@phosphor-icons/react/MagicWand";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -34,6 +35,7 @@ import {
 import { RichContentField } from "@/components/rich-content-field.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
+import { AiMaterialImprovementDialog } from "@/features/ai/components/ai-material-improvement-dialog.tsx";
 import type { StudyItemAction } from "@/lib/study-actions.ts";
 import type { StudyEditorPresentation } from "@/lib/study-editor.ts";
 import { useQuizCollections } from "../api/quiz-collection-queries.ts";
@@ -99,6 +101,7 @@ const QuizQuestionEditor = ({
   const [dirty, setDirty] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [detailsSheetOpen, setDetailsSheetOpen] = useState(false);
+  const [improvementOpen, setImprovementOpen] = useState(false);
   const createdUrls = useRef(new Set<string>());
   const committed = useRef(false);
   const create = useCreateQuizQuestion(targetCollectionId);
@@ -255,6 +258,15 @@ const QuizQuestionEditor = ({
       {isPending && <LoaderCircleIcon className="animate-spin" />} Salvar
     </Button>
   );
+  const improveButton = question && !readOnly && (
+    <Button
+      disabled={dirty || isPending}
+      onClick={() => setImprovementOpen(true)}
+      variant="outline"
+    >
+      <MagicWandIcon aria-hidden="true" /> Melhorar com IA
+    </Button>
+  );
   const details = (
     <>
       {collectionPicker}
@@ -310,6 +322,7 @@ const QuizQuestionEditor = ({
                   Salvar e criar outra
                 </Button>
               )}
+              {improveButton}
               {saveButton}
             </DialogFooter>
           </DialogContent>
@@ -331,6 +344,7 @@ const QuizQuestionEditor = ({
               {fields}
               {!readOnly && (
                 <div className="flex justify-end gap-2">
+                  {improveButton}
                   {question && onAction && (
                     <Button
                       disabled={dirty}
@@ -360,6 +374,13 @@ const QuizQuestionEditor = ({
         onOpenChange={setDiscardOpen}
         open={discardOpen}
       />
+      {question && (
+        <AiMaterialImprovementDialog
+          material={{ kind: "quizQuestion", value: question }}
+          onOpenChange={setImprovementOpen}
+          open={improvementOpen}
+        />
+      )}
     </>
   );
 };

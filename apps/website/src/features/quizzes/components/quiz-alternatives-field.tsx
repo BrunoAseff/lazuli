@@ -77,7 +77,6 @@ export const QuizAlternativesField = ({
                 aria-describedby={duplicated ? errorId : undefined}
                 aria-invalid={duplicated}
                 aria-label={`Alternativa ${index + 1}`}
-                disabled={readOnly}
                 maxLength={1000}
                 onChange={(event) =>
                   onChange(
@@ -87,6 +86,7 @@ export const QuizAlternativesField = ({
                   )
                 }
                 placeholder={`Alternativa ${index + 1}`}
+                readOnly={readOnly}
                 value={option.text}
               />
               <div

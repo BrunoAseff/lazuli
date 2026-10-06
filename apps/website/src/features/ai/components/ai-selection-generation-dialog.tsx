@@ -133,6 +133,7 @@ export const AiSelectionGenerationDialog = ({
     [flashcardCollections.data?.items, kind, quizCollections.data?.items],
   );
   const appliedOperationId = useRef("");
+  const restoringReview = useRef(false);
   const cost = quantity * AI_CREDITS_PER_ITEM;
   const persistReview = () => {
     if (!draft?.projectId) return;
@@ -188,7 +189,20 @@ export const AiSelectionGenerationDialog = ({
   }, [generation.data]);
 
   useEffect(() => {
+    if (!open || !draft) return;
+    const saved = readAiReviewSession(draft.operationId);
+    if (!saved) return;
+    restoringReview.current = true;
+    setFlashcards(saved.flashcards);
+    setQuizQuestions(saved.quizQuestions);
+  }, [draft, open]);
+
+  useEffect(() => {
     if (!draft || !draft.projectId) return;
+    if (restoringReview.current) {
+      restoringReview.current = false;
+      return;
+    }
     persistReview();
   }, [draft, flashcards, quizQuestions]);
 
@@ -200,6 +214,9 @@ export const AiSelectionGenerationDialog = ({
   );
   const selectedQuizHasDuplicateOptions = quizQuestions.some(
     ({ options, selected }) => selected && hasDuplicateQuizOptionTexts(options),
+  );
+  const selectedQuizMissingCorrectOption = quizQuestions.some(
+    ({ correctOptionIndex, selected }) => selected && correctOptionIndex < 0,
   );
 
   const clearGenerationUrl = () => {
@@ -548,7 +565,8 @@ export const AiSelectionGenerationDialog = ({
                   quizQuestions.some(({ options, prompt, selected }) =>
                     selected ? !prompt.trim() || options.some((option) => !option.trim()) : false,
                   ) ||
-                  selectedQuizHasDuplicateOptions
+                  selectedQuizHasDuplicateOptions ||
+                  selectedQuizMissingCorrectOption
                 }
                 onClick={() => void save()}
               >

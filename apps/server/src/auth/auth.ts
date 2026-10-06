@@ -7,6 +7,7 @@ import type { ServerEnv } from "../config.ts";
 import type { Database } from "../database/client.ts";
 import * as schema from "../database/schema/index.ts";
 import { createVerificationEmailSender } from "../email/send-verification-email.ts";
+import { initializeNewUser } from "../onboarding/onboarding-content.ts";
 import { isValidAccountName, normalizeAccountName } from "./account-name.ts";
 
 export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBaseLogger) => {
@@ -28,10 +29,7 @@ export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBa
       user: {
         create: {
           after: async (user) => {
-            await database
-              .insert(schema.aiCreditAccount)
-              .values({ userId: user.id })
-              .onConflictDoNothing();
+            await initializeNewUser(database, user.id);
           },
           before: async (user) => {
             const name = normalizeAccountName(user.name);

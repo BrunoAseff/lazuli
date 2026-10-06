@@ -65,7 +65,7 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
             <td className="px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 <ProjectCover
-                  className="hidden h-10 w-[4.5rem] shrink-0 sm:grid"
+                  className="hidden h-10 w-[4.5rem] shrink-0 rounded-[var(--radius)] sm:grid"
                   compact
                   coverKey={project.coverKey}
                 />

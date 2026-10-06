@@ -13,6 +13,11 @@ const queries = vi.hoisted(() => ({
   prepareAiSelectionGeneration: vi.fn(),
 }));
 vi.mock("./ai-selection-queries.ts", () => queries);
+const improvementQueries = vi.hoisted(() => ({
+  applyAiMaterialImprovement: vi.fn(),
+  prepareAiMaterialImprovement: vi.fn(),
+}));
+vi.mock("./ai-material-improvement-queries.ts", () => improvementQueries);
 
 const documentId = "11111111-1111-4111-8111-111111111111";
 const collectionId = "22222222-2222-4222-8222-222222222222";
@@ -40,6 +45,42 @@ const collectionRequestBody = {
   quantity: 5,
   sourceBlockIds: ["block-1"],
 };
+const approvalRequestBody = {
+  anchoredContent: [
+    {
+      content: [
+        {
+          styles: { sourceAnchor: "anchor-1" },
+          text: requestBody.selectedText,
+          type: "text",
+        },
+      ],
+      id: "block-1",
+      type: "paragraph",
+    },
+  ],
+  expectedRevision: 2,
+  flashcards: [
+    {
+      answer: [
+        {
+          content: [{ styles: {}, text: "Resposta", type: "text" }],
+          id: "answer-1",
+          type: "paragraph",
+        },
+      ],
+      id: "55555555-5555-4555-8555-555555555555",
+      question: [
+        {
+          content: [{ styles: {}, text: "Pergunta?", type: "text" }],
+          id: "question-1",
+          type: "paragraph",
+        },
+      ],
+    },
+  ],
+  quizQuestions: [],
+};
 const session = {
   session: { id: "session-1" },
   user: { email: "ana@example.com", id: "user-1", name: "Ana" },
@@ -56,11 +97,16 @@ const register = async (serviceOverrides: Partial<AiGenerationService> = {}) => 
   const generateSelectionDraft = vi.fn().mockResolvedValue({ kind: "in-progress", operationId });
   const service = {
     discardCollectionDraft: vi.fn().mockResolvedValue(false),
+    discardMaterialImprovementDraft: vi.fn().mockResolvedValue(false),
     enqueueCollectionDraft: vi.fn().mockResolvedValue({ kind: "queued", operationId }),
     generateFoundationDraft: vi.fn(),
+    generateMaterialImprovementDraft: vi
+      .fn()
+      .mockResolvedValue({ kind: "in-progress", operationId }),
     generateSelectionDraft,
     getCollectionDraft: vi.fn().mockResolvedValue(null),
     getLatestCollectionDraft: vi.fn().mockResolvedValue(null),
+    getMaterialImprovementDraft: vi.fn().mockResolvedValue(null),
     getSelectionDraft: vi.fn().mockResolvedValue(null),
     ...serviceOverrides,
   } as unknown as AiGenerationService;
@@ -81,6 +127,103 @@ const register = async (serviceOverrides: Partial<AiGenerationService> = {}) => 
 afterEach(async () => {
   vi.clearAllMocks();
   await Promise.all(apps.splice(0).map((app) => app.close()));
+});
+
+describe("AI material improvement routes", () => {
+  it("rebuilds an owned flashcard before generating a proposal", async () => {
+    improvementQueries.prepareAiMaterialImprovement.mockResolvedValue({
+      kind: "ok",
+      material: {
+        answer: [{ id: "a", type: "paragraph", content: [] }],
+        answerText: "Resposta atual",
+        question: [{ id: "q", type: "paragraph", content: [] }],
+        questionText: "Pergunta atual",
+        updatedAt: new Date("2026-10-05T12:00:00.000Z"),
+      },
+      references: [],
+    });
+    const generateMaterialImprovementDraft = vi
+      .fn()
+      .mockResolvedValue({ kind: "in-progress", operationId });
+    const { app } = await register({ generateMaterialImprovementDraft });
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "POST",
+      payload: {
+        collectionId,
+        guidance: "",
+        idempotencyKey: "66666666-6666-4666-8666-666666666666",
+        intent: "clarify",
+        kind: "flashcard",
+        materialId: "77777777-7777-4777-8777-777777777777",
+      },
+      url: "/api/ai/material-improvements",
+    });
+
+    expect(response.statusCode).toBe(202);
+    expect(generateMaterialImprovementDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptCurrent: { answer: "Resposta atual", question: "Pergunta atual" },
+        userId: "user-1",
+      }),
+    );
+  });
+
+  it("preserves quiz option IDs in the editable current snapshot", async () => {
+    const options = [
+      {
+        id: "10000000-0000-4000-8000-000000000000",
+        isCorrect: true,
+        position: 0,
+        text: "Alternativa correta",
+      },
+      {
+        id: "20000000-0000-4000-8000-000000000000",
+        isCorrect: false,
+        position: 1,
+        text: "Alternativa incorreta",
+      },
+    ];
+    improvementQueries.prepareAiMaterialImprovement.mockResolvedValue({
+      kind: "ok",
+      material: {
+        content: [{ id: "q", type: "paragraph", content: [] }],
+        contentText: "Qual é a alternativa correta?",
+        options,
+        updatedAt: new Date("2026-10-05T12:00:00.000Z"),
+      },
+      references: [],
+    });
+    const generateMaterialImprovementDraft = vi
+      .fn()
+      .mockResolvedValue({ kind: "in-progress", operationId });
+    const { app } = await register({ generateMaterialImprovementDraft });
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "POST",
+      payload: {
+        collectionId,
+        guidance: "",
+        idempotencyKey: "99999999-9999-4999-8999-999999999999",
+        intent: "improveOptions",
+        kind: "quizQuestion",
+        materialId: "77777777-7777-4777-8777-777777777777",
+      },
+      url: "/api/ai/material-improvements",
+    });
+
+    expect(response.statusCode).toBe(202);
+    expect(generateMaterialImprovementDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        current: expect.objectContaining({ options }),
+        promptCurrent: {
+          correctOptionIndex: 0,
+          options: options.map(({ text }) => text),
+          prompt: "Qual é a alternativa correta?",
+        },
+      }),
+    );
+  });
 });
 
 describe("AI collection generation routes", () => {
@@ -252,42 +395,7 @@ describe("AI selection generation routes", () => {
     const response = await app.inject({
       headers: { origin: "http://localhost:3000" },
       method: "POST",
-      payload: {
-        anchoredContent: [
-          {
-            content: [
-              {
-                styles: { sourceAnchor: "anchor-1" },
-                text: requestBody.selectedText,
-                type: "text",
-              },
-            ],
-            id: "block-1",
-            type: "paragraph",
-          },
-        ],
-        expectedRevision: 2,
-        flashcards: [
-          {
-            answer: [
-              {
-                content: [{ styles: {}, text: "Resposta", type: "text" }],
-                id: "answer-1",
-                type: "paragraph",
-              },
-            ],
-            id: "55555555-5555-4555-8555-555555555555",
-            question: [
-              {
-                content: [{ styles: {}, text: "Pergunta?", type: "text" }],
-                id: "question-1",
-                type: "paragraph",
-              },
-            ],
-          },
-        ],
-        quizQuestions: [],
-      },
+      payload: approvalRequestBody,
       url: `/api/ai/generations/${operationId}/approve`,
     });
 
@@ -302,5 +410,27 @@ describe("AI selection generation routes", () => {
       operationId,
       expect.any(Object),
     );
+  });
+
+  it("reports the material whose reference cannot be anchored", async () => {
+    queries.approveAiSelectionGeneration.mockResolvedValue({
+      itemId: approvalRequestBody.flashcards[0]!.id,
+      kind: "reference-unanchorable",
+    });
+    const { app } = await register();
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "POST",
+      payload: approvalRequestBody,
+      url: `/api/ai/generations/${operationId}/approve`,
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      code: "AI_REFERENCE_UNANCHORABLE",
+      itemId: approvalRequestBody.flashcards[0]!.id,
+      message:
+        "Não foi possível vincular uma referência ao trecho escolhido. Ajuste a referência e tente novamente.",
+    });
   });
 });

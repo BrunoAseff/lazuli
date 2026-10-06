@@ -48,7 +48,6 @@ export const EmptyProjects = ({ onCreate }: { onCreate: () => void }) => (
   <EmptyState
     action={<Button onClick={onCreate}>Novo projeto</Button>}
     description="Reúna documentos de uma disciplina, idioma ou assunto em um mesmo lugar."
-    featuredIcon
     icon={ProjectOpenIcon}
     minHeight="lg"
     title="Crie seu primeiro projeto"

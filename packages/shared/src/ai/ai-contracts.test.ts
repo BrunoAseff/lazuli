@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   AI_SELECTION_MAX_ITEMS,
+  AI_SELECTION_MAX_TEXT_LENGTH,
+  aiReferenceProposalSchema,
   aiQuizProposalSchema,
   approveAiSelectionGenerationSchema,
   createAiSelectionGenerationSchema,
@@ -12,6 +14,16 @@ const paragraph = (id: string, text: string) => [
 ];
 
 describe("AI selection contracts", () => {
+  it("accepts a reference quote up to the supported selection size", () => {
+    expect(
+      aiReferenceProposalSchema.safeParse({
+        blockId: "source-1",
+        quote: "x".repeat(AI_SELECTION_MAX_TEXT_LENGTH),
+        scope: "selection",
+      }).success,
+    ).toBe(true);
+  });
+
   it("keeps persisted two-option drafts readable after provider rules become stricter", () => {
     expect(
       aiQuizProposalSchema.safeParse({

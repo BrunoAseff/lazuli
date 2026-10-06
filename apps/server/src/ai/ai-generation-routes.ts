@@ -1,7 +1,9 @@
 import {
   aiGenerationIdSchema,
+  applyAiMaterialImprovementSchema,
   approveAiSelectionGenerationSchema,
   createAiCollectionGenerationSchema,
+  createAiMaterialImprovementSchema,
   createAiSelectionGenerationSchema,
 } from "@lazuli/shared";
 import type { FastifyPluginAsync } from "fastify";
@@ -21,6 +23,10 @@ import {
   prepareAiCollectionGeneration,
   prepareAiSelectionGeneration,
 } from "./ai-selection-queries.ts";
+import {
+  applyAiMaterialImprovement,
+  prepareAiMaterialImprovement,
+} from "./ai-material-improvement-queries.ts";
 
 const operationIdFrom = (params: unknown) =>
   aiGenerationIdSchema.safeParse((params as { operationId?: unknown }).operationId);
@@ -140,6 +146,160 @@ export const createAiGenerationRoutes = ({
       } catch (error) {
         return sendAiError(reply, error);
       }
+    });
+
+    app.post("/api/ai/material-improvements", async (request, reply) => {
+      const session = await authorizeMutation(request, reply);
+      if (!session) return;
+      const input = createAiMaterialImprovementSchema.safeParse(request.body);
+      if (!input.success) return sendValidationError(reply);
+      const prepared = await prepareAiMaterialImprovement(database, session.user.id, input.data);
+      if (prepared.kind === "not-found")
+        return reply.status(404).send({
+          code: "AI_SOURCE_NOT_FOUND",
+          message: "Este material não foi encontrado.",
+        });
+      const references = prepared.references.map((reference) => ({
+        id: reference.id,
+        documentId: reference.documentId,
+        documentTitle: reference.documentTitle,
+        projectId: reference.projectId,
+        projectTitle: reference.projectTitle,
+        anchorId: reference.anchorId,
+        sourcePreview: reference.sourcePreview,
+      }));
+      const sources = references
+        .slice(0, 3)
+        .flatMap((reference) =>
+          reference.sourcePreview ? [{ id: reference.id, text: reference.sourcePreview }] : [],
+        );
+      const material = prepared.material;
+      const current =
+        input.data.kind === "flashcard" && "question" in material
+          ? {
+              question: material.question,
+              answer: material.answer,
+              questionText: material.questionText,
+              answerText: material.answerText,
+            }
+          : "content" in material
+            ? {
+                content: material.content,
+                prompt: material.contentText,
+                options: material.options,
+                correctOptionIndex: material.options.findIndex(({ isCorrect }) => isCorrect),
+              }
+            : null;
+      if (!current) return sendValidationError(reply);
+      const promptCurrent =
+        input.data.kind === "flashcard" && "questionText" in material
+          ? { question: material.questionText, answer: material.answerText }
+          : "contentText" in material
+            ? {
+                prompt: material.contentText,
+                options: material.options.map(({ text }) => text),
+                correctOptionIndex: material.options.findIndex(({ isCorrect }) => isCorrect),
+              }
+            : null;
+      if (!promptCurrent) return sendValidationError(reply);
+      try {
+        const result = await service.generateMaterialImprovementDraft({
+          ...input.data,
+          current,
+          promptCurrent,
+          materialUpdatedAt: material.updatedAt.toISOString(),
+          references,
+          sources,
+          userId: session.user.id,
+        });
+        return reply
+          .status(result.kind === "completed" ? 201 : 202)
+          .send(
+            result.kind === "completed"
+              ? { status: "completed", draft: result.draft }
+              : { status: "running", operationId: result.operationId },
+          );
+      } catch (error) {
+        return sendAiError(reply, error);
+      }
+    });
+
+    app.get("/api/ai/material-improvements/:operationId", async (request, reply) => {
+      const session = await requireSession(auth, request, reply);
+      if (!session) return;
+      const operationId = operationIdFrom(request.params);
+      if (!operationId.success) return sendValidationError(reply);
+      try {
+        const result = await service.getMaterialImprovementDraft(session.user.id, operationId.data);
+        if (!result)
+          return reply.status(404).send({
+            code: "AI_GENERATION_NOT_FOUND",
+            message: "Esta melhoria não foi encontrada.",
+          });
+        return result.kind === "completed"
+          ? { status: "completed", draft: result.draft }
+          : { status: "running", operationId: result.operationId };
+      } catch (error) {
+        return sendAiError(reply, error);
+      }
+    });
+
+    app.post("/api/ai/material-improvements/:operationId/apply", async (request, reply) => {
+      const session = await authorizeMutation(request, reply);
+      if (!session) return;
+      const operationId = operationIdFrom(request.params);
+      const input = applyAiMaterialImprovementSchema.safeParse(request.body);
+      if (!operationId.success || !input.success) return sendValidationError(reply);
+      const result = await applyAiMaterialImprovement(
+        database,
+        session.user.id,
+        operationId.data,
+        input.data,
+      );
+      if (result.kind === "not-found")
+        return reply.status(404).send({
+          code: "AI_GENERATION_NOT_FOUND",
+          message: "Esta melhoria não foi encontrada.",
+        });
+      if (result.kind === "already-approved")
+        return reply.status(409).send({
+          code: "AI_GENERATION_APPROVED",
+          message: "Esta melhoria já foi aplicada.",
+        });
+      if (result.kind === "expired")
+        return reply.status(410).send({
+          code: "AI_GENERATION_EXPIRED",
+          message: "Esta proposta expirou.",
+        });
+      if (result.kind === "conflict")
+        return reply.status(409).send({
+          code: "AI_SOURCE_CHANGED",
+          message: "O material mudou. Gere uma nova proposta antes de aplicar.",
+        });
+      if (result.kind === "invalid-assets")
+        return reply.status(422).send({
+          code: "AI_INVALID_OUTPUT",
+          message: "A melhoria aceita apenas o conteúdo textual gerado nesta etapa.",
+        });
+      if (result.kind === "invalid") return sendValidationError(reply);
+      return { materialId: result.materialId, updatedAt: result.updatedAt };
+    });
+
+    app.delete("/api/ai/material-improvements/:operationId", async (request, reply) => {
+      const session = await authorizeMutation(request, reply);
+      if (!session) return;
+      const operationId = operationIdFrom(request.params);
+      if (!operationId.success) return sendValidationError(reply);
+      const discarded = await service.discardMaterialImprovementDraft(
+        session.user.id,
+        operationId.data,
+      );
+      if (!discarded)
+        return reply.status(404).send({
+          code: "AI_GENERATION_NOT_FOUND",
+          message: "Esta melhoria não foi encontrada.",
+        });
+      return reply.status(204).send();
     });
 
     app.post("/api/ai/collection-generations", async (request, reply) => {
@@ -273,6 +433,13 @@ export const createAiGenerationRoutes = ({
         return reply.status(409).send({
           code: "AI_SOURCE_CHANGED",
           message: "O documento mudou. Selecione o trecho novamente.",
+        });
+      if (result.kind === "reference-unanchorable")
+        return reply.status(409).send({
+          code: "AI_REFERENCE_UNANCHORABLE",
+          message:
+            "Não foi possível vincular uma referência ao trecho escolhido. Ajuste a referência e tente novamente.",
+          itemId: result.itemId,
         });
       if (result.kind === "collection-not-found")
         return reply

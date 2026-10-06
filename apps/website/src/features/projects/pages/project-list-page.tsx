@@ -94,6 +94,7 @@ export const ProjectListPage = () => {
           aria-label="Pesquisar projetos"
           className="h-9"
           containerClassName="min-w-56 flex-1"
+          disabled={!projects.isPending && isEmptyLibrary}
           maxLength={100}
           onClear={clearSearch}
           onValueChange={setSearchValue}

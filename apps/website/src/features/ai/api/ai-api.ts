@@ -1,10 +1,14 @@
 import {
   aiCollectionGenerationResponseSchema,
+  aiMaterialImprovementResponseSchema,
   aiSelectionGenerationResponseSchema,
+  applyAiMaterialImprovementResponseSchema,
   approveAiSelectionGenerationResponseSchema,
   type ApproveAiSelectionGenerationInput,
+  type ApplyAiMaterialImprovementInput,
   type CreateAiCollectionGenerationInput,
   type CreateAiSelectionGenerationInput,
+  type CreateAiMaterialImprovementInput,
 } from "@lazuli/shared";
 import { z } from "zod";
 
@@ -59,3 +63,27 @@ export const approveAiGeneration = (
     approveAiSelectionGenerationResponseSchema,
     { body: JSON.stringify(input), method: "POST" },
   );
+
+export const createAiMaterialImprovement = (input: CreateAiMaterialImprovementInput) =>
+  apiRequest("/api/ai/material-improvements", aiMaterialImprovementResponseSchema, {
+    body: JSON.stringify(input),
+    method: "POST",
+  });
+
+export const fetchAiMaterialImprovement = (operationId: string, signal?: AbortSignal) =>
+  apiRequest(`/api/ai/material-improvements/${operationId}`, aiMaterialImprovementResponseSchema, {
+    signal,
+  });
+
+export const applyAiMaterialImprovement = (
+  operationId: string,
+  input: ApplyAiMaterialImprovementInput,
+) =>
+  apiRequest(
+    `/api/ai/material-improvements/${operationId}/apply`,
+    applyAiMaterialImprovementResponseSchema,
+    { body: JSON.stringify(input), method: "POST" },
+  );
+
+export const discardAiMaterialImprovement = (operationId: string) =>
+  apiRequest(`/api/ai/material-improvements/${operationId}`, null, { method: "DELETE" });
