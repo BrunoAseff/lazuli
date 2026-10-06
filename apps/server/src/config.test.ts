@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getServerPort, parseServerEnv } from "./config.ts";
+import { getServerPort, parseServerEnv } from "./config-schema.ts";
 
 const validEnvironment = {
   AUTH_EMAIL_FROM: "Lazúli <onboarding@resend.dev>",
