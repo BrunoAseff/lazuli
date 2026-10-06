@@ -99,10 +99,6 @@ export const createAiGenerationRoutes = ({
         return reply
           .status(404)
           .send({ code: "AI_SOURCE_NOT_FOUND", message: "A fonte ou coleção não foi encontrada." });
-      if (prepared.kind === "conflict" || prepared.kind === "source-changed")
-        return reply
-          .status(409)
-          .send({ code: "AI_SOURCE_CHANGED", message: "O trecho mudou. Selecione-o novamente." });
       if (prepared.kind === "source-too-large")
         return reply.status(422).send({
           code: "AI_INPUT_TOO_LARGE",
@@ -116,9 +112,9 @@ export const createAiGenerationRoutes = ({
           ? await storedImage.Body.transformToByteArray()
           : undefined;
         if (prepared.imageAsset && !imageBytes)
-          return reply.status(409).send({
-            code: "AI_SOURCE_CHANGED",
-            message: "A imagem mudou. Selecione-a novamente.",
+          return reply.status(404).send({
+            code: "AI_SOURCE_NOT_FOUND",
+            message: "A imagem selecionada não foi encontrada.",
           });
         const result = await service.generateSelectionDraft({
           ...input.data,
@@ -307,11 +303,6 @@ export const createAiGenerationRoutes = ({
         return reply
           .status(404)
           .send({ code: "AI_SOURCE_NOT_FOUND", message: "A fonte ou coleção não foi encontrada." });
-      if (prepared.kind === "conflict" || prepared.kind === "source-changed")
-        return reply.status(409).send({
-          code: "AI_SOURCE_CHANGED",
-          message: "O documento mudou. Escolha a fonte novamente.",
-        });
       if (prepared.kind === "source-too-large")
         return reply.status(422).send({
           code: "AI_INPUT_TOO_LARGE",
@@ -424,11 +415,6 @@ export const createAiGenerationRoutes = ({
         return reply
           .status(410)
           .send({ code: "AI_GENERATION_EXPIRED", message: "Este rascunho expirou." });
-      if (result.kind === "conflict" || result.kind === "source-changed")
-        return reply.status(409).send({
-          code: "AI_SOURCE_CHANGED",
-          message: "O documento mudou. Selecione o trecho novamente.",
-        });
       if (result.kind === "reference-unanchorable")
         return reply.status(409).send({
           code: "AI_REFERENCE_UNANCHORABLE",

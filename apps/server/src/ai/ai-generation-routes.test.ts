@@ -370,21 +370,6 @@ describe("AI selection generation routes", () => {
     );
   });
 
-  it("asks for a new selection when the authorized source changed", async () => {
-    queries.prepareAiSelectionGeneration.mockResolvedValue({ kind: "source-changed" });
-    const { app, generateSelectionDraft } = await register();
-    const response = await app.inject({
-      headers: { origin: "http://localhost:3000" },
-      method: "POST",
-      payload: requestBody,
-      url: "/api/ai/selection-generations",
-    });
-
-    expect(response.statusCode).toBe(409);
-    expect(response.json()).toMatchObject({ code: "AI_SOURCE_CHANGED" });
-    expect(generateSelectionDraft).not.toHaveBeenCalled();
-  });
-
   it("approves materials only through the authenticated atomic query", async () => {
     queries.approveAiSelectionGeneration.mockResolvedValue({
       createdIds: ["55555555-5555-4555-8555-555555555555"],

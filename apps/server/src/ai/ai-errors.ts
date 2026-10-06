@@ -9,7 +9,6 @@ export const aiErrorCodes = [
   "AI_REQUEST_FAILED",
   "AI_REGENERATION_ACTIVE",
   "AI_REGENERATION_LIMIT",
-  "AI_SOURCE_CHANGED",
   "AI_TIMEOUT",
 ] as const;
 
@@ -26,7 +25,6 @@ const safeMessages: Record<AiErrorCode, string> = {
   AI_REQUEST_FAILED: "Não foi possível concluir a geração por IA.",
   AI_REGENERATION_ACTIVE: "Já existe uma nova tentativa em andamento para esta geração.",
   AI_REGENERATION_LIMIT: "As três novas tentativas incluídas já foram utilizadas.",
-  AI_SOURCE_CHANGED: "A fonte mudou antes da geração. Escolha o documento novamente.",
   AI_TIMEOUT: "A geração demorou mais que o permitido. Tente novamente.",
 };
 

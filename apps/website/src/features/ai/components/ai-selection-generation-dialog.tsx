@@ -78,7 +78,6 @@ const generationMessages = {
   AI_INSUFFICIENT_CREDITS: "Você não possui créditos suficientes para esta geração.",
   AI_RATE_LIMITED: "Muitas gerações foram solicitadas. Aguarde um pouco e tente novamente.",
   AI_REGENERATION_LIMIT: "O limite de três novas tentativas foi atingido.",
-  AI_SOURCE_CHANGED: "O trecho mudou. Selecione-o novamente no documento.",
 } as const;
 
 export const AiSelectionGenerationDialog = ({

@@ -95,7 +95,7 @@ export const createAiCollectionWorker = (
         idempotencyKey: claimed.idempotencyKey,
       });
       if (prepared.kind === "source-too-large") throw new AiGenerationError("AI_INPUT_TOO_LARGE");
-      if (prepared.kind !== "ok") throw new AiGenerationError("AI_SOURCE_CHANGED");
+      if (prepared.kind !== "ok") throw new AiGenerationError("AI_REQUEST_FAILED");
       generationStarted = true;
       await service.processCollectionDraft({
         blocks: prepared.blocks,

@@ -5,10 +5,8 @@ import {
   AI_DOCUMENT_MAX_BLOCKS,
   AI_DOCUMENT_MAX_TEXT_LENGTH,
   collectDocumentTextBlocks,
-  collectReferenceSourceIds,
   getDocumentBlockText,
   getReferenceSourcePreview,
-  readSourceAnchorId,
   removeSourceAnchors,
   STORAGE_BASIC_LIMIT_BYTES,
   type ApproveAiSelectionGenerationInput,
@@ -48,21 +46,6 @@ const findBlocks = (content: DocumentBlock[], ids: Set<string>) => {
     if (block.children) pending.unshift(...block.children);
   }
   return found;
-};
-
-const findAnchorBlockIds = (content: DocumentBlock[], anchorId: string) => {
-  const blockIds = new Set<string>();
-  const pending = [...content];
-  while (pending.length) {
-    const block = pending.pop()!;
-    const containsAnchor = (block.content ?? []).some((item) => {
-      const texts = item.type === "text" ? [item] : item.content;
-      return texts.some((text) => readSourceAnchorId(text.styles) === anchorId);
-    });
-    if (containsAnchor) blockIds.add(block.id);
-    if (block.children) pending.push(...block.children);
-  }
-  return blockIds;
 };
 
 const findBlock = (content: DocumentBlock[], blockId: string) => {
@@ -116,8 +99,6 @@ export const prepareAiSelectionGeneration = async (
     .where(and(eq(document.id, input.documentId), eq(project.userId, userId)))
     .limit(1);
   if (!ownedDocument) return { kind: "not-found" as const };
-  if (ownedDocument.revision !== input.expectedRevision)
-    return { kind: "conflict" as const, revision: ownedDocument.revision };
   const collectionTable = input.kind === "flashcard" ? flashcardCollection : quizCollection;
   const [collection] = await db
     .select({ id: collectionTable.id })
@@ -135,7 +116,7 @@ export const prepareAiSelectionGeneration = async (
   if (input.sourceScope === "document") {
     const blocks = collectDocumentTextBlocks(content);
     const sourceText = normalize(blocks.map(({ text }) => text).join(" "));
-    if (!sourceText) return { kind: "source-changed" as const };
+    if (!sourceText) return { kind: "not-found" as const };
     if (blocks.length > AI_DOCUMENT_MAX_BLOCKS || sourceText.length > AI_DOCUMENT_MAX_TEXT_LENGTH)
       return { kind: "source-too-large" as const };
     return {
@@ -155,7 +136,7 @@ export const prepareAiSelectionGeneration = async (
       | { caption?: unknown; name?: unknown; url?: unknown }
       | undefined;
     const assetId = assetIdFromUrl(blockProps?.url);
-    if (!block || block.type !== "image" || !assetId) return { kind: "source-changed" as const };
+    if (!block || block.type !== "image" || !assetId) return { kind: "not-found" as const };
     const [ownedAsset] = await db
       .select({ mimeType: asset.mimeType, objectKey: asset.objectKey })
       .from(asset)
@@ -167,7 +148,7 @@ export const prepareAiSelectionGeneration = async (
         ),
       )
       .limit(1);
-    if (!ownedAsset) return { kind: "source-changed" as const };
+    if (!ownedAsset) return { kind: "not-found" as const };
     const label =
       (typeof blockProps?.caption === "string" && normalize(blockProps.caption)) ||
       (typeof blockProps?.name === "string" && normalize(blockProps.name)) ||
@@ -184,25 +165,38 @@ export const prepareAiSelectionGeneration = async (
       sourceBlockIds: [block.id],
     };
   }
-  const blocks = findBlocks(content, new Set(input.sourceBlockIds));
-  if (blocks.size !== input.sourceBlockIds.length) return { kind: "source-changed" as const };
-  const sourceText = normalize(
-    input.sourceBlockIds.map((id) => getDocumentBlockText(blocks.get(id)!)).join(" "),
-  );
   const selectedText = normalize(input.selectedText);
-  if (!sourceText.toLocaleLowerCase("pt-BR").includes(selectedText.toLocaleLowerCase("pt-BR")))
-    return { kind: "source-changed" as const };
+  const requestedBlocks = findBlocks(content, new Set(input.sourceBlockIds));
+  const selectedTextLower = selectedText.toLocaleLowerCase("pt-BR");
+  const requestedSourceText = normalize(
+    input.sourceBlockIds
+      .flatMap((id) => {
+        const block = requestedBlocks.get(id);
+        return block ? [getDocumentBlockText(block)] : [];
+      })
+      .join(" "),
+  );
+  const currentTextBlocks = collectDocumentTextBlocks(content);
+  const matchingBlocks = requestedSourceText.toLocaleLowerCase("pt-BR").includes(selectedTextLower)
+    ? input.sourceBlockIds.filter((id) => requestedBlocks.has(id))
+    : currentTextBlocks
+        .filter(({ text }) =>
+          normalize(text).toLocaleLowerCase("pt-BR").includes(selectedTextLower),
+        )
+        .map(({ id }) => id);
+  const sourceBlockIds = matchingBlocks.length ? matchingBlocks : input.sourceBlockIds;
   return {
     kind: "ok" as const,
-    // The model receives only the exact user selection. Whole touched blocks are
-    // used exclusively to verify that the client did not invent the source.
-    blocks: [{ id: input.sourceBlockIds[0]!, text: selectedText }],
+    // The model receives only the exact user selection. Block IDs remain useful
+    // for rebuilding a precise reference, but a stale autosave snapshot must not
+    // prevent generation.
+    blocks: [{ id: sourceBlockIds[0]!, text: selectedText }],
     documentTitle: ownedDocument.documentTitle,
     documentRevision: ownedDocument.revision,
     projectId: ownedDocument.projectId,
     projectTitle: ownedDocument.projectTitle,
     selectedText,
-    sourceBlockIds: input.sourceBlockIds,
+    sourceBlockIds,
   };
 };
 
@@ -225,8 +219,6 @@ export const prepareAiCollectionGeneration = async (
     .where(and(eq(document.id, input.documentId), eq(project.userId, userId)))
     .limit(1);
   if (!ownedDocument) return { kind: "not-found" as const };
-  if (ownedDocument.revision !== input.expectedRevision)
-    return { kind: "conflict" as const, revision: ownedDocument.revision };
   const collectionTable = input.kind === "flashcard" ? flashcardCollection : quizCollection;
   const [collection] = await db
     .select({ id: collectionTable.id })
@@ -241,7 +233,7 @@ export const prepareAiCollectionGeneration = async (
     .limit(1);
   if (!collection) return { kind: "collection-not-found" as const };
   const content = ownedDocument.content as DocumentBlock[];
-  const blocks = input.sourceBlockIds.length
+  let blocks = input.sourceBlockIds.length
     ? (() => {
         const found = findBlocks(content, new Set(input.sourceBlockIds));
         return input.sourceBlockIds
@@ -255,7 +247,8 @@ export const prepareAiCollectionGeneration = async (
     !blocks.length ||
     (input.sourceBlockIds.length && blocks.length !== input.sourceBlockIds.length)
   )
-    return { kind: "source-changed" as const };
+    blocks = collectDocumentTextBlocks(content);
+  if (!blocks.length) return { kind: "not-found" as const };
   const sourceText = normalize(blocks.map(({ text }) => text).join(" "));
   if (blocks.length > AI_DOCUMENT_MAX_BLOCKS || sourceText.length > AI_DOCUMENT_MAX_TEXT_LENGTH)
     return { kind: "source-too-large" as const };
@@ -353,39 +346,6 @@ export const approveAiSelectionGeneration = async (
       .limit(1)
       .for("update", { of: document });
     if (!ownedDocument) return { kind: "not-found" as const };
-    if (
-      ownedDocument.revision !== input.expectedRevision ||
-      input.expectedRevision !== draft.documentRevision
-    )
-      return { kind: "conflict" as const, revision: ownedDocument.revision };
-    if (draft.sourceScope === "selection") {
-      if (!input.anchoredContent) return { kind: "source-changed" as const };
-      if (
-        !draft.anchorId ||
-        !collectReferenceSourceIds(input.anchoredContent).has(draft.anchorId) ||
-        normalize(getReferenceSourcePreview(input.anchoredContent, draft.anchorId, 12_001)) !==
-          normalize(draft.sourceText)
-      )
-        return { kind: "source-changed" as const };
-      const anchoredBlockIds = findAnchorBlockIds(input.anchoredContent, draft.anchorId);
-      const allowedSourceBlockIds = new Set(draft.sourceBlockIds);
-      if (
-        anchoredBlockIds.size === 0 ||
-        [...anchoredBlockIds].some((blockId) => !allowedSourceBlockIds.has(blockId))
-      )
-        return { kind: "source-changed" as const };
-    } else if (draft.sourceScope === "image") {
-      if (!input.anchoredContent) return { kind: "source-changed" as const };
-      if (!isDeepStrictEqual(ownedDocument.content, input.anchoredContent))
-        return { kind: "source-changed" as const };
-      const image = draft.anchorId ? findBlock(input.anchoredContent, draft.anchorId) : null;
-      if (!image || image.type !== "image") return { kind: "source-changed" as const };
-    } else if (
-      operation.type === "selection_generation" &&
-      (!input.anchoredContent || !isDeepStrictEqual(ownedDocument.content, input.anchoredContent))
-    )
-      return { kind: "source-changed" as const };
-
     let firstQuizPosition = 0;
     if (draft.kind === "flashcard") {
       const [collection] = await tx
@@ -426,23 +386,12 @@ export const approveAiSelectionGeneration = async (
     }
 
     const now = new Date();
-    let anchoredContent = input.anchoredContent ?? (ownedDocument.content as DocumentBlock[]);
+    // The database is authoritative. Browser revisions routinely lag behind
+    // autosave, so approval rebuilds anchors over the current owned document
+    // instead of rejecting an otherwise valid generation.
+    let anchoredContent = ownedDocument.content as DocumentBlock[];
     const referenceAnchors = new Map<string, Array<string | null>>();
     let draftAnchorUsed = false;
-    const submittedItemsUseOriginalAnchor = submittedItems.some((item) => {
-      const proposal = proposalById.get(item.id);
-      if (!proposal) return false;
-      const originalReferences = new Set(
-        proposal.references.map(({ blockId, quote }) => `${blockId}:${normalize(quote)}`),
-      );
-      return item.references.some(
-        (reference) =>
-          reference.scope === "selection" &&
-          originalReferences.has(`${reference.blockId}:${normalize(reference.quote)}`),
-      );
-    });
-    if (draft.sourceScope === "selection" && draft.anchorId && !submittedItemsUseOriginalAnchor)
-      anchoredContent = removeSourceAnchors(anchoredContent, new Set([draft.anchorId])).content;
     for (const item of submittedItems) {
       if (!item.references.length) continue;
       const proposal = proposalById.get(item.id);
@@ -462,19 +411,26 @@ export const approveAiSelectionGeneration = async (
         const isOriginalSourceReference =
           (draft.sourceScope === "selection" || draft.sourceScope === "image") &&
           isUnchangedProposalReference;
-        if (isOriginalSourceReference) {
-          if (!draft.anchorId) return { kind: "source-changed" as const };
+        if (
+          isOriginalSourceReference &&
+          draft.sourceScope === "image" &&
+          draft.anchorId &&
+          findBlock(anchoredContent, draft.anchorId)?.type === "image"
+        ) {
           anchors.push(draft.anchorId);
           draftAnchorUsed = true;
           continue;
         }
-        if (!reference.blockId || !reference.quote) return { kind: "source-changed" as const };
+        if (!reference.blockId || !reference.quote) {
+          anchors.push(null);
+          continue;
+        }
         const applied = addSourceAnchorToQuote(anchoredContent, {
           blockId: reference.blockId,
           quote: reference.quote,
           anchorId: randomUUID(),
         });
-        if (applied.kind !== "ok" && isUnchangedProposalReference) {
+        if (applied.kind !== "ok" && (isUnchangedProposalReference || isOriginalSourceReference)) {
           // A generated document/section quote may overlap anchors owned by other
           // materials. Keep the approved material linked to its document instead
           // of making an untouched proposal impossible to save.
@@ -523,11 +479,9 @@ export const approveAiSelectionGeneration = async (
           revision: sql`${document.revision} + 1`,
           updatedAt: now,
         })
-        .where(
-          and(eq(document.id, draft.documentId), eq(document.revision, input.expectedRevision)),
-        )
+        .where(eq(document.id, draft.documentId))
         .returning({ revision: document.revision });
-      if (!saved) return { kind: "conflict" as const, revision: ownedDocument.revision };
+      if (!saved) return { kind: "not-found" as const };
       revision = saved.revision;
       await tx
         .update(userStorage)
