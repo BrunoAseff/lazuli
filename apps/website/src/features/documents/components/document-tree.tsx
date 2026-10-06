@@ -568,6 +568,7 @@ export const DocumentTree = ({
       </div>
       <DocumentTreeToolbar
         closeIcon={closeIcon}
+        hasItems={items.length > 0}
         onClose={onClose}
         onCreate={(type) => afterFocusMoves(() => beginCreate(type))}
         onImport={() => requestImport(null)}

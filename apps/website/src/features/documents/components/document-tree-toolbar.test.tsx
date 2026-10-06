@@ -3,10 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DocumentTreeToolbar } from "./document-tree-toolbar.tsx";
 
-const renderToolbar = (searchOpen: boolean) =>
+const renderToolbar = (searchOpen: boolean, hasItems = true) =>
   renderToStaticMarkup(
     <DocumentTreeToolbar
       closeIcon="panel"
+      hasItems={hasItems}
       onCreate={vi.fn()}
       onImport={vi.fn()}
       onSearchChange={vi.fn()}
@@ -31,5 +32,11 @@ describe("DocumentTreeToolbar", () => {
     expect(markup).toContain('placeholder="Pesquisar arquivos"');
     expect(markup).toContain('aria-label="Fechar pesquisa"');
     expect(markup).not.toContain('aria-label="Importar documentos"');
+  });
+
+  it("disables search when the project has no files", () => {
+    const markup = renderToolbar(false, false);
+
+    expect(markup).toMatch(/aria-label="Pesquisar documentos"[^>]*disabled/);
   });
 });

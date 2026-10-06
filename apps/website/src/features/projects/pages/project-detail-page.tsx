@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";
 import { DocumentDomainIcon } from "@/components/domain-icons.ts";
+import { EmptyState } from "@/components/empty-state.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { RecentDocuments } from "@/features/documents/components/recent-documents.tsx";
 import { useProject, useProjectDocuments } from "../api/project-queries.ts";
@@ -147,18 +148,12 @@ export const ProjectDetailPage = () => {
           )}
 
           {documents.data?.items.length === 0 && (
-            <div className="mt-5 grid min-h-56 place-items-center rounded-xl border border-dashed bg-card/40 p-6 text-center">
-              <div className="max-w-sm">
-                <DocumentDomainIcon
-                  aria-hidden="true"
-                  className="mx-auto mb-4 size-8 text-muted-foreground"
-                  weight="duotone"
-                />
-                <h3 className="font-heading text-2xl font-medium">Nenhum documento ainda</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Crie ou importe documentos pela árvore de arquivos para começar.
-                </p>
-              </div>
+            <div className="mt-5">
+              <EmptyState
+                description="Crie ou importe documentos pela árvore de arquivos para começar."
+                icon={DocumentDomainIcon}
+                title="Nenhum documento ainda"
+              />
             </div>
           )}
 

@@ -13,6 +13,7 @@ import type { DocumentTreeCloseIcon, DocumentTreeCreateType } from "../document-
 
 export const DocumentTreeToolbar = ({
   closeIcon,
+  hasItems,
   onClose,
   onCreate,
   onImport,
@@ -22,6 +23,7 @@ export const DocumentTreeToolbar = ({
   searchOpen,
 }: {
   closeIcon: DocumentTreeCloseIcon;
+  hasItems: boolean;
   onClose?: () => void;
   onCreate: (type: DocumentTreeCreateType) => void;
   onImport: () => void;
@@ -52,6 +54,7 @@ export const DocumentTreeToolbar = ({
           <span className="min-w-0 flex-1" />
           <Button
             aria-label="Pesquisar documentos"
+            disabled={!hasItems}
             onClick={() => onSearchOpenChange(true)}
             size="icon-sm"
             variant="ghost"
