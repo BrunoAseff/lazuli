@@ -36,6 +36,13 @@ import {
 
 const POLL_INTERVAL_MS = 1_000;
 const CONVERSION_TIMEOUT_MS = 120_000;
+const conversionWorkerUrl = () =>
+  new URL(
+    import.meta.url.endsWith(".ts")
+      ? "./document-conversion-thread.ts"
+      : "./document-conversion-thread.mjs",
+    import.meta.url,
+  );
 
 const convertInThread = (
   mimeType: string,
@@ -49,7 +56,7 @@ const convertInThread = (
     assets: Array<{ id: string; mimeType: string; bytes: Uint8Array }>;
   }>((resolve, reject) => {
     let progressChain = Promise.resolve();
-    const worker = new Worker(new URL("./document-conversion-thread.ts", import.meta.url), {
+    const worker = new Worker(conversionWorkerUrl(), {
       execArgv: process.execArgv,
       resourceLimits: { maxOldGenerationSizeMb: 256, stackSizeMb: 4 },
     });

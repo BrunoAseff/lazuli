@@ -19,11 +19,14 @@ const testEnv: ServerEnv = {
   RESEND_API_KEY: "re_test",
   S3_ACCESS_KEY_ID: "lazuli",
   S3_BUCKET: "lazuli-assets",
+  S3_CREATE_BUCKET_IF_MISSING: true,
   S3_ENDPOINT: "http://localhost:59000",
+  S3_FORCE_PATH_STYLE: true,
   S3_REGION: "us-east-1",
   S3_SECRET_ACCESS_KEY: "lazuli-local-secret",
   SERVER_HOST: "127.0.0.1",
   SERVER_PORT: 3001,
+  TRUST_PROXY: false,
   WEBSITE_URL: "http://localhost:3000",
 };
 

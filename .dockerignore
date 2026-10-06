@@ -1,0 +1,16 @@
+.git
+.github
+.codex
+.agents
+.env
+.env.*
+!.env.example
+**/node_modules
+**/dist
+**/.vite
+**/coverage
+codex
+references
+backups
+*.log
+README.md

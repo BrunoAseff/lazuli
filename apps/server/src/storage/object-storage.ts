@@ -10,10 +10,24 @@ import type { Readable } from "node:stream";
 
 import type { ServerEnv } from "../config.ts";
 
+type S3Error = Error & {
+  $metadata?: { httpStatusCode?: number };
+};
+
+export const isMissingBucketError = (error: unknown) => {
+  if (!(error instanceof Error)) return false;
+  const s3Error = error as S3Error;
+  return (
+    s3Error.$metadata?.httpStatusCode === 404 ||
+    error.name === "NoSuchBucket" ||
+    error.name === "NotFound"
+  );
+};
+
 export const createObjectStorage = (env: ServerEnv) => {
   const client = new S3Client({
     endpoint: env.S3_ENDPOINT,
-    forcePathStyle: true,
+    forcePathStyle: env.S3_FORCE_PATH_STYLE,
     region: env.S3_REGION,
     credentials: {
       accessKeyId: env.S3_ACCESS_KEY_ID,
@@ -25,7 +39,8 @@ export const createObjectStorage = (env: ServerEnv) => {
     async ensureBucket() {
       try {
         await client.send(new HeadBucketCommand({ Bucket: env.S3_BUCKET }));
-      } catch {
+      } catch (error) {
+        if (!env.S3_CREATE_BUCKET_IF_MISSING || !isMissingBucketError(error)) throw error;
         await client.send(new CreateBucketCommand({ Bucket: env.S3_BUCKET }));
       }
     },
