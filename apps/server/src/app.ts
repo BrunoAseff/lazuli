@@ -33,6 +33,7 @@ import { createObjectStorage } from "./storage/object-storage.ts";
 export const buildApp = (env: ServerEnv) => {
   const app = Fastify({
     loggerInstance: createLogger(env),
+    trustProxy: env.TRUST_PROXY,
   });
   const database = createDatabase(env.DATABASE_URL);
   const auth = createAuth(env, database.db, app.log);
