@@ -45,7 +45,7 @@ vp run ready
 
 ## Produção
 
-O frontend é publicado no Cloudflare Pages e a API, seus workers internos, PostgreSQL e bucket
+O frontend é publicado como Cloudflare Worker com Static Assets e a API, seus workers internos, PostgreSQL e bucket
 S3-compatible ficam no Railway. As configurações e os segredos de produção não são versionados.
 
 ### API
