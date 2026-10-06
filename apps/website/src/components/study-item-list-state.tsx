@@ -1,7 +1,7 @@
-import type { LucideIcon } from "lucide-react";
-import { PlusIcon, SearchXIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { PlusIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
+import type { ComponentType, ReactNode } from "react";
 
+import { EmptyState } from "@/components/empty-state.tsx";
 import { Button } from "@/components/ui/button.tsx";
 
 export const StudyItemListState = ({
@@ -19,7 +19,7 @@ export const StudyItemListState = ({
 }: {
   children: ReactNode;
   createLabel?: string;
-  emptyIcon: LucideIcon;
+  emptyIcon: ComponentType<{ className?: string }>;
   emptyTitle: string;
   error: boolean;
   loading: boolean;
@@ -32,25 +32,37 @@ export const StudyItemListState = ({
   if (loading) return skeleton;
   if (error)
     return (
-      <div className="p-5 text-center text-sm">
-        <p>Não foi possível carregar.</p>
-        <Button className="mt-3" onClick={onRetry} size="sm" variant="outline">
-          Tentar novamente
-        </Button>
-      </div>
+      <EmptyState
+        action={
+          <Button onClick={onRetry} size="sm" variant="outline">
+            Tentar novamente
+          </Button>
+        }
+        description="Confira sua conexão e tente novamente."
+        icon={TriangleAlertIcon}
+        iconClassName="text-destructive"
+        minHeight="sm"
+        title="Não foi possível carregar"
+      />
     );
   if (totalItems === 0) {
     const Icon = query ? SearchXIcon : EmptyIcon;
     return (
-      <div className="px-3 py-10 text-center">
-        <Icon className="mx-auto mb-3 size-6 text-muted-foreground" />
-        <p className="font-heading text-lg">{query ? "Nenhum resultado" : emptyTitle}</p>
-        {!query && onCreate && createLabel && (
-          <Button className="mt-4" onClick={onCreate} size="sm">
-            <PlusIcon /> {createLabel}
-          </Button>
-        )}
-      </div>
+      <EmptyState
+        action={
+          !query && onCreate && createLabel ? (
+            <Button onClick={onCreate} size="sm">
+              <PlusIcon /> {createLabel}
+            </Button>
+          ) : undefined
+        }
+        description={
+          query ? "Tente outro termo ou limpe a pesquisa." : "Crie um material para começar."
+        }
+        icon={Icon}
+        minHeight="sm"
+        title={query ? "Nenhum resultado" : emptyTitle}
+      />
     );
   }
   return children;

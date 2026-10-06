@@ -103,6 +103,9 @@ const createStore = (
     begin,
     complete: vi.fn<(input: CompleteAiGenerationInput) => Promise<void>>().mockResolvedValue(),
     discardCollection: vi.fn<AiGenerationStore["discardCollection"]>().mockResolvedValue(false),
+    discardMaterialImprovement: vi
+      .fn<AiGenerationStore["discardMaterialImprovement"]>()
+      .mockResolvedValue(false),
     fail: vi.fn<AiGenerationStore["fail"]>().mockResolvedValue(),
     get: vi.fn<AiGenerationStore["get"]>().mockResolvedValue(null),
     findLatestCollection: vi
@@ -697,5 +700,185 @@ describe("AI generation service", () => {
         regenerationOfId: "operation-root",
       }),
     );
+  });
+
+  it("creates an editable material-improvement draft without applying it", async () => {
+    const store = createStore();
+    const provider = createFakeAiProvider({
+      output: {
+        question: "Pergunta mais clara?",
+        answer: "Resposta mais objetiva.",
+        warning: null,
+      },
+    });
+    const service = createAiGenerationService({ logger, provider, store });
+    const current = {
+      question: [
+        {
+          id: "question-block",
+          type: "paragraph",
+          content: [{ type: "text", text: "Pergunta atual?", styles: {} }],
+        },
+      ],
+      answer: [
+        {
+          id: "answer-block",
+          type: "paragraph",
+          content: [{ type: "text", text: "Resposta atual.", styles: {} }],
+        },
+      ],
+    };
+
+    await expect(
+      service.generateMaterialImprovementDraft({
+        collectionId: "11111111-1111-4111-8111-111111111111",
+        current,
+        guidance: "",
+        idempotencyKey: "22222222-2222-4222-8222-222222222222",
+        intent: "clarify",
+        kind: "flashcard",
+        materialId: "33333333-3333-4333-8333-333333333333",
+        materialUpdatedAt: "2026-10-05T12:00:00.000Z",
+        promptCurrent: { answer: "Resposta atual.", question: "Pergunta atual?" },
+        references: [],
+        sources: [],
+        userId: "user-1",
+      }),
+    ).resolves.toMatchObject({
+      draft: {
+        current,
+        proposed: { answer: "Resposta mais objetiva.", question: "Pergunta mais clara?" },
+      },
+      kind: "completed",
+    });
+    expect(store.complete).toHaveBeenCalledWith(expect.objectContaining({ validItems: 1 }));
+  });
+
+  it("creates a material-improvement draft with the development provider", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createDevelopmentAiProvider(),
+      store,
+    });
+    const current = {
+      question: [
+        {
+          id: "question-block",
+          type: "paragraph",
+          content: [{ type: "text", text: "Pergunta atual?", styles: {} }],
+        },
+      ],
+      answer: [
+        {
+          id: "answer-block",
+          type: "paragraph",
+          content: [{ type: "text", text: "Resposta atual.", styles: {} }],
+        },
+      ],
+    };
+
+    await expect(
+      service.generateMaterialImprovementDraft({
+        collectionId: "11111111-1111-4111-8111-111111111111",
+        current,
+        guidance: "",
+        idempotencyKey: "44444444-4444-4444-8444-444444444444",
+        intent: "clarify",
+        kind: "flashcard",
+        materialId: "33333333-3333-4333-8333-333333333333",
+        materialUpdatedAt: "2026-10-05T12:00:00.000Z",
+        promptCurrent: { answer: "Resposta atual.", question: "Pergunta atual?" },
+        references: [],
+        sources: [],
+        userId: "user-1",
+      }),
+    ).resolves.toMatchObject({
+      draft: {
+        current,
+        proposed: {
+          answer: "Em síntese, resposta atual.",
+          question: "Com base no conteúdo estudado, pergunta atual?",
+        },
+      },
+      kind: "completed",
+    });
+  });
+
+  it("creates a quiz improvement draft with the development provider", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createDevelopmentAiProvider(),
+      store,
+    });
+    const options = [
+      "Modern French plates are long and white, with blue strips on both sides.",
+      "Uma afirmação que contradiz a ideia central da fonte.",
+      "Uma informação relacionada, mas não sustentada pela fonte.",
+      "Nenhuma das afirmações apresentadas é sustentada pela fonte.",
+    ];
+    const current = {
+      content: [
+        {
+          id: "question-block",
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Qual alternativa é sustentada pelo trecho?", styles: {} },
+          ],
+        },
+      ],
+      options: options.map((text, index) => ({
+        id: `${index + 1}0000000-0000-4000-8000-000000000000`,
+        isCorrect: index === 0,
+        text,
+      })),
+    };
+
+    await expect(
+      service.generateMaterialImprovementDraft({
+        collectionId: "11111111-1111-4111-8111-111111111111",
+        current,
+        guidance: "",
+        idempotencyKey: "55555555-5555-4555-8555-555555555555",
+        intent: "improveOptions",
+        kind: "quizQuestion",
+        materialId: "33333333-3333-4333-8333-333333333333",
+        materialUpdatedAt: "2026-10-05T12:00:00.000Z",
+        promptCurrent: {
+          correctOptionIndex: 0,
+          options,
+          prompt: "Qual alternativa é sustentada pelo trecho?",
+        },
+        references: [
+          {
+            anchorId: "anchor-1",
+            documentId: "66666666-6666-4666-8666-666666666666",
+            documentTitle: "França",
+            id: "77777777-7777-4777-8777-777777777777",
+            projectId: "88888888-8888-4888-8888-888888888888",
+            projectTitle: "Geografia",
+            sourcePreview: "Modern French plates are long and white.",
+          },
+        ],
+        sources: [
+          {
+            id: "77777777-7777-4777-8777-777777777777",
+            text: "Modern French plates are long and white.",
+          },
+        ],
+        userId: "user-1",
+      }),
+    ).resolves.toMatchObject({
+      draft: {
+        current,
+        proposed: {
+          correctOptionIndex: 0,
+          options,
+          prompt: "Com base no conteúdo estudado, qual alternativa é sustentada pelo trecho?",
+        },
+      },
+      kind: "completed",
+    });
   });
 });

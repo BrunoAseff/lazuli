@@ -13,6 +13,11 @@ const queries = vi.hoisted(() => ({
   prepareAiSelectionGeneration: vi.fn(),
 }));
 vi.mock("./ai-selection-queries.ts", () => queries);
+const improvementQueries = vi.hoisted(() => ({
+  applyAiMaterialImprovement: vi.fn(),
+  prepareAiMaterialImprovement: vi.fn(),
+}));
+vi.mock("./ai-material-improvement-queries.ts", () => improvementQueries);
 
 const documentId = "11111111-1111-4111-8111-111111111111";
 const collectionId = "22222222-2222-4222-8222-222222222222";
@@ -92,11 +97,16 @@ const register = async (serviceOverrides: Partial<AiGenerationService> = {}) => 
   const generateSelectionDraft = vi.fn().mockResolvedValue({ kind: "in-progress", operationId });
   const service = {
     discardCollectionDraft: vi.fn().mockResolvedValue(false),
+    discardMaterialImprovementDraft: vi.fn().mockResolvedValue(false),
     enqueueCollectionDraft: vi.fn().mockResolvedValue({ kind: "queued", operationId }),
     generateFoundationDraft: vi.fn(),
+    generateMaterialImprovementDraft: vi
+      .fn()
+      .mockResolvedValue({ kind: "in-progress", operationId }),
     generateSelectionDraft,
     getCollectionDraft: vi.fn().mockResolvedValue(null),
     getLatestCollectionDraft: vi.fn().mockResolvedValue(null),
+    getMaterialImprovementDraft: vi.fn().mockResolvedValue(null),
     getSelectionDraft: vi.fn().mockResolvedValue(null),
     ...serviceOverrides,
   } as unknown as AiGenerationService;
@@ -117,6 +127,103 @@ const register = async (serviceOverrides: Partial<AiGenerationService> = {}) => 
 afterEach(async () => {
   vi.clearAllMocks();
   await Promise.all(apps.splice(0).map((app) => app.close()));
+});
+
+describe("AI material improvement routes", () => {
+  it("rebuilds an owned flashcard before generating a proposal", async () => {
+    improvementQueries.prepareAiMaterialImprovement.mockResolvedValue({
+      kind: "ok",
+      material: {
+        answer: [{ id: "a", type: "paragraph", content: [] }],
+        answerText: "Resposta atual",
+        question: [{ id: "q", type: "paragraph", content: [] }],
+        questionText: "Pergunta atual",
+        updatedAt: new Date("2026-10-05T12:00:00.000Z"),
+      },
+      references: [],
+    });
+    const generateMaterialImprovementDraft = vi
+      .fn()
+      .mockResolvedValue({ kind: "in-progress", operationId });
+    const { app } = await register({ generateMaterialImprovementDraft });
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "POST",
+      payload: {
+        collectionId,
+        guidance: "",
+        idempotencyKey: "66666666-6666-4666-8666-666666666666",
+        intent: "clarify",
+        kind: "flashcard",
+        materialId: "77777777-7777-4777-8777-777777777777",
+      },
+      url: "/api/ai/material-improvements",
+    });
+
+    expect(response.statusCode).toBe(202);
+    expect(generateMaterialImprovementDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        promptCurrent: { answer: "Resposta atual", question: "Pergunta atual" },
+        userId: "user-1",
+      }),
+    );
+  });
+
+  it("preserves quiz option IDs in the editable current snapshot", async () => {
+    const options = [
+      {
+        id: "10000000-0000-4000-8000-000000000000",
+        isCorrect: true,
+        position: 0,
+        text: "Alternativa correta",
+      },
+      {
+        id: "20000000-0000-4000-8000-000000000000",
+        isCorrect: false,
+        position: 1,
+        text: "Alternativa incorreta",
+      },
+    ];
+    improvementQueries.prepareAiMaterialImprovement.mockResolvedValue({
+      kind: "ok",
+      material: {
+        content: [{ id: "q", type: "paragraph", content: [] }],
+        contentText: "Qual é a alternativa correta?",
+        options,
+        updatedAt: new Date("2026-10-05T12:00:00.000Z"),
+      },
+      references: [],
+    });
+    const generateMaterialImprovementDraft = vi
+      .fn()
+      .mockResolvedValue({ kind: "in-progress", operationId });
+    const { app } = await register({ generateMaterialImprovementDraft });
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "POST",
+      payload: {
+        collectionId,
+        guidance: "",
+        idempotencyKey: "99999999-9999-4999-8999-999999999999",
+        intent: "improveOptions",
+        kind: "quizQuestion",
+        materialId: "77777777-7777-4777-8777-777777777777",
+      },
+      url: "/api/ai/material-improvements",
+    });
+
+    expect(response.statusCode).toBe(202);
+    expect(generateMaterialImprovementDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        current: expect.objectContaining({ options }),
+        promptCurrent: {
+          correctOptionIndex: 0,
+          options: options.map(({ text }) => text),
+          prompt: "Qual é a alternativa correta?",
+        },
+      }),
+    );
+  });
 });
 
 describe("AI collection generation routes", () => {

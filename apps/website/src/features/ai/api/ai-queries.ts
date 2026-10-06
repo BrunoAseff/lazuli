@@ -1,7 +1,9 @@
 import type {
   ApproveAiSelectionGenerationInput,
+  ApplyAiMaterialImprovementInput,
   CreateAiCollectionGenerationInput,
   CreateAiSelectionGenerationInput,
+  CreateAiMaterialImprovementInput,
 } from "@lazuli/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
@@ -10,12 +12,16 @@ import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import { quizKeys } from "@/features/quizzes/api/quiz-queries.ts";
 import {
   approveAiGeneration,
+  applyAiMaterialImprovement,
   createAiCollectionGeneration,
   createAiSelectionGeneration,
+  createAiMaterialImprovement,
+  discardAiMaterialImprovement,
   discardAiCollectionGeneration,
   fetchAiCreditBalance,
   fetchAiCollectionGeneration,
   fetchAiGeneration,
+  fetchAiMaterialImprovement,
   fetchLatestAiCollectionGeneration,
 } from "./ai-api.ts";
 
@@ -26,6 +32,8 @@ export const aiKeys = {
     [...QUERY_KEY_ROOTS.ai, "collection-generation", operationId] as const,
   latestCollectionGeneration: (collectionId: string) =>
     [...QUERY_KEY_ROOTS.ai, "collection-generation", "latest", collectionId] as const,
+  materialImprovement: (operationId: string) =>
+    [...QUERY_KEY_ROOTS.ai, "material-improvement", operationId] as const,
 };
 
 export const useAiCreditBalance = () =>
@@ -124,6 +132,51 @@ export const useApproveAiGeneration = (operationId: string) => {
         client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.quizCollections }),
         client.invalidateQueries({ queryKey: [...QUERY_KEY_ROOTS.ai, "collection-generation"] }),
       ]);
+    },
+  });
+};
+
+export const useAiMaterialImprovement = (operationId: string) =>
+  useQuery({
+    enabled: Boolean(operationId),
+    queryKey: aiKeys.materialImprovement(operationId),
+    queryFn: ({ signal }) => fetchAiMaterialImprovement(operationId, signal),
+    refetchInterval: (query) => (query.state.data?.status === "running" ? 1_000 : false),
+  });
+
+export const useCreateAiMaterialImprovement = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateAiMaterialImprovementInput) => createAiMaterialImprovement(input),
+    onSuccess: async (result) => {
+      if (result.status === "completed")
+        client.setQueryData(aiKeys.materialImprovement(result.draft.operationId), result);
+      await client.invalidateQueries({ queryKey: aiKeys.balance });
+    },
+  });
+};
+
+export const useApplyAiMaterialImprovement = (operationId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ApplyAiMaterialImprovementInput) =>
+      applyAiMaterialImprovement(operationId, input),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcards }),
+        client.invalidateQueries({ queryKey: quizKeys.all }),
+        client.invalidateQueries({ queryKey: aiKeys.balance }),
+      ]);
+    },
+  });
+};
+
+export const useDiscardAiMaterialImprovement = (operationId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => discardAiMaterialImprovement(operationId),
+    onSuccess: () => {
+      client.removeQueries({ exact: true, queryKey: aiKeys.materialImprovement(operationId) });
     },
   });
 };
