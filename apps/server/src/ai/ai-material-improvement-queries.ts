@@ -128,25 +128,13 @@ export const applyAiMaterialImprovement = async (
       consumedCredits: operation.consumedCredits,
     });
     if (draft.kind !== input.kind) return { kind: "invalid" as const };
-    if (input.expectedUpdatedAt !== draft.materialUpdatedAt) return { kind: "conflict" as const };
 
-    const expectedUpdatedAt = new Date(input.expectedUpdatedAt);
     const updatedAt = new Date();
     if (input.kind === "flashcard" && draft.kind === "flashcard") {
       const question = summarizeRichContent(input.question);
       const answer = summarizeRichContent(input.answer);
       if (question.assetIds.length || answer.assetIds.length)
         return { kind: "invalid-assets" as const };
-      const [current] = await tx
-        .select({ updatedAt: flashcard.updatedAt })
-        .from(flashcard)
-        .where(
-          and(eq(flashcard.id, draft.materialId), eq(flashcard.collectionId, draft.collectionId)),
-        )
-        .limit(1)
-        .for("update");
-      if (!current || current.updatedAt.getTime() !== expectedUpdatedAt.getTime())
-        return { kind: "conflict" as const };
       const [updated] = await tx
         .update(flashcard)
         .set({
@@ -160,23 +148,10 @@ export const applyAiMaterialImprovement = async (
           and(eq(flashcard.id, draft.materialId), eq(flashcard.collectionId, draft.collectionId)),
         )
         .returning({ id: flashcard.id });
-      if (!updated) return { kind: "conflict" as const };
+      if (!updated) return { kind: "not-found" as const };
     } else if (input.kind === "quizQuestion" && draft.kind === "quizQuestion") {
       const content = summarizeRichContent(input.content);
       if (content.assetIds.length) return { kind: "invalid-assets" as const };
-      const [current] = await tx
-        .select({ updatedAt: quizQuestion.updatedAt })
-        .from(quizQuestion)
-        .where(
-          and(
-            eq(quizQuestion.id, draft.materialId),
-            eq(quizQuestion.collectionId, draft.collectionId),
-          ),
-        )
-        .limit(1)
-        .for("update");
-      if (!current || current.updatedAt.getTime() !== expectedUpdatedAt.getTime())
-        return { kind: "conflict" as const };
       const [updated] = await tx
         .update(quizQuestion)
         .set({ content: input.content, contentText: content.text, updatedAt })
@@ -187,7 +162,7 @@ export const applyAiMaterialImprovement = async (
           ),
         )
         .returning({ id: quizQuestion.id });
-      if (!updated) return { kind: "conflict" as const };
+      if (!updated) return { kind: "not-found" as const };
       await tx.delete(quizOption).where(eq(quizOption.questionId, draft.materialId));
       await tx.insert(quizOption).values(
         input.options.map((option, position) => ({

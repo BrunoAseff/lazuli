@@ -271,11 +271,6 @@ export const createAiGenerationRoutes = ({
           code: "AI_GENERATION_EXPIRED",
           message: "Esta proposta expirou.",
         });
-      if (result.kind === "conflict")
-        return reply.status(409).send({
-          code: "AI_SOURCE_CHANGED",
-          message: "O material mudou. Gere uma nova proposta antes de aplicar.",
-        });
       if (result.kind === "invalid-assets")
         return reply.status(422).send({
           code: "AI_INVALID_OUTPUT",
