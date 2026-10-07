@@ -1,5 +1,10 @@
 import type { FastifyBaseLogger } from "fastify";
-import { VERIFICATION_EMAIL_COOLDOWN_SECONDS } from "@lazuli/shared";
+import {
+  AUTH_PASSWORD_MAX_LENGTH,
+  AUTH_PASSWORD_MIN_LENGTH,
+  PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS,
+  VERIFICATION_EMAIL_COOLDOWN_SECONDS,
+} from "@lazuli/shared";
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
@@ -8,11 +13,13 @@ import type { ServerEnv } from "../config.ts";
 import type { Database } from "../database/client.ts";
 import * as schema from "../database/schema/index.ts";
 import { createVerificationEmailSender } from "../email/send-verification-email.ts";
+import { createPasswordResetEmailSender } from "../email/send-password-reset-email.ts";
 import { initializeNewUser } from "../onboarding/onboarding-content.ts";
 import { isValidAccountName, normalizeAccountName } from "./account-name.ts";
 
 export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBaseLogger) => {
   const sendVerificationEmail = createVerificationEmailSender(env, logger);
+  const sendPasswordResetEmail = createPasswordResetEmailSender(env, logger);
 
   return betterAuth({
     advanced: {
@@ -49,9 +56,21 @@ export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBa
     },
     emailAndPassword: {
       enabled: true,
-      maxPasswordLength: 128,
-      minPasswordLength: 8,
+      maxPasswordLength: AUTH_PASSWORD_MAX_LENGTH,
+      minPasswordLength: AUTH_PASSWORD_MIN_LENGTH,
       requireEmailVerification: true,
+      resetPasswordTokenExpiresIn: 60 * 60,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: async ({ token, url, user }) => {
+        void sendPasswordResetEmail({
+          email: user.email,
+          name: user.name,
+          token,
+          url,
+        }).catch((error: unknown) => {
+          logger.error({ err: error, userId: user.id }, "password reset email failed");
+        });
+      },
     },
     emailVerification: {
       autoSignInAfterVerification: true,
@@ -70,6 +89,10 @@ export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBa
     },
     rateLimit: {
       customRules: {
+        "/request-password-reset": {
+          max: 1,
+          window: PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS,
+        },
         "/send-verification-email": {
           max: 1,
           window: VERIFICATION_EMAIL_COOLDOWN_SECONDS,
