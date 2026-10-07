@@ -3,6 +3,7 @@ import {
   collectDocumentTextBlocks,
   type AiImprovementIntent,
   type AiMaterialImprovementDraft,
+  type ApplyAiMaterialImprovementInput,
   type DocumentBlock,
   type FlashcardDetail,
   type QuizQuestionDetail,
@@ -70,10 +71,12 @@ type Material =
 
 export const AiMaterialImprovementDialog = ({
   material,
+  onApplied,
   onOpenChange,
   open,
 }: {
   material: Material;
+  onApplied?: (input: ApplyAiMaterialImprovementInput) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
@@ -119,6 +122,12 @@ export const AiMaterialImprovementDialog = ({
     }
   }, [draft?.operationId, result]);
 
+  useEffect(() => {
+    if (!operationId || !generation.isError) return;
+    toast.error("A geração da melhoria falhou. Tente novamente.");
+    setOperationId("");
+  }, [generation.isError, operationId]);
+
   const generate = async (regenerate = false) => {
     try {
       const response = await create.mutateAsync({
@@ -141,14 +150,15 @@ export const AiMaterialImprovementDialog = ({
   const applyDraft = async () => {
     if (!draft) return;
     try {
+      let appliedInput: ApplyAiMaterialImprovementInput;
       if (draft.kind === "flashcard") {
         if (!question.trim() || !answer.trim()) return;
-        await apply.mutateAsync({
+        appliedInput = {
           kind: "flashcard",
           expectedUpdatedAt: draft.materialUpdatedAt,
           question: textContent(question),
           answer: textContent(answer),
-        });
+        };
       } else {
         const correct = quizOptions.filter(({ isCorrect }) => isCorrect);
         if (
@@ -157,7 +167,7 @@ export const AiMaterialImprovementDialog = ({
           quizOptions.some(({ text }) => !text.trim())
         )
           return;
-        await apply.mutateAsync({
+        appliedInput = {
           kind: "quizQuestion",
           expectedUpdatedAt: draft.materialUpdatedAt,
           content: textContent(quizPrompt),
@@ -166,8 +176,10 @@ export const AiMaterialImprovementDialog = ({
             isCorrect,
             text: text.trim(),
           })),
-        });
+        };
       }
+      await apply.mutateAsync(appliedInput);
+      onApplied?.(appliedInput);
       toast.success("Melhoria aplicada ao material.");
       reset();
       onOpenChange(false);

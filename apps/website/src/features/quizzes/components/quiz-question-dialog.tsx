@@ -377,6 +377,14 @@ const QuizQuestionEditor = ({
       {question && (
         <AiMaterialImprovementDialog
           material={{ kind: "quizQuestion", value: question }}
+          onApplied={(input) => {
+            if (input.kind !== "quizQuestion") return;
+            editor.replaceBlocks(editor.document, input.content as LazuliDocumentBlock);
+            setOptions(input.options);
+            setContentValid(true);
+            setTouched(false);
+            setDirty(false);
+          }}
           onOpenChange={setImprovementOpen}
           open={improvementOpen}
         />
