@@ -40,7 +40,7 @@ const conversionWorkerUrl = () =>
   new URL(
     import.meta.url.endsWith(".ts")
       ? "./document-conversion-thread.ts"
-      : "./document-conversion-thread.mjs",
+      : "./document-imports/document-conversion-thread.mjs",
     import.meta.url,
   );
 

@@ -10,7 +10,7 @@
     "ai:smoke": "tsx src/ai/ai-smoke.ts",
     "ai:credits:grant": "tsx src/ai-credits/grant-ai-credits.ts",
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.json --noEmit && vp pack",
+    "build": "tsc -p tsconfig.json --noEmit && vp pack && node scripts/verify-document-conversion-worker.mjs",
     "start": "node dist/index.mjs",
     "start:migrate": "node dist/migrate.mjs",
     "test": "vp test",
