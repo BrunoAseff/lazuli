@@ -24,6 +24,9 @@ COPY packages/shared packages/shared
 
 RUN pnpm --filter server build
 RUN pnpm --filter server deploy --prod --legacy /runtime
+RUN test -f /runtime/dist/index.mjs \
+  && test -f /runtime/dist/migrate.mjs \
+  && test -n "$(find /runtime/migrations -maxdepth 1 -name '*.sql' -print -quit)"
 
 FROM node:22.14-bookworm-slim AS runtime
 

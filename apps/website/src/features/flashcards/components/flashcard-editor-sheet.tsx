@@ -435,6 +435,14 @@ const FlashcardEditor = ({
       {card && (
         <AiMaterialImprovementDialog
           material={{ kind: "flashcard", value: card }}
+          onApplied={(input) => {
+            if (input.kind !== "flashcard") return;
+            question.replaceBlocks(question.document, input.question as LazuliDocumentBlock);
+            answer.replaceBlocks(answer.document, input.answer as LazuliDocumentBlock);
+            setQuestionValid(true);
+            setAnswerValid(true);
+            setDirty(false);
+          }}
           onOpenChange={setImprovementOpen}
           open={improvementOpen}
         />

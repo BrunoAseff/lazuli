@@ -3,11 +3,14 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [develop, main]
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Railway waits for this workflow before promoting a main deployment. Never
+  # cancel the main check suite, otherwise the deployment gate becomes
+  # ambiguous. Superseded branch/PR checks may still be cancelled.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read

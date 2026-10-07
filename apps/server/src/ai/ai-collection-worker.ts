@@ -18,6 +18,9 @@ const readJob = (result: unknown): CollectionGenerationJob | null => {
   return (result as { job: CollectionGenerationJob }).job;
 };
 
+export const hasExceededCollectionClaimAttempts = (attempts: number) =>
+  attempts > MAX_CLAIM_ATTEMPTS;
+
 const claimNext = (db: Database, workerId: string) =>
   db.transaction(async (tx) => {
     const now = new Date();
@@ -82,7 +85,7 @@ export const createAiCollectionWorker = (
     try {
       claimed = await claimNext(db, workerId);
       if (!claimed) return;
-      if (claimed.attempts >= MAX_CLAIM_ATTEMPTS) {
+      if (hasExceededCollectionClaimAttempts(claimed.attempts)) {
         await settleFailure(new AiGenerationError("AI_REQUEST_FAILED"));
         return;
       }

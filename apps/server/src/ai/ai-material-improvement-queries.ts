@@ -16,6 +16,7 @@ import {
 } from "../database/schema/index.ts";
 import { summarizeRichContent } from "../documents/rich-content-summary.ts";
 import { listReferences } from "../references/reference-queries.ts";
+import { createPersistedQuizOptions } from "./ai-persistence.ts";
 
 const targetType = (kind: CreateAiMaterialImprovementInput["kind"]) =>
   kind === "flashcard" ? "flashcard" : "quizQuestion";
@@ -164,14 +165,9 @@ export const applyAiMaterialImprovement = async (
         .returning({ id: quizQuestion.id });
       if (!updated) return { kind: "not-found" as const };
       await tx.delete(quizOption).where(eq(quizOption.questionId, draft.materialId));
-      await tx.insert(quizOption).values(
-        input.options.map((option, position) => ({
-          ...option,
-          position,
-          questionId: draft.materialId,
-          updatedAt,
-        })),
-      );
+      await tx
+        .insert(quizOption)
+        .values(createPersistedQuizOptions(draft.materialId, input.options, updatedAt));
     } else return { kind: "invalid" as const };
 
     await tx
