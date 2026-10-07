@@ -34,6 +34,7 @@ import {
   userStorage,
 } from "../database/schema/index.ts";
 import { summarizeRichContent } from "../documents/rich-content-summary.ts";
+import { createPersistedQuizOptions } from "./ai-persistence.ts";
 
 const normalize = (value: string) => value.replace(/\s+/g, " ").trim();
 
@@ -454,8 +455,21 @@ export const approveAiSelectionGeneration = async (
       }
       referenceAnchors.set(item.id, [...new Set(anchors)]);
     }
-    if (draft.sourceScope === "selection" && draft.anchorId && !draftAnchorUsed)
-      anchoredContent = removeSourceAnchors(anchoredContent, new Set([draft.anchorId])).content;
+    if (draft.sourceScope === "selection" && draft.anchorId && !draftAnchorUsed) {
+      const [sharedReference] = await tx
+        .select({ id: studyMaterialReference.id })
+        .from(studyMaterialReference)
+        .where(
+          and(
+            eq(studyMaterialReference.userId, userId),
+            eq(studyMaterialReference.documentId, draft.documentId),
+            eq(studyMaterialReference.anchorId, draft.anchorId),
+          ),
+        )
+        .limit(1);
+      if (!sharedReference)
+        anchoredContent = removeSourceAnchors(anchoredContent, new Set([draft.anchorId])).content;
+    }
     const contentByteSize = Buffer.byteLength(JSON.stringify(anchoredContent));
     const storageDelta = contentByteSize - ownedDocument.contentByteSize;
     await tx.insert(userStorage).values({ userId }).onConflictDoNothing();
@@ -520,13 +534,7 @@ export const approveAiSelectionGeneration = async (
           contentText: content.text,
           position,
         });
-        await tx.insert(quizOption).values(
-          item.options.map((option, optionPosition) => ({
-            ...option,
-            questionId: item.id,
-            position: optionPosition,
-          })),
-        );
+        await tx.insert(quizOption).values(createPersistedQuizOptions(item.id, item.options));
         position += 1;
       }
     }
