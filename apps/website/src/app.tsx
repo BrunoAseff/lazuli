@@ -10,6 +10,8 @@ const AppShell = lazy(() => import("@/app/layouts/app-shell.tsx"));
 const LoginPage = lazy(() => import("@/features/auth/pages/login-page.tsx"));
 const RegisterPage = lazy(() => import("@/features/auth/pages/register-page.tsx"));
 const VerifyEmailPage = lazy(() => import("@/features/auth/pages/verify-email-page.tsx"));
+const ForgotPasswordPage = lazy(() => import("@/features/auth/pages/forgot-password-page.tsx"));
+const ResetPasswordPage = lazy(() => import("@/features/auth/pages/reset-password-page.tsx"));
 const ProjectListPage = lazy(() => import("@/features/projects/pages/project-list-page.tsx"));
 const FlashcardCollectionListPage = lazy(
   () => import("@/features/flashcards/pages/flashcard-collection-list-page.tsx"),
@@ -43,8 +45,10 @@ export const App = () => (
       <Route element={<PublicOnlyRoute />}>
         <Route element={<LoginPage />} path="login" />
         <Route element={<RegisterPage />} path="register" />
+        <Route element={<ForgotPasswordPage />} path="forgot-password" />
       </Route>
       <Route element={<VerifyEmailPage />} path="verify-email" />
+      <Route element={<ResetPasswordPage />} path="reset-password" />
       <Route element={<PrivateRoute />}>
         <Route element={<EditorialDesignPreviewPage />} path="design-preview" />
         <Route element={<AppShell />}>

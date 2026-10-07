@@ -1,101 +1,80 @@
 import { useEffect, useState } from "react";
-import { VERIFICATION_EMAIL_COOLDOWN_SECONDS } from "@lazuli/shared";
+import { PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS } from "@lazuli/shared";
 import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
-import { EnvelopeSimpleOpenIcon } from "@phosphor-icons/react/EnvelopeSimpleOpen";
+import { EnvelopeSimpleIcon } from "@phosphor-icons/react/EnvelopeSimple";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Link, useLocation } from "react-router";
+import { Link } from "react-router";
 
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
-import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
-import {
-  type VerificationEmailValues,
-  verificationEmailSchema,
-} from "@/features/auth/auth-schemas.ts";
+import { forgotPasswordSchema, type ForgotPasswordValues } from "@/features/auth/auth-schemas.ts";
 import { AuthFormHeader } from "@/features/auth/components/auth-form-header.tsx";
 import { AuthFeedback } from "@/features/auth/components/auth-feedback.tsx";
 import { AuthEmailField } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
 import { AuthSubmitButton } from "@/features/auth/components/auth-submit-button.tsx";
 
-type LocationState = { email?: string };
+const NEUTRAL_FEEDBACK =
+  "Se houver uma conta com este e-mail, enviaremos um link para redefinir a senha.";
 
-export const VerifyEmailPage = () => {
-  const location = useLocation();
-  const initialEmail = (location.state as LocationState | null)?.email ?? "";
+export const ForgotPasswordPage = () => {
   const [cooldown, setCooldown] = useState(0);
-  const [feedback, setFeedback] = useState<{
-    kind: "error" | "success";
-    message: string;
-  } | null>(null);
-  const form = useForm<VerificationEmailValues>({
-    defaultValues: { email: initialEmail },
+  const [feedback, setFeedback] = useState(false);
+  const form = useForm<ForgotPasswordValues>({
+    defaultValues: { email: "" },
     mode: "onChange",
-    resolver: zodResolver(verificationEmailSchema),
+    resolver: zodResolver(forgotPasswordSchema),
   });
 
   useEffect(() => {
-    if (cooldown === 0) {
-      return;
-    }
-
+    if (cooldown === 0) return;
     const timer = window.setTimeout(() => setCooldown((current) => current - 1), 1_000);
     return () => window.clearTimeout(timer);
   }, [cooldown]);
 
   const onSubmit = form.handleSubmit(async ({ email }) => {
-    setFeedback(null);
-    const { error } = await authClient.sendVerificationEmail({
-      callbackURL: `${window.location.origin}/login?verified=true`,
+    setFeedback(false);
+    const { error } = await authClient.requestPasswordReset({
       email: email.trim().toLowerCase(),
+      redirectTo: `${window.location.origin}/reset-password`,
     });
 
-    if (error) {
-      if (error.status === 429) {
-        setCooldown(VERIFICATION_EMAIL_COOLDOWN_SECONDS);
-      }
-      setFeedback({ kind: "error", message: getAuthErrorMessage(error) });
-      return;
+    setFeedback(true);
+    if (!error || error.status === 429) {
+      setCooldown(PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS);
     }
-
-    setCooldown(VERIFICATION_EMAIL_COOLDOWN_SECONDS);
-    setFeedback({
-      kind: "success",
-      message: "Se houver uma conta pendente, enviaremos um novo link de confirmação.",
-    });
   });
 
   return (
     <AuthLayout>
       <div className="mb-5 flex size-11 items-center justify-center rounded-[var(--radius)] border border-primary/25 bg-primary/5 text-primary">
-        <EnvelopeSimpleOpenIcon aria-hidden="true" className="size-6" weight="duotone" />
+        <EnvelopeSimpleIcon aria-hidden="true" className="size-6" weight="duotone" />
       </div>
       <AuthFormHeader
-        description="Enviamos um link de confirmação para o seu e-mail. Abra a mensagem para ativar sua conta."
-        title="Confirme seu e-mail"
+        description="Informe seu e-mail para receber um link seguro de redefinição."
+        title="Recupere sua senha"
       />
 
       <form className="grid gap-4" noValidate onSubmit={onSubmit}>
         <AuthEmailField
           error={form.formState.errors.email?.message}
-          id="verification-email"
+          placeholder="voce@exemplo.com"
           {...form.register("email")}
         />
 
-        {feedback && <AuthFeedback kind={feedback.kind}>{feedback.message}</AuthFeedback>}
+        {feedback && <AuthFeedback>{NEUTRAL_FEEDBACK}</AuthFeedback>}
 
         <AuthSubmitButton
           disabled={!form.formState.isValid || form.formState.isSubmitting || cooldown > 0}
           type="submit"
-          variant="outline"
         >
           {form.formState.isSubmitting && <Spinner aria-hidden="true" />}
           {form.formState.isSubmitting
             ? "Enviando…"
             : cooldown > 0
-              ? `Reenviar em ${cooldown}s`
-              : "Reenviar e-mail"}
+              ? `Enviar novamente em ${cooldown}s`
+              : "Enviar link"}
         </AuthSubmitButton>
       </form>
 
@@ -110,4 +89,4 @@ export const VerifyEmailPage = () => {
   );
 };
 
-export default VerifyEmailPage;
+export default ForgotPasswordPage;
