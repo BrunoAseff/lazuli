@@ -54,7 +54,7 @@ export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBa
       requireEmailVerification: true,
     },
     emailVerification: {
-      autoSignInAfterVerification: false,
+      autoSignInAfterVerification: true,
       expiresIn: 60 * 60,
       sendOnSignUp: true,
       sendVerificationEmail: async ({ token, url, user }) => {
