@@ -17,6 +17,7 @@ import { Trash2Icon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Dialog,
@@ -88,6 +89,8 @@ export const AiMaterialImprovementDialog = ({
   const [answer, setAnswer] = useState("");
   const [quizPrompt, setQuizPrompt] = useState("");
   const [quizOptions, setQuizOptions] = useState<QuizOptionDraft[]>([]);
+  const [discardConfirmationOpen, setDiscardConfirmationOpen] = useState(false);
+  const [closeAfterDiscard, setCloseAfterDiscard] = useState(false);
   const balance = useAiCreditBalance();
   const create = useCreateAiMaterialImprovement();
   const generation = useAiMaterialImprovement(operationId);
@@ -202,21 +205,31 @@ export const AiMaterialImprovementDialog = ({
     try {
       await discard.mutateAsync();
       reset();
+      setDiscardConfirmationOpen(false);
+      if (closeAfterDiscard) onOpenChange(false);
+      setCloseAfterDiscard(false);
     } catch {
       toast.error("Não foi possível descartar a proposta.");
     }
   };
 
+  const requestClose = () => {
+    if (apply.isPending) return;
+    if (draft) {
+      setCloseAfterDiscard(true);
+      setDiscardConfirmationOpen(true);
+      return;
+    }
+    if (busy) {
+      onOpenChange(false);
+      return;
+    }
+    reset();
+    onOpenChange(false);
+  };
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && !create.isPending && !apply.isPending) {
-          reset();
-          onOpenChange(false);
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={(next) => !next && requestClose()}>
       <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-4xl">
         <DialogHeader className="border-b px-6 py-5">
           <DialogTitle className="pr-8">Melhorar com IA</DialogTitle>
@@ -365,7 +378,10 @@ export const AiMaterialImprovementDialog = ({
               <Button
                 className="text-destructive hover:text-destructive sm:mr-auto"
                 disabled={discard.isPending || apply.isPending}
-                onClick={() => void discardDraft()}
+                onClick={() => {
+                  setCloseAfterDiscard(false);
+                  setDiscardConfirmationOpen(true);
+                }}
                 variant="ghost"
               >
                 <Trash2Icon /> Descartar proposta
@@ -385,7 +401,7 @@ export const AiMaterialImprovementDialog = ({
             </>
           ) : (
             <>
-              <DialogCancelButton disabled={busy}>Fechar</DialogCancelButton>
+              <DialogCancelButton disabled={apply.isPending}>Fechar</DialogCancelButton>
               <Button
                 disabled={busy || (balance.data?.available ?? 0) < AI_CREDITS_PER_ITEM}
                 onClick={() => void generate()}
@@ -397,6 +413,19 @@ export const AiMaterialImprovementDialog = ({
           )}
         </DialogFooter>
       </DialogContent>
+      <ConfirmationDialog
+        actionLabel="Descartar proposta"
+        description="A proposta será removida e não poderá ser recuperada. Os créditos usados na geração não serão devolvidos."
+        destructive
+        disabled={discard.isPending}
+        onConfirm={discardDraft}
+        onOpenChange={(nextOpen) => {
+          setDiscardConfirmationOpen(nextOpen);
+          if (!nextOpen) setCloseAfterDiscard(false);
+        }}
+        open={discardConfirmationOpen}
+        title="Descartar esta proposta?"
+      />
     </Dialog>
   );
 };

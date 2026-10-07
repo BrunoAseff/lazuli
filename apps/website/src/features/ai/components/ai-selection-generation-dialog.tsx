@@ -62,8 +62,6 @@ export type AiSelectionAction = {
 type EditableFlashcard = AiSelectionDraft["flashcards"][number] & { selected: boolean };
 type EditableQuiz = AiSelectionDraft["quizQuestions"][number] &
   AiEditableQuizProposal & { selected: boolean };
-type DiscardTarget = { id: string; kind: AiMaterialKind } | null;
-
 const textContent = (text: string): DocumentBlock[] => [
   {
     id: crypto.randomUUID(),
@@ -109,7 +107,6 @@ export const AiSelectionGenerationDialog = ({
   const [draft, setDraft] = useState<AiSelectionDraft | null>(null);
   const [flashcards, setFlashcards] = useState<EditableFlashcard[]>([]);
   const [quizQuestions, setQuizQuestions] = useState<EditableQuiz[]>([]);
-  const [discardTarget, setDiscardTarget] = useState<DiscardTarget>(null);
   const [regenerationConfirmationOpen, setRegenerationConfirmationOpen] = useState(false);
   const [sourceExpanded, setSourceExpanded] = useState(false);
   const balance = useAiCreditBalance();
@@ -164,7 +161,6 @@ export const AiSelectionGenerationDialog = ({
       setQuizQuestions([]);
       setGuidance("");
       setQuantity(1);
-      setDiscardTarget(null);
       setRegenerationConfirmationOpen(false);
       setSourceExpanded(false);
       appliedOperationId.current = "";
@@ -515,7 +511,18 @@ export const AiSelectionGenerationDialog = ({
                       current.map((item) => (item.id === id ? { ...item, ...change } : item)),
                     )
                   }
-                  onRemove={(id, kind) => setDiscardTarget({ id, kind })}
+                  onRemove={(id, kind) => {
+                    const remainingCount = flashcards.length + quizQuestions.length - 1;
+                    if (kind === "flashcard")
+                      setFlashcards((current) => current.filter((item) => item.id !== id));
+                    else setQuizQuestions((current) => current.filter((item) => item.id !== id));
+                    if (remainingCount === 0) {
+                      clearAiReviewSession(draft.operationId);
+                      clearGenerationUrl();
+                      setDraft(null);
+                      onCancel();
+                    }
+                  }}
                   operationId={draft.operationId}
                   quizQuestions={quizQuestions}
                   returnTo={`${location.pathname}${location.search}`}
@@ -599,29 +606,6 @@ export const AiSelectionGenerationDialog = ({
         onOpenChange={setRegenerationConfirmationOpen}
         open={regenerationConfirmationOpen}
         title="Substituir as propostas atuais?"
-      />
-      <ConfirmationDialog
-        actionLabel="Descartar proposta"
-        description="Ela será removida desta revisão e não poderá ser recuperada. Os créditos da geração não são devolvidos."
-        destructive
-        onConfirm={() => {
-          if (!discardTarget) return;
-          const remainingCount = flashcards.length + quizQuestions.length - 1;
-          if (discardTarget.kind === "flashcard")
-            setFlashcards((current) => current.filter(({ id }) => id !== discardTarget.id));
-          if (discardTarget.kind === "quizQuestion")
-            setQuizQuestions((current) => current.filter(({ id }) => id !== discardTarget.id));
-          setDiscardTarget(null);
-          if (remainingCount === 0) {
-            if (draft) clearAiReviewSession(draft.operationId);
-            clearGenerationUrl();
-            setDraft(null);
-            onCancel();
-          }
-        }}
-        onOpenChange={(nextOpen) => !nextOpen && setDiscardTarget(null)}
-        open={Boolean(discardTarget)}
-        title="Descartar esta proposta?"
       />
     </>
   );
