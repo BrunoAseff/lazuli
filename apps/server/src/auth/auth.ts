@@ -1,4 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
+import { VERIFICATION_EMAIL_COOLDOWN_SECONDS } from "@lazuli/shared";
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
@@ -68,6 +69,12 @@ export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBa
       },
     },
     rateLimit: {
+      customRules: {
+        "/send-verification-email": {
+          max: 1,
+          window: VERIFICATION_EMAIL_COOLDOWN_SECONDS,
+        },
+      },
       enabled: true,
       max: 20,
       window: 60,

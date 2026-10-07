@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { VERIFICATION_EMAIL_COOLDOWN_SECONDS } from "@lazuli/shared";
 import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
 import { EnvelopeSimpleOpenIcon } from "@phosphor-icons/react/EnvelopeSimpleOpen";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,11 +51,14 @@ export const VerifyEmailPage = () => {
     });
 
     if (error) {
+      if (error.status === 429) {
+        setCooldown(VERIFICATION_EMAIL_COOLDOWN_SECONDS);
+      }
       setFeedback({ kind: "error", message: getAuthErrorMessage(error) });
       return;
     }
 
-    setCooldown(30);
+    setCooldown(VERIFICATION_EMAIL_COOLDOWN_SECONDS);
     setFeedback({
       kind: "success",
       message: "Se houver uma conta pendente, enviaremos um novo link de confirmação.",
