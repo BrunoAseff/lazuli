@@ -3,6 +3,7 @@ import {
   DOCUMENT_IMPORT_MAX_PDF_PAGES,
   IMAGE_MAX_BYTES,
   type DocumentBlock,
+  type DocumentInlineContent,
 } from "@lazuli/shared";
 import { getDocument, ImageKind, OPS } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { PNG } from "pngjs";
@@ -33,9 +34,15 @@ type PdfImage = {
 
 type PdfAsset = { id: string; mimeType: string; bytes: Uint8Array };
 type PdfElement = { block: DocumentBlock; y: number };
+type PdfStructureNode = {
+  children?: PdfStructureNode[];
+  id?: string;
+  role?: string;
+  type?: string;
+};
 type Matrix = [number, number, number, number, number, number];
 type PdfObjectPool = { get: (name: string, callback: (image: PdfImage) => void) => void };
-type TextContent = Extract<NonNullable<DocumentBlock["content"]>[number], { type: "text" }>;
+type TextContent = Extract<DocumentInlineContent, { type: "text" }>;
 
 const PDF_IMAGE_RESOLUTION_TIMEOUT_MS = 3_000;
 const PDF_MAX_EXTRACTED_IMAGES = 50;
@@ -132,7 +139,144 @@ const lineContent = (line: PdfLine, normalFont: string) => {
   return content.filter((item) => item.type !== "text" || item.text.length > 0);
 };
 
-const stripListMarker = (content: NonNullable<DocumentBlock["content"]>, pattern: RegExp) => {
+const contentIds = (node: PdfStructureNode): string[] => [
+  ...(node.type === "content" && node.id ? [node.id] : []),
+  ...(node.children?.flatMap(contentIds) ?? []),
+];
+
+const nodesWithRole = (node: PdfStructureNode, role: string): PdfStructureNode[] => [
+  ...(node.role === role ? [node] : []),
+  ...(node.children?.flatMap((child) => nodesWithRole(child, role)) ?? []),
+];
+
+const markedTextItems = (items: unknown[]) => {
+  const byId = new Map<string, unknown[]>();
+  const stack: string[] = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    if ("type" in item && item.type === "beginMarkedContentProps") {
+      const id = "id" in item && typeof item.id === "string" ? item.id : "";
+      stack.push(id);
+      continue;
+    }
+    if ("type" in item && item.type === "endMarkedContent") {
+      stack.pop();
+      continue;
+    }
+    if (!("str" in item)) continue;
+    for (const id of stack) {
+      if (!id) continue;
+      const grouped = byId.get(id) ?? [];
+      grouped.push(item);
+      byId.set(id, grouped);
+    }
+  }
+  return byId;
+};
+
+const inlineContentForItems = (items: unknown[], forceBold = false) => {
+  const lines = groupTextLines(items).filter((line) => lineText(line));
+  if (!lines.length) return [];
+  const fontUsage = new Map<string, number>();
+  for (const line of lines)
+    for (const run of line.runs)
+      fontUsage.set(run.fontName, (fontUsage.get(run.fontName) ?? 0) + run.text.length);
+  const normalFont =
+    [...fontUsage].sort((left, right) => right[1] - left[1])[0]?.[0] ?? lines[0]!.runs[0]!.fontName;
+  const content: TextContent[] = [];
+  for (const line of lines) {
+    if (content.length) content.push({ type: "text", text: "\n", styles: {} });
+    for (const item of lineContent(line, normalFont)) {
+      content.push(forceBold ? { ...item, styles: { ...item.styles, bold: true } } : item);
+    }
+  }
+  return content;
+};
+
+export const extractStructuredPdfTables = (
+  items: unknown[],
+  structure: PdfStructureNode | null,
+): { elements: PdfElement[]; remainingItems: unknown[] } => {
+  if (!structure) return { elements: [], remainingItems: items };
+  const groupedItems = markedTextItems(items);
+  const usedIds = new Set<string>();
+  const elements: PdfElement[] = [];
+
+  for (const table of nodesWithRole(structure, "Table")) {
+    const tableIds = new Set<string>();
+    const rows = nodesWithRole(table, "TR").map((row) => {
+      const cells = (row.children ?? []).filter((child) => ["TH", "TD"].includes(child.role ?? ""));
+      return cells.map((cell) => {
+        const ids = contentIds(cell);
+        ids.forEach((id) => tableIds.add(id));
+        const cellItems = ids.flatMap((id) => groupedItems.get(id) ?? []);
+        return {
+          content: inlineContentForItems(cellItems, cell.role === "TH"),
+          items: cellItems,
+          type: cell.role,
+        };
+      });
+    });
+    const columnCount = Math.max(0, ...rows.map((row) => row.length));
+    if (rows.length === 0 || columnCount < 2) continue;
+    tableIds.forEach((id) => usedIds.add(id));
+    const headerRows = rows.filter(
+      (row) => row.length > 0 && row.every((cell) => cell.type === "TH"),
+    );
+    const y = Math.max(
+      0,
+      ...rows.flatMap((row) =>
+        row.flatMap((cell) =>
+          cell.items.flatMap((item) =>
+            item && typeof item === "object" && "transform" in item
+              ? [Number((item as { transform: number[] }).transform[5] ?? 0)]
+              : [],
+          ),
+        ),
+      ),
+    );
+    elements.push({
+      y,
+      block: {
+        id: crypto.randomUUID(),
+        type: "table",
+        props: {},
+        content: {
+          type: "tableContent",
+          columnWidths: Array.from({ length: columnCount }, () => null),
+          ...(headerRows.length ? { headerRows: headerRows.length } : {}),
+          rows: rows.map((row) => ({
+            cells: Array.from({ length: columnCount }, (_, index) => ({
+              type: "tableCell" as const,
+              props: {},
+              content: row[index]?.content ?? [],
+            })),
+          })),
+        },
+        children: [],
+      },
+    });
+  }
+
+  const remainingItems: unknown[] = [];
+  const stack: string[] = [];
+  for (const item of items) {
+    if (item && typeof item === "object" && "type" in item) {
+      if (item.type === "beginMarkedContentProps") {
+        stack.push("id" in item && typeof item.id === "string" ? item.id : "");
+        continue;
+      }
+      if (item.type === "endMarkedContent") {
+        stack.pop();
+        continue;
+      }
+    }
+    if (!stack.some((id) => usedIds.has(id))) remainingItems.push(item);
+  }
+  return { elements, remainingItems };
+};
+
+const stripListMarker = (content: DocumentInlineContent[], pattern: RegExp) => {
   for (const item of content) {
     if (item.type !== "text" || !item.text) continue;
     item.text = item.text.replace(pattern, "");
@@ -144,9 +288,10 @@ const stripListMarker = (content: NonNullable<DocumentBlock["content"]>, pattern
 const appendLine = (block: DocumentBlock, line: PdfLine, normalFont: string) => {
   const next = lineContent(line, normalFont);
   if (!next.length) return;
-  const content = (block.content ??= []);
+  const content = Array.isArray(block.content) ? block.content : [];
   if (content.length) content.push({ type: "text", text: " ", styles: {} });
   content.push(...next);
+  block.content = content;
 };
 
 export const convertPdfTextLines = (items: unknown[]): PdfElement[] => {
@@ -358,16 +503,17 @@ export const convertPdfDocument = async (
   try {
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
       const page = await pdf.getPage(pageNumber);
-      const content = await page.getTextContent();
+      const content = await page.getTextContent({ includeMarkedContent: true });
+      const structure = (await page.getStructTree()) as PdfStructureNode | null;
       const visuals = await extractPageVisuals(
         page as never,
         Math.max(0, PDF_MAX_EXTRACTED_IMAGES - observedImages),
       );
       observedImages += visuals.images.length;
       skippedImages += visuals.skippedImages;
-      const elements = convertPdfTextLines(
-        applyTextColors(content.items, visuals.operatorText, visuals.textColors),
-      );
+      const coloredItems = applyTextColors(content.items, visuals.operatorText, visuals.textColors);
+      const structured = extractStructuredPdfTables(coloredItems, structure);
+      const elements = [...convertPdfTextLines(structured.remainingItems), ...structured.elements];
       for (const { global, image, name, y } of visuals.images) {
         const imageKey = global ? `global:${name}` : `page:${pageNumber}:${name}`;
         let id = importedImages.get(imageKey);
@@ -412,8 +558,10 @@ export const convertPdfDocument = async (
       `${skippedImages} imagem${skippedImages > 1 ? "s" : ""} do PDF não puderam ser importadas.`,
     );
   if (
-    !blocks.some((block) =>
-      block.content?.some((content) => content.type === "text" && content.text.trim()),
+    !blocks.some(
+      (block) =>
+        Array.isArray(block.content) &&
+        block.content.some((content) => content.type === "text" && content.text.trim()),
     )
   )
     throw new PdfImportError("PDF_WITHOUT_TEXT");

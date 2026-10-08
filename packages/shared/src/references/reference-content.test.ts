@@ -107,9 +107,13 @@ describe("reference content helpers", () => {
   it("removes only requested anchors while preserving other styles", () => {
     const result = removeSourceAnchors(content, new Set(["anchor-one"]));
     expect(result.changed).toBe(true);
-    expect(result.content[0]?.content?.[0]).toMatchObject({ styles: { bold: true } });
+    const updatedInline = result.content[0]?.content;
+    expect(Array.isArray(updatedInline) ? updatedInline[0] : undefined).toMatchObject({
+      styles: { bold: true },
+    });
     expect(collectSourceAnchorIds(result.content)).toEqual(new Set(["anchor-two"]));
-    expect(content[0]?.content?.[0]).toMatchObject({
+    const originalInline = content[0]?.content;
+    expect(Array.isArray(originalInline) ? originalInline[0] : undefined).toMatchObject({
       styles: { bold: true, sourceAnchor: "anchor-one" },
     });
   });

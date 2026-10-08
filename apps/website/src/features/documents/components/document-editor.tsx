@@ -66,6 +66,7 @@ import { DocumentSaveStatus, type DocumentSaveState } from "./document-save-stat
 import { safeReturnTo } from "../document-navigation.ts";
 
 const blockNoteComponents = { Input: { Input: LocalizedBlockNoteInput } };
+const toDocumentBlocks = (blocks: LazuliDocumentBlock) => blocks as unknown as DocumentBlock[];
 export const DocumentEditor = ({
   projectId,
   documentId,
@@ -194,7 +195,7 @@ export const DocumentEditor = ({
       if (action.anchorCreated && !(await saveRef.current(true))) {
         if (action.anchorId) {
           const next = removeSourceAnchors(
-            editor.document as LazuliDocumentBlock,
+            toDocumentBlocks(editor.document),
             new Set([action.anchorId]),
           ).content as LazuliDocumentBlock;
           editor.replaceBlocks(editor.document, next);
@@ -252,10 +253,8 @@ export const DocumentEditor = ({
       else void navigate(-1);
     } catch {
       if (anchorCreated) {
-        const next = removeSourceAnchors(
-          editor.document as LazuliDocumentBlock,
-          new Set([anchorId]),
-        ).content as LazuliDocumentBlock;
+        const next = removeSourceAnchors(toDocumentBlocks(editor.document), new Set([anchorId]))
+          .content as LazuliDocumentBlock;
         editor.replaceBlocks(editor.document, next);
       }
       toast.error("Não foi possível vincular o trecho.");
@@ -312,7 +311,7 @@ export const DocumentEditor = ({
     anchorCreated = materialAction?.anchorCreated ?? true,
   ) => {
     if (removeAnchor && anchorId && anchorCreated) {
-      const next = removeSourceAnchors(editor.document as LazuliDocumentBlock, new Set([anchorId]))
+      const next = removeSourceAnchors(toDocumentBlocks(editor.document), new Set([anchorId]))
         .content as LazuliDocumentBlock;
       editor.replaceBlocks(editor.document, next);
     }
@@ -322,7 +321,7 @@ export const DocumentEditor = ({
   const closeAiFlow = (removeAnchor: boolean) => {
     if (removeAnchor && aiAction?.anchorCreated && aiAction.anchorId) {
       const next = removeSourceAnchors(
-        editor.document as LazuliDocumentBlock,
+        toDocumentBlocks(editor.document),
         new Set([aiAction.anchorId]),
       ).content as LazuliDocumentBlock;
       editor.replaceBlocks(editor.document, next);
@@ -461,7 +460,10 @@ export const DocumentEditor = ({
         return true;
       }
       stage = "save";
-      const result = await saveDocument.mutateAsync({ content, expectedRevision });
+      const result = await saveDocument.mutateAsync({
+        content: toDocumentBlocks(content),
+        expectedRevision,
+      });
       if (retryTimer.current !== null) window.clearTimeout(retryTimer.current);
       retryTimer.current = null;
       retryAttempt.current = 0;
@@ -912,14 +914,12 @@ export const DocumentEditor = ({
         onAdjust={
           activeAnchorId && !activeAnchorIsImage
             ? () => {
-                adjustmentSnapshot.current = structuredClone(
-                  editor.document as LazuliDocumentBlock,
-                );
+                adjustmentSnapshot.current = structuredClone(editor.document);
                 adjustingAnchorRef.current = activeAnchorId;
                 setAdjustingAnchorId(activeAnchorId);
                 setAutoSavePaused(true);
                 const next = removeSourceAnchors(
-                  editor.document as LazuliDocumentBlock,
+                  toDocumentBlocks(editor.document),
                   new Set([activeAnchorId]),
                 ).content as LazuliDocumentBlock;
                 editor.replaceBlocks(editor.document, next);
@@ -930,7 +930,7 @@ export const DocumentEditor = ({
         onOpenChange={(open) => !open && setActiveAnchorId(null)}
         onLastReferenceRemoved={async (anchorId) => {
           const localContent = removeSourceAnchors(
-            editor.document as LazuliDocumentBlock,
+            toDocumentBlocks(editor.document),
             new Set([anchorId]),
           ).content as LazuliDocumentBlock;
           const hadUnsavedChanges = dirty;

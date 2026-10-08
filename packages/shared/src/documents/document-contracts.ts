@@ -56,6 +56,19 @@ const linkContentSchema = z.object({
   content: z.array(textContentSchema),
 });
 const inlineContentSchema = z.union([textContentSchema, linkContentSchema]);
+export type DocumentInlineContent = z.infer<typeof inlineContentSchema>;
+export type DocumentTableCell = {
+  type: "tableCell";
+  props: Record<string, string | number | boolean | null>;
+  content: DocumentInlineContent[];
+};
+export type DocumentTableContent = {
+  type: "tableContent";
+  columnWidths: Array<number | null | undefined>;
+  headerRows?: number;
+  headerCols?: number;
+  rows: Array<{ cells: Array<DocumentInlineContent[] | DocumentTableCell> }>;
+};
 
 export type DocumentBlock = {
   id: string;
@@ -68,9 +81,11 @@ export type DocumentBlock = {
     | "quote"
     | "codeBlock"
     | "divider"
+    | "table"
+    | "toggleListItem"
     | "image";
   props?: Record<string, string | number | boolean | null>;
-  content?: Array<z.infer<typeof inlineContentSchema>>;
+  content?: DocumentInlineContent[] | DocumentTableContent;
   children?: DocumentBlock[];
 };
 
@@ -83,15 +98,34 @@ const allowedBlockTypes = [
   "quote",
   "codeBlock",
   "divider",
+  "table",
+  "toggleListItem",
   "image",
 ] as const;
+
+const tableCellSchema: z.ZodType<DocumentTableCell> = z.object({
+  type: z.literal("tableCell"),
+  props: z.record(z.string(), jsonPrimitiveSchema),
+  content: z.array(inlineContentSchema),
+});
+const tableContentSchema: z.ZodType<DocumentTableContent> = z.object({
+  type: z.literal("tableContent"),
+  columnWidths: z.array(z.number().positive().nullable().optional()),
+  headerRows: z.number().int().nonnegative().optional(),
+  headerCols: z.number().int().nonnegative().optional(),
+  rows: z.array(
+    z.object({
+      cells: z.array(z.union([z.array(inlineContentSchema), tableCellSchema])),
+    }),
+  ),
+});
 
 export const documentBlockSchema: z.ZodType<DocumentBlock> = z.lazy(() =>
   z.object({
     id: z.string().min(1).max(128),
     type: z.enum(allowedBlockTypes),
     props: z.record(z.string(), jsonPrimitiveSchema).optional(),
-    content: z.array(inlineContentSchema).optional(),
+    content: z.union([z.array(inlineContentSchema), tableContentSchema]).optional(),
     children: z.array(documentBlockSchema).optional(),
   }),
 );
@@ -153,11 +187,21 @@ export const hasMeaningfulDocumentContent = (blocks: DocumentBlock[]) => {
   while (pending.length) {
     const block = pending.pop()!;
     if (block.type === "image") return true;
+    const inlineGroups =
+      block.content && !Array.isArray(block.content)
+        ? block.content.rows.flatMap(({ cells }) =>
+            cells.map((cell) => (Array.isArray(cell) ? cell : cell.content)),
+          )
+        : block.content
+          ? [block.content]
+          : [];
     if (
-      block.content?.some((item) =>
-        item.type === "text"
-          ? Boolean(item.text.trim())
-          : item.content.some(({ text }) => Boolean(text.trim())),
+      inlineGroups.some((content) =>
+        content.some((item) =>
+          item.type === "text"
+            ? Boolean(item.text.trim())
+            : item.content.some(({ text }) => Boolean(text.trim())),
+        ),
       )
     )
       return true;

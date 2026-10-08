@@ -35,8 +35,8 @@ type ReferenceSelectionEditor = {
   addStyles: (styles: { sourceAnchor: string }) => void;
   getActiveStyles: () => Record<string, boolean | string>;
   getSelectedText: () => string;
-  getSelection: () => { blocks: DocumentBlock[] } | undefined;
-  getTextCursorPosition?: () => { block: DocumentBlock };
+  getSelection: () => { blocks: unknown[] } | undefined;
+  getTextCursorPosition?: () => { block: unknown };
 };
 
 const normalizePreviewText = (value: string) => value.replace(/\s+/g, " ").trim();
@@ -107,8 +107,10 @@ export const formatDocumentSelectionPreview = (
 
 export const getDocumentReferenceSelection = (editor: ReferenceSelectionEditor) => {
   const selectedText = editor.getSelectedText().trim();
-  const selectedBlocks = editor.getSelection()?.blocks ?? [];
-  const cursorBlock = selectedBlocks.length ? null : editor.getTextCursorPosition?.().block;
+  const selectedBlocks = (editor.getSelection()?.blocks ?? []) as DocumentBlock[];
+  const cursorBlock = selectedBlocks.length
+    ? null
+    : (editor.getTextCursorPosition?.().block as DocumentBlock | undefined);
   const blocks = selectedBlocks.length ? selectedBlocks : cursorBlock ? [cursorBlock] : [];
   const sourceBlockIds = [...new Set(blocks.map(({ id }) => id))];
   if (selectedText) {
