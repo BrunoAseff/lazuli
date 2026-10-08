@@ -1,12 +1,17 @@
-import { ArrowLeftIcon, TriangleAlertIcon } from "lucide-react";
+import { ArrowLeftIcon, FilePlus2Icon, TriangleAlertIcon, UploadIcon } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
 import { DocumentDomainIcon } from "@/components/domain-icons.ts";
 import { EmptyState } from "@/components/empty-state.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { RecentDocuments } from "@/features/documents/components/recent-documents.tsx";
+import { useDocumentImports } from "@/features/document-imports/document-import-provider.tsx";
+import { useCreateProjectItem } from "@/features/documents/api/document-queries.ts";
+import { documentLocation } from "@/features/documents/document-navigation.ts";
+import { DOCUMENT_MESSAGES } from "@/features/documents/document-messages.ts";
 import { useProject, useProjectDocuments } from "../api/project-queries.ts";
 import { ProjectApiError } from "../api/project-api.ts";
 import {
@@ -23,6 +28,8 @@ export const ProjectDetailPage = () => {
   const { projectId = "" } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { openImportDialog } = useDocumentImports();
+  const createItem = useCreateProjectItem(projectId);
   const [action, setAction] = useState<ProjectAction | null>(null);
   const [documentView, setDocumentView] = useState<ViewMode>(() =>
     localStorage.getItem("lazuli-document-view") === "table" ? "table" : "cards",
@@ -36,6 +43,20 @@ export const ProjectDetailPage = () => {
   const changeDocumentView = (view: ViewMode) => {
     setDocumentView(view);
     localStorage.setItem("lazuli-document-view", view);
+  };
+  const createBlankDocument = async () => {
+    try {
+      const item = await createItem.mutateAsync({
+        id: crypto.randomUUID(),
+        type: "document",
+        parentId: null,
+        title: "Novo documento",
+      });
+      toast.success(DOCUMENT_MESSAGES.createDocumentSuccess);
+      void navigate(documentLocation({ documentId: item.id, projectId }));
+    } catch {
+      toast.error(DOCUMENT_MESSAGES.createError);
+    }
   };
 
   if (project.isPending) {
@@ -150,7 +171,22 @@ export const ProjectDetailPage = () => {
           {documents.data?.items.length === 0 && (
             <div className="mt-5">
               <EmptyState
-                description="Crie ou importe documentos pela árvore de arquivos para começar."
+                action={
+                  <div className="flex flex-col justify-center gap-2 sm:flex-row">
+                    <Button onClick={() => openImportDialog(projectId, null)} variant="outline">
+                      <UploadIcon />
+                      Importar documento
+                    </Button>
+                    <Button
+                      disabled={createItem.isPending}
+                      onClick={() => void createBlankDocument()}
+                    >
+                      <FilePlus2Icon />
+                      Criar documento em branco
+                    </Button>
+                  </div>
+                }
+                description="Importe um material que você já possui ou comece uma página em branco."
                 icon={DocumentDomainIcon}
                 title="Nenhum documento ainda"
               />

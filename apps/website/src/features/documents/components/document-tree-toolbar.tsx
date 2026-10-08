@@ -6,10 +6,29 @@ import {
   UploadIcon,
   XIcon,
 } from "lucide-react";
+import type { ComponentProps } from "react";
 
 import { SearchInput } from "@/components/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import type { DocumentTreeCloseIcon, DocumentTreeCreateType } from "../document-tree-types.ts";
+
+const ToolbarAction = ({
+  label,
+  children,
+  ...props
+}: ComponentProps<typeof Button> & { label: string }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button aria-label={label} size="icon-sm" variant="ghost" {...props}>
+        {children}
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent side="bottom" sideOffset={6}>
+      {label}
+    </TooltipContent>
+  </Tooltip>
+);
 
 export const DocumentTreeToolbar = ({
   closeIcon,
@@ -52,44 +71,26 @@ export const DocumentTreeToolbar = ({
       ) : (
         <>
           <span className="min-w-0 flex-1" />
-          <Button
-            aria-label="Pesquisar documentos"
+          <ToolbarAction
             disabled={!hasItems}
+            label="Pesquisar documentos"
             onClick={() => onSearchOpenChange(true)}
-            size="icon-sm"
-            variant="ghost"
           >
             <SearchIcon />
-          </Button>
-          <Button
-            aria-label="Importar documentos"
-            onClick={onImport}
-            size="icon-sm"
-            title="Importar documentos"
-            variant="ghost"
-          >
+          </ToolbarAction>
+          <ToolbarAction label="Importar documentos" onClick={onImport}>
             <UploadIcon />
-          </Button>
-          <Button
-            aria-label="Nova pasta"
-            onClick={() => onCreate("folder")}
-            size="icon-sm"
-            variant="ghost"
-          >
+          </ToolbarAction>
+          <ToolbarAction label="Nova pasta" onClick={() => onCreate("folder")}>
             <FolderPlusIcon />
-          </Button>
-          <Button
-            aria-label="Novo documento"
-            onClick={() => onCreate("document")}
-            size="icon-sm"
-            variant="ghost"
-          >
+          </ToolbarAction>
+          <ToolbarAction label="Novo documento" onClick={() => onCreate("document")}>
             <FilePlus2Icon />
-          </Button>
+          </ToolbarAction>
           {onClose && (
-            <Button aria-label="Ocultar arquivos" onClick={onClose} size="icon-sm" variant="ghost">
+            <ToolbarAction label="Ocultar arquivos" onClick={onClose}>
               {closeIcon === "x" ? <XIcon /> : <PanelLeftCloseIcon />}
-            </Button>
+            </ToolbarAction>
           )}
         </>
       )}
