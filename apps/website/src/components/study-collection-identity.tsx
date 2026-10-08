@@ -20,13 +20,13 @@ export const StudyCollectionIdentity = ({
   query: string;
   title: string;
 }) => (
-  <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3">
+  <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 overflow-hidden">
     <div className="row-span-2">{icon}</div>
     <div className="min-w-0">
       <OverflowTooltip text={title}>
         {(ref) => (
           <Link
-            className="truncate font-heading text-xl font-medium underline-offset-4 hover:underline"
+            className="block truncate font-heading text-xl font-medium underline-offset-4 hover:underline"
             ref={ref as Ref<HTMLAnchorElement>}
             to={href}
           >
@@ -36,7 +36,7 @@ export const StudyCollectionIdentity = ({
       </OverflowTooltip>
     </div>
     {metadata ? (
-      <p className="mt-0.5 truncate text-xs text-muted-foreground">{metadata}</p>
+      <p className="mt-0.5 min-w-0 truncate text-xs text-muted-foreground">{metadata}</p>
     ) : (
       <OverflowTooltip text={projectTitle ?? "Sem projeto"}>
         {(ref) => (

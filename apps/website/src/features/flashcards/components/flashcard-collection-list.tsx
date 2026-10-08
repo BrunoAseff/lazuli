@@ -1,13 +1,15 @@
 import { calculateFlashcardProgress, type FlashcardCollectionSummary } from "@lazuli/shared";
-import { CalendarClockIcon, PlayIcon, RotateCcwIcon } from "lucide-react";
+import { CalendarClockIcon, ChartNoAxesColumnIncreasingIcon, RotateCcwIcon } from "lucide-react";
 
 import { FlashcardCollectionMark } from "@/components/flashcard-collection-mark.tsx";
 import { StudyCollectionActions } from "@/components/study-collection-actions.tsx";
+import { StudyCollectionCard, StudyCollectionMetric } from "@/components/study-collection-card.tsx";
 import { StudyCollectionIdentity } from "@/components/study-collection-identity.tsx";
-import { Button } from "@/components/ui/button.tsx";
+import { StudyCollectionOpenAction } from "@/components/study-collection-open-action.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
 import { formatMediumDateTime } from "@/lib/date-format.ts";
 import type { StudyCollectionAction } from "@/lib/study-actions.ts";
+import { FlashcardPracticeButton } from "./flashcard-practice-button.tsx";
 
 const practiceLabel = (collection: FlashcardCollectionSummary) => {
   if (collection.totalCards === 0) return "Sem prática agendada";
@@ -35,70 +37,22 @@ export const FlashcardCollectionList = ({
     {collections.map((collection) => {
       const progress = calculateFlashcardProgress(collection.studiedCards, collection.totalCards);
       return (
-        <article
-          className="relative grid gap-4 rounded-xl border bg-card px-4 py-4 transition-colors hover:bg-accent/45 sm:px-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(11rem,0.75fr)_minmax(13rem,0.9fr)_auto] lg:items-center"
-          key={collection.id}
-        >
-          <div className="min-w-0 pr-10 lg:pr-0">
-            <StudyCollectionIdentity
-              href={`/flashcards/${collection.id}`}
-              icon={<FlashcardCollectionMark />}
-              metadata={
-                <>
-                  {collection.project?.title ?? "Sem projeto"} · {collection.totalCards}{" "}
-                  {collection.totalCards === 1 ? "card" : "cards"}
-                </>
-              }
-              projectTitle={collection.project?.title}
-              query={query}
-              title={collection.title}
-            />
-          </div>
-          <div>
-            <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <span>
-                {collection.totalCards} {collection.totalCards === 1 ? "card" : "cards"}
-              </span>
-              <span>{progress}%</span>
-            </div>
-            <Progress
-              aria-label={`${collection.studiedCards} de ${collection.totalCards} cards estudados`}
-              value={progress}
-            />
-            <p className="mt-2 text-xs text-muted-foreground">
-              {collection.studiedCards} de {collection.totalCards} estudados
-            </p>
-          </div>
-          <div className="grid gap-2 text-sm">
-            <p className="flex items-center gap-2">
-              <CalendarClockIcon aria-hidden="true" className="size-4 text-muted-foreground" />
-              <span>{practiceLabel(collection)}</span>
-            </p>
-            <p className="flex items-center gap-2 text-muted-foreground">
-              <RotateCcwIcon aria-hidden="true" className="size-4" />
-              <span>
-                {collection.reviewsLastSevenDays === 0
-                  ? "Sem revisões nos últimos 7 dias"
-                  : `${collection.reviewsLastSevenDays} ${
-                      collection.reviewsLastSevenDays === 1 ? "revisão" : "revisões"
-                    } nos últimos 7 dias`}
-              </span>
-            </p>
-          </div>
-          <div className="flex w-full items-center justify-end gap-2 justify-self-stretch lg:min-w-40">
-            {!collection.archivedAt && (
-              <Button
-                aria-label={`Praticar ${collection.title}`}
-                className="w-full lg:w-auto"
-                disabled={collection.dueCards === 0}
-                onClick={() => onPractice(collection)}
-                size="sm"
-              >
-                <PlayIcon aria-hidden="true" />
-                Praticar
-              </Button>
-            )}
-            <div className="absolute top-3 right-3 lg:static">
+        <StudyCollectionCard
+          actions={
+            <>
+              <StudyCollectionOpenAction
+                className={collection.archivedAt ? "col-span-2" : undefined}
+                href={`/flashcards/${collection.id}`}
+                title={collection.title}
+              />
+              {!collection.archivedAt && (
+                <FlashcardPracticeButton
+                  dueCards={collection.dueCards}
+                  onClick={() => onPractice(collection)}
+                  title={collection.title}
+                  totalCards={collection.totalCards}
+                />
+              )}
               <StudyCollectionActions
                 archived={Boolean(collection.archivedAt)}
                 onArchive={() => onAction("archive", collection)}
@@ -107,9 +61,54 @@ export const FlashcardCollectionList = ({
                 onRestore={() => onAction("restore", collection)}
                 title={collection.title}
               />
-            </div>
-          </div>
-        </article>
+            </>
+          }
+          identity={
+            <StudyCollectionIdentity
+              href={`/flashcards/${collection.id}`}
+              icon={<FlashcardCollectionMark />}
+              metadata={collection.project?.title ?? "Sem projeto"}
+              projectTitle={collection.project?.title}
+              query={query}
+              title={collection.title}
+            />
+          }
+          key={collection.id}
+        >
+          <StudyCollectionMetric
+            icon={<ChartNoAxesColumnIncreasingIcon aria-hidden="true" className="size-4" />}
+            label="Progresso"
+            value={
+              <span className="flex items-center justify-between gap-3">
+                <span>{progress}%</span>
+                <span className="font-normal text-muted-foreground">
+                  {collection.studiedCards} de {collection.totalCards} estudados
+                </span>
+              </span>
+            }
+          >
+            <Progress
+              aria-label={`${collection.studiedCards} de ${collection.totalCards} cards estudados`}
+              value={progress}
+            />
+          </StudyCollectionMetric>
+          <StudyCollectionMetric
+            icon={<CalendarClockIcon aria-hidden="true" className="size-4" />}
+            label="Próxima prática"
+            value={practiceLabel(collection)}
+          />
+          <StudyCollectionMetric
+            icon={<RotateCcwIcon aria-hidden="true" className="size-4" />}
+            label="Últimos 7 dias"
+            value={
+              collection.reviewsLastSevenDays === 0
+                ? "Sem revisões"
+                : `${collection.reviewsLastSevenDays} ${
+                    collection.reviewsLastSevenDays === 1 ? "revisão" : "revisões"
+                  }`
+            }
+          />
+        </StudyCollectionCard>
       );
     })}
   </div>
