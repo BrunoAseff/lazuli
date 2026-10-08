@@ -26,6 +26,7 @@ import {
   createFoundationPrompt,
   createMaterialImprovementPrompt,
   createSelectionPrompt,
+  type AiSelectionContext,
   type AiSourceBlock,
 } from "./ai-prompts.ts";
 import type { AiProvider } from "./ai-provider.ts";
@@ -52,6 +53,7 @@ type SelectionGenerationInput = {
   anchorId: string | null;
   blocks: AiSourceBlock[];
   collectionId: string;
+  context: AiSelectionContext;
   documentId: string;
   documentTitle?: string;
   documentRevision: number;
@@ -639,7 +641,7 @@ export const createAiGenerationService = ({
       input: SelectionGenerationInput,
     ): Promise<SelectionGenerationResult> {
       assertInputLimits({
-        blocks: input.blocks,
+        blocks: [...input.blocks, ...input.context.before, ...input.context.after],
         idempotencyKey: input.idempotencyKey,
         sourceIds: [input.documentId, ...input.sourceBlockIds],
         userId: input.userId,
@@ -648,6 +650,7 @@ export const createAiGenerationService = ({
       const sourceIds = [input.documentId, ...input.sourceBlockIds];
       const contextFingerprint = fingerprint({
         blocks: input.blocks,
+        context: input.context,
         collectionId: input.collectionId,
         documentId: input.documentId,
         guidance: input.guidance,

@@ -62,6 +62,10 @@ export const createAiSelectionGenerationSchema = z.discriminatedUnion("sourceSco
         .trim()
         .min(AI_SELECTION_MIN_TEXT_LENGTH, "Selecione um trecho um pouco maior.")
         .max(AI_SELECTION_MAX_TEXT_LENGTH, "O trecho selecionado é muito grande."),
+      selectedPreview: z
+        .string()
+        .trim()
+        .max(AI_SELECTION_MAX_TEXT_LENGTH + 1_000),
       sourceBlockIds: selectionSourceBlockIdsSchema,
     })
     .strict(),

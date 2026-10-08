@@ -54,6 +54,7 @@ import {
 export type AiSelectionAction = {
   anchorId: string | null;
   anchorCreated: boolean;
+  selectedPreview?: string;
   selectedText: string;
   sourceScope: "document" | "image" | "selection";
   sourceBlockIds: string[];
@@ -242,6 +243,7 @@ export const AiSelectionGenerationDialog = ({
           ? {
               ...commonInput,
               anchorId: action.anchorId!,
+              selectedPreview: action.selectedPreview ?? action.selectedText,
               selectedText: action.selectedText,
               sourceScope: "selection",
               sourceBlockIds: action.sourceBlockIds,
@@ -380,13 +382,13 @@ export const AiSelectionGenerationDialog = ({
                   </p>
                   <div
                     className={cn(
-                      "leading-relaxed",
+                      "whitespace-pre-wrap leading-relaxed",
                       sourceExpanded
                         ? "max-h-[min(40vh,20rem)] overflow-y-auto pr-2 lazuli-thin-scrollbar"
                         : "line-clamp-4",
                     )}
                   >
-                    {action?.selectedText}
+                    {action?.selectedPreview ?? action?.selectedText}
                   </div>
                   {(action?.selectedText.length ?? 0) > 280 && (
                     <Button

@@ -5,7 +5,12 @@ import {
   useComponentsContext,
   type FormattingToolbarProps,
 } from "@blocknote/react";
-import { AI_SELECTION_MAX_TEXT_LENGTH, AI_SELECTION_MIN_TEXT_LENGTH } from "@lazuli/shared";
+import {
+  AI_SELECTION_MAX_TEXT_LENGTH,
+  AI_SELECTION_MIN_TEXT_LENGTH,
+  getDocumentBlockText,
+  type DocumentBlock,
+} from "@lazuli/shared";
 import { LinkSimpleIcon } from "@phosphor-icons/react/LinkSimple";
 import { toast } from "sonner";
 
@@ -21,6 +26,7 @@ export type DocumentMaterialAction = {
 };
 
 export type DocumentAiAction = Omit<DocumentMaterialAction, "kind"> & {
+  selectedPreview: string;
   sourceScope: "image" | "selection";
   sourceBlockIds: string[];
 };
@@ -29,8 +35,74 @@ type ReferenceSelectionEditor = {
   addStyles: (styles: { sourceAnchor: string }) => void;
   getActiveStyles: () => Record<string, boolean | string>;
   getSelectedText: () => string;
-  getSelection: () => { blocks: Array<{ id: string; type: string }> } | undefined;
-  getTextCursorPosition?: () => { block: { id: string; type: string } };
+  getSelection: () => { blocks: DocumentBlock[] } | undefined;
+  getTextCursorPosition?: () => { block: DocumentBlock };
+};
+
+const normalizePreviewText = (value: string) => value.replace(/\s+/g, " ").trim();
+
+const getSelectedBlockLines = (selectedText: string, blocks: DocumentBlock[]) => {
+  const blockTexts = blocks.map(getDocumentBlockText);
+  const normalizedSelection = normalizePreviewText(selectedText);
+  if (!normalizedSelection || blockTexts.every((text) => !text)) return null;
+
+  const findSelection = (separator: string) => {
+    const ranges: Array<{ end: number; start: number }> = [];
+    let cursor = 0;
+    const documentText = blockTexts
+      .map((text, index) => {
+        if (index) cursor += separator.length;
+        const start = cursor;
+        cursor += text.length;
+        ranges.push({ end: cursor, start });
+        return text;
+      })
+      .join(separator);
+    const selectionStart = documentText.indexOf(normalizedSelection);
+    if (selectionStart < 0) return null;
+    const selectionEnd = selectionStart + normalizedSelection.length;
+    return ranges.flatMap(({ end, start }, index) => {
+      const overlapStart = Math.max(start, selectionStart);
+      const overlapEnd = Math.min(end, selectionEnd);
+      if (overlapStart >= overlapEnd) return [];
+      return [
+        {
+          text: blockTexts[index]!.slice(overlapStart - start, overlapEnd - start).trim(),
+          type: blocks[index]!.type,
+        },
+      ];
+    });
+  };
+
+  return findSelection("") ?? findSelection(" ");
+};
+
+export const formatDocumentSelectionPreview = (
+  selectedText: string,
+  blocks: DocumentBlock[],
+  browserText?: string | null,
+) => {
+  const selectedLines = getSelectedBlockLines(selectedText, blocks);
+  const browserSelectionMatches =
+    browserText && normalizePreviewText(browserText) === normalizePreviewText(selectedText);
+  const lines = selectedLines?.length
+    ? selectedLines
+    : (browserSelectionMatches ? browserText : selectedText)
+        .trim()
+        .replace(/\n{3,}/g, "\n\n")
+        .split(/\n/)
+        .map((text, index) => ({ text, type: blocks[index]?.type ?? "paragraph" }));
+  let numberedItem = 0;
+  return lines
+    .map(({ text, type }) => {
+      if (type === "bulletListItem") return `• ${text}`;
+      if (type === "numberedListItem") return `${(numberedItem += 1)}. ${text}`;
+      if (type === "checkListItem") return `☐ ${text}`;
+      if (type === "quote") return `> ${text}`;
+      numberedItem = 0;
+      return text;
+    })
+    .join("\n");
 };
 
 export const getDocumentReferenceSelection = (editor: ReferenceSelectionEditor) => {
@@ -39,10 +111,19 @@ export const getDocumentReferenceSelection = (editor: ReferenceSelectionEditor) 
   const cursorBlock = selectedBlocks.length ? null : editor.getTextCursorPosition?.().block;
   const blocks = selectedBlocks.length ? selectedBlocks : cursorBlock ? [cursorBlock] : [];
   const sourceBlockIds = [...new Set(blocks.map(({ id }) => id))];
-  if (selectedText) return { selectedText, imageBlockId: null, sourceBlockIds };
+  if (selectedText) {
+    const browserSelection = typeof window === "undefined" ? "" : window.getSelection()?.toString();
+    const selectedPreview = formatDocumentSelectionPreview(selectedText, blocks, browserSelection);
+    return { selectedPreview, selectedText, imageBlockId: null, sourceBlockIds };
+  }
   const image = blocks.length === 1 && blocks[0]?.type === "image" ? blocks[0] : null;
   return image
-    ? { selectedText: "Imagem selecionada", imageBlockId: image.id, sourceBlockIds: [image.id] }
+    ? {
+        selectedPreview: "Imagem selecionada",
+        selectedText: "Imagem selecionada",
+        imageBlockId: image.id,
+        sourceBlockIds: [image.id],
+      }
     : null;
 };
 
@@ -120,6 +201,7 @@ export const createDocumentFormattingToolbar = (
       if (!anchor) return;
       onGenerate({
         ...anchor,
+        selectedPreview: selection.selectedPreview,
         selectedText: selection.selectedText,
         sourceScope: selection.imageBlockId ? "image" : "selection",
         sourceBlockIds: selection.sourceBlockIds,

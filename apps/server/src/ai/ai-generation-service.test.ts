@@ -313,6 +313,7 @@ describe("AI generation service", () => {
       anchorId: "anchor-1",
       blocks: input.blocks,
       collectionId: "11111111-1111-4111-8111-111111111111",
+      context: { after: [], before: [], documentTitle: "Memória" },
       documentId: "22222222-2222-4222-8222-222222222222",
       documentRevision: 3,
       guidance: "",
@@ -471,6 +472,7 @@ describe("AI generation service", () => {
       anchorId: null,
       blocks,
       collectionId: "11111111-1111-4111-8111-111111111111",
+      context: { after: [], before: [], documentTitle: "Documento extenso" },
       documentId: "22222222-2222-4222-8222-222222222222",
       documentRevision: 3,
       guidance: "",
@@ -484,7 +486,7 @@ describe("AI generation service", () => {
     });
 
     expect(result).toMatchObject({
-      draft: { flashcards: [{ question: "Qual é a ideia central deste trecho?" }] },
+      draft: { flashcards: [{ question: "Qual é a ideia central de Documento extenso?" }] },
       kind: "completed",
     });
     if (result.kind === "completed")
@@ -505,6 +507,7 @@ describe("AI generation service", () => {
       anchorId: "image-block-1",
       blocks: [{ id: "image-block-1", text: "Imagem selecionada" }],
       collectionId: "11111111-1111-4111-8111-111111111111",
+      context: { after: [], before: [], documentTitle: "Imagem" },
       documentId: "22222222-2222-4222-8222-222222222222",
       documentRevision: 3,
       guidance: "",
@@ -547,6 +550,7 @@ describe("AI generation service", () => {
       anchorId: "anchor-1",
       blocks: input.blocks,
       collectionId: "11111111-1111-4111-8111-111111111111",
+      context: { after: [], before: [], documentTitle: "Memória" },
       documentId: "22222222-2222-4222-8222-222222222222",
       documentRevision: 3,
       guidance: "",
