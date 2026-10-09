@@ -11,6 +11,7 @@ import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
 import { CheckIcon } from "@phosphor-icons/react/Check";
 import { FormattingToolbarController, useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useBlocker, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -34,10 +35,8 @@ import {
 } from "@/features/assets/asset-api.ts";
 import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
 import { ApiError } from "@/lib/api-client.ts";
-import {
-  AiSelectionGenerationDialog,
-  type AiSelectionAction,
-} from "@/features/ai/components/ai-selection-generation-dialog.tsx";
+import type { AiSelectionAction } from "@/features/ai/ai-selection-types.ts";
+import { AiSelectionGenerationDialog } from "@/features/ai/components/ai-selection-generation-dialog.tsx";
 import { updateAiReviewReference } from "@/features/ai/ai-review-session.ts";
 import { DocumentMaterialFlow } from "@/features/references/components/document-material-flow.tsx";
 import {
@@ -52,7 +51,12 @@ import {
 import { ExistingMaterialPickerDialog } from "@/features/references/components/existing-material-picker-dialog.tsx";
 import { useCreateReferences } from "@/features/references/api/reference-queries.ts";
 import { fetchDocument, importDocumentImage, uploadDocumentImage } from "../api/document-api.ts";
-import { useDocument, useRenameProjectItem, useSaveDocument } from "../api/document-queries.ts";
+import {
+  documentKeys,
+  useDocument,
+  useRenameProjectItem,
+  useSaveDocument,
+} from "../api/document-queries.ts";
 import { DOCUMENT_MESSAGES } from "../document-messages.ts";
 import { lazuliBlockNoteDictionary } from "../editor/blocknote-dictionary.ts";
 import { documentSchema, type LazuliDocumentBlock } from "../editor/document-schema.tsx";
@@ -76,6 +80,7 @@ export const DocumentEditor = ({
   documentId: string;
   data: NonNullable<ReturnType<typeof useDocument>["data"]>;
 }) => {
+  const queryClient = useQueryClient();
   const saveDocument = useSaveDocument(projectId, documentId);
   const rename = useRenameProjectItem(projectId);
   const [dirty, setDirty] = useState(false);
@@ -318,7 +323,8 @@ export const DocumentEditor = ({
     setMaterialAction(null);
     setLinkAction(null);
   };
-  const closeAiFlow = (removeAnchor: boolean) => {
+  const closeAiFlow = async (removeAnchor: boolean) => {
+    let removedTemporaryAnchor = false;
     if (removeAnchor && aiAction?.anchorCreated && aiAction.anchorId) {
       const next = removeSourceAnchors(
         toDocumentBlocks(editor.document),
@@ -328,10 +334,14 @@ export const DocumentEditor = ({
       const snapshot = JSON.stringify(next);
       setDirty(snapshot !== cleanSnapshot.current);
       setSaveState(snapshot === cleanSnapshot.current && !titleDirty ? "saved" : "pending");
+      removedTemporaryAnchor = true;
     }
     setAiAction(null);
     setAiDialogOpen(false);
     setAutoSavePaused(false);
+    if (removedTemporaryAnchor && !(await saveRef.current(true))) {
+      toast.error("Não foi possível remover a marcação temporária do trecho.");
+    }
   };
   useEffect(() => releaseResolvedAssetUrls, [documentId]);
   useEffect(() => {
@@ -840,9 +850,9 @@ export const DocumentEditor = ({
           cleanAssetUrls.current = collectAssetUrls(nextContent);
           setDirty(false);
           setSaveState(titleDirty ? "pending" : "saved");
-          closeAiFlow(false);
+          void closeAiFlow(false);
         }}
-        onCancel={() => closeAiFlow(true)}
+        onCancel={() => void closeAiFlow(true)}
         onMinimize={() => setAiDialogOpen(false)}
       />
       {aiAction && !aiDialogOpen && (
@@ -935,6 +945,7 @@ export const DocumentEditor = ({
           ).content as LazuliDocumentBlock;
           const hadUnsavedChanges = dirty;
           const remote = await fetchDocument(projectId, documentId);
+          queryClient.setQueryData(documentKeys.detail(projectId, documentId), remote);
           editor.replaceBlocks(
             editor.document,
             hadUnsavedChanges ? localContent : (remote.content as LazuliDocumentBlock),
