@@ -466,7 +466,10 @@ export const AiSelectionGenerationDialog = ({
                       selectedSourcePreview
                     )}
                   </div>
-                  {(selectedSourcePreview.length > 280 || selectedSourcePreview.includes("\n")) && (
+                  {(selectedSourcePreview.length > 280 ||
+                    selectedSourcePreview.includes("\n") ||
+                    (action?.selectedPreviewParts?.length ?? 0) > 1 ||
+                    action?.selectedPreviewParts?.some((part) => part.kind === "table")) && (
                     <Button
                       className="mt-2 h-auto px-0 py-0"
                       onClick={() => setSourceExpanded((current) => !current)}

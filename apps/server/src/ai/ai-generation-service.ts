@@ -126,14 +126,15 @@ const fingerprint = (value: unknown) =>
 const anonymousUserIdentifier = (userId: string) => `lazuli_${fingerprint(userId).slice(0, 32)}`;
 
 const assertInputLimits = (input: FoundationGenerationInput) => {
-  const byteSize = Buffer.byteLength(
-    JSON.stringify({ blocks: input.blocks, context: input.context }),
-    "utf8",
-  );
+  const blocksByteSize = Buffer.byteLength(JSON.stringify(input.blocks), "utf8");
+  const contextByteSize = input.context
+    ? Buffer.byteLength(JSON.stringify(input.context), "utf8")
+    : 0;
   if (
     input.blocks.length === 0 ||
     input.blocks.length > AI_MAX_CONTEXT_BLOCKS ||
-    byteSize > AI_MAX_CONTEXT_BYTES ||
+    blocksByteSize > AI_MAX_CONTEXT_BYTES ||
+    contextByteSize > AI_MAX_CONTEXT_BYTES ||
     input.sourceIds.length > AI_MAX_SOURCE_IDS
   )
     throw new AiGenerationError("AI_INPUT_TOO_LARGE");

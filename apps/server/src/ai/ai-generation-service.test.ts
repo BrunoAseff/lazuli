@@ -8,6 +8,7 @@ import type {
   BeginAiGenerationInput,
   CompleteAiGenerationInput,
 } from "./ai-generation-store.ts";
+import { AI_MAX_CONTEXT_BYTES } from "./ai-model-config.ts";
 import { createAiGenerationService } from "./ai-generation-service.ts";
 import { createDevelopmentAiProvider } from "./development-ai-provider.ts";
 import { createFakeAiProvider } from "./fake-ai-provider.ts";
@@ -639,6 +640,28 @@ describe("AI generation service", () => {
         validItems: 2,
       }),
     );
+  });
+
+  it("budgets adjacent context independently from source evidence", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({ output: validDraft }),
+      retryDelayMs: 0,
+      store,
+    });
+    const content = "a".repeat(Math.floor(AI_MAX_CONTEXT_BYTES * 0.6));
+
+    await expect(
+      service.generateFoundationDraft({
+        ...input,
+        blocks: [{ id: "block-1", text: content }],
+        context: {
+          after: [{ id: "after", text: content }],
+          before: [],
+        },
+      }),
+    ).resolves.toMatchObject({ kind: "completed" });
   });
 
   it("reuses a successful idempotent operation without calling the provider", async () => {

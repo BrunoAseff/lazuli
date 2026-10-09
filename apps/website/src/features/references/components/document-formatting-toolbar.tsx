@@ -43,24 +43,16 @@ type ReferenceSelectionEditor = {
   getTextCursorPosition?: () => { block: unknown };
 };
 
-const indexDocumentBlocks = (blocks: DocumentBlock[]) => {
-  const indexed = new Map<string, DocumentBlock>();
-  const pending = [...blocks];
-  while (pending.length) {
-    const block = pending.shift()!;
-    indexed.set(block.id, block);
-    if (block.children?.length) pending.unshift(...block.children);
-  }
-  return indexed;
-};
+const flattenDocumentBlocks = (blocks: DocumentBlock[]): DocumentBlock[] =>
+  blocks.flatMap((block) => [block, ...flattenDocumentBlocks(block.children ?? [])]);
+
+const indexDocumentBlocks = (blocks: DocumentBlock[]) =>
+  new Map(flattenDocumentBlocks(blocks).map((block) => [block.id, block]));
 
 const resolveCanonicalBlocks = (editor: ReferenceSelectionEditor, blocks: DocumentBlock[]) => {
   const indexed = indexDocumentBlocks(editor.document as DocumentBlock[]);
   return blocks.map((block) => indexed.get(block.id) ?? block);
 };
-
-const flattenDocumentBlocks = (blocks: DocumentBlock[]): DocumentBlock[] =>
-  blocks.flatMap((block) => [block, ...flattenDocumentBlocks(block.children ?? [])]);
 
 const getSelectedBlockIdsFromDom = () => {
   if (typeof window === "undefined") return [];

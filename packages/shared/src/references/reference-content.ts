@@ -152,12 +152,13 @@ export const addSourceAnchorToQuote = (
       return { ...anchored, content };
     }
 
+    const quote = normalizeText(reference.quote);
+    if (!quote) return { kind: "quote-not-found" };
     const matches: Array<{ cellIndex: number; rowIndex: number }> = [];
     for (const [rowIndex, row] of block.content.rows.entries())
       for (const [cellIndex, cell] of row.cells.entries()) {
         const inline = Array.isArray(cell) ? cell : cell.content;
         const cellText = normalizeText(getInlineText(inline));
-        const quote = normalizeText(reference.quote);
         if (cellText.includes(quote)) matches.push({ cellIndex, rowIndex });
       }
     if (matches.length === 0) return { kind: "quote-not-found" };

@@ -134,6 +134,28 @@ describe("reference content helpers", () => {
     expect(result.content[0]?.type).toBe("table");
   });
 
+  it("rejects an empty normalized quote inside a table", () => {
+    const source: DocumentBlock[] = [
+      {
+        id: "table",
+        type: "table",
+        content: {
+          type: "tableContent",
+          columnWidths: [null],
+          rows: [{ cells: [[{ type: "text", text: "Conteúdo", styles: {} }]] }],
+        },
+      },
+    ];
+
+    expect(
+      addSourceAnchorToQuote(source, {
+        anchorId: "table-anchor",
+        blockId: "table",
+        quote: " \n\t ",
+      }),
+    ).toEqual({ kind: "quote-not-found" });
+  });
+
   it("collects anchors from plain and linked text", () => {
     expect(collectSourceAnchorIds(content)).toEqual(new Set(["anchor-one", "anchor-two"]));
   });
