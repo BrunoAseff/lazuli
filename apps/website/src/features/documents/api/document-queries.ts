@@ -8,6 +8,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { projectKeys } from "@/features/projects/api/project-queries.ts";
+import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import {
   fetchDocument,
   fetchProjectTree,
@@ -19,7 +20,7 @@ import {
 import { collectProjectDescendantIds } from "../project-tree.ts";
 
 export const documentKeys = {
-  all: ["documents"] as const,
+  all: QUERY_KEY_ROOTS.documents,
   tree: (projectId: string) => [...documentKeys.all, "tree", projectId] as const,
   detail: (projectId: string, documentId: string) =>
     [...documentKeys.all, "detail", projectId, documentId] as const,

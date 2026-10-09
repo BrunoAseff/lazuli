@@ -26,6 +26,7 @@ import {
   createFoundationPrompt,
   createMaterialImprovementPrompt,
   createSelectionPrompt,
+  type AiSelectionContext,
   type AiSourceBlock,
 } from "./ai-prompts.ts";
 import type { AiProvider } from "./ai-provider.ts";
@@ -42,6 +43,7 @@ import { estimateAiCredits } from "../ai-credits/ai-credit-config.ts";
 
 type FoundationGenerationInput = {
   blocks: AiSourceBlock[];
+  context?: AiSelectionContext;
   idempotencyKey: string;
   regenerateOperationId?: string;
   sourceIds: string[];
@@ -52,6 +54,7 @@ type SelectionGenerationInput = {
   anchorId: string | null;
   blocks: AiSourceBlock[];
   collectionId: string;
+  context: AiSelectionContext;
   documentId: string;
   documentTitle?: string;
   documentRevision: number;
@@ -123,11 +126,15 @@ const fingerprint = (value: unknown) =>
 const anonymousUserIdentifier = (userId: string) => `lazuli_${fingerprint(userId).slice(0, 32)}`;
 
 const assertInputLimits = (input: FoundationGenerationInput) => {
-  const byteSize = Buffer.byteLength(JSON.stringify(input.blocks), "utf8");
+  const blocksByteSize = Buffer.byteLength(JSON.stringify(input.blocks), "utf8");
+  const contextByteSize = input.context
+    ? Buffer.byteLength(JSON.stringify(input.context), "utf8")
+    : 0;
   if (
     input.blocks.length === 0 ||
     input.blocks.length > AI_MAX_CONTEXT_BLOCKS ||
-    byteSize > AI_MAX_CONTEXT_BYTES ||
+    blocksByteSize > AI_MAX_CONTEXT_BYTES ||
+    contextByteSize > AI_MAX_CONTEXT_BYTES ||
     input.sourceIds.length > AI_MAX_SOURCE_IDS
   )
     throw new AiGenerationError("AI_INPUT_TOO_LARGE");
@@ -640,6 +647,7 @@ export const createAiGenerationService = ({
     ): Promise<SelectionGenerationResult> {
       assertInputLimits({
         blocks: input.blocks,
+        context: input.context,
         idempotencyKey: input.idempotencyKey,
         sourceIds: [input.documentId, ...input.sourceBlockIds],
         userId: input.userId,
@@ -648,6 +656,7 @@ export const createAiGenerationService = ({
       const sourceIds = [input.documentId, ...input.sourceBlockIds];
       const contextFingerprint = fingerprint({
         blocks: input.blocks,
+        context: input.context,
         collectionId: input.collectionId,
         documentId: input.documentId,
         guidance: input.guidance,

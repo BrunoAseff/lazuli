@@ -31,6 +31,7 @@ const requestBody = {
   idempotencyKey: "44444444-4444-4444-8444-444444444444",
   kind: "flashcard",
   quantity: 1,
+  selectedPreview: "Um trecho suficientemente longo para gerar um material.",
   selectedText: "Um trecho suficientemente longo para gerar um material.",
   sourceScope: "selection",
   sourceBlockIds: ["block-1"],
@@ -354,6 +355,7 @@ describe("AI selection generation routes", () => {
       payload: {
         ...requestBody,
         anchorId: "image-block-1",
+        selectedPreview: undefined,
         selectedText: "",
         sourceBlockIds: ["image-block-1"],
         sourceScope: "image",

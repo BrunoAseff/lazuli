@@ -8,6 +8,7 @@ import type {
   BeginAiGenerationInput,
   CompleteAiGenerationInput,
 } from "./ai-generation-store.ts";
+import { AI_MAX_CONTEXT_BYTES } from "./ai-model-config.ts";
 import { createAiGenerationService } from "./ai-generation-service.ts";
 import { createDevelopmentAiProvider } from "./development-ai-provider.ts";
 import { createFakeAiProvider } from "./fake-ai-provider.ts";
@@ -313,6 +314,7 @@ describe("AI generation service", () => {
       anchorId: "anchor-1",
       blocks: input.blocks,
       collectionId: "11111111-1111-4111-8111-111111111111",
+      context: { after: [], before: [], documentTitle: "Memória" },
       documentId: "22222222-2222-4222-8222-222222222222",
       documentRevision: 3,
       guidance: "",
@@ -471,6 +473,7 @@ describe("AI generation service", () => {
       anchorId: null,
       blocks,
       collectionId: "11111111-1111-4111-8111-111111111111",
+      context: { after: [], before: [], documentTitle: "Documento extenso" },
       documentId: "22222222-2222-4222-8222-222222222222",
       documentRevision: 3,
       guidance: "",
@@ -484,12 +487,51 @@ describe("AI generation service", () => {
     });
 
     expect(result).toMatchObject({
-      draft: { flashcards: [{ question: "Qual é a ideia central deste trecho?" }] },
+      draft: { flashcards: [{ question: "Qual é a ideia central de Documento extenso?" }] },
       kind: "completed",
     });
     if (result.kind === "completed")
       expect(result.draft.flashcards[0]!.references[0]!.quote.length).toBeLessThanOrEqual(120);
     expect(store.complete).toHaveBeenCalledWith(expect.objectContaining({ validItems: 1 }));
+  });
+
+  it("accepts the documented block limit alongside adjacent selection context", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createDevelopmentAiProvider(),
+      retryDelayMs: 0,
+      store,
+    });
+    const blocks = Array.from({ length: AI_DOCUMENT_MAX_BLOCKS }, (_, index) => ({
+      id: `block-${index + 1}`,
+      text: `Conteúdo relevante ${index + 1}.`,
+    }));
+
+    const result = await service.generateSelectionDraft({
+      anchorId: null,
+      blocks,
+      collectionId: "11111111-1111-4111-8111-111111111111",
+      context: {
+        after: [{ id: "after", text: "Contexto posterior." }],
+        before: [{ id: "before", text: "Contexto anterior." }],
+        documentTitle: "Documento no limite",
+        projectTitle: "Projeto",
+        sectionTitle: "Seção",
+      },
+      documentId: "22222222-2222-4222-8222-222222222222",
+      documentRevision: 3,
+      guidance: "",
+      idempotencyKey: "33333333-3333-4333-8333-333333333334",
+      kind: "flashcard",
+      quantity: 1,
+      selectedText: blocks.map(({ text }) => text).join(" "),
+      sourceScope: "document",
+      sourceBlockIds: blocks.map(({ id }) => id),
+      userId: input.userId,
+    });
+
+    expect(result.kind).toBe("completed");
   });
 
   it("uses explicit simulated content for images while real AI calls are disabled", async () => {
@@ -505,6 +547,7 @@ describe("AI generation service", () => {
       anchorId: "image-block-1",
       blocks: [{ id: "image-block-1", text: "Imagem selecionada" }],
       collectionId: "11111111-1111-4111-8111-111111111111",
+      context: { after: [], before: [], documentTitle: "Imagem" },
       documentId: "22222222-2222-4222-8222-222222222222",
       documentRevision: 3,
       guidance: "",
@@ -547,6 +590,7 @@ describe("AI generation service", () => {
       anchorId: "anchor-1",
       blocks: input.blocks,
       collectionId: "11111111-1111-4111-8111-111111111111",
+      context: { after: [], before: [], documentTitle: "Memória" },
       documentId: "22222222-2222-4222-8222-222222222222",
       documentRevision: 3,
       guidance: "",
@@ -596,6 +640,28 @@ describe("AI generation service", () => {
         validItems: 2,
       }),
     );
+  });
+
+  it("budgets adjacent context independently from source evidence", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({ output: validDraft }),
+      retryDelayMs: 0,
+      store,
+    });
+    const content = "a".repeat(Math.floor(AI_MAX_CONTEXT_BYTES * 0.6));
+
+    await expect(
+      service.generateFoundationDraft({
+        ...input,
+        blocks: [{ id: "block-1", text: content }],
+        context: {
+          after: [{ id: "after", text: content }],
+          before: [],
+        },
+      }),
+    ).resolves.toMatchObject({ kind: "completed" });
   });
 
   it("reuses a successful idempotent operation without calling the provider", async () => {

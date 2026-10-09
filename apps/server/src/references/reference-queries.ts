@@ -306,6 +306,7 @@ const removeUnusedDocumentAnchors = async (
     .from(studyMaterialReference)
     .where(
       and(
+        eq(studyMaterialReference.userId, userId),
         inArray(studyMaterialReference.documentId, documentIds),
         isNotNull(studyMaterialReference.anchorId),
       ),

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { loginSchema, registerSchema } from "./auth-schemas.ts";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from "./auth-schemas.ts";
 
 describe("authentication form schemas", () => {
   it("accepts a complete registration", () => {
@@ -44,5 +49,31 @@ describe("authentication form schemas", () => {
     expect(loginSchema.safeParse({ email: "aluna@example.com", password: "secret" }).success).toBe(
       false,
     );
+  });
+
+  it("uses the registration password rules when resetting a password", () => {
+    expect(
+      resetPasswordSchema.safeParse({
+        confirmPassword: "correct-horse",
+        password: "correct-horse",
+      }).success,
+    ).toBe(true);
+
+    const result = resetPasswordSchema.safeParse({
+      confirmPassword: "different",
+      password: "short",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.flatten().fieldErrors).toMatchObject({
+        confirmPassword: ["As senhas precisam ser iguais."],
+        password: ["A senha deve ter pelo menos 8 caracteres."],
+      });
+    }
+  });
+
+  it("requires a valid email before requesting a password reset", () => {
+    expect(forgotPasswordSchema.safeParse({ email: "aluna@example.com" }).success).toBe(true);
+    expect(forgotPasswordSchema.safeParse({ email: "invalid" }).success).toBe(false);
   });
 });

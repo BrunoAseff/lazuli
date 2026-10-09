@@ -119,6 +119,7 @@ export const createAiGenerationRoutes = ({
         const result = await service.generateSelectionDraft({
           ...input.data,
           blocks: prepared.blocks,
+          context: prepared.context,
           documentTitle: prepared.documentTitle,
           documentRevision: prepared.documentRevision,
           images:

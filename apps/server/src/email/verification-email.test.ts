@@ -14,5 +14,7 @@ describe("createVerificationEmail", () => {
     expect(email.html).not.toContain("<script>");
     expect(email.html).toContain("&lt;script&gt;");
     expect(email.html).toContain("token=a&amp;next=b");
+    expect(email.html).toContain("Se o botão não funcionar");
+    expect(email.html).toContain("border-radius:16px");
   });
 });

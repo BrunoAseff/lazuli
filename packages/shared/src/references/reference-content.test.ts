@@ -100,6 +100,62 @@ describe("reference content helpers", () => {
     );
   });
 
+  it("anchors a quote inside a table cell while preserving the table", () => {
+    const source: DocumentBlock[] = [
+      {
+        id: "table",
+        type: "table",
+        content: {
+          type: "tableContent",
+          columnWidths: [null, null],
+          rows: [
+            {
+              cells: [
+                [{ type: "text", text: "Conceito", styles: { bold: true } }],
+                {
+                  type: "tableCell",
+                  props: {},
+                  content: [{ type: "text", text: "Recuperação ativa", styles: {} }],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ];
+    const result = addSourceAnchorToQuote(source, {
+      anchorId: "table-anchor",
+      blockId: "table",
+      quote: "Recuperação",
+    });
+    expect(result.kind).toBe("ok");
+    if (result.kind !== "ok") return;
+    expect(getReferenceSourcePreview(result.content, "table-anchor")).toBe("Recuperação");
+    expect(result.content[0]?.type).toBe("table");
+  });
+
+  it("rejects an empty normalized quote inside a table", () => {
+    const source: DocumentBlock[] = [
+      {
+        id: "table",
+        type: "table",
+        content: {
+          type: "tableContent",
+          columnWidths: [null],
+          rows: [{ cells: [[{ type: "text", text: "Conteúdo", styles: {} }]] }],
+        },
+      },
+    ];
+
+    expect(
+      addSourceAnchorToQuote(source, {
+        anchorId: "table-anchor",
+        blockId: "table",
+        quote: " \n\t ",
+      }),
+    ).toEqual({ kind: "quote-not-found" });
+  });
+
   it("collects anchors from plain and linked text", () => {
     expect(collectSourceAnchorIds(content)).toEqual(new Set(["anchor-one", "anchor-two"]));
   });
@@ -107,9 +163,13 @@ describe("reference content helpers", () => {
   it("removes only requested anchors while preserving other styles", () => {
     const result = removeSourceAnchors(content, new Set(["anchor-one"]));
     expect(result.changed).toBe(true);
-    expect(result.content[0]?.content?.[0]).toMatchObject({ styles: { bold: true } });
+    const updatedInline = result.content[0]?.content;
+    expect(Array.isArray(updatedInline) ? updatedInline[0] : undefined).toMatchObject({
+      styles: { bold: true },
+    });
     expect(collectSourceAnchorIds(result.content)).toEqual(new Set(["anchor-two"]));
-    expect(content[0]?.content?.[0]).toMatchObject({
+    const originalInline = content[0]?.content;
+    expect(Array.isArray(originalInline) ? originalInline[0] : undefined).toMatchObject({
       styles: { bold: true, sourceAnchor: "anchor-one" },
     });
   });

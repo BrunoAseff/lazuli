@@ -20,6 +20,42 @@ describe("document import converters", () => {
     expect(progress).toEqual([[1, 1]]);
   });
 
+  it("preserves paragraphs and lists from UTF-8 text imports", async () => {
+    const result = await convertDocument(
+      "text/plain",
+      new TextEncoder().encode("Introdução\n\n- Primeiro ponto\n- Segundo ponto"),
+      async () => undefined,
+    );
+
+    expect(result.blocks.map((block) => block.type)).toEqual([
+      "paragraph",
+      "bulletListItem",
+      "bulletListItem",
+    ]);
+  });
+
+  it("preserves Markdown tables as editable table blocks", async () => {
+    const result = await convertDocument(
+      "text/markdown",
+      new TextEncoder().encode(
+        "| Conceito | Definição |\n| --- | --- |\n| FSRS | Repetição espaçada |",
+      ),
+      async () => undefined,
+    );
+
+    const table = result.blocks.find((block) => block.type === "table");
+    expect(table?.content).toMatchObject({
+      rows: [
+        {
+          cells: [{ content: [{ text: "Conceito" }] }, { content: [{ text: "Definição" }] }],
+        },
+        {
+          cells: [{ content: [{ text: "FSRS" }] }, { content: [{ text: "Repetição espaçada" }] }],
+        },
+      ],
+    });
+  });
+
   it("rejects unsupported input types", async () => {
     await expect(
       convertDocument("application/octet-stream", new Uint8Array(), async () => undefined),
@@ -57,6 +93,30 @@ describe("document import converters", () => {
     await expect(validateDocxArchive(new Uint8Array([1, 2, 3]))).rejects.toMatchObject({
       code: "INVALID_DOCX_ARCHIVE",
     });
+  });
+
+  it("preserves DOCX tables as editable table blocks", async () => {
+    const archive = new JSZip();
+    archive.file(
+      "[Content_Types].xml",
+      '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+    );
+    archive.file(
+      "_rels/.rels",
+      '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+    );
+    archive.file(
+      "word/document.xml",
+      '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Resumo</w:t></w:r></w:p><w:p><w:r><w:t>Conteúdo introdutório.</w:t></w:r></w:p><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Conceito</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Definição</w:t></w:r></w:p></w:tc></w:tr><w:tr><w:tc><w:p><w:r><w:t>FSRS</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Repetição espaçada</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:sectPr/></w:body></w:document>',
+    );
+    const bytes = await archive.generateAsync({ type: "uint8array" });
+    const result = await convertDocument(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      bytes,
+      async () => undefined,
+    );
+
+    expect(result.blocks.map((block) => block.type)).toEqual(["heading", "paragraph", "table"]);
   });
 
   it("rejects a DOCX entry with an abusive compression ratio", async () => {

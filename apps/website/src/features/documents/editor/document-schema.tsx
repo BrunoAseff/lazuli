@@ -27,6 +27,8 @@ export const documentSchema = BlockNoteSchema.create({
     quote: defaultBlockSpecs.quote,
     codeBlock: defaultBlockSpecs.codeBlock,
     divider: defaultBlockSpecs.divider,
+    table: defaultBlockSpecs.table,
+    toggleListItem: defaultBlockSpecs.toggleListItem,
     image: lazuliImageBlock(),
   },
   inlineContentSpecs: defaultInlineContentSpecs,

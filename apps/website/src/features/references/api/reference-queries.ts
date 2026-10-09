@@ -32,9 +32,13 @@ export const useCreateReferences = () => {
 };
 
 export const useDeleteReference = () => {
-  const invalidate = useInvalidateReferences();
+  const client = useQueryClient();
   return useMutation({
     mutationFn: removeReference,
-    onSuccess: invalidate,
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: referenceKeys.all }),
+        client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.documents }),
+      ]),
   });
 };
