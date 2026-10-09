@@ -43,6 +43,7 @@ import { estimateAiCredits } from "../ai-credits/ai-credit-config.ts";
 
 type FoundationGenerationInput = {
   blocks: AiSourceBlock[];
+  context?: AiSelectionContext;
   idempotencyKey: string;
   regenerateOperationId?: string;
   sourceIds: string[];
@@ -125,7 +126,10 @@ const fingerprint = (value: unknown) =>
 const anonymousUserIdentifier = (userId: string) => `lazuli_${fingerprint(userId).slice(0, 32)}`;
 
 const assertInputLimits = (input: FoundationGenerationInput) => {
-  const byteSize = Buffer.byteLength(JSON.stringify(input.blocks), "utf8");
+  const byteSize = Buffer.byteLength(
+    JSON.stringify({ blocks: input.blocks, context: input.context }),
+    "utf8",
+  );
   if (
     input.blocks.length === 0 ||
     input.blocks.length > AI_MAX_CONTEXT_BLOCKS ||
@@ -641,7 +645,8 @@ export const createAiGenerationService = ({
       input: SelectionGenerationInput,
     ): Promise<SelectionGenerationResult> {
       assertInputLimits({
-        blocks: [...input.blocks, ...input.context.before, ...input.context.after],
+        blocks: input.blocks,
+        context: input.context,
         idempotencyKey: input.idempotencyKey,
         sourceIds: [input.documentId, ...input.sourceBlockIds],
         userId: input.userId,

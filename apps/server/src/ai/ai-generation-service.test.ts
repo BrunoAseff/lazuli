@@ -494,6 +494,45 @@ describe("AI generation service", () => {
     expect(store.complete).toHaveBeenCalledWith(expect.objectContaining({ validItems: 1 }));
   });
 
+  it("accepts the documented block limit alongside adjacent selection context", async () => {
+    const store = createStore();
+    const service = createAiGenerationService({
+      logger,
+      provider: createDevelopmentAiProvider(),
+      retryDelayMs: 0,
+      store,
+    });
+    const blocks = Array.from({ length: AI_DOCUMENT_MAX_BLOCKS }, (_, index) => ({
+      id: `block-${index + 1}`,
+      text: `Conteúdo relevante ${index + 1}.`,
+    }));
+
+    const result = await service.generateSelectionDraft({
+      anchorId: null,
+      blocks,
+      collectionId: "11111111-1111-4111-8111-111111111111",
+      context: {
+        after: [{ id: "after", text: "Contexto posterior." }],
+        before: [{ id: "before", text: "Contexto anterior." }],
+        documentTitle: "Documento no limite",
+        projectTitle: "Projeto",
+        sectionTitle: "Seção",
+      },
+      documentId: "22222222-2222-4222-8222-222222222222",
+      documentRevision: 3,
+      guidance: "",
+      idempotencyKey: "33333333-3333-4333-8333-333333333334",
+      kind: "flashcard",
+      quantity: 1,
+      selectedText: blocks.map(({ text }) => text).join(" "),
+      sourceScope: "document",
+      sourceBlockIds: blocks.map(({ id }) => id),
+      userId: input.userId,
+    });
+
+    expect(result.kind).toBe("completed");
+  });
+
   it("uses explicit simulated content for images while real AI calls are disabled", async () => {
     const store = createStore();
     const service = createAiGenerationService({
