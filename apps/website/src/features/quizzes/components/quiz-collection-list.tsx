@@ -37,20 +37,21 @@ export const QuizCollectionList = ({
             />
             {!collection.archivedAt && (
               <Button
-                asChild
+                asChild={collection.totalQuestions > 0}
                 className="w-full sm:w-auto"
+                disabled={collection.totalQuestions === 0}
                 size="sm"
                 variant={collection.totalQuestions ? "default" : "secondary"}
               >
-                <Link
-                  aria-disabled={collection.totalQuestions === 0}
-                  className={
-                    collection.totalQuestions === 0 ? "pointer-events-none opacity-50" : undefined
-                  }
-                  to={`/quizzes/${collection.id}?start=true`}
-                >
-                  <PlayIcon /> Iniciar
-                </Link>
+                {collection.totalQuestions > 0 ? (
+                  <Link to={`/quizzes/${collection.id}?start=true`}>
+                    <PlayIcon /> Iniciar
+                  </Link>
+                ) : (
+                  <>
+                    <PlayIcon /> Iniciar
+                  </>
+                )}
               </Button>
             )}
             <StudyCollectionActions

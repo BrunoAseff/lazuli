@@ -14,6 +14,7 @@ import { AuthFeedback } from "@/features/auth/components/auth-feedback.tsx";
 import { AuthEmailField } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
 import { AuthSubmitButton } from "@/features/auth/components/auth-submit-button.tsx";
+import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 
 const NEUTRAL_FEEDBACK =
   "Se houver uma conta com este e-mail, enviaremos um link para redefinir a senha.";
@@ -21,6 +22,7 @@ const NEUTRAL_FEEDBACK =
 export const ForgotPasswordPage = () => {
   const [cooldown, setCooldown] = useState(0);
   const [feedback, setFeedback] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const form = useForm<ForgotPasswordValues>({
     defaultValues: { email: "" },
     mode: "onChange",
@@ -35,15 +37,18 @@ export const ForgotPasswordPage = () => {
 
   const onSubmit = form.handleSubmit(async ({ email }) => {
     setFeedback(false);
+    setErrorMessage("");
     const { error } = await authClient.requestPasswordReset({
       email: email.trim().toLowerCase(),
       redirectTo: `${window.location.origin}/reset-password`,
     });
 
-    setFeedback(true);
-    if (!error || error.status === 429) {
-      setCooldown(PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS);
+    if (error && error.status !== 429) {
+      setErrorMessage(getAuthErrorMessage(error));
+      return;
     }
+    setFeedback(true);
+    setCooldown(PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS);
   });
 
   return (
@@ -64,6 +69,7 @@ export const ForgotPasswordPage = () => {
         />
 
         {feedback && <AuthFeedback>{NEUTRAL_FEEDBACK}</AuthFeedback>}
+        {errorMessage && <AuthFeedback kind="error">{errorMessage}</AuthFeedback>}
 
         <AuthSubmitButton
           disabled={!form.formState.isValid || form.formState.isSubmitting || cooldown > 0}
