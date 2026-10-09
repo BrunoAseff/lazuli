@@ -44,21 +44,13 @@ import {
   readAiReviewSession,
   writeAiReviewSession,
 } from "../ai-review-session.ts";
+import type { AiSelectionAction } from "../ai-selection-types.ts";
 import {
   useAiCreditBalance,
   useAiGeneration,
   useApproveAiGeneration,
   useCreateAiSelectionGeneration,
 } from "../api/ai-queries.ts";
-
-export type AiSelectionAction = {
-  anchorId: string | null;
-  anchorCreated: boolean;
-  selectedPreview?: string;
-  selectedText: string;
-  sourceScope: "document" | "image" | "selection";
-  sourceBlockIds: string[];
-};
 
 type EditableFlashcard = AiSelectionDraft["flashcards"][number] & { selected: boolean };
 type EditableQuiz = AiSelectionDraft["quizQuestions"][number] &
@@ -78,6 +70,46 @@ const generationMessages = {
   AI_RATE_LIMITED: "Muitas gerações foram solicitadas. Aguarde um pouco e tente novamente.",
   AI_REGENERATION_LIMIT: "O limite de três novas tentativas foi atingido.",
 } as const;
+
+const SelectionInlineContent = ({ content }: { content: DocumentBlock["content"] }) => {
+  if (!Array.isArray(content)) return null;
+  return content.map((item, itemIndex) => {
+    const texts = item.type === "text" ? [item] : item.content;
+    const rendered = texts.map((text, textIndex) => (
+      <span
+        className={cn(
+          text.styles.bold && "font-semibold",
+          text.styles.italic && "italic",
+          text.styles.underline && "underline",
+          text.styles.strike && "line-through",
+        )}
+        key={`${itemIndex}:${textIndex}`}
+        style={{
+          backgroundColor:
+            typeof text.styles.backgroundColor === "string"
+              ? text.styles.backgroundColor
+              : undefined,
+          color: typeof text.styles.textColor === "string" ? text.styles.textColor : undefined,
+        }}
+      >
+        {text.text}
+      </span>
+    ));
+    return item.type === "link" ? (
+      <a
+        className="text-primary underline underline-offset-2"
+        href={item.href}
+        key={itemIndex}
+        rel="noreferrer"
+        target="_blank"
+      >
+        {rendered}
+      </a>
+    ) : (
+      rendered
+    );
+  });
+};
 
 export const AiSelectionGenerationDialog = ({
   action,
@@ -351,6 +383,7 @@ export const AiSelectionGenerationDialog = ({
     if (draft && flashcards.length + quizQuestions.length > 0) onMinimize();
     else onCancel();
   };
+  const selectedSourcePreview = action?.selectedPreview || action?.selectedText || "";
 
   return (
     <>
@@ -388,9 +421,52 @@ export const AiSelectionGenerationDialog = ({
                         : "line-clamp-4",
                     )}
                   >
-                    {action?.selectedPreview ?? action?.selectedText}
+                    {action?.selectedPreviewParts?.length ? (
+                      <div className="space-y-2 whitespace-normal">
+                        {action.selectedPreviewParts.map((part, index) =>
+                          part.kind === "table" ? (
+                            <div className="overflow-x-auto lazuli-thin-scrollbar" key={index}>
+                              <table className="w-full border-collapse text-sm">
+                                <tbody>
+                                  {part.rows.map((row, rowIndex) => (
+                                    <tr key={rowIndex}>
+                                      {row.map((cell, cellIndex) => (
+                                        <td
+                                          className="border border-border px-2.5 py-1.5 align-top"
+                                          key={cellIndex}
+                                        >
+                                          <SelectionInlineContent content={cell.content} />
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <p
+                              className={cn(
+                                "whitespace-pre-wrap",
+                                part.blockType === "heading" && "font-semibold text-foreground",
+                                part.blockType === "quote" &&
+                                  "border-l-2 border-border pl-3 italic",
+                              )}
+                              key={index}
+                            >
+                              {part.text.startsWith("• ") && "• "}
+                              {part.text.startsWith("☐ ") && "☐ "}
+                              {/^\d+\. /.exec(part.text)?.[0]}
+                              {part.text.startsWith("> ") && "> "}
+                              <SelectionInlineContent content={part.content} />
+                            </p>
+                          ),
+                        )}
+                      </div>
+                    ) : (
+                      selectedSourcePreview
+                    )}
                   </div>
-                  {(action?.selectedText.length ?? 0) > 280 && (
+                  {(selectedSourcePreview.length > 280 || selectedSourcePreview.includes("\n")) && (
                     <Button
                       className="mt-2 h-auto px-0 py-0"
                       onClick={() => setSourceExpanded((current) => !current)}

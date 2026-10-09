@@ -56,6 +56,27 @@ describe("AI selection contracts", () => {
     expect(result.success).toBe(false);
   });
 
+  it("defaults a missing selection preview for older clients", () => {
+    const result = createAiSelectionGenerationSchema.safeParse({
+      anchorId: "anchor-1",
+      collectionId: "11111111-1111-4111-8111-111111111111",
+      documentId: "22222222-2222-4222-8222-222222222222",
+      expectedRevision: 1,
+      guidance: "",
+      idempotencyKey: "33333333-3333-4333-8333-333333333333",
+      kind: "flashcard",
+      quantity: 1,
+      selectedText: "Trecho suficientemente longo para geração.",
+      sourceScope: "selection",
+      sourceBlockIds: ["block-1"],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success && result.data.sourceScope === "selection") {
+      expect(result.data.selectedPreview).toBe("");
+    }
+  });
+
   it("accepts only a server-resolved image block as an image source", () => {
     const result = createAiSelectionGenerationSchema.safeParse({
       anchorId: "image-block-1",

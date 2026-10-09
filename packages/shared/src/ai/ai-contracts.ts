@@ -65,7 +65,8 @@ export const createAiSelectionGenerationSchema = z.discriminatedUnion("sourceSco
       selectedPreview: z
         .string()
         .trim()
-        .max(AI_SELECTION_MAX_TEXT_LENGTH + 1_000),
+        .max(AI_SELECTION_MAX_TEXT_LENGTH + 1_000)
+        .default(""),
       sourceBlockIds: selectionSourceBlockIdsSchema,
     })
     .strict(),

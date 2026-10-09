@@ -3,6 +3,13 @@ import { readSourceAnchorId } from "../documents/source-anchor.ts";
 
 const normalizeText = (value: string) => value.replace(/\s+/g, " ").trim();
 
+const getInlineText = (inline: DocumentInlineContent[]) =>
+  inline
+    .flatMap((item) =>
+      item.type === "text" ? [item.text] : [item.content.map(({ text }) => text).join("")],
+    )
+    .join("");
+
 const inlineGroups = (block: DocumentBlock): DocumentInlineContent[][] => {
   if (!block.content) return [];
   if (Array.isArray(block.content)) return [block.content];
@@ -58,79 +65,118 @@ export const addSourceAnchorToQuote = (
     }
 
     const block = items[blockIndex]!;
-    if (!Array.isArray(block.content)) return { kind: "quote-not-found" };
-    const inline = block.content ?? [];
-    const segments: Array<{
-      end: number;
-      start: number;
-      styles: Record<string, string | number | boolean | null>;
-    }> = [];
-    let rawText = "";
-    for (const item of inline) {
-      const texts = item.type === "text" ? [item] : item.content;
-      for (const text of texts) {
-        const start = rawText.length;
-        rawText += text.text;
-        segments.push({ end: rawText.length, start, styles: text.styles });
+    if (!block.content) return { kind: "quote-not-found" };
+    const anchorInline = (
+      inline: DocumentInlineContent[],
+    ):
+      | { anchorId: string; changed: boolean; inline: DocumentInlineContent[]; kind: "ok" }
+      | { kind: "ambiguous" | "overlap" | "quote-not-found" } => {
+      const segments: Array<{
+        end: number;
+        start: number;
+        styles: Record<string, string | number | boolean | null>;
+      }> = [];
+      let rawText = "";
+      for (const item of inline) {
+        const texts = item.type === "text" ? [item] : item.content;
+        for (const text of texts) {
+          const start = rawText.length;
+          rawText += text.text;
+          segments.push({ end: rawText.length, start, styles: text.styles });
+        }
       }
-    }
-    const source = normalizedTextWithOffsets(rawText);
-    const quote = normalizeText(reference.quote);
-    const normalizedStart = source.text.indexOf(quote);
-    if (normalizedStart === -1) return { kind: "quote-not-found" };
-    if (source.text.indexOf(quote, normalizedStart + 1) !== -1) return { kind: "ambiguous" };
-    const rawStart = source.offsets[normalizedStart]!;
-    const rawEnd = source.offsets[normalizedStart + quote.length - 1]! + 1;
-    const touched = segments.filter(({ end, start }) => start < rawEnd && end > rawStart);
-    const existingAnchors = new Set(
-      touched
-        .map(({ styles }) => readSourceAnchorId(styles))
-        .filter((id): id is string => Boolean(id)),
-    );
-    if (existingAnchors.size > 1) return { kind: "overlap" };
-    const existingAnchor = [...existingAnchors][0];
-    if (
-      existingAnchor &&
-      touched.every(({ styles }) => readSourceAnchorId(styles) === existingAnchor)
-    )
-      return { anchorId: existingAnchor, changed: false, content: items, kind: "ok" };
-    if (existingAnchor) return { kind: "overlap" };
+      const source = normalizedTextWithOffsets(rawText);
+      const quote = normalizeText(reference.quote);
+      if (!quote) return { kind: "quote-not-found" };
+      const normalizedStart = source.text.indexOf(quote);
+      if (normalizedStart === -1) return { kind: "quote-not-found" };
+      if (source.text.indexOf(quote, normalizedStart + 1) !== -1) return { kind: "ambiguous" };
+      const rawStart = source.offsets[normalizedStart]!;
+      const rawEnd = source.offsets[normalizedStart + quote.length - 1]! + 1;
+      const touched = segments.filter(({ end, start }) => start < rawEnd && end > rawStart);
+      const existingAnchors = new Set(
+        touched
+          .map(({ styles }) => readSourceAnchorId(styles))
+          .filter((id): id is string => Boolean(id)),
+      );
+      if (existingAnchors.size > 1) return { kind: "overlap" };
+      const existingAnchor = [...existingAnchors][0];
+      if (
+        existingAnchor &&
+        touched.every(({ styles }) => readSourceAnchorId(styles) === existingAnchor)
+      )
+        return { anchorId: existingAnchor, changed: false, inline, kind: "ok" };
+      if (existingAnchor) return { kind: "overlap" };
 
-    let cursor = 0;
-    const mapText = (text: {
-      text: string;
-      styles: Record<string, string | number | boolean | null>;
-      type: "text";
-    }) => {
-      const start = cursor;
-      const end = cursor + text.text.length;
-      cursor = end;
-      const selectionStart = Math.max(rawStart, start) - start;
-      const selectionEnd = Math.min(rawEnd, end) - start;
-      if (selectionStart >= selectionEnd) return [text];
-      const result: (typeof text)[] = [];
-      if (selectionStart > 0) result.push({ ...text, text: text.text.slice(0, selectionStart) });
-      result.push({
-        ...text,
-        text: text.text.slice(selectionStart, selectionEnd),
-        styles: { ...text.styles, sourceAnchor: reference.anchorId },
-      });
-      if (selectionEnd < text.text.length)
-        result.push({ ...text, text: text.text.slice(selectionEnd) });
-      return result;
-    };
-    const nextInline: DocumentInlineContent[] = [];
-    for (const item of inline) {
-      if (item.type === "text") nextInline.push(...mapText(item));
-      else
-        nextInline.push({
-          ...item,
-          content: item.content.flatMap((text) => mapText(text)),
+      let cursor = 0;
+      const mapText = (text: {
+        text: string;
+        styles: Record<string, string | number | boolean | null>;
+        type: "text";
+      }) => {
+        const start = cursor;
+        const end = cursor + text.text.length;
+        cursor = end;
+        const selectionStart = Math.max(rawStart, start) - start;
+        const selectionEnd = Math.min(rawEnd, end) - start;
+        if (selectionStart >= selectionEnd) return [text];
+        const result: (typeof text)[] = [];
+        if (selectionStart > 0) result.push({ ...text, text: text.text.slice(0, selectionStart) });
+        result.push({
+          ...text,
+          text: text.text.slice(selectionStart, selectionEnd),
+          styles: { ...text.styles, sourceAnchor: reference.anchorId },
         });
+        if (selectionEnd < text.text.length)
+          result.push({ ...text, text: text.text.slice(selectionEnd) });
+        return result;
+      };
+      const nextInline: DocumentInlineContent[] = [];
+      for (const item of inline) {
+        if (item.type === "text") nextInline.push(...mapText(item));
+        else
+          nextInline.push({
+            ...item,
+            content: item.content.flatMap((text) => mapText(text)),
+          });
+      }
+      return { anchorId: reference.anchorId, changed: true, inline: nextInline, kind: "ok" };
+    };
+
+    if (Array.isArray(block.content)) {
+      const anchored = anchorInline(block.content);
+      if (anchored.kind !== "ok") return anchored;
+      if (!anchored.changed) return { ...anchored, content: items };
+      const content = [...items];
+      content[blockIndex] = { ...block, content: anchored.inline };
+      return { ...anchored, content };
     }
+
+    const matches: Array<{ cellIndex: number; rowIndex: number }> = [];
+    for (const [rowIndex, row] of block.content.rows.entries())
+      for (const [cellIndex, cell] of row.cells.entries()) {
+        const inline = Array.isArray(cell) ? cell : cell.content;
+        const cellText = normalizeText(getInlineText(inline));
+        const quote = normalizeText(reference.quote);
+        if (cellText.includes(quote)) matches.push({ cellIndex, rowIndex });
+      }
+    if (matches.length === 0) return { kind: "quote-not-found" };
+    if (matches.length > 1) return { kind: "ambiguous" };
+    const { cellIndex, rowIndex } = matches[0]!;
+    const row = block.content.rows[rowIndex]!;
+    const cell = row.cells[cellIndex]!;
+    const anchored = anchorInline(Array.isArray(cell) ? cell : cell.content);
+    if (anchored.kind !== "ok") return anchored;
+    if (!anchored.changed) return { ...anchored, content: items };
+    const rows = [...block.content.rows];
+    const cells = [...row.cells];
+    cells[cellIndex] = Array.isArray(cell)
+      ? anchored.inline
+      : { ...cell, content: anchored.inline };
+    rows[rowIndex] = { ...row, cells };
     const content = [...items];
-    content[blockIndex] = { ...block, content: nextInline };
-    return { anchorId: reference.anchorId, changed: true, content, kind: "ok" };
+    content[blockIndex] = { ...block, content: { ...block.content, rows } };
+    return { ...anchored, content };
   };
   return visit(blocks);
 };

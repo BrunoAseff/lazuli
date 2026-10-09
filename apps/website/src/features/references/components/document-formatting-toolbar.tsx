@@ -10,12 +10,14 @@ import {
   AI_SELECTION_MIN_TEXT_LENGTH,
   getDocumentBlockText,
   type DocumentBlock,
+  type DocumentInlineContent,
 } from "@lazuli/shared";
 import { LinkSimpleIcon } from "@phosphor-icons/react/LinkSimple";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
 import { FlashcardDomainIcon, QuizDomainIcon } from "@/components/domain-icons.ts";
+import type { AiSelectionPreviewPart } from "@/features/ai/ai-selection-types.ts";
 import { documentSchema } from "@/features/documents/editor/document-schema.tsx";
 
 export type DocumentMaterialAction = {
@@ -27,30 +29,174 @@ export type DocumentMaterialAction = {
 
 export type DocumentAiAction = Omit<DocumentMaterialAction, "kind"> & {
   selectedPreview: string;
+  selectedPreviewParts: AiSelectionPreviewPart[];
   sourceScope: "image" | "selection";
   sourceBlockIds: string[];
 };
 
 type ReferenceSelectionEditor = {
   addStyles: (styles: { sourceAnchor: string }) => void;
+  document: unknown[];
   getActiveStyles: () => Record<string, boolean | string>;
   getSelectedText: () => string;
   getSelection: () => { blocks: unknown[] } | undefined;
   getTextCursorPosition?: () => { block: unknown };
 };
 
+const indexDocumentBlocks = (blocks: DocumentBlock[]) => {
+  const indexed = new Map<string, DocumentBlock>();
+  const pending = [...blocks];
+  while (pending.length) {
+    const block = pending.shift()!;
+    indexed.set(block.id, block);
+    if (block.children?.length) pending.unshift(...block.children);
+  }
+  return indexed;
+};
+
+const resolveCanonicalBlocks = (editor: ReferenceSelectionEditor, blocks: DocumentBlock[]) => {
+  const indexed = indexDocumentBlocks(editor.document as DocumentBlock[]);
+  return blocks.map((block) => indexed.get(block.id) ?? block);
+};
+
+const flattenDocumentBlocks = (blocks: DocumentBlock[]): DocumentBlock[] =>
+  blocks.flatMap((block) => [block, ...flattenDocumentBlocks(block.children ?? [])]);
+
+const getSelectedBlockIdsFromDom = () => {
+  if (typeof window === "undefined") return [];
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || selection.isCollapsed) return [];
+  const range = selection.getRangeAt(0);
+  const selectionElement =
+    selection.anchorNode instanceof Element
+      ? selection.anchorNode
+      : selection.anchorNode?.parentElement;
+  const editorRoot = selectionElement?.closest(".lazuli-document-editor");
+  if (!editorRoot) return [];
+
+  return Array.from(editorRoot.querySelectorAll<HTMLElement>(".bn-block-outer[data-id]"))
+    .filter((element) => {
+      try {
+        return range.intersectsNode(element);
+      } catch {
+        return false;
+      }
+    })
+    .map(({ dataset }) => dataset.id)
+    .filter((id): id is string => Boolean(id));
+};
+
+const resolveSelectedBlocks = (editor: ReferenceSelectionEditor) => {
+  const documentBlocks = flattenDocumentBlocks(editor.document as DocumentBlock[]);
+  const apiIds = new Set(
+    ((editor.getSelection()?.blocks ?? []) as DocumentBlock[]).map(({ id }) => id),
+  );
+  const domIds = new Set(getSelectedBlockIdsFromDom());
+  const selected = documentBlocks.filter(({ id }) => apiIds.has(id) || domIds.has(id));
+  return selected.length
+    ? selected
+    : resolveCanonicalBlocks(editor, (editor.getSelection()?.blocks ?? []) as DocumentBlock[]);
+};
+
 const normalizePreviewText = (value: string) => value.replace(/\s+/g, " ").trim();
 
+export const resolveDocumentSelectionText = (
+  editorText: string,
+  browserText: string | null | undefined,
+  blocks: DocumentBlock[],
+) => {
+  const normalizedEditorText = normalizePreviewText(editorText);
+  const normalizedBrowserText = normalizePreviewText(browserText ?? "");
+  const includesTable = blocks.some(({ type }) => type === "table");
+  const structuredText = includesTable
+    ? normalizePreviewText(blocks.map(getDocumentBlockText).filter(Boolean).join(" "))
+    : "";
+
+  if (!includesTable) return normalizedEditorText;
+  return [normalizedEditorText, normalizedBrowserText, structuredText].reduce((longest, value) =>
+    value.length > longest.length ? value : longest,
+  );
+};
+
+type SelectionPreviewUnit = {
+  cells?: Array<{ content: DocumentInlineContent[]; text: string }>;
+  content?: DocumentInlineContent[];
+  tableRow?: string;
+  text: string;
+  type: DocumentBlock["type"];
+};
+
+const getInlineText = (content: DocumentInlineContent[]) =>
+  content
+    .flatMap((item) =>
+      item.type === "text" ? [item.text] : [item.content.map(({ text }) => text).join("")],
+    )
+    .join("");
+
+const getSelectionPreviewUnits = (blocks: DocumentBlock[]): SelectionPreviewUnit[] =>
+  blocks.flatMap((block) => {
+    if (block.content && !Array.isArray(block.content)) {
+      return block.content.rows.flatMap(({ cells }, tableRow) =>
+        cells.map((cell) => {
+          const content = Array.isArray(cell) ? cell : cell.content;
+          return {
+            content,
+            tableRow: `${block.id}:${tableRow}`,
+            text: normalizePreviewText(getInlineText(content)),
+            type: block.type,
+          };
+        }),
+      );
+    }
+    return [
+      {
+        content: Array.isArray(block.content) ? block.content : undefined,
+        text: getDocumentBlockText(block),
+        type: block.type,
+      },
+    ];
+  });
+
+const groupSelectionPreviewUnits = (units: SelectionPreviewUnit[]) =>
+  units.reduce<SelectionPreviewUnit[]>((lines, unit) => {
+    const previous = lines.at(-1);
+    if (
+      unit.type === "table" &&
+      previous?.type === "table" &&
+      previous.tableRow === unit.tableRow
+    ) {
+      previous.text += ` | ${unit.text}`;
+      previous.cells?.push({
+        content: unit.content ?? [{ styles: {}, text: unit.text, type: "text" as const }],
+        text: unit.text,
+      });
+    } else {
+      lines.push({
+        ...unit,
+        cells:
+          unit.type === "table"
+            ? [
+                {
+                  content: unit.content ?? [{ styles: {}, text: unit.text, type: "text" as const }],
+                  text: unit.text,
+                },
+              ]
+            : undefined,
+      });
+    }
+    return lines;
+  }, []);
+
 const getSelectedBlockLines = (selectedText: string, blocks: DocumentBlock[]) => {
-  const blockTexts = blocks.map(getDocumentBlockText);
+  const units = getSelectionPreviewUnits(blocks);
   const normalizedSelection = normalizePreviewText(selectedText);
-  if (!normalizedSelection || blockTexts.every((text) => !text)) return null;
+  if (!normalizedSelection || units.every(({ text }) => !text)) return null;
 
   const findSelection = (separator: string) => {
     const ranges: Array<{ end: number; start: number }> = [];
     let cursor = 0;
-    const documentText = blockTexts
-      .map((text, index) => {
+    const documentText = units
+      .map(({ text }, index) => {
         if (index) cursor += separator.length;
         const start = cursor;
         cursor += text.length;
@@ -61,20 +207,66 @@ const getSelectedBlockLines = (selectedText: string, blocks: DocumentBlock[]) =>
     const selectionStart = documentText.indexOf(normalizedSelection);
     if (selectionStart < 0) return null;
     const selectionEnd = selectionStart + normalizedSelection.length;
-    return ranges.flatMap(({ end, start }, index) => {
+    const selectedUnits = ranges.flatMap(({ end, start }, index) => {
       const overlapStart = Math.max(start, selectionStart);
       const overlapEnd = Math.min(end, selectionEnd);
       if (overlapStart >= overlapEnd) return [];
       return [
         {
-          text: blockTexts[index]!.slice(overlapStart - start, overlapEnd - start).trim(),
-          type: blocks[index]!.type,
+          ...units[index]!,
+          content: overlapStart === start && overlapEnd === end ? units[index]!.content : undefined,
+          text: units[index]!.text.slice(overlapStart - start, overlapEnd - start).trim(),
         },
       ];
     });
+    return groupSelectionPreviewUnits(selectedUnits);
   };
 
   return findSelection("") ?? findSelection(" ");
+};
+
+const getDocumentSelectionPreviewLines = (
+  selectedText: string,
+  blocks: DocumentBlock[],
+  browserText?: string | null,
+): SelectionPreviewUnit[] => {
+  const selectedLines = getSelectedBlockLines(selectedText, blocks);
+  const structuredFallback =
+    blocks.length > 1 || blocks.some(({ type }) => type === "table")
+      ? groupSelectionPreviewUnits(
+          getSelectionPreviewUnits(blocks).filter(
+            ({ cells, text }) => Boolean(text) || Boolean(cells?.length),
+          ),
+        )
+      : [];
+  const browserSelectionMatches =
+    browserText && normalizePreviewText(browserText) === normalizePreviewText(selectedText);
+  const fallbackLines = (browserSelectionMatches ? browserText : selectedText)
+    .trim()
+    .replace(/\n{3,}/g, "\n\n")
+    .split(/\n/);
+  const fallbackTypesMatch = fallbackLines.length === blocks.length;
+  return selectedLines?.length
+    ? selectedLines
+    : structuredFallback.length
+      ? structuredFallback
+      : fallbackLines.map((text, index) => ({
+          content: [{ styles: {}, text, type: "text" as const }],
+          text,
+          type: fallbackTypesMatch ? (blocks[index]?.type ?? "paragraph") : "paragraph",
+        }));
+};
+
+const formatSelectionPreviewLines = (lines: SelectionPreviewUnit[]) => {
+  let numberedItem = 0;
+  return lines.map(({ text, type }) => {
+    if (type === "bulletListItem") return `• ${text}`;
+    if (type === "numberedListItem") return `${(numberedItem += 1)}. ${text}`;
+    if (type === "checkListItem") return `☐ ${text}`;
+    if (type === "quote") return `> ${text}`;
+    numberedItem = 0;
+    return text;
+  });
 };
 
 export const formatDocumentSelectionPreview = (
@@ -82,46 +274,76 @@ export const formatDocumentSelectionPreview = (
   blocks: DocumentBlock[],
   browserText?: string | null,
 ) => {
-  const selectedLines = getSelectedBlockLines(selectedText, blocks);
-  const browserSelectionMatches =
-    browserText && normalizePreviewText(browserText) === normalizePreviewText(selectedText);
-  const lines = selectedLines?.length
-    ? selectedLines
-    : (browserSelectionMatches ? browserText : selectedText)
-        .trim()
-        .replace(/\n{3,}/g, "\n\n")
-        .split(/\n/)
-        .map((text, index) => ({ text, type: blocks[index]?.type ?? "paragraph" }));
-  let numberedItem = 0;
-  return lines
-    .map(({ text, type }) => {
-      if (type === "bulletListItem") return `• ${text}`;
-      if (type === "numberedListItem") return `${(numberedItem += 1)}. ${text}`;
-      if (type === "checkListItem") return `☐ ${text}`;
-      if (type === "quote") return `> ${text}`;
-      numberedItem = 0;
-      return text;
-    })
-    .join("\n");
+  const lines = getDocumentSelectionPreviewLines(selectedText, blocks, browserText);
+  return formatSelectionPreviewLines(lines).join("\n");
+};
+
+export const getDocumentSelectionPreviewParts = (
+  selectedText: string,
+  blocks: DocumentBlock[],
+  browserText?: string | null,
+): AiSelectionPreviewPart[] => {
+  const lines = getDocumentSelectionPreviewLines(selectedText, blocks, browserText);
+  const formattedLines = formatSelectionPreviewLines(lines);
+  return lines.reduce<AiSelectionPreviewPart[]>((parts, line, index) => {
+    if (line.type === "table" && line.cells) {
+      const previous = parts.at(-1);
+      if (previous?.kind === "table") previous.rows.push(line.cells);
+      else parts.push({ kind: "table", rows: [line.cells] });
+    } else {
+      parts.push({
+        blockType: line.type,
+        content: line.content ?? [{ styles: {}, text: line.text, type: "text" }],
+        kind: "text",
+        text: formattedLines[index]!,
+      });
+    }
+    return parts;
+  }, []);
 };
 
 export const getDocumentReferenceSelection = (editor: ReferenceSelectionEditor) => {
-  const selectedText = editor.getSelectedText().trim();
-  const selectedBlocks = (editor.getSelection()?.blocks ?? []) as DocumentBlock[];
+  const editorSelectedText = editor.getSelectedText().trim();
+  const selectedBlocks = resolveSelectedBlocks(editor);
   const cursorBlock = selectedBlocks.length
     ? null
-    : (editor.getTextCursorPosition?.().block as DocumentBlock | undefined);
+    : resolveCanonicalBlocks(
+        editor,
+        [editor.getTextCursorPosition?.().block as DocumentBlock | undefined].filter(
+          (block): block is DocumentBlock => Boolean(block),
+        ),
+      )[0];
   const blocks = selectedBlocks.length ? selectedBlocks : cursorBlock ? [cursorBlock] : [];
   const sourceBlockIds = [...new Set(blocks.map(({ id }) => id))];
+  const browserSelection = typeof window === "undefined" ? "" : window.getSelection()?.toString();
+  const selectedText = resolveDocumentSelectionText(editorSelectedText, browserSelection, blocks);
   if (selectedText) {
-    const browserSelection = typeof window === "undefined" ? "" : window.getSelection()?.toString();
     const selectedPreview = formatDocumentSelectionPreview(selectedText, blocks, browserSelection);
-    return { selectedPreview, selectedText, imageBlockId: null, sourceBlockIds };
+    const selectedPreviewParts = getDocumentSelectionPreviewParts(
+      selectedText,
+      blocks,
+      browserSelection,
+    );
+    return {
+      selectedPreview,
+      selectedPreviewParts,
+      selectedText,
+      imageBlockId: null,
+      sourceBlockIds,
+    };
   }
   const image = blocks.length === 1 && blocks[0]?.type === "image" ? blocks[0] : null;
   return image
     ? {
         selectedPreview: "Imagem selecionada",
+        selectedPreviewParts: [
+          {
+            blockType: "paragraph" as const,
+            content: [{ styles: {}, text: "Imagem selecionada", type: "text" as const }],
+            kind: "text" as const,
+            text: "Imagem selecionada",
+          },
+        ],
         selectedText: "Imagem selecionada",
         imageBlockId: image.id,
         sourceBlockIds: [image.id],
@@ -204,6 +426,7 @@ export const createDocumentFormattingToolbar = (
       onGenerate({
         ...anchor,
         selectedPreview: selection.selectedPreview,
+        selectedPreviewParts: selection.selectedPreviewParts,
         selectedText: selection.selectedText,
         sourceScope: selection.imageBlockId ? "image" : "selection",
         sourceBlockIds: selection.sourceBlockIds,
