@@ -2,6 +2,7 @@ import {
   DOCUMENT_IMPORT_BINARY_MAX_BYTES,
   DOCUMENT_IMPORT_MAX_PDF_PAGES,
   IMAGE_MAX_BYTES,
+  getDocumentBlockText,
   type DocumentBlock,
   type DocumentInlineContent,
 } from "@lazuli/shared";
@@ -557,13 +558,13 @@ export const convertPdfDocument = async (
     warnings.push(
       `${skippedImages} imagem${skippedImages > 1 ? "s" : ""} do PDF não puderam ser importadas.`,
     );
-  if (
-    !blocks.some(
-      (block) =>
-        Array.isArray(block.content) &&
-        block.content.some((content) => content.type === "text" && content.text.trim()),
-    )
-  )
-    throw new PdfImportError("PDF_WITHOUT_TEXT");
+  const pending = [...blocks];
+  let hasText = false;
+  while (pending.length && !hasText) {
+    const block = pending.pop()!;
+    if (block.type !== "image" && getDocumentBlockText(block).trim()) hasText = true;
+    if (block.children) pending.push(...block.children);
+  }
+  if (!hasText) throw new PdfImportError("PDF_WITHOUT_TEXT");
   return { blocks, assets, warnings };
 };
