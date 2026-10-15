@@ -37,10 +37,15 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
       options?: string[];
       correctOptionIndex?: number;
     } | null;
-    const blocks = (readTag(request.prompt, "SOURCE_SELECTION") ?? []) as Array<{
+    const blocks = (readTag(request.prompt, "SOURCE_EVIDENCE") ??
+      readTag(request.prompt, "SOURCE_SELECTION") ??
+      []) as Array<{
       id: string;
       text: string;
     }>;
+    const context = readTag(request.prompt, "SOURCE_CONTEXT") as {
+      documentTitle?: string;
+    } | null;
     const source = blocks
       .map(({ text }) => text)
       .join(" ")
@@ -127,7 +132,7 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
               evidence: summary,
               question: isImageGeneration
                 ? `Qual é a ideia central desta imagem${quantity > 1 ? ` (${index + 1})` : ""}?`
-                : `Qual é a ideia central deste trecho${quantity > 1 ? ` (${index + 1})` : ""}?`,
+                : `Qual é a ideia central de ${context?.documentTitle ?? "este assunto"}${quantity > 1 ? ` (${index + 1})` : ""}?`,
               sourceBlockIds,
               references,
               warning: null,
@@ -146,7 +151,7 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
               ],
               prompt: isImageGeneration
                 ? `Qual alternativa descreve a imagem${quantity > 1 ? ` (${index + 1})` : ""}?`
-                : `Qual alternativa é sustentada pelo trecho${quantity > 1 ? ` (${index + 1})` : ""}?`,
+                : `Qual alternativa está correta sobre ${context?.documentTitle ?? "o assunto estudado"}${quantity > 1 ? ` (${index + 1})` : ""}?`,
               sourceBlockIds,
               references,
               warning: null,

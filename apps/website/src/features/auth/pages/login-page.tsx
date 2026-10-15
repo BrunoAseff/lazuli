@@ -10,6 +10,7 @@ import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 import { loginSchema, type LoginValues } from "@/features/auth/auth-schemas.ts";
 import { AuthFormHeader } from "@/features/auth/components/auth-form-header.tsx";
+import { AuthFeedback } from "@/features/auth/components/auth-feedback.tsx";
 import { AuthEmailField, AuthPasswordField } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
 import { AuthSubmitButton } from "@/features/auth/components/auth-submit-button.tsx";
@@ -62,19 +63,15 @@ export const LoginPage = () => {
       />
 
       {searchParams.get("verified") === "true" && !verificationError && (
-        <p
-          className="mb-5 rounded-[var(--radius)] border border-primary/25 bg-primary/5 px-3 py-2.5 text-sm text-primary"
-          role="status"
-        >
-          E-mail confirmado. Agora você pode entrar.
-        </p>
+        <AuthFeedback className="mb-5">E-mail confirmado. Agora você pode entrar.</AuthFeedback>
+      )}
+
+      {searchParams.get("passwordReset") === "true" && (
+        <AuthFeedback className="mb-5">Senha redefinida. Entre com sua nova senha.</AuthFeedback>
       )}
 
       {verificationError && (
-        <div
-          className="mb-5 rounded-[var(--radius)] border border-destructive/25 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
-          role="alert"
-        >
+        <AuthFeedback className="mb-5" kind="error">
           <p>{getAuthErrorMessage({ code: verificationError })}</p>
           <Link
             className="mt-2 inline-flex font-semibold underline-offset-4 hover:underline"
@@ -82,7 +79,7 @@ export const LoginPage = () => {
           >
             Solicitar novo link
           </Link>
-        </div>
+        </AuthFeedback>
       )}
 
       <form className="grid gap-5" noValidate onSubmit={onSubmit}>
@@ -97,6 +94,14 @@ export const LoginPage = () => {
           error={form.formState.errors.password?.message}
           id="password"
           label="Senha"
+          labelAction={
+            <Link
+              className="text-sm font-normal text-primary transition-colors hover:text-primary/80"
+              to="/forgot-password"
+            >
+              Esqueci minha senha
+            </Link>
+          }
           {...form.register("password")}
         />
 
@@ -112,8 +117,8 @@ export const LoginPage = () => {
         </div>
 
         {formError && (
-          <div className="space-y-2" role="alert">
-            <p className="text-sm text-destructive">{formError}</p>
+          <AuthFeedback className="space-y-2" kind="error">
+            <p>{formError}</p>
             {unverifiedEmail && (
               <Link
                 className="inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
@@ -123,7 +128,7 @@ export const LoginPage = () => {
                 Reenviar e-mail de confirmação
               </Link>
             )}
-          </div>
+          </AuthFeedback>
         )}
 
         <AuthSubmitButton

@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { convertPdfTextLines, resolvePdfImageObject } from "./pdf-document-converter.ts";
+import {
+  convertPdfTextLines,
+  extractStructuredPdfTables,
+  resolvePdfImageObject,
+} from "./pdf-document-converter.ts";
 
 const textItem = (str: string, x: number, y: number, height = 11, fontName = "regular") => ({
   str,
@@ -51,8 +55,73 @@ describe("PDF document converter", () => {
       text: "em negrito",
       styles: { bold: true },
     });
+    const content = elements[1]?.block.content;
     expect(
-      elements[1]?.block.content?.map((item) => (item.type === "text" ? item.text : "")).join(""),
+      Array.isArray(content)
+        ? content.map((item) => (item.type === "text" ? item.text : "")).join("")
+        : "",
     ).toContain("continuação do parágrafo.");
+  });
+
+  it("preserves tagged PDF tables without duplicating their text in paragraphs", () => {
+    const marked = (id: string, text: string, x: number, y: number) => [
+      { type: "beginMarkedContentProps", id, tag: "P" },
+      textItem(text, x, y),
+      { type: "endMarkedContent" },
+    ];
+    const items = [
+      ...marked("intro", "Resultados", 72, 760),
+      ...marked("head-a", "Experimento", 72, 720),
+      ...marked("head-b", "Resultado", 240, 720),
+      ...marked("cell-a", "Conta bancária", 72, 690),
+      ...marked("cell-b", "Nenhuma perda", 240, 690),
+    ];
+    const content = (id: string) => ({ type: "content", id });
+    const cell = (role: "TH" | "TD", id: string) => ({
+      role,
+      children: [{ role: "P", children: [content(id)] }],
+    });
+    const structure = {
+      role: "Root",
+      children: [
+        {
+          role: "Document",
+          children: [
+            { role: "P", children: [content("intro")] },
+            {
+              role: "Table",
+              children: [
+                { role: "TR", children: [cell("TH", "head-a"), cell("TH", "head-b")] },
+                { role: "TR", children: [cell("TD", "cell-a"), cell("TD", "cell-b")] },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = extractStructuredPdfTables(items, structure);
+    expect(result.elements).toHaveLength(1);
+    expect(result.elements[0]?.block).toMatchObject({
+      type: "table",
+      content: {
+        headerRows: 1,
+        rows: [
+          {
+            cells: [
+              { content: [{ text: "Experimento", styles: { bold: true } }] },
+              { content: [{ text: "Resultado", styles: { bold: true } }] },
+            ],
+          },
+          {
+            cells: [
+              { content: [{ text: "Conta bancária" }] },
+              { content: [{ text: "Nenhuma perda" }] },
+            ],
+          },
+        ],
+      },
+    });
+    expect(convertPdfTextLines(result.remainingItems)).toHaveLength(1);
   });
 });

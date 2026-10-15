@@ -59,6 +59,58 @@ const findBlock = (content: DocumentBlock[], blockId: string) => {
   return null;
 };
 
+const flattenBlocks = (content: DocumentBlock[]) => {
+  const result: DocumentBlock[] = [];
+  const visit = (blocks: DocumentBlock[]) => {
+    for (const block of blocks) {
+      result.push(block);
+      if (block.children?.length) visit(block.children);
+    }
+  };
+  visit(content);
+  return result;
+};
+
+const buildSelectionContext = ({
+  content,
+  documentTitle,
+  projectTitle,
+  sourceBlockIds,
+}: {
+  content: DocumentBlock[];
+  documentTitle: string;
+  projectTitle: string;
+  sourceBlockIds: string[];
+}) => {
+  const sourceIds = new Set(sourceBlockIds);
+  const blocks = flattenBlocks(content);
+  const sourceIndexes = blocks.flatMap((block, index) => (sourceIds.has(block.id) ? [index] : []));
+  const firstIndex = sourceIndexes[0] ?? -1;
+  const lastIndex = sourceIndexes.at(-1) ?? firstIndex;
+  const toSourceBlock = (block: DocumentBlock) => ({
+    id: block.id,
+    text: normalize(getDocumentBlockText(block)),
+  });
+  const nearby = (start: number, end: number) =>
+    blocks
+      .slice(Math.max(0, start), Math.max(0, end))
+      .filter((block) => !sourceIds.has(block.id))
+      .map(toSourceBlock)
+      .filter(({ text }) => Boolean(text));
+  const sectionBlock =
+    firstIndex > 0
+      ? blocks.slice(0, firstIndex).findLast((block) => block.type === "heading")
+      : undefined;
+  const sectionTitle = sectionBlock ? normalize(getDocumentBlockText(sectionBlock)) : undefined;
+  return {
+    after: lastIndex >= 0 ? nearby(lastIndex + 1, lastIndex + 3) : [],
+    before: firstIndex >= 0 ? nearby(firstIndex - 2, firstIndex) : [],
+    documentTitle,
+    projectTitle,
+    ...(sectionTitle ? { sectionTitle } : {}),
+  };
+};
+
 const assetIdFromUrl = (value: unknown) =>
   typeof value === "string" ? value.match(/^\/api\/assets\/([^/]+)\/content$/)?.[1] : undefined;
 
@@ -123,6 +175,12 @@ export const prepareAiSelectionGeneration = async (
     return {
       kind: "ok" as const,
       blocks,
+      context: buildSelectionContext({
+        content,
+        documentTitle: ownedDocument.documentTitle,
+        projectTitle: ownedDocument.projectTitle,
+        sourceBlockIds: blocks.map(({ id }) => id),
+      }),
       documentTitle: ownedDocument.documentTitle,
       documentRevision: ownedDocument.revision,
       projectId: ownedDocument.projectId,
@@ -157,6 +215,12 @@ export const prepareAiSelectionGeneration = async (
     return {
       kind: "ok" as const,
       blocks: [{ id: block.id, text: label }],
+      context: buildSelectionContext({
+        content,
+        documentTitle: ownedDocument.documentTitle,
+        projectTitle: ownedDocument.projectTitle,
+        sourceBlockIds: [block.id],
+      }),
       documentTitle: ownedDocument.documentTitle,
       documentRevision: ownedDocument.revision,
       imageAsset: ownedAsset,
@@ -167,6 +231,8 @@ export const prepareAiSelectionGeneration = async (
     };
   }
   const selectedText = normalize(input.selectedText);
+  const selectedPreview =
+    normalize(input.selectedPreview) === selectedText ? input.selectedPreview.trim() : selectedText;
   const requestedBlocks = findBlocks(content, new Set(input.sourceBlockIds));
   const selectedTextLower = selectedText.toLocaleLowerCase("pt-BR");
   const requestedSourceText = normalize(
@@ -191,7 +257,13 @@ export const prepareAiSelectionGeneration = async (
     // The model receives only the exact user selection. Block IDs remain useful
     // for rebuilding a precise reference, but a stale autosave snapshot must not
     // prevent generation.
-    blocks: [{ id: sourceBlockIds[0]!, text: selectedText }],
+    blocks: [{ id: sourceBlockIds[0]!, text: selectedPreview }],
+    context: buildSelectionContext({
+      content,
+      documentTitle: ownedDocument.documentTitle,
+      projectTitle: ownedDocument.projectTitle,
+      sourceBlockIds,
+    }),
     documentTitle: ownedDocument.documentTitle,
     documentRevision: ownedDocument.revision,
     projectId: ownedDocument.projectId,
@@ -412,6 +484,15 @@ export const approveAiSelectionGeneration = async (
         const isOriginalSourceReference =
           (draft.sourceScope === "selection" || draft.sourceScope === "image") &&
           isUnchangedProposalReference;
+        if (isOriginalSourceReference && draft.sourceScope === "selection" && draft.anchorId) {
+          const anchoredText = normalize(
+            getReferenceSourcePreview(anchoredContent, draft.anchorId, Number.MAX_SAFE_INTEGER),
+          );
+          if (!anchoredText) return { kind: "reference-unanchorable" as const, itemId: item.id };
+          anchors.push(draft.anchorId);
+          draftAnchorUsed = true;
+          continue;
+        }
         if (
           isOriginalSourceReference &&
           draft.sourceScope === "image" &&

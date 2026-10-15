@@ -10,14 +10,19 @@ export const AuthFormField = ({
   error,
   id,
   label,
+  labelAction,
 }: {
   children: ReactNode;
   error?: string;
   id: string;
   label: string;
+  labelAction?: ReactNode;
 }) => (
   <div className="grid gap-2">
-    <Label htmlFor={id}>{label}</Label>
+    <div className="flex items-center justify-between gap-3">
+      <Label htmlFor={id}>{label}</Label>
+      {labelAction}
+    </div>
     {children}
     <FormFieldError id={`${id}-error`} message={error} />
   </div>
@@ -45,13 +50,15 @@ export const AuthPasswordField = ({
   error,
   id,
   label,
+  labelAction,
   ...props
 }: ComponentProps<typeof PasswordInput> & {
   error?: string;
   id: string;
   label: string;
+  labelAction?: ReactNode;
 }) => (
-  <AuthFormField error={error} id={id} label={label}>
+  <AuthFormField error={error} id={id} label={label} labelAction={labelAction}>
     <PasswordInput
       aria-describedby={error ? `${id}-error` : undefined}
       aria-invalid={Boolean(error)}

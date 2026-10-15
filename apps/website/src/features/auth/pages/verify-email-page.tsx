@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { VERIFICATION_EMAIL_COOLDOWN_SECONDS } from "@lazuli/shared";
 import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
 import { EnvelopeSimpleOpenIcon } from "@phosphor-icons/react/EnvelopeSimpleOpen";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +14,7 @@ import {
   verificationEmailSchema,
 } from "@/features/auth/auth-schemas.ts";
 import { AuthFormHeader } from "@/features/auth/components/auth-form-header.tsx";
+import { AuthFeedback } from "@/features/auth/components/auth-feedback.tsx";
 import { AuthEmailField } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
 import { AuthSubmitButton } from "@/features/auth/components/auth-submit-button.tsx";
@@ -50,11 +52,14 @@ export const VerifyEmailPage = () => {
     });
 
     if (error) {
+      if (error.status === 429) {
+        setCooldown(VERIFICATION_EMAIL_COOLDOWN_SECONDS);
+      }
       setFeedback({ kind: "error", message: getAuthErrorMessage(error) });
       return;
     }
 
-    setCooldown(30);
+    setCooldown(VERIFICATION_EMAIL_COOLDOWN_SECONDS);
     setFeedback({
       kind: "success",
       message: "Se houver uma conta pendente, enviaremos um novo link de confirmação.",
@@ -78,16 +83,7 @@ export const VerifyEmailPage = () => {
           {...form.register("email")}
         />
 
-        {feedback && (
-          <p
-            className={
-              feedback.kind === "error" ? "text-sm text-destructive" : "text-sm text-primary"
-            }
-            role={feedback.kind === "error" ? "alert" : "status"}
-          >
-            {feedback.message}
-          </p>
-        )}
+        {feedback && <AuthFeedback kind={feedback.kind}>{feedback.message}</AuthFeedback>}
 
         <AuthSubmitButton
           disabled={!form.formState.isValid || form.formState.isSubmitting || cooldown > 0}

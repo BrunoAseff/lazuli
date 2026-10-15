@@ -9,6 +9,7 @@ import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 import { registerSchema, type RegisterValues } from "@/features/auth/auth-schemas.ts";
 import { AuthFormHeader } from "@/features/auth/components/auth-form-header.tsx";
+import { AuthFeedback } from "@/features/auth/components/auth-feedback.tsx";
 import {
   AuthEmailField,
   AuthFormField,
@@ -88,11 +89,7 @@ export const RegisterPage = () => {
           {...form.register("confirmPassword")}
         />
 
-        {formError && (
-          <p className="text-sm text-destructive" role="alert">
-            {formError}
-          </p>
-        )}
+        {formError && <AuthFeedback kind="error">{formError}</AuthFeedback>}
 
         <AuthSubmitButton
           className="mt-1"

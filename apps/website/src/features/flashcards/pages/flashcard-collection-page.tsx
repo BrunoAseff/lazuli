@@ -15,7 +15,6 @@ import {
   HistoryIcon,
   Layers3Icon,
   ListFilterIcon,
-  PlayIcon,
   PlusIcon,
   RotateCcwIcon,
   Trash2Icon,
@@ -73,6 +72,7 @@ import {
 import { CollectionPicker, FlashcardEditorPanel } from "../components/flashcard-editor-sheet.tsx";
 import { FlashcardIndex } from "../components/flashcard-items.tsx";
 import { FlashcardImportDialog } from "../components/flashcard-import-dialog.tsx";
+import { FlashcardPracticeButton } from "../components/flashcard-practice-button.tsx";
 import { PracticeSetupDialog } from "../components/practice-setup-dialog.tsx";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 
@@ -318,14 +318,15 @@ export const FlashcardCollectionPage = () => {
                   {summary.project?.title ?? "Sem projeto"}
                 </p>
               </div>
-              <Button
+              <FlashcardPracticeButton
+                archived={Boolean(summary.archivedAt)}
                 className="shrink-0"
-                disabled={Boolean(summary.archivedAt) || summary.dueCards === 0}
+                dueCards={summary.dueCards}
                 onClick={() => setPracticeOpen(true)}
                 size="lg"
-              >
-                <PlayIcon aria-hidden="true" className="-translate-y-px" /> Praticar
-              </Button>
+                title={summary.title}
+                totalCards={summary.totalCards}
+              />
             </div>
           </header>
           <div className="flex items-center gap-2 px-5 py-3">

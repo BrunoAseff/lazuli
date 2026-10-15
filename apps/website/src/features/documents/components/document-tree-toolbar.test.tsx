@@ -2,19 +2,22 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { DocumentTreeToolbar } from "./document-tree-toolbar.tsx";
+import { TooltipProvider } from "@/components/ui/tooltip.tsx";
 
 const renderToolbar = (searchOpen: boolean, hasItems = true) =>
   renderToStaticMarkup(
-    <DocumentTreeToolbar
-      closeIcon="panel"
-      hasItems={hasItems}
-      onCreate={vi.fn()}
-      onImport={vi.fn()}
-      onSearchChange={vi.fn()}
-      onSearchOpenChange={vi.fn()}
-      search=""
-      searchOpen={searchOpen}
-    />,
+    <TooltipProvider>
+      <DocumentTreeToolbar
+        closeIcon="panel"
+        hasItems={hasItems}
+        onCreate={vi.fn()}
+        onImport={vi.fn()}
+        onSearchChange={vi.fn()}
+        onSearchOpenChange={vi.fn()}
+        search=""
+        searchOpen={searchOpen}
+      />
+    </TooltipProvider>,
   );
 
 describe("DocumentTreeToolbar", () => {

@@ -129,7 +129,10 @@ const validateBlocks = (value: unknown, warnings: string[]): DocumentBlock[] => 
   if (Buffer.byteLength(json) > DOCUMENT_MAX_CONTENT_BYTES)
     throw new ImportConversionError("CONVERTED_DOCUMENT_TOO_LARGE", "");
   const parsed = documentContentSchema.safeParse(sanitized);
-  if (!parsed.success) throw new ImportConversionError("UNSUPPORTED_DOCUMENT_STRUCTURE", "");
+  if (!parsed.success)
+    throw new ImportConversionError("UNSUPPORTED_DOCUMENT_STRUCTURE", "", false, {
+      cause: parsed.error,
+    });
   return parsed.data;
 };
 
@@ -225,8 +228,20 @@ export const convertDocument = async (
         "code",
         "a",
         "img",
+        "table",
+        "thead",
+        "tbody",
+        "tfoot",
+        "tr",
+        "th",
+        "td",
       ],
-      allowedAttributes: { a: ["href"], img: ["src", "alt"] },
+      allowedAttributes: {
+        a: ["href"],
+        img: ["src", "alt"],
+        th: ["colspan", "rowspan"],
+        td: ["colspan", "rowspan"],
+      },
       allowedSchemes: ["http", "https", "mailto"],
       exclusiveFilter: ({ attribs, tag }) => tag === "img" && !attribs.src,
     });

@@ -116,7 +116,6 @@ export default function FlashcardPracticePage() {
       reviewAttempt.current = null;
       setFailedRating(null);
       setRevealed(false);
-      if (rating === "again") toast.info("O card voltou para o fim da fila desta sessão.");
     } catch (error) {
       setFailedRating(attempt.rating);
       toast.error(

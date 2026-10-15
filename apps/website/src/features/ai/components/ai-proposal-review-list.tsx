@@ -5,6 +5,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
+import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import {
@@ -73,122 +74,146 @@ export const AiProposalReviewList = ({
   quizQuestions: AiReviewQuiz[];
   returnTo: string;
   source: AiReviewSource;
-}) => (
-  <div className={cn("grid gap-4", className)}>
-    {flashcards.map((item, index) => (
-      <article
-        className={cn(
-          "grid gap-4 rounded-[var(--radius)] border p-4 transition-opacity",
-          !item.selected && "opacity-55",
-        )}
-        key={item.id}
-      >
-        <header className="flex items-center justify-between gap-3">
-          <label className="flex items-center gap-2 font-medium">
-            <Checkbox
-              checked={item.selected}
-              onCheckedChange={(checked) =>
-                onFlashcardChange(item.id, { selected: checked === true })
-              }
-            />
-            Flashcard {index + 1}
-          </label>
-          <Button
-            aria-label="Descartar proposta"
-            onClick={() => onRemove(item.id, "flashcard")}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <Trash2Icon />
-          </Button>
-        </header>
-        <div className="grid gap-2">
-          <Label htmlFor={`question-${item.id}`}>Pergunta</Label>
-          <Textarea
-            id={`question-${item.id}`}
-            onChange={(event) => onFlashcardChange(item.id, { question: event.target.value })}
-            value={item.question}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor={`answer-${item.id}`}>Resposta</Label>
-          <Textarea
-            id={`answer-${item.id}`}
-            onChange={(event) => onFlashcardChange(item.id, { answer: event.target.value })}
-            value={item.answer}
-          />
-        </div>
-        {item.warning && (
-          <p className="flex gap-2 text-xs text-warning-foreground">
-            <WarningCircleIcon className="size-4 shrink-0" /> {item.warning}
-          </p>
-        )}
-        <ProposalReferences
-          kind="flashcard"
-          onChange={(references) => onFlashcardChange(item.id, { references })}
-          onNavigate={onNavigateReference}
-          operationId={operationId}
-          proposalId={item.id}
-          references={item.references}
-          returnTo={returnTo}
-          source={source}
-          warning={item.referenceWarning}
-        />
-      </article>
-    ))}
+}) => {
+  const [discardTarget, setDiscardTarget] = useState<{
+    id: string;
+    kind: "flashcard" | "quizQuestion";
+  } | null>(null);
 
-    {quizQuestions.map((item, index) => (
-      <article
-        className={cn(
-          "grid gap-4 rounded-[var(--radius)] border p-4 transition-opacity",
-          !item.selected && "opacity-55",
-        )}
-        key={item.id}
-      >
-        <header className="flex items-center justify-between gap-3">
-          <label className="flex items-center gap-2 font-medium">
-            <Checkbox
-              checked={item.selected}
-              onCheckedChange={(checked) => onQuizChange(item.id, { selected: checked === true })}
-            />
-            Questão {index + 1}
-          </label>
-          <Button
-            aria-label="Descartar proposta"
-            onClick={() => onRemove(item.id, "quizQuestion")}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
+  return (
+    <>
+      <div className={cn("grid gap-4", className)}>
+        {flashcards.map((item, index) => (
+          <article
+            className={cn(
+              "grid gap-4 rounded-[var(--radius)] border p-4 transition-opacity",
+              !item.selected && "opacity-55",
+            )}
+            key={item.id}
           >
-            <Trash2Icon />
-          </Button>
-        </header>
-        <AiQuizProposalEditor
-          id={item.id}
-          onChange={(change) => onQuizChange(item.id, change)}
-          value={item}
-        />
-        {item.warning && (
-          <p className="flex gap-2 text-xs text-warning-foreground">
-            <WarningCircleIcon className="size-4 shrink-0" /> {item.warning}
-          </p>
-        )}
-        <ProposalReferences
-          kind="quizQuestion"
-          onChange={(references) => onQuizChange(item.id, { references })}
-          onNavigate={onNavigateReference}
-          operationId={operationId}
-          proposalId={item.id}
-          references={item.references}
-          returnTo={returnTo}
-          source={source}
-          warning={item.referenceWarning}
-        />
-      </article>
-    ))}
-  </div>
-);
+            <header className="flex items-center justify-between gap-3">
+              <label className="flex items-center gap-2 font-medium">
+                <Checkbox
+                  checked={item.selected}
+                  onCheckedChange={(checked) =>
+                    onFlashcardChange(item.id, { selected: checked === true })
+                  }
+                />
+                Flashcard {index + 1}
+              </label>
+              <Button
+                aria-label="Descartar proposta"
+                onClick={() => setDiscardTarget({ id: item.id, kind: "flashcard" })}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <Trash2Icon />
+              </Button>
+            </header>
+            <div className="grid gap-2">
+              <Label htmlFor={`question-${item.id}`}>Pergunta</Label>
+              <Textarea
+                id={`question-${item.id}`}
+                onChange={(event) => onFlashcardChange(item.id, { question: event.target.value })}
+                value={item.question}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor={`answer-${item.id}`}>Resposta</Label>
+              <Textarea
+                id={`answer-${item.id}`}
+                onChange={(event) => onFlashcardChange(item.id, { answer: event.target.value })}
+                value={item.answer}
+              />
+            </div>
+            {item.warning && (
+              <p className="flex gap-2 text-xs text-warning-foreground">
+                <WarningCircleIcon className="size-4 shrink-0" /> {item.warning}
+              </p>
+            )}
+            <ProposalReferences
+              kind="flashcard"
+              onChange={(references) => onFlashcardChange(item.id, { references })}
+              onNavigate={onNavigateReference}
+              operationId={operationId}
+              proposalId={item.id}
+              references={item.references}
+              returnTo={returnTo}
+              source={source}
+              warning={item.referenceWarning}
+            />
+          </article>
+        ))}
+
+        {quizQuestions.map((item, index) => (
+          <article
+            className={cn(
+              "grid gap-4 rounded-[var(--radius)] border p-4 transition-opacity",
+              !item.selected && "opacity-55",
+            )}
+            key={item.id}
+          >
+            <header className="flex items-center justify-between gap-3">
+              <label className="flex items-center gap-2 font-medium">
+                <Checkbox
+                  checked={item.selected}
+                  onCheckedChange={(checked) =>
+                    onQuizChange(item.id, { selected: checked === true })
+                  }
+                />
+                Questão {index + 1}
+              </label>
+              <Button
+                aria-label="Descartar proposta"
+                onClick={() => setDiscardTarget({ id: item.id, kind: "quizQuestion" })}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <Trash2Icon />
+              </Button>
+            </header>
+            <AiQuizProposalEditor
+              id={item.id}
+              onChange={(change) => onQuizChange(item.id, change)}
+              value={item}
+            />
+            {item.warning && (
+              <p className="flex gap-2 text-xs text-warning-foreground">
+                <WarningCircleIcon className="size-4 shrink-0" /> {item.warning}
+              </p>
+            )}
+            <ProposalReferences
+              kind="quizQuestion"
+              onChange={(references) => onQuizChange(item.id, { references })}
+              onNavigate={onNavigateReference}
+              operationId={operationId}
+              proposalId={item.id}
+              references={item.references}
+              returnTo={returnTo}
+              source={source}
+              warning={item.referenceWarning}
+            />
+          </article>
+        ))}
+      </div>
+      <ConfirmationDialog
+        actionLabel="Descartar proposta"
+        description="Ela será removida desta revisão e não poderá ser recuperada. Os créditos da geração não serão devolvidos."
+        destructive
+        onConfirm={() => {
+          if (!discardTarget) return;
+          onRemove(discardTarget.id, discardTarget.kind);
+          setDiscardTarget(null);
+        }}
+        onOpenChange={(nextOpen) => !nextOpen && setDiscardTarget(null)}
+        open={Boolean(discardTarget)}
+        title="Descartar esta proposta?"
+      />
+    </>
+  );
+};
 
 const ProposalReferences = ({
   kind,

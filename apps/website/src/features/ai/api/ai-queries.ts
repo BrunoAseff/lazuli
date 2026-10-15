@@ -37,7 +37,11 @@ export const aiKeys = {
 };
 
 export const useAiCreditBalance = () =>
-  useQuery({ queryKey: aiKeys.balance, queryFn: ({ signal }) => fetchAiCreditBalance(signal) });
+  useQuery({
+    queryKey: aiKeys.balance,
+    queryFn: ({ signal }) => fetchAiCreditBalance(signal),
+    staleTime: 30_000,
+  });
 
 export const useAiGeneration = (operationId: string) => {
   const client = useQueryClient();

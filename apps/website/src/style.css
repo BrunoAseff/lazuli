@@ -315,6 +315,11 @@ body:has(.project-workspace),
   pointer-events: none;
 }
 
+/* BlockNote 0.54 binds the native add-block action to this icon itself. */
+.lazuli-editor button svg[data-test="dragHandleAdd"] {
+  pointer-events: auto;
+}
+
 .lazuli-editor .bn-editor {
   min-height: 60vh;
   padding-inline: 0;
