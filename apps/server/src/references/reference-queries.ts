@@ -20,7 +20,6 @@ import {
   quizCollection,
   quizQuestion,
   studyMaterialReference,
-  userStorage,
 } from "../database/schema/index.ts";
 
 const referenceSelection = {
@@ -317,12 +316,10 @@ const removeUnusedDocumentAnchors = async (
     .select({
       id: document.id,
       content: document.content,
-      contentByteSize: document.contentByteSize,
     })
     .from(document)
     .where(inArray(document.id, documentIds))
     .for("update", { of: document });
-  let storageDelta = 0;
   const now = new Date();
   for (const stored of storedDocuments) {
     const anchors = candidates.get(stored.id);
@@ -330,7 +327,6 @@ const removeUnusedDocumentAnchors = async (
     const stripped = removeSourceAnchors(stored.content as DocumentBlock[], anchors);
     if (!stripped.changed) continue;
     const contentByteSize = Buffer.byteLength(JSON.stringify(stripped.content));
-    storageDelta += contentByteSize - stored.contentByteSize;
     await tx
       .update(document)
       .set({
@@ -342,15 +338,6 @@ const removeUnusedDocumentAnchors = async (
       .where(eq(document.id, stored.id));
     await tx.update(projectItem).set({ updatedAt: now }).where(eq(projectItem.id, stored.id));
   }
-  if (!storageDelta) return;
-  await tx.insert(userStorage).values({ userId }).onConflictDoNothing();
-  await tx
-    .update(userStorage)
-    .set({
-      usedBytes: sql`greatest(0, ${userStorage.usedBytes} + ${storageDelta})`,
-      updatedAt: now,
-    })
-    .where(eq(userStorage.userId, userId));
 };
 
 export const deleteReferencesForTargets = async (

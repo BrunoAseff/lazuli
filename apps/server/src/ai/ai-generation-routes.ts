@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
 import type { Database } from "../database/client.ts";
+import { sendCommercialLimitError } from "../commercial/commercial-limit-errors.ts";
 import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import { AiGenerationError } from "./ai-errors.ts";
@@ -31,16 +32,21 @@ import {
 const operationIdFrom = (params: unknown) =>
   aiGenerationIdSchema.safeParse((params as { operationId?: unknown }).operationId);
 
-const sendAiError = (reply: Parameters<typeof sendValidationError>[0], error: unknown) => {
+const sendAiError = async (
+  reply: Parameters<typeof sendValidationError>[0],
+  error: unknown,
+  database: Database,
+  userId: string,
+) => {
   if (!(error instanceof AiGenerationError)) throw error;
+  if (error.code === "AI_INSUFFICIENT_CREDITS")
+    return sendCommercialLimitError(reply, database, userId, error.code);
   const status =
-    error.code === "AI_INSUFFICIENT_CREDITS"
-      ? 402
-      : error.code === "AI_RATE_LIMITED" || error.code === "AI_CONCURRENCY_LIMITED"
-        ? 429
-        : error.code === "AI_CONFIGURATION_ERROR"
-          ? 503
-          : 422;
+    error.code === "AI_RATE_LIMITED" || error.code === "AI_CONCURRENCY_LIMITED"
+      ? 429
+      : error.code === "AI_CONFIGURATION_ERROR"
+        ? 503
+        : 422;
   return reply.status(status).send({ code: error.code, message: error.message });
 };
 
@@ -141,7 +147,7 @@ export const createAiGenerationRoutes = ({
               : response,
           );
       } catch (error) {
-        return sendAiError(reply, error);
+        return sendAiError(reply, error, database, session.user.id);
       }
     });
 
@@ -217,7 +223,7 @@ export const createAiGenerationRoutes = ({
               : { status: "running", operationId: result.operationId },
           );
       } catch (error) {
-        return sendAiError(reply, error);
+        return sendAiError(reply, error, database, session.user.id);
       }
     });
 
@@ -237,7 +243,7 @@ export const createAiGenerationRoutes = ({
           ? { status: "completed", draft: result.draft }
           : { status: "running", operationId: result.operationId };
       } catch (error) {
-        return sendAiError(reply, error);
+        return sendAiError(reply, error, database, session.user.id);
       }
     });
 
@@ -331,7 +337,7 @@ export const createAiGenerationRoutes = ({
               : response,
           );
       } catch (error) {
-        return sendAiError(reply, error);
+        return sendAiError(reply, error, database, session.user.id);
       }
     });
 
@@ -348,7 +354,7 @@ export const createAiGenerationRoutes = ({
           ? enrichStoredDraftSource(database, session.user.id, response)
           : response;
       } catch (error) {
-        return sendAiError(reply, error);
+        return sendAiError(reply, error, database, session.user.id);
       }
     });
 
@@ -388,7 +394,7 @@ export const createAiGenerationRoutes = ({
           ? { status: "running" as const, operationId: result.operationId }
           : { status: result.kind, operationId: result.operationId };
       } catch (error) {
-        return sendAiError(reply, error);
+        return sendAiError(reply, error, database, session.user.id);
       }
     });
 
@@ -427,10 +433,6 @@ export const createAiGenerationRoutes = ({
         return reply
           .status(404)
           .send({ code: "COLLECTION_NOT_FOUND", message: "A coleção não foi encontrada." });
-      if (result.kind === "quota")
-        return reply
-          .status(409)
-          .send({ code: "STORAGE_LIMIT", message: "O limite de armazenamento foi atingido." });
       if (result.kind === "invalid-items") return sendValidationError(reply);
       return { createdIds: result.createdIds, revision: result.revision };
     });

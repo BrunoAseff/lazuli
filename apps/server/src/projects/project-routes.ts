@@ -10,6 +10,7 @@ import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
+import { sendCommercialLimitError } from "../commercial/commercial-limit-errors.ts";
 import { sendValidationError } from "../routes/route-helpers.ts";
 import {
   createProject,
@@ -23,6 +24,7 @@ import {
 type ProjectRoutesOptions = {
   auth: Auth;
   database: Database;
+  enforceCommercialLimits?: boolean;
   websiteUrl: string;
 };
 
@@ -35,6 +37,7 @@ const serializeProject = (value: NonNullable<Awaited<ReturnType<typeof getProjec
 export const createProjectRoutes = ({
   auth,
   database,
+  enforceCommercialLimits = true,
   websiteUrl,
 }: ProjectRoutesOptions): FastifyPluginAsync =>
   async function projectRoutes(app) {
@@ -73,7 +76,19 @@ export const createProjectRoutes = ({
       if (!input.success) return sendValidationError(reply);
 
       try {
-        const result = await createProject(database, session.user.id, input.data);
+        const result = await createProject(
+          database,
+          session.user.id,
+          input.data,
+          enforceCommercialLimits,
+        );
+        if (result && "kind" in result && result.kind === "limit")
+          return sendCommercialLimitError(
+            reply,
+            database,
+            session.user.id,
+            "PLAN_PROJECT_LIMIT_REACHED",
+          );
         if (!result?.project) {
           return reply.status(409).send({
             code: "PROJECT_CREATE_CONFLICT",

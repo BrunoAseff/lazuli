@@ -2,6 +2,7 @@ import { IMAGE_MAX_BYTES } from "@lazuli/shared";
 import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { Database } from "../database/client.ts";
+import { sendCommercialLimitError } from "../commercial/commercial-limit-errors.ts";
 import {
   bufferedImageSource,
   isImageUploadTooLargeError,
@@ -12,6 +13,7 @@ import { sendValidationError } from "./route-helpers.ts";
 
 type StoreImage = (input: {
   database: Database;
+  enforceCommercialLimits?: boolean;
   originalName: string;
   source: Awaited<ReturnType<typeof bufferedImageSource>>;
   storage: ObjectStorage;
@@ -20,6 +22,7 @@ type StoreImage = (input: {
 
 export const handleStudyImageUpload = async ({
   database,
+  enforceCommercialLimits = true,
   logMessage,
   reply,
   request,
@@ -28,6 +31,7 @@ export const handleStudyImageUpload = async ({
   userId,
 }: {
   database: Database;
+  enforceCommercialLimits?: boolean;
   logMessage: string;
   reply: FastifyReply;
   request: FastifyRequest;
@@ -40,6 +44,7 @@ export const handleStudyImageUpload = async ({
     if (!part) return sendValidationError(reply);
     const created = await storeImage({
       database,
+      enforceCommercialLimits,
       originalName: part.filename,
       source: await bufferedImageSource(await part.toBuffer()),
       storage,
@@ -57,10 +62,7 @@ export const handleStudyImageUpload = async ({
         .status(413)
         .send({ code: "IMAGE_TOO_LARGE", message: "A imagem deve ter no máximo 10 MB." });
     if (error instanceof StorageLimitReachedError)
-      return reply.status(409).send({
-        code: "STORAGE_LIMIT_REACHED",
-        message: "Seu limite de armazenamento foi atingido.",
-      });
+      return sendCommercialLimitError(reply, database, userId, "PLAN_STORAGE_LIMIT_REACHED");
     request.log.error(
       { errorName: error instanceof Error ? error.name : "UnknownError", userId },
       logMessage,

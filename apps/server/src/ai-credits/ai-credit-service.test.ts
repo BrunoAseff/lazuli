@@ -8,24 +8,24 @@ const service = createAiCreditService({} as Database);
 describe("AI credit administrative validation", () => {
   it("requires auditable metadata before touching the database", async () => {
     await expect(
-      service.adjust({
+      service.grant({
         amount: 10,
+        email: "ana@example.com",
         idempotencyKey: "",
         operatorId: "operator-1",
         reason: "Correção",
-        userId: "user-1",
       }),
     ).rejects.toThrow("administrative metadata");
   });
 
-  it("rejects zero adjustments and negative grants", async () => {
+  it("rejects zero and negative grants", async () => {
     await expect(
-      service.adjust({
+      service.grant({
         amount: 0,
+        email: "ana@example.com",
         idempotencyKey: "adjustment-1",
         operatorId: "operator-1",
         reason: "Correção",
-        userId: "user-1",
       }),
     ).rejects.toThrow("non-zero");
     await expect(

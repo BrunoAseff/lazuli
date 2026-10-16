@@ -13,8 +13,25 @@ const projectQueries = vi.hoisted(() => ({
   listProjects: vi.fn(),
   updateProject: vi.fn(),
 }));
+const commercialLimits = vi.hoisted(() => ({
+  sendCommercialLimitError: vi.fn((reply) =>
+    reply.status(409).send({
+      code: "PLAN_PROJECT_LIMIT_REACHED",
+      details: {
+        limit: 5,
+        nextRecommendedPlan: "essential",
+        plan: "basic",
+        remaining: 0,
+        resource: "projects",
+        usage: 5,
+      },
+      message: "Seu limite de projetos foi atingido.",
+    }),
+  ),
+}));
 
 vi.mock("./project-queries.ts", () => projectQueries);
+vi.mock("../commercial/commercial-limit-errors.ts", () => commercialLimits);
 
 const apps: ReturnType<typeof Fastify>[] = [];
 const database = {} as Database;
@@ -124,6 +141,41 @@ describe("project routes", () => {
       database,
       "user-1",
       "2a36ca27-f1e7-4b07-bd5a-bf831fee8f62",
+    );
+  });
+
+  it("returns the structured commercial error when the plan project limit is reached", async () => {
+    projectQueries.createProject.mockResolvedValue({ kind: "limit", limit: 5, plan: "basic" });
+    const app = await registerRoutes(createAuth(verifiedSession));
+    const response = await app.inject({
+      method: "POST",
+      headers: { origin: "http://localhost:3000" },
+      payload: {
+        id: "2a36ca27-f1e7-4b07-bd5a-bf831fee8f62",
+        title: "Física",
+        coverKey: "orbit",
+      },
+      url: "/api/projects",
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      code: "PLAN_PROJECT_LIMIT_REACHED",
+      details: {
+        limit: 5,
+        nextRecommendedPlan: "essential",
+        plan: "basic",
+        remaining: 0,
+        resource: "projects",
+        usage: 5,
+      },
+      message: "Seu limite de projetos foi atingido.",
+    });
+    expect(commercialLimits.sendCommercialLimitError).toHaveBeenCalledWith(
+      expect.anything(),
+      database,
+      "user-1",
+      "PLAN_PROJECT_LIMIT_REACHED",
     );
   });
 });

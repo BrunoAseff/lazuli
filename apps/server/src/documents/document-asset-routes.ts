@@ -5,6 +5,7 @@ import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
+import { sendCommercialLimitError } from "../commercial/commercial-limit-errors.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
   bufferedImageSource,
@@ -17,11 +18,18 @@ import { documentValidationError, parseDocumentParams } from "./document-route-u
 import { deleteOwnedAsset, getDocument, getOwnedAsset } from "./document-queries.ts";
 import { downloadRemoteImage, RemoteImageError } from "./remote-image.ts";
 
-type Options = { auth: Auth; database: Database; storage: ObjectStorage; websiteUrl: string };
+type Options = {
+  auth: Auth;
+  database: Database;
+  enforceCommercialLimits?: boolean;
+  storage: ObjectStorage;
+  websiteUrl: string;
+};
 
 export const createDocumentAssetRoutes = ({
   auth,
   database,
+  enforceCommercialLimits = true,
   storage,
   websiteUrl,
 }: Options): FastifyPluginAsync =>
@@ -51,6 +59,7 @@ export const createDocumentAssetRoutes = ({
             source: await bufferedImageSource(await part.toBuffer()),
             storage,
             userId: session.user.id,
+            enforceCommercialLimits,
           });
         } catch (error) {
           if (isImageUploadTooLargeError(error))
@@ -59,10 +68,12 @@ export const createDocumentAssetRoutes = ({
               message: "A imagem deve ter no máximo 10 MB.",
             });
           if (error instanceof StorageLimitReachedError)
-            return reply.status(409).send({
-              code: "STORAGE_LIMIT_REACHED",
-              message: "Seu limite de armazenamento foi atingido.",
-            });
+            return sendCommercialLimitError(
+              reply,
+              database,
+              session.user.id,
+              "PLAN_STORAGE_LIMIT_REACHED",
+            );
           request.log.error(
             { err: error, documentId: documentId.data, userId: session.user.id },
             "document image upload failed",
@@ -125,15 +136,28 @@ export const createDocumentAssetRoutes = ({
           throw error;
         }
 
-        const created = await storeDocumentImage({
-          database,
-          documentId: documentId.data,
-          originalName: filenameFromUrl(downloaded.sourceUrl),
-          projectId: projectId.data,
-          source: await bufferedImageSource(downloaded.buffer),
-          storage,
-          userId: session.user.id,
-        });
+        let created: Awaited<ReturnType<typeof storeDocumentImage>>;
+        try {
+          created = await storeDocumentImage({
+            database,
+            documentId: documentId.data,
+            originalName: filenameFromUrl(downloaded.sourceUrl),
+            projectId: projectId.data,
+            source: await bufferedImageSource(downloaded.buffer),
+            storage,
+            userId: session.user.id,
+            enforceCommercialLimits,
+          });
+        } catch (error) {
+          if (error instanceof StorageLimitReachedError)
+            return sendCommercialLimitError(
+              reply,
+              database,
+              session.user.id,
+              "PLAN_STORAGE_LIMIT_REACHED",
+            );
+          throw error;
+        }
         if (!created)
           return reply.status(415).send({
             code: "UNSUPPORTED_IMAGE",

@@ -35,7 +35,13 @@ import {
   updateQuizQuestion,
 } from "./quiz-question-queries.ts";
 
-type Options = { auth: Auth; database: Database; storage: ObjectStorage; websiteUrl: string };
+type Options = {
+  auth: Auth;
+  database: Database;
+  enforceCommercialLimits?: boolean;
+  storage: ObjectStorage;
+  websiteUrl: string;
+};
 const serializeQuestion = <T extends { archivedAt: Date | null; createdAt: Date; updatedAt: Date }>(
   value: T,
 ) => ({
@@ -46,7 +52,13 @@ const serializeQuestion = <T extends { archivedAt: Date | null; createdAt: Date;
 });
 
 export const createQuizRoutes =
-  ({ auth, database, storage, websiteUrl }: Options): FastifyPluginAsync =>
+  ({
+    auth,
+    database,
+    enforceCommercialLimits = true,
+    storage,
+    websiteUrl,
+  }: Options): FastifyPluginAsync =>
   async (app) => {
     const limiter = createRequestRateLimiter({ limit: 160, windowMs: 10 * 60_000 });
     const mutationSession = createMutationAuthorizer(auth, websiteUrl, limiter);
@@ -292,6 +304,7 @@ export const createQuizRoutes =
       if (!session) return;
       return handleStudyImageUpload({
         database,
+        enforceCommercialLimits,
         logMessage: "quiz image upload failed",
         reply,
         request,

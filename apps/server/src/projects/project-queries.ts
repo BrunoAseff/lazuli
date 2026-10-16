@@ -6,11 +6,11 @@ import {
 } from "@lazuli/shared";
 import { and, count, desc, eq, or, sql } from "drizzle-orm";
 
-import type { Database } from "../database/client.ts";
+import { resolveEffectiveEntitlement } from "../commercial/commercial-entitlements.ts";
+import type { Database, QueryExecutor } from "../database/client.ts";
 import { escapeLikePattern } from "../database/sql-search.ts";
 import {
   asset,
-  document,
   documentImport,
   project,
   projectItem,
@@ -65,7 +65,7 @@ export const listProjects = async (database: Database, userId: string, input: Pr
   };
 };
 
-export const getProject = async (database: Database, userId: string, projectId: string) => {
+export const getProject = async (database: QueryExecutor, userId: string, projectId: string) => {
   const [result] = await database
     .select(projectSelection)
     .from(project)
@@ -84,21 +84,37 @@ export const createProject = async (
   database: Database,
   userId: string,
   input: CreateProjectInput,
+  enforceCommercialLimits = true,
 ) => {
-  const [inserted] = await database
-    .insert(project)
-    .values({ ...input, userId })
-    .onConflictDoNothing({ target: project.id })
-    .returning({ id: project.id });
-
-  if (inserted) {
-    return { created: true, project: await getProject(database, userId, inserted.id) };
-  }
-
-  const existing = await getProject(database, userId, input.id);
-  const isSameOperation = existing?.title === input.title && existing.coverKey === input.coverKey;
-
-  return isSameOperation ? { created: false, project: existing } : null;
+  return database.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`project-limit:${userId}`}))`);
+    const existing = await getProject(tx, userId, input.id);
+    if (existing) {
+      const isSameOperation =
+        existing.title === input.title && existing.coverKey === input.coverKey;
+      return isSameOperation ? { created: false as const, project: existing } : null;
+    }
+    const entitlement = await resolveEffectiveEntitlement(tx, userId);
+    if (enforceCommercialLimits && entitlement.projectLimit !== null) {
+      const [usage] = await tx
+        .select({ value: count() })
+        .from(project)
+        .where(and(eq(project.userId, userId), eq(project.quotaExempt, false)));
+      if ((usage?.value ?? 0) >= entitlement.projectLimit)
+        return {
+          kind: "limit" as const,
+          limit: entitlement.projectLimit,
+          plan: entitlement.code,
+        };
+    }
+    const [inserted] = await tx
+      .insert(project)
+      .values({ ...input, userId })
+      .onConflictDoNothing({ target: project.id })
+      .returning({ id: project.id });
+    if (!inserted) return null;
+    return { created: true as const, project: await getProject(tx, userId, inserted.id) };
+  });
 };
 
 export const updateProject = async (
@@ -158,14 +174,7 @@ export const deleteProject = async (database: Database, userId: string, projectI
       ...storedAssets.map(({ objectKey }) => objectKey),
       ...temporaryImports.flatMap(({ objectKey }) => (objectKey ? [objectKey] : [])),
     ]);
-    const [documentBytes] = await tx
-      .select({ value: sql<number>`coalesce(sum(${document.contentByteSize}), 0)::bigint` })
-      .from(document)
-      .innerJoin(projectItem, eq(projectItem.id, document.id))
-      .where(eq(projectItem.projectId, projectId));
-    const usedBytes =
-      storedAssets.reduce((sum, item) => sum + item.byteSize, 0) +
-      Number(documentBytes?.value ?? 0);
+    const usedBytes = storedAssets.reduce((sum, item) => sum + item.byteSize, 0);
     const reservedBytes = temporaryImports
       .filter(({ status }) =>
         DOCUMENT_IMPORT_ACTIVE_STATUSES.some((activeStatus) => activeStatus === status),

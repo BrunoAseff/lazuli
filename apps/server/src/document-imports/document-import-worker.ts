@@ -1,13 +1,11 @@
-import {
-  normalizeProjectItemTitle,
-  STORAGE_BASIC_LIMIT_BYTES,
-  type DocumentImportPhase,
-} from "@lazuli/shared";
+import { normalizeProjectItemTitle, type DocumentImportPhase } from "@lazuli/shared";
 import { and, eq, inArray, max, sql } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 import { Worker } from "node:worker_threads";
 
 import type { Database } from "../database/client.ts";
+import { exceedsCommercialLimit } from "../commercial/commercial-limit-enforcement.ts";
+import { getStorageLimitBytes } from "../commercial/commercial-service.ts";
 import { cleanupUnattachedAssets } from "../documents/document-queries.ts";
 import {
   asset,
@@ -136,6 +134,7 @@ const completeImport = async (
   content: unknown[],
   warnings: string[],
   importedAssets: Array<{ id: string; mimeType: string; byteSize: number; objectKey: string }>,
+  enforceCommercialLimits: boolean,
 ) => {
   const contentByteSize = Buffer.byteLength(JSON.stringify(content));
   const importedAssetBytes = importedAssets.reduce((sum, item) => sum + item.byteSize, 0);
@@ -167,15 +166,16 @@ const completeImport = async (
       .from(userStorage)
       .where(eq(userStorage.userId, job.userId))
       .for("update");
+    const storageLimitBytes = await getStorageLimitBytes(tx, job.userId);
     if (
       !usage ||
-      usage.usedBytes +
-        Math.max(0, usage.reservedBytes - job.inputByteSize) +
-        contentByteSize +
-        importedAssetBytes >
-        STORAGE_BASIC_LIMIT_BYTES
+      exceedsCommercialLimit(
+        enforceCommercialLimits,
+        usage.usedBytes + Math.max(0, usage.reservedBytes - job.inputByteSize) + importedAssetBytes,
+        storageLimitBytes,
+      )
     )
-      throw new ImportConversionError("STORAGE_LIMIT_REACHED", "", false);
+      throw new ImportConversionError("PLAN_STORAGE_LIMIT_REACHED", "", false);
     let parentId = current.parentId;
     if (parentId) {
       const [parent] = await tx
@@ -234,7 +234,7 @@ const completeImport = async (
     await tx
       .update(userStorage)
       .set({
-        usedBytes: sql`${userStorage.usedBytes} + ${contentByteSize + importedAssetBytes}`,
+        usedBytes: sql`${userStorage.usedBytes} + ${importedAssetBytes}`,
         reservedBytes: sql`greatest(0, ${userStorage.reservedBytes} - ${job.inputByteSize})`,
         updatedAt: now,
       })
@@ -263,6 +263,7 @@ const processImport = async (
   storage: ObjectStorage,
   job: ClaimedDocumentImport,
   workerId: string,
+  enforceCommercialLimits: boolean,
 ) => {
   if (!job.inputObjectKey || !job.detectedMimeType)
     throw new ImportConversionError("UPLOAD_NOT_AVAILABLE", "", false);
@@ -332,6 +333,7 @@ const processImport = async (
       result.blocks,
       result.warnings,
       importedAssets,
+      enforceCommercialLimits,
     );
     if (!completed)
       await enqueueObjectDeletions(
@@ -357,6 +359,7 @@ export const createDocumentImportWorker = (
   db: Database,
   storage: ObjectStorage,
   logger: FastifyBaseLogger,
+  enforceCommercialLimits = true,
 ) => {
   const workerId = `document-import:${process.pid}:${crypto.randomUUID()}`;
   let timer: NodeJS.Timeout | undefined;
@@ -399,7 +402,7 @@ export const createDocumentImportWorker = (
       const job = await claimNextImport(db, workerId);
       if (job) {
         try {
-          await processImport(db, storage, job, workerId);
+          await processImport(db, storage, job, workerId, enforceCommercialLimits);
         } catch (error) {
           logger.error({ err: error, importId: job.id }, "document import processing failed");
           const known = error instanceof ImportConversionError;

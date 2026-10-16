@@ -8,7 +8,6 @@ import {
   getDocumentBlockText,
   getReferenceSourcePreview,
   removeSourceAnchors,
-  STORAGE_BASIC_LIMIT_BYTES,
   type ApproveAiSelectionGenerationInput,
   type CreateAiCollectionGenerationInput,
   type CreateAiSelectionGenerationInput,
@@ -31,7 +30,6 @@ import {
   quizOption,
   quizQuestion,
   studyMaterialReference,
-  userStorage,
 } from "../database/schema/index.ts";
 import { summarizeRichContent } from "../documents/rich-content-summary.ts";
 import { createPersistedQuizOptions } from "./ai-persistence.ts";
@@ -408,7 +406,6 @@ export const approveAiSelectionGeneration = async (
     const [ownedDocument] = await tx
       .select({
         content: document.content,
-        contentByteSize: document.contentByteSize,
         projectId: projectItem.projectId,
         revision: document.revision,
       })
@@ -552,18 +549,6 @@ export const approveAiSelectionGeneration = async (
         anchoredContent = removeSourceAnchors(anchoredContent, new Set([draft.anchorId])).content;
     }
     const contentByteSize = Buffer.byteLength(JSON.stringify(anchoredContent));
-    const storageDelta = contentByteSize - ownedDocument.contentByteSize;
-    await tx.insert(userStorage).values({ userId }).onConflictDoNothing();
-    const [usage] = await tx
-      .select()
-      .from(userStorage)
-      .where(eq(userStorage.userId, userId))
-      .for("update");
-    if (
-      storageDelta > 0 &&
-      (!usage || usage.usedBytes + usage.reservedBytes + storageDelta > STORAGE_BASIC_LIMIT_BYTES)
-    )
-      return { kind: "quota" as const };
     let revision = ownedDocument.revision;
     if (!isDeepStrictEqual(ownedDocument.content, anchoredContent)) {
       const [saved] = await tx
@@ -578,13 +563,6 @@ export const approveAiSelectionGeneration = async (
         .returning({ revision: document.revision });
       if (!saved) return { kind: "not-found" as const };
       revision = saved.revision;
-      await tx
-        .update(userStorage)
-        .set({
-          usedBytes: sql`greatest(0, ${userStorage.usedBytes} + ${storageDelta})`,
-          updatedAt: now,
-        })
-        .where(eq(userStorage.userId, userId));
       await tx
         .update(projectItem)
         .set({ updatedAt: now })
