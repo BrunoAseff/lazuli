@@ -214,11 +214,6 @@ export const createDocumentRoutes = ({ auth, database, websiteUrl }: Options): F
             code: "INVALID_DOCUMENT_ASSET",
             message: "Uma imagem não pertence a este documento.",
           });
-        if (result.kind === "quota")
-          return reply.status(409).send({
-            code: "STORAGE_LIMIT_REACHED",
-            message: "Seu limite de armazenamento foi atingido.",
-          });
         request.log.info(
           {
             documentId: documentId.data,

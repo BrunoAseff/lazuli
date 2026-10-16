@@ -3,13 +3,14 @@ import {
   DOCUMENT_IMPORT_MAX_ACTIVE,
   DOCUMENT_IMPORT_RATE_LIMIT,
   DOCUMENT_IMPORT_RATE_WINDOW_MS,
-  STORAGE_BASIC_LIMIT_BYTES,
   type CreateDocumentImportInput,
   type DocumentImportPhase,
 } from "@lazuli/shared";
 import { and, asc, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 
 import type { Database } from "../database/client.ts";
+import { exceedsCommercialLimit } from "../commercial/commercial-limit-enforcement.ts";
+import { getStorageLimitBytes } from "../commercial/commercial-service.ts";
 import { documentImport, project, projectItem, userStorage } from "../database/schema/index.ts";
 
 export const createDocumentImport = async (
@@ -17,6 +18,7 @@ export const createDocumentImport = async (
   userId: string,
   projectId: string,
   input: CreateDocumentImportInput,
+  enforceCommercialLimits = true,
 ) =>
   db.transaction(async (tx) => {
     const [owned] = await tx
@@ -84,9 +86,14 @@ export const createDocumentImport = async (
         ),
       );
     if ((active?.count ?? 0) >= DOCUMENT_IMPORT_MAX_ACTIVE) return { kind: "too-many" as const };
+    const storageLimitBytes = await getStorageLimitBytes(tx, userId);
     if (
       !usage ||
-      usage.usedBytes + usage.reservedBytes + input.byteSize > STORAGE_BASIC_LIMIT_BYTES
+      exceedsCommercialLimit(
+        enforceCommercialLimits,
+        usage.usedBytes + usage.reservedBytes + input.byteSize,
+        storageLimitBytes,
+      )
     )
       return { kind: "quota" as const };
 
@@ -147,7 +154,7 @@ export const getStorageUsage = async (db: Database, userId: string) => {
     .select({ usedBytes: userStorage.usedBytes, reservedBytes: userStorage.reservedBytes })
     .from(userStorage)
     .where(eq(userStorage.userId, userId));
-  return { ...usage!, limitBytes: STORAGE_BASIC_LIMIT_BYTES };
+  return { ...usage!, limitBytes: await getStorageLimitBytes(db, userId) };
 };
 
 export const markImportQueued = async (
@@ -220,7 +227,12 @@ export const cancelDocumentImport = async (db: Database, userId: string, importI
     return requested!;
   });
 
-export const retryDocumentImport = async (db: Database, userId: string, importId: string) =>
+export const retryDocumentImport = async (
+  db: Database,
+  userId: string,
+  importId: string,
+  enforceCommercialLimits = true,
+) =>
   db.transaction(async (tx) => {
     const [current] = await tx
       .select()
@@ -235,9 +247,14 @@ export const retryDocumentImport = async (db: Database, userId: string, importId
       .from(userStorage)
       .where(eq(userStorage.userId, userId))
       .for("update");
+    const storageLimitBytes = await getStorageLimitBytes(tx, userId);
     if (
       !usage ||
-      usage.usedBytes + usage.reservedBytes + current.inputByteSize > STORAGE_BASIC_LIMIT_BYTES
+      exceedsCommercialLimit(
+        enforceCommercialLimits,
+        usage.usedBytes + usage.reservedBytes + current.inputByteSize,
+        storageLimitBytes,
+      )
     )
       return { kind: "quota" as const };
     const now = new Date();

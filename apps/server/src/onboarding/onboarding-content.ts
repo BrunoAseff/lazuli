@@ -6,7 +6,6 @@ import {
   utf8ByteLength,
 } from "@lazuli/shared";
 import { createHash } from "node:crypto";
-import { sql } from "drizzle-orm";
 
 import type { Database } from "../database/client.ts";
 import {
@@ -210,7 +209,7 @@ export const initializeNewUser = async (database: Database, userId: string) => {
 
     const [createdProject] = await tx
       .insert(project)
-      .values({ ...fixture.project, userId })
+      .values({ ...fixture.project, quotaExempt: true, userId })
       .onConflictDoNothing({ target: project.id })
       .returning({ id: project.id });
 
@@ -229,16 +228,8 @@ export const initializeNewUser = async (database: Database, userId: string) => {
       content: fixture.document.content,
       contentByteSize: fixture.document.contentByteSize,
     });
-    await tx
-      .insert(userStorage)
-      .values({ userId, usedBytes: fixture.document.contentByteSize })
-      .onConflictDoUpdate({
-        target: userStorage.userId,
-        set: {
-          usedBytes: sql`${userStorage.usedBytes} + ${fixture.document.contentByteSize}`,
-          updatedAt: new Date(),
-        },
-      });
+    // PostgreSQL document JSON is metadata, not billable object storage.
+    await tx.insert(userStorage).values({ userId }).onConflictDoNothing();
 
     await tx.insert(flashcardCollection).values({
       ...fixture.flashcardCollection,

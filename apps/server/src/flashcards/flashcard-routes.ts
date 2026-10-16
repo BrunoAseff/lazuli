@@ -32,6 +32,7 @@ import { FlashcardImportError, parseFlashcardImport } from "./flashcard-import.t
 type Options = {
   auth: Auth;
   database: Database;
+  enforceCommercialLimits?: boolean;
   storage: ObjectStorage;
   websiteUrl: string;
 };
@@ -68,6 +69,7 @@ const parseIds = (params: unknown) => {
 export const createFlashcardRoutes = ({
   auth,
   database,
+  enforceCommercialLimits = true,
   storage,
   websiteUrl,
 }: Options): FastifyPluginAsync =>
@@ -287,6 +289,7 @@ export const createFlashcardRoutes = ({
       if (!session) return;
       return handleStudyImageUpload({
         database,
+        enforceCommercialLimits,
         logMessage: "flashcard image upload failed",
         reply,
         request,

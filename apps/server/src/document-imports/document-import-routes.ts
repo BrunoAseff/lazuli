@@ -17,6 +17,7 @@ import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
+import { sendCommercialLimitError } from "../commercial/commercial-limit-errors.ts";
 import { storageObjectDeletion } from "../database/schema/index.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
@@ -31,7 +32,13 @@ import {
   retryDocumentImport,
 } from "./document-import-queries.ts";
 
-type Options = { auth: Auth; database: Database; storage: ObjectStorage; websiteUrl: string };
+type Options = {
+  auth: Auth;
+  database: Database;
+  enforceCommercialLimits?: boolean;
+  storage: ObjectStorage;
+  websiteUrl: string;
+};
 const paramsSchema = z.object({ projectId: projectIdSchema, importId: projectItemIdSchema });
 const importIdParamsSchema = z.object({ importId: projectItemIdSchema });
 
@@ -74,6 +81,7 @@ const detectImportMime = (detectedMime: string | undefined, declared: string, fi
 export const createDocumentImportRoutes = ({
   auth,
   database,
+  enforceCommercialLimits = true,
   storage,
   websiteUrl,
 }: Options): FastifyPluginAsync =>
@@ -95,6 +103,7 @@ export const createDocumentImportRoutes = ({
         session.user.id,
         projectId.data,
         input.data,
+        enforceCommercialLimits,
       );
       if (result.kind === "not-found")
         return reply
@@ -105,10 +114,12 @@ export const createDocumentImportRoutes = ({
           .status(400)
           .send({ code: "INVALID_PARENT", message: "Escolha uma pasta válida." });
       if (result.kind === "quota")
-        return reply.status(409).send({
-          code: "STORAGE_LIMIT_REACHED",
-          message: "Seu limite de armazenamento foi atingido.",
-        });
+        return sendCommercialLimitError(
+          reply,
+          database,
+          session.user.id,
+          "PLAN_STORAGE_LIMIT_REACHED",
+        );
       if (result.kind === "too-many")
         return reply.status(429).send({
           code: "TOO_MANY_IMPORTS",
@@ -243,17 +254,24 @@ export const createDocumentImportRoutes = ({
       if (!session) return;
       const params = importIdParamsSchema.safeParse(request.params);
       if (!params.success) return reply.status(400).send({ code: "VALIDATION_ERROR" });
-      const result = await retryDocumentImport(database, session.user.id, params.data.importId);
+      const result = await retryDocumentImport(
+        database,
+        session.user.id,
+        params.data.importId,
+        enforceCommercialLimits,
+      );
       if (!result)
         return reply.status(409).send({
           code: "IMPORT_NOT_RETRYABLE",
           message: "Esta importação não pode ser repetida.",
         });
       if (result.kind === "quota")
-        return reply.status(409).send({
-          code: "STORAGE_LIMIT_REACHED",
-          message: "Seu limite de armazenamento foi atingido.",
-        });
+        return sendCommercialLimitError(
+          reply,
+          database,
+          session.user.id,
+          "PLAN_STORAGE_LIMIT_REACHED",
+        );
       return serializeImport(result.item);
     });
 

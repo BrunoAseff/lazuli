@@ -58,6 +58,7 @@ export const storeDocumentImage = async ({
   source,
   storage,
   userId,
+  enforceCommercialLimits = true,
 }: {
   database: Database;
   documentId: string;
@@ -66,6 +67,7 @@ export const storeDocumentImage = async ({
   source: ImageSource;
   storage: ObjectStorage;
   userId: string;
+  enforceCommercialLimits?: boolean;
 }) => {
   return storeImage({
     assetTarget: { documentId, projectId },
@@ -75,6 +77,7 @@ export const storeDocumentImage = async ({
     source,
     storage,
     userId,
+    enforceCommercialLimits,
   });
 };
 
@@ -85,6 +88,7 @@ export const storeStudyImage = async ({
   source,
   storage,
   userId,
+  enforceCommercialLimits = true,
 }: {
   database: Database;
   kind: "flashcards" | "quizzes";
@@ -92,6 +96,7 @@ export const storeStudyImage = async ({
   source: ImageSource;
   storage: ObjectStorage;
   userId: string;
+  enforceCommercialLimits?: boolean;
 }) => {
   return storeImage({
     assetTarget: {},
@@ -101,6 +106,7 @@ export const storeStudyImage = async ({
     source,
     storage,
     userId,
+    enforceCommercialLimits,
   });
 };
 
@@ -112,6 +118,7 @@ const storeImage = async ({
   source,
   storage,
   userId,
+  enforceCommercialLimits,
 }: {
   assetTarget: { documentId?: string; projectId?: string };
   database: Database;
@@ -120,6 +127,7 @@ const storeImage = async ({
   source: ImageSource;
   storage: ObjectStorage;
   userId: string;
+  enforceCommercialLimits: boolean;
 }) => {
   if (!source.detected || !imageTypes.has(source.detected.mime)) {
     if (source.body instanceof Readable) source.body.destroy();
@@ -135,15 +143,19 @@ const storeImage = async ({
   }
   let committed = false;
   try {
-    const created = await createAsset(database, {
-      id,
-      userId,
-      ...assetTarget,
-      objectKey,
-      originalName: originalName.slice(0, 255),
-      mimeType: source.detected.mime,
-      byteSize: source.getByteSize(),
-    });
+    const created = await createAsset(
+      database,
+      {
+        id,
+        userId,
+        ...assetTarget,
+        objectKey,
+        originalName: originalName.slice(0, 255),
+        mimeType: source.detected.mime,
+        byteSize: source.getByteSize(),
+      },
+      enforceCommercialLimits,
+    );
     if (!created) throw new StorageLimitReachedError();
     committed = true;
     return assetResponseSchema.parse({

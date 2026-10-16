@@ -14,6 +14,7 @@ const messages: Record<string, string> = {
   FLASHCARD_NOT_FOUND: "Este flashcard não está mais disponível.",
   INVALID_ASSETS: "Uma das imagens não está mais disponível.",
   STORAGE_LIMIT_REACHED: "Seu limite de armazenamento foi atingido.",
+  PLAN_STORAGE_LIMIT_REACHED: "Seu limite de armazenamento foi atingido.",
   IMAGE_TOO_LARGE: `A imagem deve ter no máximo ${megabytes(IMAGE_MAX_BYTES)} MB.`,
   RATE_LIMITED: "Muitas alterações foram feitas em pouco tempo. Aguarde e tente novamente.",
   COLLECTION_ARCHIVED: "Restaure a coleção antes de praticar.",

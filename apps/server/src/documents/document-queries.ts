@@ -4,11 +4,12 @@ import type {
   SaveDocumentContentInput,
   UpdateProjectItemInput,
 } from "@lazuli/shared";
-import { STORAGE_BASIC_LIMIT_BYTES } from "@lazuli/shared";
 import { and, asc, eq, inArray, isNull, lt, max, sql } from "drizzle-orm";
 import { isDeepStrictEqual } from "node:util";
 
 import type { Database } from "../database/client.ts";
+import { getStorageLimitBytes } from "../commercial/commercial-service.ts";
+import { exceedsCommercialLimit } from "../commercial/commercial-limit-enforcement.ts";
 import {
   asset,
   document,
@@ -221,10 +222,6 @@ export const deleteProjectItem = async (
           inArray(asset.documentId, targets),
         ),
       );
-    const [documentBytes] = await tx
-      .select({ value: sql<number>`coalesce(sum(${document.contentByteSize}), 0)::bigint` })
-      .from(document)
-      .where(inArray(document.id, targets));
     await enqueueObjectDeletions(
       tx,
       storedAssets.map(({ objectKey }) => objectKey),
@@ -232,9 +229,7 @@ export const deleteProjectItem = async (
     await tx
       .delete(projectItem)
       .where(and(eq(projectItem.id, itemId), eq(projectItem.projectId, projectId)));
-    const releasedBytes =
-      storedAssets.reduce((sum, item) => sum + item.byteSize, 0) +
-      Number(documentBytes?.value ?? 0);
+    const releasedBytes = storedAssets.reduce((sum, item) => sum + item.byteSize, 0);
     await tx
       .update(userStorage)
       .set({
@@ -284,7 +279,6 @@ export const saveDocumentContent = async (
     const [current] = await tx
       .select({
         content: document.content,
-        contentByteSize: document.contentByteSize,
         revision: document.revision,
         updatedAt: projectItem.updatedAt,
       })
@@ -333,18 +327,6 @@ export const saveDocumentContent = async (
 
     const now = new Date();
     const contentByteSize = Buffer.byteLength(JSON.stringify(input.content));
-    const storageDelta = contentByteSize - current.contentByteSize;
-    await tx.insert(userStorage).values({ userId }).onConflictDoNothing();
-    const [usage] = await tx
-      .select()
-      .from(userStorage)
-      .where(eq(userStorage.userId, userId))
-      .for("update");
-    if (
-      storageDelta > 0 &&
-      (!usage || usage.usedBytes + usage.reservedBytes + storageDelta > STORAGE_BASIC_LIMIT_BYTES)
-    )
-      return { kind: "quota" as const };
     const [saved] = await tx
       .update(document)
       .set({
@@ -368,13 +350,6 @@ export const saveDocumentContent = async (
       .update(projectItem)
       .set({ updatedAt: now })
       .where(and(eq(projectItem.id, documentId), eq(projectItem.projectId, projectId)));
-    await tx
-      .update(userStorage)
-      .set({
-        usedBytes: sql`greatest(0, ${userStorage.usedBytes} + ${storageDelta})`,
-        updatedAt: now,
-      })
-      .where(eq(userStorage.userId, userId));
     return { kind: "saved" as const, revision: saved.revision, updatedAt: now };
   });
 };
@@ -396,7 +371,11 @@ const collectReferencedAssetIds = (content: SaveDocumentContentInput["content"])
   return [...ids];
 };
 
-export const createAsset = async (db: Database, values: typeof asset.$inferInsert) => {
+export const createAsset = async (
+  db: Database,
+  values: typeof asset.$inferInsert,
+  enforceCommercialLimits = true,
+) => {
   return db.transaction(async (tx) => {
     await tx.insert(userStorage).values({ userId: values.userId }).onConflictDoNothing();
     const [usage] = await tx
@@ -404,9 +383,14 @@ export const createAsset = async (db: Database, values: typeof asset.$inferInser
       .from(userStorage)
       .where(eq(userStorage.userId, values.userId))
       .for("update");
+    const storageLimitBytes = await getStorageLimitBytes(tx, values.userId);
     if (
       !usage ||
-      usage.usedBytes + usage.reservedBytes + values.byteSize > STORAGE_BASIC_LIMIT_BYTES
+      exceedsCommercialLimit(
+        enforceCommercialLimits,
+        usage.usedBytes + usage.reservedBytes + values.byteSize,
+        storageLimitBytes,
+      )
     )
       return null;
     const [created] = await tx.insert(asset).values(values).returning();

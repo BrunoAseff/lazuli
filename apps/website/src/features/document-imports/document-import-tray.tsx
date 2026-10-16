@@ -29,6 +29,7 @@ const failureMessages: Record<string, string> = {
   PDF_PAGE_LIMIT_EXCEEDED: "O PDF possui páginas demais para esta importação.",
   PDF_WITHOUT_TEXT: "Este PDF não possui texto selecionável. OCR ainda não é suportado.",
   STORAGE_LIMIT_REACHED: "Seu limite de armazenamento foi atingido.",
+  PLAN_STORAGE_LIMIT_REACHED: "Seu limite de armazenamento foi atingido.",
   UNSUPPORTED_DOCUMENT_STRUCTURE: "Parte da estrutura não pôde ser convertida com segurança.",
   UNSAFE_DOCX_ARCHIVE: "O arquivo DOCX excede os limites seguros de descompactação.",
   UNSUPPORTED_FILE_TYPE: "O conteúdo não corresponde a um formato suportado.",
