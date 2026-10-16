@@ -9,8 +9,10 @@ import {
   lockAiCreditAccount,
   updateAiCreditAccount,
 } from "../ai-credits/ai-credit-transactions.ts";
+import { reserveCreditBuckets, settleCreditBuckets } from "../ai-credits/ai-credit-buckets.ts";
+import { ensureBasicMonthlyCreditsInTransaction } from "../commercial/commercial-credits.ts";
 import type { Database } from "../database/client.ts";
-import { aiGeneration } from "../database/schema/index.ts";
+import { aiCreditAccount, aiGeneration } from "../database/schema/index.ts";
 import {
   AI_MAX_CONCURRENT_GENERATIONS_PER_USER,
   AI_MAX_GENERATIONS_PER_WINDOW,
@@ -154,7 +156,14 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
   async begin(input) {
     return database.transaction(async (tx) => {
       // Serializes admission and balance changes for one account across server replicas.
-      const account = await lockAiCreditAccount(tx, input.userId);
+      await lockAiCreditAccount(tx, input.userId);
+      await ensureBasicMonthlyCreditsInTransaction(tx, input.userId);
+      const [account] = await tx
+        .select()
+        .from(aiCreditAccount)
+        .where(eq(aiCreditAccount.userId, input.userId))
+        .limit(1);
+      if (!account) throw new Error("AI credit account was not found after monthly allocation");
       const [existing] = await tx
         .select()
         .from(aiGeneration)
@@ -279,6 +288,11 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
         .returning();
       if (!operation) throw new Error("AI generation operation was not created");
       if (reservedCredits > 0) {
+        await reserveCreditBuckets(tx, {
+          amount: reservedCredits,
+          generationId: operation.id,
+          userId: input.userId,
+        });
         const entry = await appendAiCreditLedgerEntry(tx, {
           actorId: input.userId,
           actorType: "user",
@@ -346,9 +360,17 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
           type: "release",
           userId: input.userId,
         });
+      const restoredCredits =
+        operation.reservedCredits > 0
+          ? await settleCreditBuckets(tx, {
+              generationId: operation.id,
+              released: releasedCredits,
+              userId: input.userId,
+            })
+          : 0;
       if (operation.reservedCredits > 0)
         await updateAiCreditAccount(tx, {
-          availableDelta: releasedCredits,
+          availableDelta: restoredCredits,
           reservedDelta: -operation.reservedCredits,
           userId: input.userId,
         });
@@ -394,6 +416,11 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
         .for("update");
       if (!operation) return;
       if (operation.reservedCredits > 0) {
+        const restoredCredits = await settleCreditBuckets(tx, {
+          generationId: operation.id,
+          released: operation.reservedCredits,
+          userId: input.userId,
+        });
         await appendAiCreditLedgerEntry(tx, {
           actorId: "ai-generation",
           actorType: "system",
@@ -405,7 +432,7 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
           userId: input.userId,
         });
         await updateAiCreditAccount(tx, {
-          availableDelta: operation.reservedCredits,
+          availableDelta: restoredCredits,
           reservedDelta: -operation.reservedCredits,
           userId: input.userId,
         });

@@ -8,6 +8,8 @@ import {
   lockAiCreditAccount,
   updateAiCreditAccount,
 } from "./ai-credit-transactions.ts";
+import { grantCreditBucket, settleCreditBuckets } from "./ai-credit-buckets.ts";
+import { ensureBasicMonthlyCredits } from "../commercial/commercial-credits.ts";
 
 const assertAdministrativeEntry = (input: {
   amount: number;
@@ -22,41 +24,8 @@ const assertAdministrativeEntry = (input: {
 };
 
 export const createAiCreditService = (database: Database) => ({
-  async adjust(input: {
-    amount: number;
-    idempotencyKey: string;
-    operatorId: string;
-    reason: string;
-    userId: string;
-  }) {
-    assertAdministrativeEntry(input);
-    return database.transaction(async (tx) => {
-      await lockAiCreditAccount(tx, input.userId);
-      const entry = await appendAiCreditLedgerEntry(tx, {
-        actorId: input.operatorId,
-        actorType: "admin",
-        amount: input.amount,
-        idempotencyKey: input.idempotencyKey,
-        reason: input.reason,
-        type: "adjustment",
-        userId: input.userId,
-      });
-      if (entry)
-        await updateAiCreditAccount(tx, {
-          availableDelta: input.amount,
-          reservedDelta: 0,
-          userId: input.userId,
-        });
-      const [account] = await tx
-        .select()
-        .from(aiCreditAccount)
-        .where(eq(aiCreditAccount.userId, input.userId));
-      if (!account) throw new Error("AI credit account was not found after adjustment");
-      return { account, created: Boolean(entry) };
-    });
-  },
-
   async getBalance(userId: string) {
+    await ensureBasicMonthlyCredits(database, userId);
     const [account] = await database
       .select({
         available: aiCreditAccount.availableBalance,
@@ -113,38 +82,21 @@ export const createAiCreditService = (database: Database) => ({
 
     return database.transaction(async (tx) => {
       await lockAiCreditAccount(tx, target.id);
-      const [existing] = await tx
-        .select({ id: aiCreditLedger.id })
-        .from(aiCreditLedger)
-        .where(
-          and(
-            eq(aiCreditLedger.userId, target.id),
-            eq(aiCreditLedger.idempotencyKey, input.idempotencyKey),
-          ),
-        )
-        .limit(1);
-      if (!existing) {
-        await appendAiCreditLedgerEntry(tx, {
-          actorId: input.operatorId,
-          actorType: "admin",
-          amount: input.amount,
-          idempotencyKey: input.idempotencyKey,
-          reason: input.reason,
-          type: "grant",
-          userId: target.id,
-        });
-        await updateAiCreditAccount(tx, {
-          availableDelta: input.amount,
-          reservedDelta: 0,
-          userId: target.id,
-        });
-      }
+      const bucket = await grantCreditBucket(tx, {
+        actorId: input.operatorId,
+        actorType: "admin",
+        amount: input.amount,
+        idempotencyKey: input.idempotencyKey,
+        origin: "admin_bonus",
+        reason: input.reason,
+        userId: target.id,
+      });
       const [account] = await tx
         .select()
         .from(aiCreditAccount)
         .where(eq(aiCreditAccount.userId, target.id));
       if (!account) throw new Error("AI credit account was not found after grant");
-      return { account, created: !existing, kind: "granted" as const, userId: target.id };
+      return { account, created: Boolean(bucket), kind: "granted" as const, userId: target.id };
     });
   },
 
@@ -182,9 +134,16 @@ export const createAiCreditService = (database: Database) => ({
             type: "release",
             userId: generation.userId,
           });
+          const restoredCredits = entry
+            ? await settleCreditBuckets(tx, {
+                generationId: generation.id,
+                released: generation.reservedCredits,
+                userId: generation.userId,
+              })
+            : 0;
           if (entry)
             await updateAiCreditAccount(tx, {
-              availableDelta: generation.reservedCredits,
+              availableDelta: restoredCredits,
               reservedDelta: -generation.reservedCredits,
               userId: generation.userId,
             });

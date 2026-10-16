@@ -23,6 +23,7 @@ export const appendAiCreditLedgerEntry = async (
     actorId: string;
     actorType: "admin" | "system" | "user";
     amount: number;
+    bucketId?: string | null;
     generationId?: string | null;
     idempotencyKey: string;
     reason: string;
@@ -32,7 +33,12 @@ export const appendAiCreditLedgerEntry = async (
 ) => {
   const [entry] = await tx
     .insert(aiCreditLedger)
-    .values({ id: randomUUID(), ...input, generationId: input.generationId ?? null })
+    .values({
+      id: randomUUID(),
+      ...input,
+      bucketId: input.bucketId ?? null,
+      generationId: input.generationId ?? null,
+    })
     .onConflictDoNothing({
       target: [aiCreditLedger.userId, aiCreditLedger.idempotencyKey],
     })

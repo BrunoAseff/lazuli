@@ -1,5 +1,6 @@
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
+import rawBody from "fastify-raw-body";
 import Fastify from "fastify";
 
 import { createAiCreditReconciler } from "./ai-credits/ai-credit-reconciler.ts";
@@ -13,6 +14,10 @@ import { createDevelopmentAiProvider } from "./ai/development-ai-provider.ts";
 import { createOpenAiProvider } from "./ai/openai-provider.ts";
 import type { ServerEnv } from "./config.ts";
 import { createAuth } from "./auth/auth.ts";
+import { createCommercialRoutes } from "./commercial/commercial-routes.ts";
+import { createCommercialMaintenanceService } from "./commercial/commercial-maintenance-service.ts";
+import { createCommercialMaintenanceWorker } from "./commercial/commercial-maintenance-worker.ts";
+import { createStripeBillingService } from "./commercial/stripe-billing-service.ts";
 import { createDatabase } from "./database/client.ts";
 import { createDocumentRoutes } from "./documents/document-routes.ts";
 import { createDocumentAssetRoutes } from "./documents/document-asset-routes.ts";
@@ -38,7 +43,12 @@ export const buildApp = (env: ServerEnv) => {
   const database = createDatabase(env.DATABASE_URL);
   const auth = createAuth(env, database.db, app.log);
   const storage = createObjectStorage(env);
-  const importWorker = createDocumentImportWorker(database.db, storage, app.log);
+  const importWorker = createDocumentImportWorker(
+    database.db,
+    storage,
+    app.log,
+    env.COMMERCIAL_LIMITS_ENFORCED,
+  );
   const aiCreditService = createAiCreditService(database.db);
   const aiCreditReconciler = createAiCreditReconciler(aiCreditService, app.log);
   const aiGenerationService = createAiGenerationService({
@@ -47,6 +57,11 @@ export const buildApp = (env: ServerEnv) => {
     store: createAiGenerationStore(database.db),
   });
   const aiCollectionWorker = createAiCollectionWorker(database.db, aiGenerationService, app.log);
+  const stripeBilling = createStripeBillingService(env, database.db);
+  const commercialMaintenanceWorker = createCommercialMaintenanceWorker(
+    createCommercialMaintenanceService(database.db, stripeBilling),
+    app.log,
+  );
 
   void app.register(cors, {
     credentials: true,
@@ -54,6 +69,7 @@ export const buildApp = (env: ServerEnv) => {
     origin: env.WEBSITE_URL,
   });
   void app.register(multipart, { limits: { files: 1 } });
+  void app.register(rawBody, { encoding: false, global: false, runFirst: true });
 
   app.setErrorHandler((error, request, reply) => {
     request.log.error({ err: error }, "unhandled request error");
@@ -74,6 +90,14 @@ export const buildApp = (env: ServerEnv) => {
   });
 
   app.register(createAuthRoutes(auth, env));
+  app.register(
+    createCommercialRoutes({
+      auth,
+      database: database.db,
+      stripe: stripeBilling,
+      websiteUrl: env.WEBSITE_URL,
+    }),
+  );
   app.register(createAiCreditRoutes({ auth, service: aiCreditService }));
   app.register(
     createAiGenerationRoutes({
@@ -88,6 +112,7 @@ export const buildApp = (env: ServerEnv) => {
     createProjectRoutes({
       auth,
       database: database.db,
+      enforceCommercialLimits: env.COMMERCIAL_LIMITS_ENFORCED,
       websiteUrl: env.WEBSITE_URL,
     }),
   );
@@ -103,6 +128,7 @@ export const buildApp = (env: ServerEnv) => {
     createFlashcardRoutes({
       auth,
       database: database.db,
+      enforceCommercialLimits: env.COMMERCIAL_LIMITS_ENFORCED,
       storage,
       websiteUrl: env.WEBSITE_URL,
     }),
@@ -122,13 +148,20 @@ export const buildApp = (env: ServerEnv) => {
     }),
   );
   app.register(
-    createQuizRoutes({ auth, database: database.db, storage, websiteUrl: env.WEBSITE_URL }),
+    createQuizRoutes({
+      auth,
+      database: database.db,
+      enforceCommercialLimits: env.COMMERCIAL_LIMITS_ENFORCED,
+      storage,
+      websiteUrl: env.WEBSITE_URL,
+    }),
   );
   app.register(createReferenceRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
   app.register(
     createDocumentAssetRoutes({
       auth,
       database: database.db,
+      enforceCommercialLimits: env.COMMERCIAL_LIMITS_ENFORCED,
       storage,
       websiteUrl: env.WEBSITE_URL,
     }),
@@ -137,6 +170,7 @@ export const buildApp = (env: ServerEnv) => {
     createDocumentImportRoutes({
       auth,
       database: database.db,
+      enforceCommercialLimits: env.COMMERCIAL_LIMITS_ENFORCED,
       storage,
       websiteUrl: env.WEBSITE_URL,
     }),
@@ -145,6 +179,7 @@ export const buildApp = (env: ServerEnv) => {
 
   app.addHook("onClose", async () => {
     aiCreditReconciler.stop();
+    commercialMaintenanceWorker.stop();
     aiCollectionWorker.stop();
     await importWorker.stop();
     storage.destroy();
@@ -157,6 +192,7 @@ export const buildApp = (env: ServerEnv) => {
       importWorker.start();
       aiCollectionWorker.start();
       aiCreditReconciler.start();
+      commercialMaintenanceWorker.start();
     });
 
   return app;

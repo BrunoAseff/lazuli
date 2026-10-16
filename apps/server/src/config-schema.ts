@@ -27,6 +27,9 @@ const serverEnvSchema = z
     AI_GENERATION_TIMEOUT_MS: z.coerce.number().int().min(5_000).max(120_000).default(45_000),
     AI_MODEL: z.literal("gpt-6-luna").default("gpt-6-luna"),
     AI_REAL_CALLS_ENABLED: booleanEnvironmentValue(false),
+    BILLING_ENABLED: booleanEnvironmentValue(false),
+    BILLING_PAYMENT_GRACE_DAYS: z.coerce.number().int().min(0).max(30).default(3),
+    COMMERCIAL_LIMITS_ENFORCED: booleanEnvironmentValue(false),
     AUTH_EMAIL_FROM: z.string().min(1),
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
@@ -51,6 +54,10 @@ const serverEnvSchema = z
     SERVER_PORT: z.coerce.number().int().positive().default(3001),
     TRUST_PROXY: trustProxyEnvironmentValue,
     WEBSITE_URL: z.url(),
+    STRIPE_ESSENTIAL_PRICE_ID: z.string().min(1).optional(),
+    STRIPE_SECRET_KEY: z.string().min(1).optional(),
+    STRIPE_SPECIALIST_PRICE_ID: z.string().min(1).optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
   })
   .superRefine((env, context) => {
     if (env.AI_REAL_CALLS_ENABLED && !env.OPENAI_API_KEY)
@@ -59,6 +66,19 @@ const serverEnvSchema = z
         message: "OPENAI_API_KEY is required when AI_REAL_CALLS_ENABLED=true",
         path: ["OPENAI_API_KEY"],
       });
+    if (env.BILLING_ENABLED)
+      for (const key of [
+        "STRIPE_ESSENTIAL_PRICE_ID",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_SPECIALIST_PRICE_ID",
+        "STRIPE_WEBHOOK_SECRET",
+      ] as const)
+        if (!env[key])
+          context.addIssue({
+            code: "custom",
+            message: `${key} is required when BILLING_ENABLED=true`,
+            path: [key],
+          });
   });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
