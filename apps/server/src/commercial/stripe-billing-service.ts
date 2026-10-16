@@ -22,6 +22,10 @@ const ACTIVE_SUBSCRIPTION_STATUS_VALUES: BillingSubscriptionStatus[] = [
   "trialing",
 ];
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set<string>(ACTIVE_SUBSCRIPTION_STATUS_VALUES);
+const WEBHOOK_PROCESSING_STALE_MS = 10 * 60 * 1_000;
+
+const getStripeEnvironment = (secretKey: string) =>
+  secretKey.startsWith("sk_live_") || secretKey.startsWith("rk_live_") ? "live" : "test";
 
 const getAccessUntil = ({
   eventCreatedAt,
@@ -53,7 +57,7 @@ const getPeriod = (subscription: Stripe.Subscription) => {
 export const createStripeBillingService = (env: ServerEnv, database: Database) => {
   if (!env.BILLING_ENABLED) return null;
   const stripe = new Stripe(env.STRIPE_SECRET_KEY!);
-  const environment = env.STRIPE_SECRET_KEY!.startsWith("sk_live_") ? "live" : "test";
+  const environment = getStripeEnvironment(env.STRIPE_SECRET_KEY!);
   const prices: Record<PaidPlan, string> = {
     essential: env.STRIPE_ESSENTIAL_PRICE_ID!,
     specialist: env.STRIPE_SPECIALIST_PRICE_ID!,
@@ -261,7 +265,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
         .limit(1)
         .for("update");
       if (!existing || existing.status === "processed") return false;
-      const staleBefore = new Date(Date.now() - 10 * 60 * 1000);
+      const staleBefore = new Date(Date.now() - WEBHOOK_PROCESSING_STALE_MS);
       if (existing.status === "processing" && existing.updatedAt > staleBefore) return false;
       const claimed = await tx
         .update(billingWebhookEvent)
@@ -452,12 +456,19 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
     },
     processEvent,
     async retryPendingEvents(limit = 25) {
+      const staleBefore = new Date(Date.now() - WEBHOOK_PROCESSING_STALE_MS);
       const events = await database
         .select({ id: billingWebhookEvent.stripeEventId })
         .from(billingWebhookEvent)
         .where(
           and(
-            inArray(billingWebhookEvent.status, ["pending", "failed"]),
+            or(
+              inArray(billingWebhookEvent.status, ["pending", "failed"]),
+              and(
+                eq(billingWebhookEvent.status, "processing"),
+                lte(billingWebhookEvent.updatedAt, staleBefore),
+              ),
+            ),
             lt(billingWebhookEvent.attempts, 10),
           ),
         )
@@ -471,11 +482,25 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
       return processed;
     },
     async reconcileSubscriptions(limit = 100) {
-      const customers = await database
-        .select({ id: billingCustomer.stripeCustomerId })
-        .from(billingCustomer)
-        .where(eq(billingCustomer.environment, environment))
-        .limit(limit);
+      const customers: Array<{ id: string }> = [];
+      let cursor: string | null = null;
+      while (customers.length < limit) {
+        const pageSize = Math.min(100, limit - customers.length);
+        const page = await database
+          .select({ id: billingCustomer.stripeCustomerId })
+          .from(billingCustomer)
+          .where(
+            and(
+              eq(billingCustomer.environment, environment),
+              cursor ? gt(billingCustomer.stripeCustomerId, cursor) : undefined,
+            ),
+          )
+          .orderBy(asc(billingCustomer.stripeCustomerId))
+          .limit(pageSize);
+        customers.push(...page);
+        if (page.length < pageSize) break;
+        cursor = page.at(-1)!.id;
+      }
       let reconciled = 0;
       const issues: Array<{ customerId: string; code: string }> = [];
       for (const customer of customers) {

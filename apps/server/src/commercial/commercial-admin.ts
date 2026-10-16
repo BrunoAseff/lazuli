@@ -123,11 +123,12 @@ const runBulk = async () => {
   const amount = command === "credits:add-all" ? positiveInteger("amount") : null;
   const rootKey = operationKey();
   if (!flag("execute")) {
+    const dryRunKey = `${rootKey}:dry-run`;
     for (const target of users)
       await service.recordDryRun({
         action: `${command}.dry-run`,
         email: target.email,
-        idempotencyKey: rootKey,
+        idempotencyKey: dryRunKey,
         metadata: amount ? { amount } : undefined,
         operatorId,
         reason,

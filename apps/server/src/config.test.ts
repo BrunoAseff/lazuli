@@ -73,4 +73,19 @@ describe("server environment", () => {
       }).BILLING_ENABLED,
     ).toBe(true);
   });
+
+  it("treats empty Stripe variables as unset while billing is disabled", () => {
+    const environment = parseServerEnv({
+      ...validEnvironment,
+      STRIPE_ESSENTIAL_PRICE_ID: "",
+      STRIPE_SECRET_KEY: "",
+      STRIPE_SPECIALIST_PRICE_ID: "",
+      STRIPE_WEBHOOK_SECRET: "",
+    });
+
+    expect(environment.STRIPE_ESSENTIAL_PRICE_ID).toBeUndefined();
+    expect(environment.STRIPE_SECRET_KEY).toBeUndefined();
+    expect(environment.STRIPE_SPECIALIST_PRICE_ID).toBeUndefined();
+    expect(environment.STRIPE_WEBHOOK_SECRET).toBeUndefined();
+  });
 });

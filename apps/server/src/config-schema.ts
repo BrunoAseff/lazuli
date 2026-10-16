@@ -6,6 +6,11 @@ const booleanEnvironmentValue = (defaultValue: boolean) =>
     .default(String(defaultValue) as "true" | "false")
     .transform((value) => value === "true");
 
+const optionalNonEmptyEnvironmentValue = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().min(1).optional(),
+);
+
 const trustProxyEnvironmentValue = z
   .string()
   .default("false")
@@ -37,10 +42,7 @@ const serverEnvSchema = z
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("debug"),
     LOG_PRETTY: booleanEnvironmentValue(true),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-    OPENAI_API_KEY: z.preprocess(
-      (value) => (value === "" ? undefined : value),
-      z.string().min(1).optional(),
-    ),
+    OPENAI_API_KEY: optionalNonEmptyEnvironmentValue,
     RESEND_API_KEY: z.string().min(1),
     S3_ACCESS_KEY_ID: z.string().min(1).default("lazuli"),
     S3_BUCKET: z.string().min(1).default("lazuli-assets"),
@@ -54,10 +56,10 @@ const serverEnvSchema = z
     SERVER_PORT: z.coerce.number().int().positive().default(3001),
     TRUST_PROXY: trustProxyEnvironmentValue,
     WEBSITE_URL: z.url(),
-    STRIPE_ESSENTIAL_PRICE_ID: z.string().min(1).optional(),
-    STRIPE_SECRET_KEY: z.string().min(1).optional(),
-    STRIPE_SPECIALIST_PRICE_ID: z.string().min(1).optional(),
-    STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+    STRIPE_ESSENTIAL_PRICE_ID: optionalNonEmptyEnvironmentValue,
+    STRIPE_SECRET_KEY: optionalNonEmptyEnvironmentValue,
+    STRIPE_SPECIALIST_PRICE_ID: optionalNonEmptyEnvironmentValue,
+    STRIPE_WEBHOOK_SECRET: optionalNonEmptyEnvironmentValue,
   })
   .superRefine((env, context) => {
     if (env.AI_REAL_CALLS_ENABLED && !env.OPENAI_API_KEY)

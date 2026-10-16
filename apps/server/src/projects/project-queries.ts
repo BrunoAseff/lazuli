@@ -110,8 +110,10 @@ export const createProject = async (
     const [inserted] = await tx
       .insert(project)
       .values({ ...input, userId })
+      .onConflictDoNothing({ target: project.id })
       .returning({ id: project.id });
-    return { created: true as const, project: await getProject(tx, userId, inserted!.id) };
+    if (!inserted) return null;
+    return { created: true as const, project: await getProject(tx, userId, inserted.id) };
   });
 };
 

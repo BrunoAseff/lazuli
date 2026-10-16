@@ -320,6 +320,14 @@ export const createCommercialAdminService = (database: Database, environment: st
         .set({ revokedAt: new Date() })
         .where(and(eq(adminPlanGrant.userId, target.id), isNull(adminPlanGrant.revokedAt)))
         .returning({ id: adminPlanGrant.id });
+      if (revoked.length > 0)
+        await resetMonthlyBuckets(tx, {
+          environment,
+          idempotencyKey: `plan-revoke:${input.idempotencyKey}`,
+          operatorId: input.operatorId,
+          reason: input.reason,
+          userId: target.id,
+        });
       const auditResult = { revoked: revoked.length };
       await writeAudit(tx, {
         action: "plan.revoke",

@@ -1,5 +1,7 @@
 import { createInterface } from "node:readline/promises";
 
+import { asc } from "drizzle-orm";
+
 import { serverEnv } from "../config.ts";
 import { createDatabase } from "../database/client.ts";
 import { user } from "../database/schema/index.ts";
@@ -46,7 +48,11 @@ try {
     const subscriptions = stripe
       ? await stripe.reconcileSubscriptions(parsedLimit)
       : { issues: [], reconciled: 0, skipped: true };
-    const users = await database.db.select({ id: user.id }).from(user).limit(parsedLimit);
+    const users = await database.db
+      .select({ id: user.id })
+      .from(user)
+      .orderBy(asc(user.id))
+      .limit(parsedLimit);
     const storage = await reconcileStorageAccounts(
       database.db,
       users.map(({ id }) => id),

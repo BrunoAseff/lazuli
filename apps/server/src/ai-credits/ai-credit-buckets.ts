@@ -194,22 +194,25 @@ export const settleCreditBuckets = async (
   }
   if (releaseRemaining > 0) {
     // Covers reservations created before bucket accounting was introduced.
-    await grantCreditBucket(tx, {
-      actorId: "ai-credit-settlement",
-      actorType: "system",
-      amount: releaseRemaining,
-      idempotencyKey: `legacy-release:${input.generationId}`,
-      origin: "legacy",
-      reason: "Liberação de reserva anterior à contabilização por lotes",
-      sourceId: input.generationId,
-      userId: input.userId,
-    });
-    await updateAiCreditAccount(tx, {
-      availableDelta: -releaseRemaining,
-      reservedDelta: 0,
-      userId: input.userId,
-    });
-    restored += releaseRemaining;
+    const [legacyBucket] = await tx
+      .insert(aiCreditBucket)
+      .values({
+        id: randomUUID(),
+        userId: input.userId,
+        origin: "legacy",
+        plan: null,
+        totalCredits: releaseRemaining,
+        remainingCredits: releaseRemaining,
+        startsAt: now,
+        expiresAt: null,
+        sourceId: input.generationId,
+        idempotencyKey: `legacy-release:${input.generationId}`,
+      })
+      .onConflictDoNothing({
+        target: [aiCreditBucket.userId, aiCreditBucket.idempotencyKey],
+      })
+      .returning({ id: aiCreditBucket.id });
+    if (legacyBucket) restored += releaseRemaining;
   }
   const expired = input.released - restored;
   if (expired > 0)
