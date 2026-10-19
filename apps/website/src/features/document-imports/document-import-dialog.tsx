@@ -169,14 +169,17 @@ export const DocumentImportDialog = ({
             disabled={submitting || !files.length || files.some((item) => !item.title.trim())}
             onClick={async () => {
               setSubmitting(true);
-              const accepted = await onSubmit(
-                files.map((item) => ({
-                  file: item.file,
-                  originalName: `${item.title.trim()}${item.extension}`,
-                })),
-              );
-              setSubmitting(false);
-              if (accepted) close(false);
+              try {
+                const accepted = await onSubmit(
+                  files.map((item) => ({
+                    file: item.file,
+                    originalName: `${item.title.trim()}${item.extension}`,
+                  })),
+                );
+                if (accepted) close(false);
+              } finally {
+                setSubmitting(false);
+              }
             }}
           >
             <UploadCloudIcon />

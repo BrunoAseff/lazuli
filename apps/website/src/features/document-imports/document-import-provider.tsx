@@ -95,6 +95,7 @@ export const DocumentImportProvider = ({
         return false;
       }
       let accepted = true;
+      let importedFiles = 0;
       if (files.length > DOCUMENT_IMPORT_MAX_ACTIVE)
         toast.warning(`Importaremos somente os primeiros ${DOCUMENT_IMPORT_MAX_ACTIVE} arquivos.`);
       for (const prepared of files.slice(0, DOCUMENT_IMPORT_MAX_ACTIVE)) {
@@ -138,6 +139,7 @@ export const DocumentImportProvider = ({
               [id]: Math.round((loaded / total) * 100),
             })),
           );
+          importedFiles += 1;
           await client.invalidateQueries({ queryKey: importKeys.list });
         } catch (error) {
           if (error instanceof ApiError && error.code === "UPLOAD_CANCELED") {
@@ -148,7 +150,7 @@ export const DocumentImportProvider = ({
           const limit = getCommercialLimit(error);
           if (limit) {
             openLimit("storage", limit);
-            accepted = false;
+            accepted = importedFiles > 0;
             break;
           }
           const message =
