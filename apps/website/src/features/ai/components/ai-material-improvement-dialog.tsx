@@ -31,6 +31,7 @@ import {
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
+import { CreditUpgradeGuard } from "@/features/billing/components/credit-upgrade-guard.tsx";
 import {
   QuizAlternativesField,
   type QuizOptionDraft,
@@ -402,13 +403,15 @@ export const AiMaterialImprovementDialog = ({
           ) : (
             <>
               <DialogCancelButton disabled={apply.isPending}>Fechar</DialogCancelButton>
-              <Button
-                disabled={busy || (balance.data?.available ?? 0) < AI_CREDITS_PER_ITEM}
-                onClick={() => void generate()}
-              >
-                {busy ? <CircleNotchIcon className="animate-spin" /> : <MagicWandIcon />} Gerar
-                proposta
-              </Button>
+              <CreditUpgradeGuard available={balance.data?.available} cost={AI_CREDITS_PER_ITEM}>
+                <Button
+                  disabled={busy || (balance.data?.available ?? 0) < AI_CREDITS_PER_ITEM}
+                  onClick={() => void generate()}
+                >
+                  {busy ? <CircleNotchIcon className="animate-spin" /> : <MagicWandIcon />} Gerar
+                  proposta
+                </Button>
+              </CreditUpgradeGuard>
             </>
           )}
         </DialogFooter>

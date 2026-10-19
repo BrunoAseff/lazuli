@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sidebar.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { AiCreditBalance } from "@/features/ai/components/ai-credit-balance.tsx";
+import { BillingStatusNotice } from "@/features/billing/components/billing-status-notice.tsx";
 import { useRecentProjects } from "@/features/projects/use-recent-projects.ts";
 
 const primaryNavigation = [
@@ -121,6 +122,7 @@ export const AppSidebar = () => {
       </SidebarContent>
 
       <SidebarFooter className="gap-1.5 p-2">
+        <BillingStatusNotice />
         <AiCreditBalance />
         <UserMenu mobile={isMobile} user={session.user} />
       </SidebarFooter>

@@ -16,6 +16,8 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
+import { useBillingSummary } from "@/features/billing/api/billing-queries.ts";
+import { ManageSubscriptionAction } from "@/features/billing/components/manage-subscription-action.tsx";
 
 type UserMenuProps = {
   mobile?: boolean;
@@ -39,6 +41,13 @@ export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const summary = useBillingSummary();
+  const planName =
+    summary.data?.plan === "specialist"
+      ? "Especialista"
+      : summary.data?.plan === "essential"
+        ? "Essencial"
+        : "Básico";
 
   const signOut = async () => {
     if (isSigningOut) {
@@ -74,7 +83,7 @@ export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
               </Avatar>
               <span className="grid min-w-0 flex-1 text-left leading-tight">
                 <span className="truncate font-normal">{user.name}</span>
-                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                <span className="truncate text-xs text-primary">Plano {planName}</span>
               </span>
               <ChevronsUpDownIcon aria-hidden="true" className="ml-auto" />
             </SidebarMenuButton>
@@ -95,6 +104,8 @@ export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
                 <span className="truncate text-xs text-muted-foreground">{user.email}</span>
               </span>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <ManageSubscriptionAction />
             <DropdownMenuSeparator />
             <DropdownMenuItem
               disabled={isSigningOut}

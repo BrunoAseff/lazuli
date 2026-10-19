@@ -31,6 +31,9 @@ import { DocumentImportTray } from "./document-import-tray.tsx";
 import { DocumentImportDialog, type PreparedImportFile } from "./document-import-dialog.tsx";
 import { isDocumentImportActive } from "./document-import-visibility.ts";
 import { ApiError } from "@/lib/api-client.ts";
+import { billingKeys, useBillingSummary } from "@/features/billing/api/billing-queries.ts";
+import { useBilling } from "@/features/billing/billing-context.tsx";
+import { getCommercialLimit } from "@/features/billing/billing-errors.ts";
 
 export const importKeys = {
   list: ["document-imports"] as const,
@@ -50,6 +53,8 @@ export const DocumentImportProvider = ({
   userId: string;
 }) => {
   const client = useQueryClient();
+  const billing = useBillingSummary();
+  const { openLimit } = useBilling();
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [dialogTarget, setDialogTarget] = useState<{
     projectId: string;
@@ -75,6 +80,21 @@ export const DocumentImportProvider = ({
   }, [imports.isError]);
   const importFiles = useCallback(
     async (projectId: string, parentId: string | null, files: PreparedImportFile[]) => {
+      const requestedBytes = files
+        .slice(0, DOCUMENT_IMPORT_MAX_ACTIVE)
+        .reduce((total, prepared) => total + prepared.file.size, 0);
+      if (billing.data && requestedBytes > billing.data.storage.remainingBytes) {
+        openLimit("storage", {
+          resource: "storage",
+          usage: billing.data.storage.usedBytes + billing.data.storage.reservedBytes,
+          limit: billing.data.storage.limitBytes,
+          remaining: billing.data.storage.remainingBytes,
+          plan: billing.data.plan,
+          nextRecommendedPlan: billing.data.nextRecommendedPlan,
+        });
+        return false;
+      }
+      let accepted = true;
       if (files.length > DOCUMENT_IMPORT_MAX_ACTIVE)
         toast.warning(`Importaremos somente os primeiros ${DOCUMENT_IMPORT_MAX_ACTIVE} arquivos.`);
       for (const prepared of files.slice(0, DOCUMENT_IMPORT_MAX_ACTIVE)) {
@@ -125,6 +145,12 @@ export const DocumentImportProvider = ({
             continue;
           }
           if (sessionCreated) await cancelDocumentImport(id).catch(() => undefined);
+          const limit = getCommercialLimit(error);
+          if (limit) {
+            openLimit("storage", limit);
+            accepted = false;
+            break;
+          }
           const message =
             error instanceof ApiError &&
             error.payload &&
@@ -143,8 +169,10 @@ export const DocumentImportProvider = ({
           });
         }
       }
+      void client.invalidateQueries({ queryKey: billingKeys.summary() });
+      return accepted;
     },
-    [client],
+    [billing.data, client, openLimit],
   );
   useEffect(() => {
     if (!imports.data) return;
@@ -157,23 +185,31 @@ export const DocumentImportProvider = ({
       void client.invalidateQueries({ queryKey: projectKeys.projectDocuments(projectId) });
     }
     void client.invalidateQueries({ queryKey: importKeys.storage });
+    void client.invalidateQueries({ queryKey: billingKeys.summary() });
   }, [client, imports.data]);
 
   const value = useMemo(
     () => ({
-      openImportDialog: (projectId: string, parentId: string | null) =>
-        setDialogTarget({ projectId, parentId }),
+      openImportDialog: (projectId: string, parentId: string | null) => {
+        if (billing.data && !billing.data.capabilities.canUpload) {
+          openLimit("storage");
+          return;
+        }
+        setDialogTarget({ projectId, parentId });
+      },
     }),
-    [],
+    [billing.data, openLimit],
   );
   return (
     <ImportContext.Provider value={value}>
       {children}
       <DocumentImportDialog
         onOpenChange={(open) => !open && setDialogTarget(null)}
-        onSubmit={(files) => {
-          if (dialogTarget) void importFiles(dialogTarget.projectId, dialogTarget.parentId, files);
-        }}
+        onSubmit={(files) =>
+          dialogTarget
+            ? importFiles(dialogTarget.projectId, dialogTarget.parentId, files)
+            : Promise.resolve(false)
+        }
         open={Boolean(dialogTarget)}
       />
       <DocumentImportTray

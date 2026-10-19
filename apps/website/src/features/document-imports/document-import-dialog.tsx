@@ -36,12 +36,13 @@ export const DocumentImportDialog = ({
   open,
 }: {
   onOpenChange: (open: boolean) => void;
-  onSubmit: (files: PreparedImportFile[]) => void;
+  onSubmit: (files: PreparedImportFile[]) => Promise<boolean>;
   open: boolean;
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [files, setFiles] = useState<PendingFile[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const addFiles = (incoming: File[]) => {
     const available = DOCUMENT_IMPORT_MAX_ACTIVE - files.length;
     if (available <= 0) {
@@ -161,23 +162,29 @@ export const DocumentImportDialog = ({
           </div>
         )}
         <DialogFooter>
-          <DialogCancelButton onClick={() => close(false)}>Cancelar</DialogCancelButton>
+          <DialogCancelButton disabled={submitting} onClick={() => close(false)}>
+            Cancelar
+          </DialogCancelButton>
           <Button
-            disabled={!files.length || files.some((item) => !item.title.trim())}
-            onClick={() => {
-              onSubmit(
+            disabled={submitting || !files.length || files.some((item) => !item.title.trim())}
+            onClick={async () => {
+              setSubmitting(true);
+              const accepted = await onSubmit(
                 files.map((item) => ({
                   file: item.file,
                   originalName: `${item.title.trim()}${item.extension}`,
                 })),
               );
-              close(false);
+              setSubmitting(false);
+              if (accepted) close(false);
             }}
           >
             <UploadCloudIcon />
-            {files.length
-              ? `Importar ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}`
-              : "Importar arquivos"}
+            {submitting
+              ? "Enviando…"
+              : files.length
+                ? `Importar ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}`
+                : "Importar arquivos"}
           </Button>
         </DialogFooter>
       </DialogContent>
