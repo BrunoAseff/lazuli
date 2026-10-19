@@ -75,7 +75,13 @@ export const DocumentImportDialog = ({
     addFiles(Array.from(event.dataTransfer.files));
   };
   return (
-    <Dialog onOpenChange={close} open={open}>
+    <Dialog
+      onOpenChange={(nextOpen) => {
+        if (submitting && !nextOpen) return;
+        close(nextOpen);
+      }}
+      open={open}
+    >
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Importar documentos</DialogTitle>
