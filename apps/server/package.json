@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node --import tsx src/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "ai:smoke": "tsx src/ai/ai-smoke.ts",
     "ai:credits:grant": "tsx src/ai-credits/grant-ai-credits.ts",

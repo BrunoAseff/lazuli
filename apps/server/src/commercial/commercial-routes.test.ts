@@ -27,6 +27,7 @@ const createStripe = () => {
     createPortal: vi.fn(),
     enqueueEvent: vi.fn(),
     processEvent: vi.fn(),
+    refreshSubscription: vi.fn(),
   };
   return { ...spies, service: spies as unknown as StripeBillingService };
 };
@@ -87,11 +88,47 @@ describe("commercial routes", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(stripe.createCheckout).toHaveBeenCalledWith("user-1", "essential");
+    expect(stripe.createCheckout).toHaveBeenCalledWith("user-1", "essential", undefined);
     expect(response.json()).toEqual({
       destination: "checkout",
       url: "https://checkout.stripe.test/session",
     });
+  });
+
+  it("passes a validated internal return path to Stripe", async () => {
+    const stripe = createStripe();
+    stripe.createCheckout.mockResolvedValue({
+      destination: "checkout",
+      url: "https://checkout.stripe.test/session",
+    });
+    const app = await registerRoutes({ stripe: stripe.service });
+    const response = await app.inject({
+      method: "POST",
+      headers: { origin: "http://localhost:3000" },
+      payload: { plan: "essential", returnTo: "/projects/123?view=cards" },
+      url: "/api/billing/checkout-sessions",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(stripe.createCheckout).toHaveBeenCalledWith(
+      "user-1",
+      "essential",
+      "/projects/123?view=cards",
+    );
+  });
+
+  it("rejects an external billing return path", async () => {
+    const stripe = createStripe();
+    const app = await registerRoutes({ stripe: stripe.service });
+    const response = await app.inject({
+      method: "POST",
+      headers: { origin: "http://localhost:3000" },
+      payload: { plan: "essential", returnTo: "https://evil.example/path" },
+      url: "/api/billing/checkout-sessions",
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(stripe.createCheckout).not.toHaveBeenCalled();
   });
 
   it("rejects free-plan checkout before calling Stripe", async () => {
@@ -136,6 +173,22 @@ describe("commercial routes", () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.body).not.toContain("secret provider detail");
+  });
+
+  it("refreshes the signed-in user's subscription before returning the summary", async () => {
+    const stripe = createStripe();
+    stripe.refreshSubscription.mockResolvedValue(true);
+    commercialService.getCommercialSummary.mockResolvedValue({ plan: "specialist" });
+    const app = await registerRoutes({ stripe: stripe.service });
+    const response = await app.inject({
+      method: "POST",
+      headers: { origin: "http://localhost:3000" },
+      url: "/api/billing/summary/refresh",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(stripe.refreshSubscription).toHaveBeenCalledWith("user-1");
+    expect(commercialService.getCommercialSummary).toHaveBeenCalledWith(database, "user-1");
   });
 
   it("rejects Stripe webhooks without a signature", async () => {

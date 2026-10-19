@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  billingReturnPathSchema,
   COMMERCIAL_PLAN_CATALOG,
   createCheckoutSessionSchema,
   paidCommercialPlanSchema,
@@ -39,5 +40,14 @@ describe("commercial billing contracts", () => {
     expect(createCheckoutSessionSchema.parse({ plan: "specialist" })).toEqual({
       plan: "specialist",
     });
+  });
+
+  it("accepts only same-origin relative return paths", () => {
+    expect(billingReturnPathSchema.parse("/projects/123?view=cards")).toBe(
+      "/projects/123?view=cards",
+    );
+    expect(billingReturnPathSchema.safeParse("https://evil.example/path").success).toBe(false);
+    expect(billingReturnPathSchema.safeParse("//evil.example/path").success).toBe(false);
+    expect(billingReturnPathSchema.safeParse("/safe\\evil").success).toBe(false);
   });
 });

@@ -1,4 +1,8 @@
-import { COMMERCIAL_PLAN_CATALOG, createCheckoutSessionSchema } from "@lazuli/shared";
+import {
+  COMMERCIAL_PLAN_CATALOG,
+  createCheckoutSessionSchema,
+  createPortalSessionSchema,
+} from "@lazuli/shared";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import type Stripe from "stripe";
 
@@ -53,6 +57,18 @@ export const createCommercialRoutes = ({
       return getCommercialSummary(database, session.user.id);
     });
 
+    app.post("/api/billing/summary/refresh", async (request, reply) => {
+      if (!requireTrustedOrigin(websiteUrl, request, reply)) return;
+      const session = await requireSession(auth, request, reply);
+      if (!session) return;
+      if (!stripe) return sendBillingUnavailable(reply);
+      const refreshed = await runBillingAction(request, reply, () =>
+        stripe.refreshSubscription(session.user.id),
+      );
+      if (typeof refreshed !== "boolean") return refreshed;
+      return getCommercialSummary(database, session.user.id);
+    });
+
     app.post("/api/billing/checkout-sessions", async (request, reply) => {
       if (!requireTrustedOrigin(websiteUrl, request, reply)) return;
       const session = await requireSession(auth, request, reply);
@@ -61,7 +77,7 @@ export const createCommercialRoutes = ({
       if (!input.success) return sendValidationError(reply);
       if (!stripe) return sendBillingUnavailable(reply);
       return runBillingAction(request, reply, () =>
-        stripe.createCheckout(session.user.id, input.data.plan),
+        stripe.createCheckout(session.user.id, input.data.plan, input.data.returnTo),
       );
     });
 
@@ -69,8 +85,12 @@ export const createCommercialRoutes = ({
       if (!requireTrustedOrigin(websiteUrl, request, reply)) return;
       const session = await requireSession(auth, request, reply);
       if (!session) return;
+      const input = createPortalSessionSchema.safeParse(request.body);
+      if (!input.success) return sendValidationError(reply);
       if (!stripe) return sendBillingUnavailable(reply);
-      return runBillingAction(request, reply, () => stripe.createPortal(session.user.id));
+      return runBillingAction(request, reply, () =>
+        stripe.createPortal(session.user.id, input.data.returnTo),
+      );
     });
 
     app.post(

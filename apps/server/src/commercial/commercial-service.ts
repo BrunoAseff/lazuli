@@ -92,6 +92,9 @@ export const getCommercialSummary = async (
   const canCreateProject =
     entitlement.projectLimit === null || (projectUsage[0]?.value ?? 0) < entitlement.projectLimit;
   const canUpload = storageCommitted < entitlement.storageLimitBytes;
+  const subscriptionCanBeManaged = Boolean(
+    currentSubscription && !["canceled", "incomplete_expired"].includes(currentSubscription.status),
+  );
   return {
     plan: entitlement.code,
     entitlementSource: entitlement.source,
@@ -125,6 +128,7 @@ export const getCommercialSummary = async (
     },
     subscription: currentSubscription
       ? {
+          plan: currentSubscription.plan as CommercialPlan,
           status: currentSubscription.status as BillingSubscriptionStatus,
           cancelAtPeriodEnd: currentSubscription.cancelAtPeriodEnd,
           currentPeriodEnd: currentSubscription.currentPeriodEnd?.toISOString() ?? null,
@@ -132,14 +136,14 @@ export const getCommercialSummary = async (
         }
       : null,
     capabilities: {
-      canCancel: Boolean(currentSubscription && currentSubscription.status !== "canceled"),
+      canCancel: Boolean(subscriptionCanBeManaged && !currentSubscription?.cancelAtPeriodEnd),
       canCreateProject,
       canGenerate: creditBalance >= AI_CREDITS_PER_ITEM,
       canOpenBillingPortal: Boolean(currentSubscription),
       canUpgrade: nextRecommendedPlan !== null,
       canUpload,
     },
-    billingAction: currentSubscription ? "portal" : nextRecommendedPlan ? "checkout" : null,
+    billingAction: subscriptionCanBeManaged ? "portal" : nextRecommendedPlan ? "checkout" : null,
   };
 };
 

@@ -14,6 +14,21 @@ export type CommercialPlanDefinition = {
   monthlyAiCredits: number;
 };
 
+export const commercialPlanDefinitionSchema = z.object({
+  code: commercialPlanSchema,
+  name: z.string().min(1),
+  monthlyPriceCents: z.number().int().nonnegative(),
+  recommended: z.boolean(),
+  order: z.number().int().nonnegative(),
+  projectLimit: z.number().int().positive().nullable(),
+  storageLimitBytes: z.number().int().positive(),
+  monthlyAiCredits: z.number().int().nonnegative(),
+});
+
+export const commercialPlanListSchema = z.object({
+  items: z.array(commercialPlanDefinitionSchema),
+});
+
 export const COMMERCIAL_PLAN_CATALOG = {
   basic: {
     code: "basic",
@@ -49,9 +64,20 @@ export const COMMERCIAL_PLAN_CATALOG = {
 
 export const paidCommercialPlanSchema = z.enum(["essential", "specialist"]);
 
+export const billingReturnPathSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .regex(/^\/(?!\/)[^\\\r\n]*$/);
+
 export const createCheckoutSessionSchema = z.object({
   plan: paidCommercialPlanSchema,
+  returnTo: billingReturnPathSchema.optional(),
 });
+
+export const createPortalSessionSchema = z
+  .object({ returnTo: billingReturnPathSchema.optional() })
+  .default({});
 
 export type CommercialSeverity = "at_limit" | "near_limit" | "normal" | "over_limit";
 
@@ -90,6 +116,7 @@ export type CommercialSummary = {
     severity: Exclude<CommercialSeverity, "over_limit">;
   };
   subscription: {
+    plan: CommercialPlan;
     status: BillingSubscriptionStatus;
     cancelAtPeriodEnd: boolean;
     currentPeriodEnd: string | null;
@@ -105,6 +132,71 @@ export type CommercialSummary = {
   };
   billingAction: "checkout" | "portal" | null;
 };
+
+const commercialSeveritySchema = z.enum(["at_limit", "near_limit", "normal", "over_limit"]);
+const billingSubscriptionStatusSchema = z.enum([
+  "active",
+  "canceled",
+  "incomplete",
+  "incomplete_expired",
+  "past_due",
+  "paused",
+  "trialing",
+  "unpaid",
+]);
+
+export const commercialSummarySchema: z.ZodType<CommercialSummary> = z.object({
+  plan: commercialPlanSchema,
+  entitlementSource: z.enum(["admin", "basic", "stripe"]),
+  nextRecommendedPlan: commercialPlanSchema.nullable(),
+  projects: z.object({
+    used: z.number().int().nonnegative(),
+    limit: z.number().int().positive().nullable(),
+    remaining: z.number().int().nonnegative().nullable(),
+  }),
+  storage: z.object({
+    usedBytes: z.number().int().nonnegative(),
+    reservedBytes: z.number().int().nonnegative(),
+    limitBytes: z.number().int().positive(),
+    remainingBytes: z.number().int().nonnegative(),
+    percentage: z.number().nonnegative(),
+    severity: commercialSeveritySchema,
+  }),
+  credits: z.object({
+    available: z.number().int().nonnegative(),
+    bonus: z.number().int().nonnegative(),
+    legacy: z.number().int().nonnegative(),
+    monthly: z.number().int().nonnegative(),
+    reserved: z.number().int().nonnegative(),
+    totalSpendable: z.number().int().nonnegative(),
+    monthlyAllowance: z.number().int().nonnegative(),
+    renewsAt: z.string().datetime().nullable(),
+    severity: z.enum(["at_limit", "near_limit", "normal"]),
+  }),
+  subscription: z
+    .object({
+      plan: commercialPlanSchema,
+      status: billingSubscriptionStatusSchema,
+      cancelAtPeriodEnd: z.boolean(),
+      currentPeriodEnd: z.string().datetime().nullable(),
+      accessUntil: z.string().datetime().nullable(),
+    })
+    .nullable(),
+  capabilities: z.object({
+    canCancel: z.boolean(),
+    canCreateProject: z.boolean(),
+    canGenerate: z.boolean(),
+    canOpenBillingPortal: z.boolean(),
+    canUpgrade: z.boolean(),
+    canUpload: z.boolean(),
+  }),
+  billingAction: z.enum(["checkout", "portal"]).nullable(),
+});
+
+export const billingDestinationSchema = z.object({
+  destination: z.enum(["checkout", "portal"]),
+  url: z.string().url(),
+});
 
 export type CommercialLimitErrorCode =
   | "AI_INSUFFICIENT_CREDITS"
