@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import process from "node:process";
 
 const STRIPE_EVENTS = [
@@ -24,7 +24,15 @@ const stopChildren = (signal = "SIGTERM") => {
   if (shuttingDown) return;
   shuttingDown = true;
   for (const child of children) {
-    if (!child.killed) child.kill(signal);
+    if (child.killed || !child.pid) continue;
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], {
+        stdio: "ignore",
+        windowsHide: true,
+      });
+    } else {
+      child.kill(signal);
+    }
   }
 };
 
