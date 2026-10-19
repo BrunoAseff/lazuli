@@ -1,5 +1,5 @@
 import { COMMERCIAL_PLAN_CATALOG, type BillingSubscriptionStatus } from "@lazuli/shared";
-import { and, asc, eq, gt, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, lt, lte, notInArray, or, sql } from "drizzle-orm";
 import Stripe from "stripe";
 
 import { grantCreditBucket } from "../ai-credits/ai-credit-buckets.ts";
@@ -22,7 +22,22 @@ const ACTIVE_SUBSCRIPTION_STATUS_VALUES: BillingSubscriptionStatus[] = [
   "trialing",
 ];
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set<string>(ACTIVE_SUBSCRIPTION_STATUS_VALUES);
+const TERMINAL_SUBSCRIPTION_STATUS_VALUES: BillingSubscriptionStatus[] = [
+  "canceled",
+  "incomplete_expired",
+];
 const WEBHOOK_PROCESSING_STALE_MS = 10 * 60 * 1_000;
+
+export const isManageableStripeSubscription = (subscription: Stripe.Subscription) =>
+  !TERMINAL_SUBSCRIPTION_STATUS_VALUES.includes(subscription.status as BillingSubscriptionStatus);
+
+export const selectPreferredStripeSubscription = (
+  subscriptions: Stripe.Subscription[],
+  storedSubscription?: Stripe.Subscription,
+) =>
+  subscriptions.find((subscription) => ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)) ??
+  storedSubscription ??
+  subscriptions.toSorted((left, right) => right.created - left.created)[0];
 
 const getStripeEnvironment = (secretKey: string) =>
   secretKey.startsWith("sk_live_") || secretKey.startsWith("rk_live_") ? "live" : "test";
@@ -410,7 +425,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
           .where(
             and(
               eq(billingSubscription.userId, userId),
-              inArray(billingSubscription.status, ACTIVE_SUBSCRIPTION_STATUS_VALUES),
+              notInArray(billingSubscription.status, TERMINAL_SUBSCRIPTION_STATUS_VALUES),
             ),
           )
           .limit(1);
@@ -421,11 +436,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
           limit: 100,
           status: "all",
         });
-        if (
-          subscriptions.data.some((subscription) =>
-            ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status),
-          )
-        )
+        if (subscriptions.data.some(isManageableStripeSubscription))
           return createPortalSessionForCustomer(customer, returnTo);
 
         const openSessions = await stripe.checkout.sessions.list({
@@ -465,6 +476,10 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
       return createPortalSession(userId, returnTo);
     },
     async refreshSubscription(userId: string) {
+      // Stripe event timestamps have one-second precision. Using a fractional
+      // refresh timestamp could make a webhook created in this same second look
+      // stale and prevent it from applying newer provider state.
+      const refreshedAt = new Date(Math.floor(Date.now() / 1_000) * 1_000);
       const [customer, current] = await Promise.all([
         database
           .select({
@@ -493,21 +508,26 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
         throw new Error("Stripe environment does not match the billing account");
 
       let subscription: Stripe.Subscription | undefined;
-      if (storedSubscription)
+      if (storedSubscription) {
         subscription = await stripe.subscriptions.retrieve(storedSubscription.stripeSubscriptionId);
-      else {
+        if (!ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)) {
+          const subscriptions = await stripe.subscriptions.list({
+            customer: billingOwner.stripeCustomerId,
+            limit: 100,
+            status: "all",
+          });
+          subscription = selectPreferredStripeSubscription(subscriptions.data, subscription);
+        }
+      } else {
         const subscriptions = await stripe.subscriptions.list({
           customer: billingOwner.stripeCustomerId,
           limit: 100,
           status: "all",
         });
-        subscription =
-          subscriptions.data.find((item) => ACTIVE_SUBSCRIPTION_STATUSES.has(item.status)) ??
-          subscriptions.data.sort((left, right) => right.created - left.created)[0];
+        subscription = selectPreferredStripeSubscription(subscriptions.data);
       }
       if (!subscription) return false;
 
-      const refreshedAt = new Date();
       await database.transaction((tx) =>
         syncSubscription(
           tx,
@@ -586,8 +606,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
           issues.push({ code: "MULTIPLE_ACTIVE_SUBSCRIPTIONS", customerId: customer.id });
           continue;
         }
-        const subscription =
-          active[0] ?? result.data.sort((left, right) => right.created - left.created)[0];
+        const subscription = selectPreferredStripeSubscription(result.data);
         if (!subscription) continue;
         await database.transaction((tx) =>
           syncSubscription(

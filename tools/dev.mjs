@@ -34,6 +34,7 @@ process.once("SIGTERM", () => stopChildren("SIGTERM"));
 const startApplication = (extraEnv = {}) => {
   const child = spawn("vp", ["run", "--filter", "./apps/*", "dev"], {
     env: { ...process.env, ...extraEnv },
+    shell: process.platform === "win32",
     stdio: "inherit",
   });
   children.add(child);
@@ -67,16 +68,22 @@ if (process.env.BILLING_ENABLED !== "true") {
   children.add(stripe);
 
   let applicationStarted = false;
-  let output = "";
+  const bufferedOutput = new Map();
   const handleStripeOutput = (chunk, destination) => {
     destination.write(chunk);
     if (applicationStarted) return;
-    output = `${output}${chunk}`.slice(-16_384);
-    const secret = output.match(/whsec_[A-Za-z0-9]+/)?.[0];
-    if (!secret) return;
-    applicationStarted = true;
-    console.log("\nStripe conectado. Iniciando a aplicação com o segredo local do webhook.\n");
-    startApplication({ STRIPE_WEBHOOK_SECRET: secret });
+    const output = `${bufferedOutput.get(destination) ?? ""}${chunk.toString()}`;
+    const lines = output.split(/\r?\n/);
+    bufferedOutput.set(destination, lines.pop() ?? "");
+    for (const line of lines) {
+      const secret = line.match(/whsec_[A-Za-z0-9]+/)?.[0];
+      if (!secret) continue;
+      applicationStarted = true;
+      bufferedOutput.clear();
+      console.log("\nStripe conectado. Iniciando a aplicação com o segredo local do webhook.\n");
+      startApplication({ STRIPE_WEBHOOK_SECRET: secret });
+      break;
+    }
   };
 
   stripe.stdout.on("data", (chunk) => handleStripeOutput(chunk, process.stdout));
