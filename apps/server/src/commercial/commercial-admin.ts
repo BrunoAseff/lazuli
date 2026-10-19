@@ -6,6 +6,7 @@ import { paidCommercialPlanSchema } from "@lazuli/shared";
 import { serverEnv } from "../config.ts";
 import { createDatabase } from "../database/client.ts";
 import { createCommercialAdminService } from "./commercial-admin-service.ts";
+import { isBulkAdminCommand, runBulkAdminCommand } from "./commercial-admin-bulk.ts";
 
 const [, , command, ...rawArguments] = process.argv;
 const argument = (name: string) => {
@@ -115,55 +116,27 @@ const runSingle = async () => {
 };
 
 const runBulk = async () => {
-  if (command !== "credits:add-all" && command !== "credits:reset-all") return false;
-  const users = await service.listUsers();
-  console.log(`[${environment}] ${users.length} usuários seriam afetados.`);
+  if (!isBulkAdminCommand(command)) return false;
   const operatorId = required("operator");
   const reason = required("reason");
   const amount = command === "credits:add-all" ? positiveInteger("amount") : null;
+  const plan =
+    command === "plan:grant-all" ? paidCommercialPlanSchema.parse(required("plan")) : null;
   const rootKey = operationKey();
-  if (!flag("execute")) {
-    const dryRunKey = `${rootKey}:dry-run`;
-    for (const target of users)
-      await service.recordDryRun({
-        action: `${command}.dry-run`,
-        email: target.email,
-        idempotencyKey: dryRunKey,
-        metadata: amount ? { amount } : undefined,
-        operatorId,
-        reason,
-      });
-    console.log("Dry-run concluído. Use --execute --confirm-count=<total> para executar.");
-    return true;
-  }
-  if (Number(argument("confirm-count")) !== users.length)
-    throw new Error(`--confirm-count must equal ${users.length}`);
-  if (
-    !(await confirm(
-      `[${environment}] Você executará ${command} para ${users.length} usuários${amount ? `, ${amount} créditos cada` : ""}.`,
-    ))
-  )
-    return true;
-  let completed = 0;
-  for (const target of users) {
-    if (amount)
-      await service.addCredits({
-        amount,
-        email: target.email,
-        idempotencyKey: rootKey,
-        operatorId,
-        reason,
-      });
-    else
-      await service.resetCredits({
-        email: target.email,
-        idempotencyKey: rootKey,
-        operatorId,
-        reason,
-      });
-    completed += 1;
-  }
-  console.log(JSON.stringify({ completed, requested: users.length }, null, 2));
+  await runBulkAdminCommand({
+    amount: amount ?? undefined,
+    command,
+    confirm,
+    confirmCount: argument("confirm-count") ? Number(argument("confirm-count")) : undefined,
+    environment,
+    execute: flag("execute"),
+    log: console.log,
+    operatorId,
+    plan: plan ?? undefined,
+    reason,
+    rootKey,
+    service,
+  });
   return true;
 };
 

@@ -19,6 +19,7 @@
     "admin:credits:add-all": "tsx src/commercial/commercial-admin.ts credits:add-all",
     "admin:credits:reset-all": "tsx src/commercial/commercial-admin.ts credits:reset-all",
     "admin:plan:grant": "tsx src/commercial/commercial-admin.ts plan:grant",
+    "admin:plan:grant-all": "tsx src/commercial/commercial-admin.ts plan:grant-all",
     "admin:plan:revoke": "tsx src/commercial/commercial-admin.ts plan:revoke",
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json --noEmit && vp pack && node scripts/verify-document-conversion-worker.mjs",
