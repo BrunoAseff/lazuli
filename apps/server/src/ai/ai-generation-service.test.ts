@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { AI_DOCUMENT_MAX_BLOCKS } from "@lazuli/shared";
 
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import { AiGenerationError } from "./ai-errors.ts";
 import type {
   AiGenerationRecord,
@@ -214,6 +215,37 @@ describe("AI generation service", () => {
     );
   });
 
+  it("does not wait for analytics before returning a queued collection batch", async () => {
+    const store = createStore();
+    const capture = vi.fn(() => new Promise<void>(() => undefined));
+    const service = createAiGenerationService({
+      analytics: { capture, shutdown: vi.fn() } as unknown as AnalyticsService,
+      logger,
+      provider: createFakeAiProvider({ output: validSelectionDraft }),
+      store,
+    });
+
+    await expect(
+      service.enqueueCollectionDraft({
+        collectionId: "11111111-1111-4111-8111-111111111111",
+        documentId: "22222222-2222-4222-8222-222222222222",
+        documentRevision: 3,
+        guidance: "",
+        idempotencyKey: "33333333-3333-4333-8333-333333333333",
+        kind: "flashcard",
+        quantity: 5,
+        sourceBlockIds: ["block-1"],
+        sourceScope: "section",
+        userId: input.userId,
+      }),
+    ).resolves.toMatchObject({ kind: "queued" });
+    expect(capture).toHaveBeenCalledWith("user-1", "ai_generation_started", {
+      kind: "flashcard",
+      quantity: 5,
+      scope: "collection",
+    });
+  });
+
   it("processes a collection batch and settles only valid returned materials", async () => {
     const store = createStore();
     const service = createAiGenerationService({
@@ -298,6 +330,34 @@ describe("AI generation service", () => {
         code: "AI_INPUT_TOO_LARGE",
         operationId: "33333333-3333-4333-8333-333333333333",
       }),
+    );
+  });
+
+  it("settles a collection failure even when its analytics metadata lookup fails", async () => {
+    const store = createStore();
+    store.get.mockRejectedValue(new Error("database read failed"));
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({ output: validSelectionDraft }),
+      store,
+    });
+
+    await expect(
+      service.failCollectionDraft(
+        input.userId,
+        "33333333-3333-4333-8333-333333333333",
+        new AiGenerationError("AI_REQUEST_FAILED"),
+      ),
+    ).resolves.toBeUndefined();
+    expect(store.fail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "AI_REQUEST_FAILED",
+        operationId: "33333333-3333-4333-8333-333333333333",
+      }),
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: "33333333-3333-4333-8333-333333333333" }),
+      "collection generation metadata lookup failed during settlement",
     );
   });
 

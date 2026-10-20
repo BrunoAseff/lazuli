@@ -259,24 +259,39 @@ export const createAiGenerationService = ({
 }) => {
   const analyticsKind = (kind: "flashcard" | "quizQuestion") =>
     kind === "flashcard" ? ("flashcard" as const) : ("quiz" as const);
-  const captureGeneration = async (
+  const captureWithoutBlocking = (event: string, capture: Promise<void> | undefined) => {
+    if (capture)
+      void capture.catch((error) =>
+        logger.warn({ err: error, event }, "analytics capture scheduling failed"),
+      );
+  };
+  const captureGeneration = (
     userId: string,
     event: "ai_generation_started" | "ai_generation_completed",
     kind: "flashcard" | "quizQuestion",
     quantity: number,
     scope: "selection" | "document" | "collection" | "improvement",
-  ) => analytics?.capture(userId, event, { kind: analyticsKind(kind), quantity, scope });
-  const captureGenerationFailure = async (
+  ) => {
+    captureWithoutBlocking(
+      event,
+      analytics?.capture(userId, event, { kind: analyticsKind(kind), quantity, scope }),
+    );
+  };
+  const captureGenerationFailure = (
     userId: string,
     code: string,
     kind: "flashcard" | "quizQuestion",
     scope: "selection" | "document" | "collection" | "improvement",
-  ) =>
-    analytics?.capture(userId, "ai_generation_failed", {
-      errorCode: code,
-      kind: analyticsKind(kind),
-      scope,
-    });
+  ) => {
+    captureWithoutBlocking(
+      "ai_generation_failed",
+      analytics?.capture(userId, "ai_generation_failed", {
+        errorCode: code,
+        kind: analyticsKind(kind),
+        scope,
+      }),
+    );
+  };
   const getCollectionDraft = async (userId: string, operationId: string) => {
     const operation = await store.get(userId, operationId);
     if (!operation || operation.type !== "collection_generation") return null;
@@ -369,7 +384,7 @@ export const createAiGenerationService = ({
         };
       }
 
-      await captureGeneration(input.userId, "ai_generation_started", input.kind, 1, "improvement");
+      captureGeneration(input.userId, "ai_generation_started", input.kind, 1, "improvement");
 
       const startedAt = Date.now();
       let attempts = 0;
@@ -436,7 +451,7 @@ export const createAiGenerationService = ({
               userId: input.userId,
               validItems: 1,
             });
-            await captureGeneration(
+            captureGeneration(
               input.userId,
               "ai_generation_completed",
               input.kind,
@@ -460,7 +475,7 @@ export const createAiGenerationService = ({
           operationId,
           userId: input.userId,
         });
-        await captureGenerationFailure(input.userId, normalized.code, input.kind, "improvement");
+        captureGenerationFailure(input.userId, normalized.code, input.kind, "improvement");
         throw normalized;
       }
     },
@@ -470,7 +485,13 @@ export const createAiGenerationService = ({
 
     async failCollectionDraft(userId: string, operationId: string, error: unknown) {
       const normalized = normalizeAiError(error);
-      const operation = await store.get(userId, operationId);
+      const operation = await store.get(userId, operationId).catch((lookupError) => {
+        logger.warn(
+          { err: lookupError, operationId, userId },
+          "collection generation metadata lookup failed during settlement",
+        );
+        return null;
+      });
       const job = readCollectionJob(operation?.result);
       await store.fail({
         attempts: 1,
@@ -479,7 +500,7 @@ export const createAiGenerationService = ({
         operationId,
         userId,
       });
-      if (job) await captureGenerationFailure(userId, normalized.code, job.kind, "collection");
+      if (job) captureGenerationFailure(userId, normalized.code, job.kind, "collection");
     },
 
     getCollectionDraft,
@@ -555,7 +576,7 @@ export const createAiGenerationService = ({
           operationId: admission.operation.id,
         };
       }
-      await captureGeneration(
+      captureGeneration(
         input.userId,
         "ai_generation_started",
         input.kind,
@@ -659,7 +680,7 @@ export const createAiGenerationService = ({
               userId,
               validItems: proposals.length,
             });
-            await captureGeneration(
+            captureGeneration(
               userId,
               "ai_generation_completed",
               job.kind,
@@ -682,7 +703,7 @@ export const createAiGenerationService = ({
           operationId,
           userId,
         });
-        await captureGenerationFailure(userId, normalized.code, job.kind, "collection");
+        captureGenerationFailure(userId, normalized.code, job.kind, "collection");
         throw normalized;
       }
     },
@@ -763,7 +784,7 @@ export const createAiGenerationService = ({
         };
       }
 
-      await captureGeneration(
+      captureGeneration(
         input.userId,
         "ai_generation_started",
         input.kind,
@@ -862,7 +883,7 @@ export const createAiGenerationService = ({
               userId: input.userId,
               validItems: proposals.length,
             });
-            await captureGeneration(
+            captureGeneration(
               input.userId,
               "ai_generation_completed",
               input.kind,
@@ -886,7 +907,7 @@ export const createAiGenerationService = ({
           operationId,
           userId: input.userId,
         });
-        await captureGenerationFailure(
+        captureGenerationFailure(
           input.userId,
           normalized.code,
           input.kind,
