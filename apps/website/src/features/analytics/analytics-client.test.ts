@@ -26,6 +26,12 @@ afterEach(() => {
 });
 
 describe("analytics client", () => {
+  it("exposes when production analytics is disabled", async () => {
+    vi.stubEnv("VITE_ANALYTICS_ENABLED", "false");
+    const { analyticsConfigured } = await import("./analytics-client.ts");
+    expect(analyticsConfigured).toBe(false);
+  });
+
   it("waits for consent setup before capturing an immediate event", async () => {
     const { captureAnalyticsEvent, enableAnalytics } = await import("./analytics-client.ts");
 

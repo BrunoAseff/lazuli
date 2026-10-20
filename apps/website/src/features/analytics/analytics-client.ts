@@ -5,7 +5,7 @@ import {
 } from "@lazuli/shared";
 import type { CaptureResult, PostHog } from "posthog-js/dist/module.no-external";
 
-const configured =
+export const analyticsConfigured =
   import.meta.env.PROD &&
   import.meta.env.VITE_ANALYTICS_ENABLED === "true" &&
   Boolean(import.meta.env.VITE_POSTHOG_KEY);
@@ -64,7 +64,7 @@ const getClient = () => {
 };
 
 export const enableAnalytics = (userId: string) => {
-  if (!configured) return;
+  if (!analyticsConfigured) return;
   consentRevision += 1;
   enabledUserId = userId;
   const revision = consentRevision;

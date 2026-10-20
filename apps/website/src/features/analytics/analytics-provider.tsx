@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
-import { disableAnalytics, enableAnalytics } from "./analytics-client.ts";
+import { analyticsConfigured, disableAnalytics, enableAnalytics } from "./analytics-client.ts";
 import { useAnalyticsPreference, useUpdateAnalyticsPreference } from "./api/analytics-queries.ts";
 
 type AnalyticsContextValue = {
@@ -52,7 +52,7 @@ export const AnalyticsProvider = ({
   };
 
   const context = useMemo(() => ({ openPreferences: () => setPreferencesOpen(true) }), []);
-  const undecided = preference.data?.status === "undecided";
+  const undecided = analyticsConfigured && preference.data?.status === "undecided";
 
   return (
     <AnalyticsContext.Provider value={context}>
