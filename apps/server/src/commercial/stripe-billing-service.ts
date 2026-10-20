@@ -33,12 +33,22 @@ const WEBHOOK_PROCESSING_STALE_MS = 10 * 60 * 1_000;
 export const isManageableStripeSubscription = (subscription: Stripe.Subscription) =>
   !TERMINAL_SUBSCRIPTION_STATUS_VALUES.includes(subscription.status as BillingSubscriptionStatus);
 
-export const becameActiveSubscription = (
-  previousStatus: BillingSubscriptionStatus | null,
-  nextStatus: BillingSubscriptionStatus,
-) =>
-  ACTIVATED_SUBSCRIPTION_STATUSES.has(nextStatus) &&
-  !(previousStatus && ACTIVATED_SUBSCRIPTION_STATUSES.has(previousStatus));
+export const becameActiveSubscription = ({
+  nextStatus,
+  previousAccessUntil,
+  previousStatus,
+  transitionAt,
+}: {
+  nextStatus: BillingSubscriptionStatus;
+  previousAccessUntil: Date | null;
+  previousStatus: BillingSubscriptionStatus | null;
+  transitionAt: Date;
+}) => {
+  if (!ACTIVATED_SUBSCRIPTION_STATUSES.has(nextStatus)) return false;
+  if (previousStatus && ACTIVATED_SUBSCRIPTION_STATUSES.has(previousStatus)) return false;
+  if (previousStatus !== "past_due") return true;
+  return !previousAccessUntil || previousAccessUntil <= transitionAt;
+};
 
 export const selectPreferredStripeSubscription = (
   subscriptions: Stripe.Subscription[],
@@ -178,6 +188,7 @@ export const createStripeBillingService = (
     const plan = priceId ? planFromPrice(priceId) : null;
     if (!priceId || !plan) throw new Error(`Unknown Stripe price ${priceId ?? "missing"}`);
     const period = getPeriod(subscription);
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`billing-sync:${userId}`}))`);
     const [previous] = await tx
       .select()
       .from(billingSubscription)
@@ -232,10 +243,12 @@ export const createStripeBillingService = (
         setWhere: lte(billingSubscription.providerUpdatedAt, eventCreatedAt),
       });
     return {
-      activated: becameActiveSubscription(
-        previous?.status ?? null,
-        subscription.status as BillingSubscriptionStatus,
-      ),
+      activated: becameActiveSubscription({
+        nextStatus: subscription.status as BillingSubscriptionStatus,
+        previousAccessUntil: previous?.accessUntil ?? null,
+        previousStatus: previous?.status ?? null,
+        transitionAt: eventCreatedAt,
+      }),
       previous,
       plan,
       userId,
@@ -291,6 +304,15 @@ export const createStripeBillingService = (
       startsAt: period.start,
       userId,
     });
+  };
+
+  const captureSubscriptionActivation = async (result: {
+    activated: boolean;
+    plan: PaidPlan;
+    userId: string;
+  }) => {
+    if (result.activated)
+      await analytics?.capture(result.userId, "subscription_activated", { plan: result.plan });
   };
 
   const getInvoiceSubscriptionId = (invoice: Stripe.Invoice) => {
@@ -430,9 +452,7 @@ export const createStripeBillingService = (
         return activation;
       });
       if (activatedSubscription)
-        await analytics?.capture(activatedSubscription.userId, "subscription_activated", {
-          plan: activatedSubscription.plan,
-        });
+        await captureSubscriptionActivation({ activated: true, ...activatedSubscription });
       return true;
     } catch (error) {
       await database
@@ -570,7 +590,7 @@ export const createStripeBillingService = (
       }
       if (!subscription) return false;
 
-      await database.transaction((tx) =>
+      const synced = await database.transaction((tx) =>
         syncSubscription(
           tx,
           subscription,
@@ -578,6 +598,7 @@ export const createStripeBillingService = (
           `direct-refresh:${subscription.id}:${refreshedAt.getTime()}`,
         ),
       );
+      await captureSubscriptionActivation(synced);
       return true;
     },
     constructEvent(rawBody: Buffer, signature: string) {
@@ -650,7 +671,7 @@ export const createStripeBillingService = (
         }
         const subscription = selectPreferredStripeSubscription(result.data);
         if (!subscription) continue;
-        await database.transaction((tx) =>
+        const synced = await database.transaction((tx) =>
           syncSubscription(
             tx,
             subscription,
@@ -658,6 +679,7 @@ export const createStripeBillingService = (
             `reconcile:${subscription.id}:${Date.now()}`,
           ),
         );
+        await captureSubscriptionActivation(synced);
         reconciled += 1;
       }
       return { issues, reconciled };

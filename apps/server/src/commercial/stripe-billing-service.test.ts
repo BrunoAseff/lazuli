@@ -10,11 +10,43 @@ import {
 
 describe("subscription activation transition", () => {
   it("counts only the first transition into active access", () => {
-    expect(becameActiveSubscription(null, "active")).toBe(true);
-    expect(becameActiveSubscription("incomplete", "trialing")).toBe(true);
-    expect(becameActiveSubscription("active", "active")).toBe(false);
-    expect(becameActiveSubscription("trialing", "active")).toBe(false);
-    expect(becameActiveSubscription(null, "past_due")).toBe(false);
+    const transitionAt = new Date("2026-10-20T12:00:00.000Z");
+    const transition = (
+      previousStatus: Parameters<typeof becameActiveSubscription>[0]["previousStatus"],
+      nextStatus: Parameters<typeof becameActiveSubscription>[0]["nextStatus"],
+      previousAccessUntil: Date | null = null,
+    ) =>
+      becameActiveSubscription({
+        nextStatus,
+        previousAccessUntil,
+        previousStatus,
+        transitionAt,
+      });
+    expect(transition(null, "active")).toBe(true);
+    expect(transition("incomplete", "trialing")).toBe(true);
+    expect(transition("active", "active")).toBe(false);
+    expect(transition("trialing", "active")).toBe(false);
+    expect(transition(null, "past_due")).toBe(false);
+  });
+
+  it("does not reactivate access that remained available through the grace period", () => {
+    const transitionAt = new Date("2026-10-20T12:00:00.000Z");
+    expect(
+      becameActiveSubscription({
+        nextStatus: "active",
+        previousAccessUntil: new Date("2026-10-21T12:00:00.000Z"),
+        previousStatus: "past_due",
+        transitionAt,
+      }),
+    ).toBe(false);
+    expect(
+      becameActiveSubscription({
+        nextStatus: "active",
+        previousAccessUntil: new Date("2026-10-19T12:00:00.000Z"),
+        previousStatus: "past_due",
+        transitionAt,
+      }),
+    ).toBe(true);
   });
 });
 
