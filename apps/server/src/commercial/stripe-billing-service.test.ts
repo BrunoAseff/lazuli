@@ -2,10 +2,21 @@ import Stripe from "stripe";
 import { describe, expect, it } from "vitest";
 
 import {
+  becameActiveSubscription,
   hasScheduledStripeCancellation,
   isManageableStripeSubscription,
   selectPreferredStripeSubscription,
 } from "./stripe-billing-service.ts";
+
+describe("subscription activation transition", () => {
+  it("counts only the first transition into active access", () => {
+    expect(becameActiveSubscription(null, "active")).toBe(true);
+    expect(becameActiveSubscription("incomplete", "trialing")).toBe(true);
+    expect(becameActiveSubscription("active", "active")).toBe(false);
+    expect(becameActiveSubscription("trialing", "active")).toBe(false);
+    expect(becameActiveSubscription(null, "past_due")).toBe(false);
+  });
+});
 
 const subscription = (
   overrides: Partial<

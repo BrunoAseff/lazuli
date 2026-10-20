@@ -1,9 +1,14 @@
-import { normalizeProjectItemTitle, type DocumentImportPhase } from "@lazuli/shared";
+import {
+  analyticsImportFormatFromMimeType,
+  normalizeProjectItemTitle,
+  type DocumentImportPhase,
+} from "@lazuli/shared";
 import { and, eq, inArray, max, sql } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 import { Worker } from "node:worker_threads";
 
 import type { Database } from "../database/client.ts";
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import { exceedsCommercialLimit } from "../commercial/commercial-limit-enforcement.ts";
 import { getStorageLimitBytes } from "../commercial/commercial-service.ts";
 import { cleanupUnattachedAssets } from "../documents/document-queries.ts";
@@ -325,8 +330,9 @@ const processImport = async (
     throw error;
   }
   await updateImportProgress(db, job.id, workerId, "finalizing", 0, 1);
+  let completed = false;
   try {
-    const completed = await completeImport(
+    completed = await completeImport(
       db,
       job,
       workerId,
@@ -353,6 +359,7 @@ const processImport = async (
   } catch {
     // A manutenção periódica usa a chave persistida para tentar novamente.
   }
+  return { completed, warningCount: result.warnings.length };
 };
 
 export const createDocumentImportWorker = (
@@ -360,6 +367,7 @@ export const createDocumentImportWorker = (
   storage: ObjectStorage,
   logger: FastifyBaseLogger,
   enforceCommercialLimits = true,
+  analytics?: AnalyticsService,
 ) => {
   const workerId = `document-import:${process.pid}:${crypto.randomUUID()}`;
   let timer: NodeJS.Timeout | undefined;
@@ -402,7 +410,17 @@ export const createDocumentImportWorker = (
       const job = await claimNextImport(db, workerId);
       if (job) {
         try {
-          await processImport(db, storage, job, workerId, enforceCommercialLimits);
+          const result = await processImport(db, storage, job, workerId, enforceCommercialLimits);
+          if (result.completed)
+            await Promise.all([
+              analytics?.capture(job.userId, "document_import_completed", {
+                format: analyticsImportFormatFromMimeType(
+                  job.detectedMimeType ?? job.declaredMimeType,
+                ),
+                warningCount: result.warningCount,
+              }),
+              analytics?.capture(job.userId, "document_created", { source: "import" }),
+            ]);
         } catch (error) {
           logger.error({ err: error, importId: job.id }, "document import processing failed");
           const known = error instanceof ImportConversionError;
@@ -413,6 +431,13 @@ export const createDocumentImportWorker = (
             known ? error.code : "IMPORT_PROCESSING_FAILED",
             known ? error.retryable : true,
           );
+          if (failed?.status === "failed")
+            await analytics?.capture(job.userId, "document_import_failed", {
+              errorCode: known ? error.code : "IMPORT_PROCESSING_FAILED",
+              format: analyticsImportFormatFromMimeType(
+                job.detectedMimeType ?? job.declaredMimeType,
+              ),
+            });
           if (failed?.status === "canceled" && job.inputObjectKey) {
             try {
               await storage.delete(job.inputObjectKey);

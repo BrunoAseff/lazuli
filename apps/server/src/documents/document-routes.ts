@@ -8,6 +8,7 @@ import type { DocumentBlock } from "@lazuli/shared";
 import type { FastifyPluginAsync } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
@@ -26,8 +27,18 @@ import {
   serializeProjectItem,
 } from "./document-route-utils.ts";
 
-type Options = { auth: Auth; database: Database; websiteUrl: string };
-export const createDocumentRoutes = ({ auth, database, websiteUrl }: Options): FastifyPluginAsync =>
+type Options = {
+  analytics?: AnalyticsService;
+  auth: Auth;
+  database: Database;
+  websiteUrl: string;
+};
+export const createDocumentRoutes = ({
+  analytics,
+  auth,
+  database,
+  websiteUrl,
+}: Options): FastifyPluginAsync =>
   async function documentRoutes(app) {
     app.get("/api/projects/:projectId/tree", async (request, reply) => {
       const session = await requireSession(auth, request, reply);
@@ -67,6 +78,8 @@ export const createDocumentRoutes = ({ auth, database, websiteUrl }: Options): F
         { itemId: result.item.id, projectId: projectId.data, userId: session.user.id },
         "project item creation completed",
       );
+      if (result.kind === "created" && result.item.type === "document")
+        await analytics?.capture(session.user.id, "document_created", { source: "manual" });
       return reply
         .status(result.kind === "created" ? 201 : 200)
         .send(serializeProjectItem(result.item));

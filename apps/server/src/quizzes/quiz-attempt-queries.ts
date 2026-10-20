@@ -364,7 +364,11 @@ export const completeQuizAttempt = async (db: Database, userId: string, attemptI
     const attempt = await ownedAttempt(tx, userId, attemptId);
     if (!attempt) return { kind: "not-found" as const };
     if (attempt.status === "completed")
-      return { kind: "ok" as const, attempt: await getQuizAttempt(tx, userId, attemptId) };
+      return {
+        kind: "ok" as const,
+        completed: false,
+        attempt: await getQuizAttempt(tx, userId, attemptId),
+      };
     if (attempt.status !== "active") return { kind: "closed" as const };
     const items = await tx
       .select({
@@ -402,7 +406,11 @@ export const completeQuizAttempt = async (db: Database, userId: string, attemptI
         updatedAt: now,
       })
       .where(eq(quizAttempt.id, attemptId));
-    return { kind: "ok" as const, attempt: await getQuizAttempt(tx, userId, attemptId) };
+    return {
+      kind: "ok" as const,
+      completed: true,
+      attempt: await getQuizAttempt(tx, userId, attemptId),
+    };
   });
 
 export const abandonQuizAttempt = async (db: Database, userId: string, attemptId: string) =>

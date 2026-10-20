@@ -35,6 +35,7 @@ vi.mock("../commercial/commercial-limit-errors.ts", () => commercialLimits);
 
 const apps: ReturnType<typeof Fastify>[] = [];
 const database = {} as Database;
+const analyticsCapture = vi.fn();
 const verifiedSession = {
   session: { id: "session-1" },
   user: { id: "user-1", email: "ana@example.com", name: "Ana" },
@@ -46,7 +47,14 @@ const createAuth = (session: typeof verifiedSession | null) =>
 const registerRoutes = async (auth: Auth) => {
   const app = Fastify({ logger: false });
   apps.push(app);
-  await app.register(createProjectRoutes({ auth, database, websiteUrl: "http://localhost:3000" }));
+  await app.register(
+    createProjectRoutes({
+      analytics: { capture: analyticsCapture, shutdown: vi.fn() },
+      auth,
+      database,
+      websiteUrl: "http://localhost:3000",
+    }),
+  );
   return app;
 };
 
@@ -177,5 +185,27 @@ describe("project routes", () => {
       "user-1",
       "PLAN_PROJECT_LIMIT_REACHED",
     );
+  });
+
+  it("captures a newly persisted project without exposing its title", async () => {
+    const project = {
+      id: "2a36ca27-f1e7-4b07-bd5a-bf831fee8f62",
+      title: "Conteúdo privado",
+      coverKey: "orbit",
+      createdAt: new Date("2026-10-20T12:00:00.000Z"),
+      updatedAt: new Date("2026-10-20T12:00:00.000Z"),
+    };
+    projectQueries.createProject.mockResolvedValue({ created: true, project });
+    const app = await registerRoutes(createAuth(verifiedSession));
+
+    const response = await app.inject({
+      method: "POST",
+      headers: { origin: "http://localhost:3000" },
+      payload: { id: project.id, title: project.title, coverKey: project.coverKey },
+      url: "/api/projects",
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(analyticsCapture).toHaveBeenCalledWith("user-1", "project_created", {});
   });
 });

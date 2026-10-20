@@ -12,6 +12,7 @@ import {
 import type { FastifyPluginAsync } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import { requireSession } from "../auth/require-session.ts";
 import type { Database } from "../database/client.ts";
 import { storeStudyImage } from "../documents/document-image-storage.ts";
@@ -36,6 +37,7 @@ import {
 } from "./quiz-question-queries.ts";
 
 type Options = {
+  analytics?: AnalyticsService;
   auth: Auth;
   database: Database;
   enforceCommercialLimits?: boolean;
@@ -53,6 +55,7 @@ const serializeQuestion = <T extends { archivedAt: Date | null; createdAt: Date;
 
 export const createQuizRoutes =
   ({
+    analytics,
     auth,
     database,
     enforceCommercialLimits = true,
@@ -235,6 +238,10 @@ export const createQuizRoutes =
         return reply
           .status(result.kind === "not-found" ? 404 : 409)
           .send({ code: "QUIZ_START_FAILED", message: "Não foi possível iniciar o quiz." });
+      await analytics?.capture(session.user.id, "practice_started", {
+        itemCount: result.attempt.totalQuestions,
+        kind: "quiz",
+      });
       return reply.status(201).send(result.attempt);
     });
     app.get("/api/quiz-attempts/:attemptId", async (request, reply) => {
@@ -286,7 +293,17 @@ export const createQuizRoutes =
         return reply
           .status(result.kind === "not-found" ? 404 : 409)
           .send({ code: "ATTEMPT_NOT_ACTIVE", message: "Esta tentativa não está disponível." });
-      return result.attempt;
+      const attempt = result.attempt;
+      if (!attempt)
+        return reply
+          .status(409)
+          .send({ code: "ATTEMPT_NOT_ACTIVE", message: "Esta tentativa não está disponível." });
+      if (result.completed)
+        await analytics?.capture(session.user.id, "practice_completed", {
+          itemCount: attempt.totalQuestions,
+          kind: "quiz",
+        });
+      return attempt;
     });
     app.post("/api/quiz-attempts/:attemptId/abandon", async (request, reply) => {
       const session = await mutationSession(request, reply);

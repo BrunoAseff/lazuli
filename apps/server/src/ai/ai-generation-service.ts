@@ -40,6 +40,7 @@ import {
   type FoundationDraft,
 } from "./ai-schemas.ts";
 import { estimateAiCredits } from "../ai-credits/ai-credit-config.ts";
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 
 type FoundationGenerationInput = {
   blocks: AiSourceBlock[];
@@ -235,17 +236,47 @@ const parseStoredMaterialImprovementDraft = (operation: AiGenerationRecord) =>
     consumedCredits: operation.consumedCredits,
   });
 
+const readCollectionJob = (result: unknown): CollectionGenerationJob | null => {
+  if (!result || typeof result !== "object" || !("job" in result)) return null;
+  const job = (result as { job?: unknown }).job;
+  if (!job || typeof job !== "object" || !("kind" in job)) return null;
+  if (job.kind !== "flashcard" && job.kind !== "quizQuestion") return null;
+  return job as CollectionGenerationJob;
+};
+
 export const createAiGenerationService = ({
+  analytics,
   logger,
   provider,
   retryDelayMs = 250,
   store,
 }: {
+  analytics?: AnalyticsService;
   logger: Pick<Logger, "error" | "info" | "warn">;
   provider: AiProvider;
   retryDelayMs?: number;
   store: AiGenerationStore;
 }) => {
+  const analyticsKind = (kind: "flashcard" | "quizQuestion") =>
+    kind === "flashcard" ? ("flashcard" as const) : ("quiz" as const);
+  const captureGeneration = async (
+    userId: string,
+    event: "ai_generation_started" | "ai_generation_completed",
+    kind: "flashcard" | "quizQuestion",
+    quantity: number,
+    scope: "selection" | "document" | "collection" | "improvement",
+  ) => analytics?.capture(userId, event, { kind: analyticsKind(kind), quantity, scope });
+  const captureGenerationFailure = async (
+    userId: string,
+    code: string,
+    kind: "flashcard" | "quizQuestion",
+    scope: "selection" | "document" | "collection" | "improvement",
+  ) =>
+    analytics?.capture(userId, "ai_generation_failed", {
+      errorCode: code,
+      kind: analyticsKind(kind),
+      scope,
+    });
   const getCollectionDraft = async (userId: string, operationId: string) => {
     const operation = await store.get(userId, operationId);
     if (!operation || operation.type !== "collection_generation") return null;
@@ -338,6 +369,8 @@ export const createAiGenerationService = ({
         };
       }
 
+      await captureGeneration(input.userId, "ai_generation_started", input.kind, 1, "improvement");
+
       const startedAt = Date.now();
       let attempts = 0;
       try {
@@ -403,6 +436,13 @@ export const createAiGenerationService = ({
               userId: input.userId,
               validItems: 1,
             });
+            await captureGeneration(
+              input.userId,
+              "ai_generation_completed",
+              input.kind,
+              1,
+              "improvement",
+            );
             return { draft, kind: "completed" as const, operationId, reused: false };
           } catch (error) {
             const normalized = normalizeAiError(error);
@@ -420,6 +460,7 @@ export const createAiGenerationService = ({
           operationId,
           userId: input.userId,
         });
+        await captureGenerationFailure(input.userId, normalized.code, input.kind, "improvement");
         throw normalized;
       }
     },
@@ -429,6 +470,8 @@ export const createAiGenerationService = ({
 
     async failCollectionDraft(userId: string, operationId: string, error: unknown) {
       const normalized = normalizeAiError(error);
+      const operation = await store.get(userId, operationId);
+      const job = readCollectionJob(operation?.result);
       await store.fail({
         attempts: 1,
         code: normalized.code,
@@ -436,6 +479,7 @@ export const createAiGenerationService = ({
         operationId,
         userId,
       });
+      if (job) await captureGenerationFailure(userId, normalized.code, job.kind, "collection");
     },
 
     getCollectionDraft,
@@ -511,6 +555,13 @@ export const createAiGenerationService = ({
           operationId: admission.operation.id,
         };
       }
+      await captureGeneration(
+        input.userId,
+        "ai_generation_started",
+        input.kind,
+        input.quantity,
+        "collection",
+      );
       return { kind: "queued" as const, operationId };
     },
 
@@ -608,6 +659,13 @@ export const createAiGenerationService = ({
               userId,
               validItems: proposals.length,
             });
+            await captureGeneration(
+              userId,
+              "ai_generation_completed",
+              job.kind,
+              proposals.length,
+              "collection",
+            );
             return;
           } catch (error) {
             const normalized = normalizeAiError(error);
@@ -624,6 +682,7 @@ export const createAiGenerationService = ({
           operationId,
           userId,
         });
+        await captureGenerationFailure(userId, normalized.code, job.kind, "collection");
         throw normalized;
       }
     },
@@ -703,6 +762,14 @@ export const createAiGenerationService = ({
           reused: true,
         };
       }
+
+      await captureGeneration(
+        input.userId,
+        "ai_generation_started",
+        input.kind,
+        input.quantity,
+        input.sourceScope === "document" ? "document" : "selection",
+      );
 
       const startedAt = Date.now();
       let attempts = 0;
@@ -795,6 +862,13 @@ export const createAiGenerationService = ({
               userId: input.userId,
               validItems: proposals.length,
             });
+            await captureGeneration(
+              input.userId,
+              "ai_generation_completed",
+              input.kind,
+              proposals.length,
+              input.sourceScope === "document" ? "document" : "selection",
+            );
             return { draft, kind: "completed", operationId, reused: false };
           } catch (error) {
             const normalized = normalizeAiError(error);
@@ -812,6 +886,12 @@ export const createAiGenerationService = ({
           operationId,
           userId: input.userId,
         });
+        await captureGenerationFailure(
+          input.userId,
+          normalized.code,
+          input.kind,
+          input.sourceScope === "document" ? "document" : "selection",
+        );
         throw normalized;
       }
     },

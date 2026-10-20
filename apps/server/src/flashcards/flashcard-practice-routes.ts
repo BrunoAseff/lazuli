@@ -7,6 +7,7 @@ import {
 import type { FastifyPluginAsync, FastifyReply } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
@@ -20,7 +21,7 @@ import {
   submitPracticeReview,
 } from "./flashcard-practice-queries.ts";
 
-type Options = { auth: Auth; database: Database; websiteUrl: string };
+type Options = { analytics?: AnalyticsService; auth: Auth; database: Database; websiteUrl: string };
 
 const serializeSession = (
   session: NonNullable<Awaited<ReturnType<typeof getPracticeSession>>>,
@@ -49,6 +50,7 @@ const serializeSession = (
 });
 
 export const createFlashcardPracticeRoutes = ({
+  analytics,
   auth,
   database,
   websiteUrl,
@@ -132,9 +134,20 @@ export const createFlashcardPracticeRoutes = ({
           return reply.status(409).send({
             code: "PRACTICE_SESSION_ACTIVE",
             message: "Já existe uma prática em andamento.",
-            session: serializeSession(result.session!),
+            session: serializeSession(result.session),
           });
-        return reply.status(201).send(serializeSession(result.session!));
+        const created = result.session;
+        if (!created)
+          return reply.status(409).send({
+            code: "PRACTICE_SESSION_CONFLICT",
+            message: "Não foi possível criar esta prática.",
+          });
+        if (result.created)
+          await analytics?.capture(session.user.id, "practice_started", {
+            itemCount: created.totalCards,
+            kind: "flashcard",
+          });
+        return reply.status(201).send(serializeSession(created));
       },
     );
 
@@ -181,7 +194,18 @@ export const createFlashcardPracticeRoutes = ({
           code: "REVIEW_CONFLICT",
           message: "Esta avaliação não corresponde à prática atual.",
         });
-      return serializeSession(result.session!);
+      const reviewed = result.session;
+      if (!reviewed)
+        return reply.status(409).send({
+          code: "PRACTICE_SESSION_FINISHED",
+          message: "Esta prática já foi encerrada.",
+        });
+      if (result.completed)
+        await analytics?.capture(session.user.id, "practice_completed", {
+          itemCount: reviewed.totalCards,
+          kind: "flashcard",
+        });
+      return serializeSession(reviewed);
     });
 
     app.post("/api/flashcard-practice-sessions/:sessionId/abandon", async (request, reply) => {

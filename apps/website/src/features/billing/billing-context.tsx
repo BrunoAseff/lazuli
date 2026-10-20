@@ -12,6 +12,7 @@ import {
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
+import { captureAnalyticsEvent } from "@/features/analytics/analytics-client.ts";
 import { billingKeys, useBillingSummary, useRefreshBillingSummary } from "./api/billing-queries.ts";
 import { PlanComparisonDialog } from "./components/plan-comparison-dialog.tsx";
 import { PlanLimitDialog } from "./components/plan-limit-dialog.tsx";
@@ -101,9 +102,13 @@ export const BillingProvider = ({ children }: { children: ReactNode }) => {
 
   const openPlans = useCallback(() => setPlansOpen(true), []);
   const openLimit = useCallback(
-    (resource: DialogLimitResource, details?: CommercialLimitDetails | null) =>
-      setLimit({ resource, details }),
-    [],
+    (resource: DialogLimitResource, details?: CommercialLimitDetails | null) => {
+      const plan = details?.plan ?? summary.data?.plan;
+      if (plan)
+        captureAnalyticsEvent("upgrade_prompt_shown", { currentPlan: plan, reason: resource });
+      setLimit({ resource, details });
+    },
+    [summary.data?.plan],
   );
   const value = useMemo(() => ({ openLimit, openPlans }), [openLimit, openPlans]);
 
