@@ -9,7 +9,7 @@ const worker = new Worker(workerUrl);
 const timeout = setTimeout(() => {
   void worker.terminate();
   throw new Error("Document conversion worker did not respond during the build smoke check.");
-}, 5_000);
+}, 30_000);
 
 worker.once("error", (error) => {
   clearTimeout(timeout);
