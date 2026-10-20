@@ -13,7 +13,8 @@
     "deploy:website": "wrangler deploy",
     "docker:build": "docker build -t lazuli-server .",
     "ready": "vp check && vp test && vp run -r build",
-    "dev": "vp run --filter './apps/*' dev",
+    "dev": "node tools/dev.mjs",
+    "dev:app": "vp run --filter './apps/*' dev",
     "dev:website": "vp run website#dev",
     "dev:server": "vp run server#dev",
     "prepare": "vp config"

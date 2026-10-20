@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react";
 
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import { quizKeys } from "@/features/quizzes/api/quiz-queries.ts";
+import { billingKeys } from "@/features/billing/api/billing-queries.ts";
 import {
   approveAiGeneration,
   applyAiMaterialImprovement,
@@ -56,7 +57,10 @@ export const useAiGeneration = (operationId: string) => {
 
   useEffect(() => {
     if (previousStatus.current === "running" && status && status !== "running")
-      void client.invalidateQueries({ queryKey: aiKeys.balance });
+      void Promise.all([
+        client.invalidateQueries({ queryKey: aiKeys.balance }),
+        client.invalidateQueries({ queryKey: billingKeys.summary() }),
+      ]);
     previousStatus.current = status;
   }, [client, status]);
 
@@ -70,7 +74,10 @@ export const useCreateAiSelectionGeneration = () => {
     onSuccess: async (result) => {
       if (result.status === "completed")
         client.setQueryData(aiKeys.generation(result.draft.operationId), result);
-      await client.invalidateQueries({ queryKey: aiKeys.balance });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: aiKeys.balance }),
+        client.invalidateQueries({ queryKey: billingKeys.summary() }),
+      ]);
     },
   });
 };
@@ -105,7 +112,10 @@ export const useCreateAiCollectionGeneration = (collectionId: string) => {
       client.setQueryData(aiKeys.latestCollectionGeneration(collectionId), result);
       if (result.status !== "none" && result.status !== "completed")
         client.setQueryData(aiKeys.collectionGeneration(result.operationId), result);
-      await client.invalidateQueries({ queryKey: aiKeys.balance });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: aiKeys.balance }),
+        client.invalidateQueries({ queryKey: billingKeys.summary() }),
+      ]);
     },
   });
 };
@@ -130,6 +140,7 @@ export const useApproveAiGeneration = (operationId: string) => {
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: aiKeys.balance }),
+        client.invalidateQueries({ queryKey: billingKeys.summary() }),
         client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcards }),
         client.invalidateQueries({ queryKey: quizKeys.all }),
         client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcardCollections }),
@@ -155,7 +166,10 @@ export const useCreateAiMaterialImprovement = () => {
     onSuccess: async (result) => {
       if (result.status === "completed")
         client.setQueryData(aiKeys.materialImprovement(result.draft.operationId), result);
-      await client.invalidateQueries({ queryKey: aiKeys.balance });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: aiKeys.balance }),
+        client.invalidateQueries({ queryKey: billingKeys.summary() }),
+      ]);
     },
   });
 };
@@ -170,6 +184,7 @@ export const useApplyAiMaterialImprovement = (operationId: string) => {
         client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcards }),
         client.invalidateQueries({ queryKey: quizKeys.all }),
         client.invalidateQueries({ queryKey: aiKeys.balance }),
+        client.invalidateQueries({ queryKey: billingKeys.summary() }),
       ]);
     },
   });

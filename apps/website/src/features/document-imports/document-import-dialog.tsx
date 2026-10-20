@@ -36,12 +36,13 @@ export const DocumentImportDialog = ({
   open,
 }: {
   onOpenChange: (open: boolean) => void;
-  onSubmit: (files: PreparedImportFile[]) => void;
+  onSubmit: (files: PreparedImportFile[]) => Promise<boolean>;
   open: boolean;
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [files, setFiles] = useState<PendingFile[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const addFiles = (incoming: File[]) => {
     const available = DOCUMENT_IMPORT_MAX_ACTIVE - files.length;
     if (available <= 0) {
@@ -74,7 +75,13 @@ export const DocumentImportDialog = ({
     addFiles(Array.from(event.dataTransfer.files));
   };
   return (
-    <Dialog onOpenChange={close} open={open}>
+    <Dialog
+      onOpenChange={(nextOpen) => {
+        if (submitting && !nextOpen) return;
+        close(nextOpen);
+      }}
+      open={open}
+    >
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Importar documentos</DialogTitle>
@@ -161,23 +168,32 @@ export const DocumentImportDialog = ({
           </div>
         )}
         <DialogFooter>
-          <DialogCancelButton onClick={() => close(false)}>Cancelar</DialogCancelButton>
+          <DialogCancelButton disabled={submitting} onClick={() => close(false)}>
+            Cancelar
+          </DialogCancelButton>
           <Button
-            disabled={!files.length || files.some((item) => !item.title.trim())}
-            onClick={() => {
-              onSubmit(
-                files.map((item) => ({
-                  file: item.file,
-                  originalName: `${item.title.trim()}${item.extension}`,
-                })),
-              );
-              close(false);
+            disabled={submitting || !files.length || files.some((item) => !item.title.trim())}
+            onClick={async () => {
+              setSubmitting(true);
+              try {
+                const accepted = await onSubmit(
+                  files.map((item) => ({
+                    file: item.file,
+                    originalName: `${item.title.trim()}${item.extension}`,
+                  })),
+                );
+                if (accepted) close(false);
+              } finally {
+                setSubmitting(false);
+              }
             }}
           >
             <UploadCloudIcon />
-            {files.length
-              ? `Importar ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}`
-              : "Importar arquivos"}
+            {submitting
+              ? "Enviando…"
+              : files.length
+                ? `Importar ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}`
+                : "Importar arquivos"}
           </Button>
         </DialogFooter>
       </DialogContent>

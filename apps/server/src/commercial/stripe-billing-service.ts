@@ -1,5 +1,5 @@
 import { COMMERCIAL_PLAN_CATALOG, type BillingSubscriptionStatus } from "@lazuli/shared";
-import { and, asc, eq, gt, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, lt, lte, notInArray, or, sql } from "drizzle-orm";
 import Stripe from "stripe";
 
 import { grantCreditBucket } from "../ai-credits/ai-credit-buckets.ts";
@@ -22,7 +22,22 @@ const ACTIVE_SUBSCRIPTION_STATUS_VALUES: BillingSubscriptionStatus[] = [
   "trialing",
 ];
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set<string>(ACTIVE_SUBSCRIPTION_STATUS_VALUES);
+const TERMINAL_SUBSCRIPTION_STATUS_VALUES: BillingSubscriptionStatus[] = [
+  "canceled",
+  "incomplete_expired",
+];
 const WEBHOOK_PROCESSING_STALE_MS = 10 * 60 * 1_000;
+
+export const isManageableStripeSubscription = (subscription: Stripe.Subscription) =>
+  !TERMINAL_SUBSCRIPTION_STATUS_VALUES.includes(subscription.status as BillingSubscriptionStatus);
+
+export const selectPreferredStripeSubscription = (
+  subscriptions: Stripe.Subscription[],
+  storedSubscription?: Stripe.Subscription,
+) =>
+  subscriptions.find((subscription) => ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)) ??
+  storedSubscription ??
+  subscriptions.toSorted((left, right) => right.created - left.created)[0];
 
 const getStripeEnvironment = (secretKey: string) =>
   secretKey.startsWith("sk_live_") || secretKey.startsWith("rk_live_") ? "live" : "test";
@@ -54,6 +69,15 @@ const getPeriod = (subscription: Stripe.Subscription) => {
   };
 };
 
+// Stripe may represent a cancellation scheduled for the end of the current
+// period either through `cancel_at_period_end` or through an explicit
+// `cancel_at` timestamp (the Customer Portal currently uses the latter for
+// some cancellation flows). The application contract intentionally exposes a
+// single semantic flag regardless of which Stripe representation was used.
+export const hasScheduledStripeCancellation = (subscription: Stripe.Subscription) =>
+  subscription.cancel_at_period_end ||
+  (ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status) && subscription.cancel_at !== null);
+
 export const createStripeBillingService = (env: ServerEnv, database: Database) => {
   if (!env.BILLING_ENABLED) return null;
   const stripe = new Stripe(env.STRIPE_SECRET_KEY!);
@@ -61,6 +85,13 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
   const prices: Record<PaidPlan, string> = {
     essential: env.STRIPE_ESSENTIAL_PRICE_ID!,
     specialist: env.STRIPE_SPECIALIST_PRICE_ID!,
+  };
+  const getReturnUrl = (returnTo = "/flashcards", billing?: "canceled" | "portal" | "success") => {
+    const url = new URL(returnTo, env.WEBSITE_URL);
+    if (url.origin !== new URL(env.WEBSITE_URL).origin)
+      throw new Error("Billing return path must use the website origin");
+    if (billing) url.searchParams.set("billing", billing);
+    return url.toString();
   };
 
   const planFromPrice = (priceId: string): PaidPlan | null => {
@@ -159,7 +190,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
         environment,
         plan,
         status: subscription.status as BillingSubscriptionStatus,
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        cancelAtPeriodEnd: hasScheduledStripeCancellation(subscription),
         currentPeriodStart: period.start,
         currentPeriodEnd: period.end,
         accessUntil,
@@ -175,7 +206,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
           environment,
           plan,
           status: subscription.status as BillingSubscriptionStatus,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          cancelAtPeriodEnd: hasScheduledStripeCancellation(subscription),
           currentPeriodStart: period.start,
           currentPeriodEnd: period.end,
           accessUntil,
@@ -311,16 +342,16 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
     return null;
   };
 
-  const createPortalSessionForCustomer = async (customer: string) => {
+  const createPortalSessionForCustomer = async (customer: string, returnTo?: string) => {
     const session = await stripe.billingPortal.sessions.create({
       customer,
-      return_url: env.WEBSITE_URL,
+      return_url: getReturnUrl(returnTo, "portal"),
     });
     return { destination: "portal" as const, url: session.url };
   };
 
-  const createPortalSession = async (userId: string) =>
-    createPortalSessionForCustomer(await ensureCustomer(userId));
+  const createPortalSession = async (userId: string, returnTo?: string) =>
+    createPortalSessionForCustomer(await ensureCustomer(userId), returnTo);
 
   const processEvent = async (event: Stripe.Event) => {
     if (!(await claimWebhookEvent(event))) return false;
@@ -379,7 +410,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
 
   return {
     stripe,
-    async createCheckout(userId: string, plan: PaidPlan) {
+    async createCheckout(userId: string, plan: PaidPlan, returnTo?: string) {
       const customer = await ensureCustomer(userId);
       return database.transaction(async (tx) => {
         // Keep the local check, Stripe check and session creation serialized per
@@ -394,23 +425,19 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
           .where(
             and(
               eq(billingSubscription.userId, userId),
-              inArray(billingSubscription.status, ACTIVE_SUBSCRIPTION_STATUS_VALUES),
+              notInArray(billingSubscription.status, TERMINAL_SUBSCRIPTION_STATUS_VALUES),
             ),
           )
           .limit(1);
-        if (current) return createPortalSessionForCustomer(customer);
+        if (current) return createPortalSessionForCustomer(customer, returnTo);
 
         const subscriptions = await stripe.subscriptions.list({
           customer,
           limit: 100,
           status: "all",
         });
-        if (
-          subscriptions.data.some((subscription) =>
-            ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status),
-          )
-        )
-          return createPortalSessionForCustomer(customer);
+        if (subscriptions.data.some(isManageableStripeSubscription))
+          return createPortalSessionForCustomer(customer, returnTo);
 
         const openSessions = await stripe.checkout.sessions.list({
           customer,
@@ -436,8 +463,8 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
             client_reference_id: userId,
             metadata: { lazuliUserId: userId, plan },
             subscription_data: { metadata: { lazuliUserId: userId, plan } },
-            success_url: `${env.WEBSITE_URL}/flashcards?billing=success`,
-            cancel_url: `${env.WEBSITE_URL}/flashcards?billing=canceled`,
+            success_url: getReturnUrl(returnTo, "success"),
+            cancel_url: getReturnUrl(returnTo, "canceled"),
           },
           { idempotencyKey: `lazuli:checkout:${userId}:${plan}:${window}` },
         );
@@ -445,8 +472,71 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
         return { destination: "checkout" as const, url: session.url };
       });
     },
-    async createPortal(userId: string) {
-      return createPortalSession(userId);
+    async createPortal(userId: string, returnTo?: string) {
+      return createPortalSession(userId, returnTo);
+    },
+    async refreshSubscription(userId: string) {
+      // Stripe event timestamps have one-second precision. Using a fractional
+      // refresh timestamp could make a webhook created in this same second look
+      // stale and prevent it from applying newer provider state.
+      const refreshedAt = new Date(Math.floor(Date.now() / 1_000) * 1_000);
+      const [customer, current] = await Promise.all([
+        database
+          .select({
+            environment: billingCustomer.environment,
+            stripeCustomerId: billingCustomer.stripeCustomerId,
+          })
+          .from(billingCustomer)
+          .where(eq(billingCustomer.userId, userId))
+          .limit(1),
+        database
+          .select({
+            environment: billingSubscription.environment,
+            stripeSubscriptionId: billingSubscription.stripeSubscriptionId,
+          })
+          .from(billingSubscription)
+          .where(eq(billingSubscription.userId, userId))
+          .limit(1),
+      ]);
+      const billingOwner = customer[0];
+      const storedSubscription = current[0];
+      if (!billingOwner) return false;
+      if (
+        billingOwner.environment !== environment ||
+        (storedSubscription && storedSubscription.environment !== environment)
+      )
+        throw new Error("Stripe environment does not match the billing account");
+
+      let subscription: Stripe.Subscription | undefined;
+      if (storedSubscription) {
+        subscription = await stripe.subscriptions.retrieve(storedSubscription.stripeSubscriptionId);
+        if (!ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)) {
+          const subscriptions = await stripe.subscriptions.list({
+            customer: billingOwner.stripeCustomerId,
+            limit: 100,
+            status: "all",
+          });
+          subscription = selectPreferredStripeSubscription(subscriptions.data, subscription);
+        }
+      } else {
+        const subscriptions = await stripe.subscriptions.list({
+          customer: billingOwner.stripeCustomerId,
+          limit: 100,
+          status: "all",
+        });
+        subscription = selectPreferredStripeSubscription(subscriptions.data);
+      }
+      if (!subscription) return false;
+
+      await database.transaction((tx) =>
+        syncSubscription(
+          tx,
+          subscription,
+          refreshedAt,
+          `direct-refresh:${subscription.id}:${refreshedAt.getTime()}`,
+        ),
+      );
+      return true;
     },
     constructEvent(rawBody: Buffer, signature: string) {
       return stripe.webhooks.constructEvent(rawBody, signature, env.STRIPE_WEBHOOK_SECRET!);
@@ -516,8 +606,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
           issues.push({ code: "MULTIPLE_ACTIVE_SUBSCRIPTIONS", customerId: customer.id });
           continue;
         }
-        const subscription =
-          active[0] ?? result.data.sort((left, right) => right.created - left.created)[0];
+        const subscription = selectPreferredStripeSubscription(result.data);
         if (!subscription) continue;
         await database.transaction((tx) =>
           syncSubscription(

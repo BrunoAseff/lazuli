@@ -1,5 +1,6 @@
 export const QUERY_KEY_ROOTS = {
   ai: ["ai"] as const,
+  billing: ["billing"] as const,
   documents: ["documents"] as const,
   flashcardCollections: ["flashcard-collections"] as const,
   flashcards: ["flashcards"] as const,

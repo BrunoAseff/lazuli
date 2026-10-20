@@ -43,6 +43,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip.tsx";
 import { useDocument, useProjectTree } from "@/features/documents/api/document-queries.ts";
+import { CreditUpgradeGuard } from "@/features/billing/components/credit-upgrade-guard.tsx";
 import { useProjects } from "@/features/projects/api/project-queries.ts";
 import { hasDuplicateQuizOptionTexts } from "@/features/quizzes/components/quiz-alternatives-field.tsx";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
@@ -508,17 +509,19 @@ export const AiCollectionGenerationDialog = ({
             </Button>
           ) : (
             !busy && (
-              <Button
-                disabled={
-                  !document.data ||
-                  (!wholeDocumentEligible && !selectedSectionEligible) ||
-                  create.isPending ||
-                  (balance.data?.available ?? 0) < cost
-                }
-                onClick={() => void requestGeneration()}
-              >
-                <MagicWandIcon /> Gerar propostas
-              </Button>
+              <CreditUpgradeGuard available={balance.data?.available} cost={cost}>
+                <Button
+                  disabled={
+                    !document.data ||
+                    (!wholeDocumentEligible && !selectedSectionEligible) ||
+                    create.isPending ||
+                    (balance.data?.available ?? 0) < cost
+                  }
+                  onClick={() => void requestGeneration()}
+                >
+                  <MagicWandIcon /> Gerar propostas
+                </Button>
+              </CreditUpgradeGuard>
             )
           )}
         </DialogFooter>

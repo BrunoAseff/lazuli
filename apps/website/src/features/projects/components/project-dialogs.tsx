@@ -40,15 +40,19 @@ import { useCreateProject, useDeleteProject, useUpdateProject } from "../api/pro
 import { ProjectApiError } from "../api/project-api.ts";
 import { getProjectErrorMessage } from "../project-messages.ts";
 import { CoverPicker } from "./cover-picker.tsx";
+import { getCommercialLimit } from "@/features/billing/billing-errors.ts";
+import type { CommercialLimitDetails } from "@lazuli/shared";
 
 const renameProjectSchema = z.object({ title: projectTitleSchema });
 type RenameProjectValues = z.input<typeof renameProjectSchema>;
 type CreateProjectValues = z.input<typeof createProjectSchema>;
 
 export const CreateProjectDialog = ({
+  onLimit,
   onOpenChange,
   open,
 }: {
+  onLimit?: (details: CommercialLimitDetails) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
@@ -75,6 +79,11 @@ export const CreateProjectDialog = ({
       toast.success("Projeto criado.");
       close();
     } catch (error) {
+      const limit = getCommercialLimit(error);
+      if (limit) {
+        onLimit?.(limit);
+        return;
+      }
       toast.error(
         getProjectErrorMessage(
           error instanceof ProjectApiError ? error : null,

@@ -34,6 +34,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { useFlashcardCollections } from "@/features/flashcards/api/flashcard-collection-queries.ts";
 import { useQuizCollections } from "@/features/quizzes/api/quiz-collection-queries.ts";
+import { CreditUpgradeGuard } from "@/features/billing/components/credit-upgrade-guard.tsx";
 import { hasDuplicateQuizOptionTexts } from "@/features/quizzes/components/quiz-alternatives-field.tsx";
 import type { AiEditableQuizProposal } from "./ai-quiz-proposal-editor.tsx";
 import { AiProposalReviewList } from "./ai-proposal-review-list.tsx";
@@ -661,18 +662,20 @@ export const AiSelectionGenerationDialog = ({
                 Salvar {selectedCount} {selectedCount === 1 ? "material" : "materiais"}
               </Button>
             ) : (
-              <Button
-                className="w-full min-w-0 shrink sm:w-auto"
-                disabled={
-                  createGeneration.isPending ||
-                  !collectionId ||
-                  balance.data === undefined ||
-                  balance.data.available < cost
-                }
-                onClick={() => void requestGeneration()}
-              >
-                Gerar propostas
-              </Button>
+              <CreditUpgradeGuard available={balance.data?.available} cost={cost}>
+                <Button
+                  className="w-full min-w-0 shrink sm:w-auto"
+                  disabled={
+                    createGeneration.isPending ||
+                    !collectionId ||
+                    balance.data === undefined ||
+                    balance.data.available < cost
+                  }
+                  onClick={() => void requestGeneration()}
+                >
+                  Gerar propostas
+                </Button>
+              </CreditUpgradeGuard>
             )}
           </DialogFooter>
         </DialogContent>

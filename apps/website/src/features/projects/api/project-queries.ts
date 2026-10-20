@@ -2,6 +2,7 @@ import { PROJECT_PAGE_SIZE, type ProjectListQuery, type UpdateProjectInput } fro
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
+import { billingKeys } from "@/features/billing/api/billing-queries.ts";
 import {
   fetchProject,
   fetchProjectDocuments,
@@ -52,7 +53,11 @@ export const useCreateProject = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: postProject,
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: projectKeys.lists() }),
+    onSuccess: async () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: projectKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: billingKeys.summary() }),
+      ]),
   });
 };
 
@@ -65,6 +70,7 @@ export const useUpdateProject = (projectId: string) => {
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() }),
         queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) }),
         queryClient.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcardCollections }),
+        queryClient.invalidateQueries({ queryKey: billingKeys.summary() }),
       ]);
     },
   });

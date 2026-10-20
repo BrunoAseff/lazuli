@@ -28,6 +28,8 @@ import { ProjectPagination } from "../components/project-pagination.tsx";
 import { ProjectTable } from "../components/project-table.tsx";
 import { ViewModeToggle, type ViewMode } from "@/components/view-mode-toggle.tsx";
 import type { ProjectAction } from "../project-types.ts";
+import { useBillingSummary } from "@/features/billing/api/billing-queries.ts";
+import { useBilling } from "@/features/billing/billing-context.tsx";
 
 const getInitialView = (): ViewMode =>
   localStorage.getItem("lazuli-project-view") === "table" ? "table" : "cards";
@@ -42,6 +44,8 @@ export const ProjectListPage = () => {
   });
   const [view, setView] = useState<ViewMode>(getInitialView);
   const [createOpen, setCreateOpen] = useState(false);
+  const billing = useBillingSummary();
+  const { openLimit } = useBilling();
   const [activeAction, setActiveAction] = useState<{
     action: ProjectAction;
     project: ProjectSummary;
@@ -80,6 +84,13 @@ export const ProjectListPage = () => {
 
   const openAction = (action: ProjectAction, project: ProjectSummary) =>
     setActiveAction({ action, project });
+  const openCreate = () => {
+    if (billing.data && !billing.data.capabilities.canCreateProject) {
+      openLimit("projects");
+      return;
+    }
+    setCreateOpen(true);
+  };
 
   const hasProjects = Boolean(projects.data?.items.length);
   const isEmptyLibrary = projects.data?.pagination.totalItems === 0 && !query;
@@ -104,7 +115,7 @@ export const ProjectListPage = () => {
         <div className="ml-auto">
           <ViewModeToggle label="Visualização dos projetos" onChange={changeView} value={view} />
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button onClick={openCreate}>
           <PlusIcon aria-hidden="true" data-icon="inline-start" />
           Novo projeto
         </Button>
@@ -112,7 +123,7 @@ export const ProjectListPage = () => {
 
       {projects.isPending && <ProjectListSkeleton view={view} />}
       {projects.isError && <ProjectListError onRetry={() => void projects.refetch()} />}
-      {isEmptyLibrary && <EmptyProjects onCreate={() => setCreateOpen(true)} />}
+      {isEmptyLibrary && <EmptyProjects onCreate={openCreate} />}
       {hasNoResults && <NoProjectResults onClear={clearSearch} />}
       {hasProjects && view === "cards" && (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
@@ -140,7 +151,11 @@ export const ProjectListPage = () => {
       {projects.data && (
         <ProjectPagination onPageChange={setPage} pagination={projects.data.pagination} />
       )}
-      <CreateProjectDialog onOpenChange={setCreateOpen} open={createOpen} />
+      <CreateProjectDialog
+        onLimit={(details) => openLimit("projects", details)}
+        onOpenChange={setCreateOpen}
+        open={createOpen}
+      />
       {activeAction?.action === "rename" && (
         <RenameProjectDialog
           onOpenChange={(open) => !open && setActiveAction(null)}

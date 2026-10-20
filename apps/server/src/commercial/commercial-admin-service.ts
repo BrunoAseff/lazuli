@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { CommercialPlan } from "@lazuli/shared";
-import { and, asc, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 
 import { grantCreditBucket } from "../ai-credits/ai-credit-buckets.ts";
 import {
@@ -245,6 +245,7 @@ export const createCommercialAdminService = (database: Database, environment: st
     operatorId: string;
     plan: Exclude<CommercialPlan, "basic">;
     reason: string;
+    skipIfAlreadyGranted?: boolean;
   }) {
     const target = await findUser(database, input.email);
     if (!target) return null;
@@ -254,8 +255,46 @@ export const createCommercialAdminService = (database: Database, environment: st
         operatorId: input.operatorId,
         targetUserId: target.id,
       });
-      if (completed) return completed;
+      if (completed) return { ...completed, replayed: true };
       const now = new Date();
+      if (input.skipIfAlreadyGranted) {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${`admin-plan:${target.id}:${input.plan}`}))`,
+        );
+        const [existingGrant] = await tx
+          .select({ id: adminPlanGrant.id })
+          .from(adminPlanGrant)
+          .where(
+            and(
+              eq(adminPlanGrant.userId, target.id),
+              eq(adminPlanGrant.plan, input.plan),
+              isNull(adminPlanGrant.revokedAt),
+              lte(adminPlanGrant.startsAt, now),
+              or(isNull(adminPlanGrant.endsAt), gt(adminPlanGrant.endsAt, now)),
+            ),
+          )
+          .limit(1)
+          .for("update");
+        if (existingGrant) {
+          const auditResult = {
+            alreadyGranted: true,
+            created: false,
+            endsAt: input.endsAt?.toISOString() ?? null,
+            plan: input.plan,
+          };
+          await writeAudit(tx, {
+            action: "plan.grant",
+            environment,
+            idempotencyKey: input.idempotencyKey,
+            metadata: { endsAt: auditResult.endsAt, plan: input.plan },
+            operatorId: input.operatorId,
+            reason: input.reason,
+            result: auditResult,
+            targetUserId: target.id,
+          });
+          return auditResult;
+        }
+      }
       const [grant] = await tx
         .insert(adminPlanGrant)
         .values({
@@ -281,6 +320,7 @@ export const createCommercialAdminService = (database: Database, environment: st
           userId: target.id,
         });
       const auditResult = {
+        alreadyGranted: false,
         created: Boolean(grant),
         endsAt: input.endsAt?.toISOString() ?? null,
         plan: input.plan,
