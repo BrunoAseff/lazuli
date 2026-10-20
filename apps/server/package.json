@@ -49,6 +49,7 @@
     "pino": "catalog:",
     "pngjs": "catalog:",
     "postgres": "catalog:",
+    "posthog-node": "catalog:",
     "resend": "catalog:",
     "sanitize-html": "catalog:",
     "stripe": "catalog:",

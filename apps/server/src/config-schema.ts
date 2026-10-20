@@ -43,6 +43,9 @@ const serverEnvSchema = z
     LOG_PRETTY: booleanEnvironmentValue(true),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     OPENAI_API_KEY: optionalNonEmptyEnvironmentValue,
+    ANALYTICS_ENABLED: booleanEnvironmentValue(false),
+    POSTHOG_API_KEY: optionalNonEmptyEnvironmentValue,
+    POSTHOG_HOST: z.url().default("https://eu.i.posthog.com"),
     RESEND_API_KEY: z.string().min(1),
     S3_ACCESS_KEY_ID: z.string().min(1).default("lazuli"),
     S3_BUCKET: z.string().min(1).default("lazuli-assets"),
@@ -67,6 +70,12 @@ const serverEnvSchema = z
         code: "custom",
         message: "OPENAI_API_KEY is required when AI_REAL_CALLS_ENABLED=true",
         path: ["OPENAI_API_KEY"],
+      });
+    if (env.ANALYTICS_ENABLED && !env.POSTHOG_API_KEY)
+      context.addIssue({
+        code: "custom",
+        message: "POSTHOG_API_KEY is required when ANALYTICS_ENABLED=true",
+        path: ["POSTHOG_API_KEY"],
       });
     if (env.BILLING_ENABLED)
       for (const key of [

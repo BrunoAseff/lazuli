@@ -19,6 +19,7 @@ describe("server environment", () => {
     expect(environment.S3_FORCE_PATH_STYLE).toBe(true);
     expect(environment.S3_CREATE_BUCKET_IF_MISSING).toBe(true);
     expect(environment.COMMERCIAL_LIMITS_ENFORCED).toBe(false);
+    expect(environment.ANALYTICS_ENABLED).toBe(false);
   });
 
   it("enables commercial limit enforcement independently from Stripe billing", () => {
@@ -87,5 +88,23 @@ describe("server environment", () => {
     expect(environment.STRIPE_SECRET_KEY).toBeUndefined();
     expect(environment.STRIPE_SPECIALIST_PRICE_ID).toBeUndefined();
     expect(environment.STRIPE_WEBHOOK_SECRET).toBeUndefined();
+  });
+
+  it("treats an empty PostHog key as unset while analytics is disabled", () => {
+    const environment = parseServerEnv({ ...validEnvironment, POSTHOG_API_KEY: "" });
+    expect(environment.POSTHOG_API_KEY).toBeUndefined();
+  });
+
+  it("requires a PostHog key only when analytics is enabled", () => {
+    expect(() => parseServerEnv({ ...validEnvironment, ANALYTICS_ENABLED: "true" })).toThrow(
+      "POSTHOG_API_KEY",
+    );
+    expect(
+      parseServerEnv({
+        ...validEnvironment,
+        ANALYTICS_ENABLED: "true",
+        POSTHOG_API_KEY: "phc_test",
+      }).ANALYTICS_ENABLED,
+    ).toBe(true);
   });
 });

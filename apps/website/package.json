@@ -23,6 +23,7 @@
     "clsx": "catalog:",
     "lucide-react": "catalog:",
     "next-themes": "catalog:",
+    "posthog-js": "catalog:",
     "radix-ui": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
