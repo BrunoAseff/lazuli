@@ -614,5 +614,19 @@ export const approveAiSelectionGeneration = async (
       .update(aiGeneration)
       .set({ approvedItems: submittedIds.length })
       .where(eq(aiGeneration.id, operation.id));
-    return { kind: "ok" as const, createdIds: submittedIds, revision };
+    return {
+      analytics: {
+        kind: draft.kind === "flashcard" ? ("flashcard" as const) : ("quiz" as const),
+        quantity: submittedIds.length,
+        scope:
+          operation.type === "collection_generation"
+            ? ("collection" as const)
+            : draft.sourceScope === "document"
+              ? ("document" as const)
+              : ("selection" as const),
+      },
+      kind: "ok" as const,
+      createdIds: submittedIds,
+      revision,
+    };
   });

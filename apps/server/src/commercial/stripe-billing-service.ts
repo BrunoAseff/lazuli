@@ -3,6 +3,7 @@ import { and, asc, eq, gt, inArray, isNull, lt, lte, notInArray, or, sql } from 
 import Stripe from "stripe";
 
 import { grantCreditBucket } from "../ai-credits/ai-credit-buckets.ts";
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import { lockAiCreditAccount } from "../ai-credits/ai-credit-transactions.ts";
 import type { ServerEnv } from "../config.ts";
 import type { Database, Transaction } from "../database/client.ts";
@@ -22,6 +23,7 @@ const ACTIVE_SUBSCRIPTION_STATUS_VALUES: BillingSubscriptionStatus[] = [
   "trialing",
 ];
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set<string>(ACTIVE_SUBSCRIPTION_STATUS_VALUES);
+const ACTIVATED_SUBSCRIPTION_STATUSES = new Set<string>(["active", "trialing"]);
 const TERMINAL_SUBSCRIPTION_STATUS_VALUES: BillingSubscriptionStatus[] = [
   "canceled",
   "incomplete_expired",
@@ -30,6 +32,23 @@ const WEBHOOK_PROCESSING_STALE_MS = 10 * 60 * 1_000;
 
 export const isManageableStripeSubscription = (subscription: Stripe.Subscription) =>
   !TERMINAL_SUBSCRIPTION_STATUS_VALUES.includes(subscription.status as BillingSubscriptionStatus);
+
+export const becameActiveSubscription = ({
+  nextStatus,
+  previousAccessUntil,
+  previousStatus,
+  transitionAt,
+}: {
+  nextStatus: BillingSubscriptionStatus;
+  previousAccessUntil: Date | null;
+  previousStatus: BillingSubscriptionStatus | null;
+  transitionAt: Date;
+}) => {
+  if (!ACTIVATED_SUBSCRIPTION_STATUSES.has(nextStatus)) return false;
+  if (previousStatus && ACTIVATED_SUBSCRIPTION_STATUSES.has(previousStatus)) return false;
+  if (previousStatus !== "past_due") return true;
+  return !previousAccessUntil || previousAccessUntil <= transitionAt;
+};
 
 export const selectPreferredStripeSubscription = (
   subscriptions: Stripe.Subscription[],
@@ -78,7 +97,11 @@ export const hasScheduledStripeCancellation = (subscription: Stripe.Subscription
   subscription.cancel_at_period_end ||
   (ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status) && subscription.cancel_at !== null);
 
-export const createStripeBillingService = (env: ServerEnv, database: Database) => {
+export const createStripeBillingService = (
+  env: ServerEnv,
+  database: Database,
+  analytics?: AnalyticsService,
+) => {
   if (!env.BILLING_ENABLED) return null;
   const stripe = new Stripe(env.STRIPE_SECRET_KEY!);
   const environment = getStripeEnvironment(env.STRIPE_SECRET_KEY!);
@@ -165,6 +188,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
     const plan = priceId ? planFromPrice(priceId) : null;
     if (!priceId || !plan) throw new Error(`Unknown Stripe price ${priceId ?? "missing"}`);
     const period = getPeriod(subscription);
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`billing-sync:${userId}`}))`);
     const [previous] = await tx
       .select()
       .from(billingSubscription)
@@ -173,7 +197,8 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
       .for("update");
     if (previous && previous.environment !== environment)
       throw new Error("Stripe webhook environment does not match the billing subscription");
-    if (previous && previous.providerUpdatedAt > eventCreatedAt) return { previous, plan, userId };
+    if (previous && previous.providerUpdatedAt > eventCreatedAt)
+      return { activated: false, previous, plan, userId };
     const accessUntil = getAccessUntil({
       eventCreatedAt,
       graceDays: env.BILLING_PAYMENT_GRACE_DAYS,
@@ -217,7 +242,17 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
         },
         setWhere: lte(billingSubscription.providerUpdatedAt, eventCreatedAt),
       });
-    return { previous, plan, userId };
+    return {
+      activated: becameActiveSubscription({
+        nextStatus: subscription.status as BillingSubscriptionStatus,
+        previousAccessUntil: previous?.accessUntil ?? null,
+        previousStatus: previous?.status ?? null,
+        transitionAt: eventCreatedAt,
+      }),
+      previous,
+      plan,
+      userId,
+    };
   };
 
   const grantInvoiceCredits = async (
@@ -269,6 +304,15 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
       startsAt: period.start,
       userId,
     });
+  };
+
+  const captureSubscriptionActivation = async (result: {
+    activated: boolean;
+    plan: PaidPlan;
+    userId: string;
+  }) => {
+    if (result.activated)
+      await analytics?.capture(result.userId, "subscription_activated", { plan: result.plan });
   };
 
   const getInvoiceSubscriptionId = (invoice: Stripe.Invoice) => {
@@ -357,10 +401,17 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
     if (!(await claimWebhookEvent(event))) return false;
     try {
       const subscription = await resolveEventSubscription(event);
-      await database.transaction(async (tx) => {
+      const activatedSubscription = await database.transaction(async (tx) => {
+        let activation: { plan: PaidPlan; userId: string } | null = null;
         if (event.type.startsWith("customer.subscription.")) {
           if (!subscription) throw new Error("Stripe subscription payload is missing");
-          await syncSubscription(tx, subscription, new Date(event.created * 1000), event.id);
+          const synced = await syncSubscription(
+            tx,
+            subscription,
+            new Date(event.created * 1000),
+            event.id,
+          );
+          if (synced.activated) activation = { plan: synced.plan, userId: synced.userId };
         } else if (event.type === "invoice.paid") {
           if (subscription) {
             const synced = await syncSubscription(
@@ -369,6 +420,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
               new Date(event.created * 1000),
               event.id,
             );
+            if (synced.activated) activation = { plan: synced.plan, userId: synced.userId };
             await grantInvoiceCredits(tx, subscription, synced.plan, synced.userId);
           }
         } else if (
@@ -378,8 +430,15 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
           if (subscription)
             await syncSubscription(tx, subscription, new Date(event.created * 1000), event.id);
         } else if (event.type === "checkout.session.completed") {
-          if (subscription)
-            await syncSubscription(tx, subscription, new Date(event.created * 1000), event.id);
+          if (subscription) {
+            const synced = await syncSubscription(
+              tx,
+              subscription,
+              new Date(event.created * 1000),
+              event.id,
+            );
+            if (synced.activated) activation = { plan: synced.plan, userId: synced.userId };
+          }
         }
         await tx
           .update(billingWebhookEvent)
@@ -390,7 +449,10 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
             updatedAt: new Date(),
           })
           .where(eq(billingWebhookEvent.stripeEventId, event.id));
+        return activation;
       });
+      if (activatedSubscription)
+        await captureSubscriptionActivation({ activated: true, ...activatedSubscription });
       return true;
     } catch (error) {
       await database
@@ -528,7 +590,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
       }
       if (!subscription) return false;
 
-      await database.transaction((tx) =>
+      const synced = await database.transaction((tx) =>
         syncSubscription(
           tx,
           subscription,
@@ -536,6 +598,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
           `direct-refresh:${subscription.id}:${refreshedAt.getTime()}`,
         ),
       );
+      await captureSubscriptionActivation(synced);
       return true;
     },
     constructEvent(rawBody: Buffer, signature: string) {
@@ -608,7 +671,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
         }
         const subscription = selectPreferredStripeSubscription(result.data);
         if (!subscription) continue;
-        await database.transaction((tx) =>
+        const synced = await database.transaction((tx) =>
           syncSubscription(
             tx,
             subscription,
@@ -616,6 +679,7 @@ export const createStripeBillingService = (env: ServerEnv, database: Database) =
             `reconcile:${subscription.id}:${Date.now()}`,
           ),
         );
+        await captureSubscriptionActivation(synced);
         reconciled += 1;
       }
       return { issues, reconciled };

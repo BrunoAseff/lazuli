@@ -1,5 +1,6 @@
 export * from "./ai.ts";
 export * from "./ai-credits.ts";
+export * from "./analytics.ts";
 export * from "./auth.ts";
 export * from "./billing.ts";
 export * from "./documents.ts";

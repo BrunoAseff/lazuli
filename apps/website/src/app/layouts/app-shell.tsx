@@ -10,6 +10,7 @@ import { DocumentImportProvider } from "@/features/document-imports/document-imp
 import { authClient } from "@/features/auth/auth-client.ts";
 import { SessionLoading } from "@/features/auth/components/session-feedback.tsx";
 import { BillingProvider } from "@/features/billing/billing-context.tsx";
+import { AnalyticsProvider } from "@/features/analytics/analytics-provider.tsx";
 
 const activeUserStorageKey = "lazuli-active-user-id";
 
@@ -30,29 +31,31 @@ export const AppShell = () => {
   if (userId && cacheUserId !== userId) return <SessionLoading />;
 
   return (
-    <BillingProvider>
-      <SidebarProvider
-        style={
-          {
-            "--sidebar-width": "13.375rem",
-            "--sidebar-width-icon": "13.375rem",
-          } as CSSProperties
-        }
-      >
-        <AppSidebar />
-        <SidebarInset>
-          <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4 md:hidden">
-            <SidebarTrigger />
-            <Separator orientation="vertical" />
-            <BrandBadge className="size-8" />
-            <span className="font-heading text-xl font-medium tracking-[-0.02em]">Lazúli</span>
-          </header>
-          <DocumentImportProvider key={userId} userId={userId ?? ""}>
-            <Outlet />
-          </DocumentImportProvider>
-        </SidebarInset>
-      </SidebarProvider>
-    </BillingProvider>
+    <AnalyticsProvider userId={userId ?? ""}>
+      <BillingProvider>
+        <SidebarProvider
+          style={
+            {
+              "--sidebar-width": "13.375rem",
+              "--sidebar-width-icon": "13.375rem",
+            } as CSSProperties
+          }
+        >
+          <AppSidebar />
+          <SidebarInset>
+            <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4 md:hidden">
+              <SidebarTrigger />
+              <Separator orientation="vertical" />
+              <BrandBadge className="size-8" />
+              <span className="font-heading text-xl font-medium tracking-[-0.02em]">Lazúli</span>
+            </header>
+            <DocumentImportProvider key={userId} userId={userId ?? ""}>
+              <Outlet />
+            </DocumentImportProvider>
+          </SidebarInset>
+        </SidebarProvider>
+      </BillingProvider>
+    </AnalyticsProvider>
   );
 };
 

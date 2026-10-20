@@ -12,6 +12,7 @@ vi.mock("./commercial-service.ts", () => commercialService);
 
 const apps: ReturnType<typeof Fastify>[] = [];
 const database = {} as Database;
+const analyticsCapture = vi.fn();
 const verifiedSession = {
   session: { id: "session-1" },
   user: { id: "user-1", email: "ana@example.com", name: "Ana" },
@@ -42,7 +43,13 @@ const registerRoutes = async ({
   const app = Fastify({ logger: false });
   apps.push(app);
   await app.register(
-    createCommercialRoutes({ auth, database, stripe, websiteUrl: "http://localhost:3000" }),
+    createCommercialRoutes({
+      analytics: { capture: analyticsCapture, shutdown: vi.fn() },
+      auth,
+      database,
+      stripe,
+      websiteUrl: "http://localhost:3000",
+    }),
   );
   return app;
 };
@@ -89,6 +96,9 @@ describe("commercial routes", () => {
 
     expect(response.statusCode).toBe(200);
     expect(stripe.createCheckout).toHaveBeenCalledWith("user-1", "essential", undefined);
+    expect(analyticsCapture).toHaveBeenCalledWith("user-1", "checkout_started", {
+      plan: "essential",
+    });
     expect(response.json()).toEqual({
       destination: "checkout",
       url: "https://checkout.stripe.test/session",

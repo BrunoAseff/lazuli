@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Auth } from "../auth/auth.ts";
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import type { Database } from "../database/client.ts";
 import { createFlashcardPracticeRoutes } from "./flashcard-practice-routes.ts";
 
@@ -19,6 +20,7 @@ const sessionId = "8a9c628c-b222-42d9-a507-d8528f5015c0";
 const reviewId = "51e19888-da91-4723-a170-23315343290a";
 const apps: ReturnType<typeof Fastify>[] = [];
 const database = {} as Database;
+const analytics = { capture: vi.fn() } as unknown as AnalyticsService;
 const authSession = {
   session: { id: "session-1" },
   user: { id: "user-1", email: "ana@example.com", name: "Ana" },
@@ -29,7 +31,12 @@ const register = async (auth = createAuth(authSession)) => {
   const app = Fastify({ logger: false });
   apps.push(app);
   await app.register(
-    createFlashcardPracticeRoutes({ auth, database, websiteUrl: "http://localhost:3000" }),
+    createFlashcardPracticeRoutes({
+      analytics,
+      auth,
+      database,
+      websiteUrl: "http://localhost:3000",
+    }),
   );
   return app;
 };
@@ -82,7 +89,11 @@ describe("flashcard practice routes", () => {
   });
 
   it("serializes an idempotent review response", async () => {
-    queries.submitPracticeReview.mockResolvedValue({ kind: "ok", session: completedSession });
+    queries.submitPracticeReview.mockResolvedValue({
+      kind: "ok",
+      completed: false,
+      session: completedSession,
+    });
     const app = await register();
     const response = await app.inject({
       method: "POST",
@@ -97,5 +108,30 @@ describe("flashcard practice routes", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ id: sessionId, status: "completed" });
     expect(response.json().finishedAt).toBe("2026-08-23T12:01:00.000Z");
+    expect(analytics.capture).not.toHaveBeenCalled();
+  });
+
+  it("captures completion only for the review that completes the session", async () => {
+    queries.submitPracticeReview.mockResolvedValue({
+      kind: "ok",
+      completed: true,
+      session: completedSession,
+    });
+    const app = await register();
+    const response = await app.inject({
+      method: "POST",
+      headers: { origin: "http://localhost:3000" },
+      payload: {
+        id: reviewId,
+        itemId: "7412788b-ef4b-4bbd-8cab-493d32738867",
+        rating: "good",
+      },
+      url: `/api/flashcard-practice-sessions/${sessionId}/reviews`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(analytics.capture).toHaveBeenCalledWith("user-1", "practice_completed", {
+      itemCount: 1,
+      kind: "flashcard",
+    });
   });
 });

@@ -92,6 +92,7 @@ const auth = {
 const database = {} as Database;
 const storageGet = vi.fn();
 const storage = { get: storageGet } as unknown as ObjectStorage;
+const analyticsCapture = vi.fn();
 const apps: ReturnType<typeof Fastify>[] = [];
 
 const register = async (serviceOverrides: Partial<AiGenerationService> = {}) => {
@@ -115,6 +116,7 @@ const register = async (serviceOverrides: Partial<AiGenerationService> = {}) => 
   apps.push(app);
   await app.register(
     createAiGenerationRoutes({
+      analytics: { capture: analyticsCapture, shutdown: vi.fn() },
       auth,
       database,
       service,
@@ -224,6 +226,34 @@ describe("AI material improvement routes", () => {
         },
       }),
     );
+  });
+
+  it("captures a material improvement only after it is applied", async () => {
+    improvementQueries.applyAiMaterialImprovement.mockResolvedValue({
+      kind: "ok",
+      materialId: "77777777-7777-4777-8777-777777777777",
+      updatedAt: "2026-10-20T12:00:00.000Z",
+    });
+    const { app } = await register();
+
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "POST",
+      payload: {
+        answer: approvalRequestBody.flashcards[0]!.answer,
+        expectedUpdatedAt: "2026-10-05T12:00:00.000Z",
+        kind: "flashcard",
+        question: approvalRequestBody.flashcards[0]!.question,
+      },
+      url: `/api/ai/material-improvements/${operationId}/apply`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(analyticsCapture).toHaveBeenCalledWith("user-1", "ai_proposal_approved", {
+      kind: "flashcard",
+      quantity: 1,
+      scope: "improvement",
+    });
   });
 });
 
@@ -374,6 +404,7 @@ describe("AI selection generation routes", () => {
 
   it("approves materials only through the authenticated atomic query", async () => {
     queries.approveAiSelectionGeneration.mockResolvedValue({
+      analytics: { kind: "flashcard", quantity: 1, scope: "selection" },
       createdIds: ["55555555-5555-4555-8555-555555555555"],
       kind: "ok",
       revision: 3,
@@ -397,6 +428,11 @@ describe("AI selection generation routes", () => {
       operationId,
       expect.any(Object),
     );
+    expect(analyticsCapture).toHaveBeenCalledWith("user-1", "ai_proposal_approved", {
+      kind: "flashcard",
+      quantity: 1,
+      scope: "selection",
+    });
   });
 
   it("reports the material whose reference cannot be anchored", async () => {

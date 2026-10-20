@@ -10,6 +10,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
 import type { Auth } from "../auth/auth.ts";
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import { requireSession } from "../auth/require-session.ts";
 import type { Database } from "../database/client.ts";
 import { sendCommercialLimitError } from "../commercial/commercial-limit-errors.ts";
@@ -79,12 +80,14 @@ const enrichStoredDraftSource = async <
 };
 
 export const createAiGenerationRoutes = ({
+  analytics,
   auth,
   database,
   service,
   storage,
   websiteUrl,
 }: {
+  analytics?: AnalyticsService;
   auth: Auth;
   database: Database;
   service: AiGenerationService;
@@ -280,6 +283,11 @@ export const createAiGenerationRoutes = ({
           message: "A melhoria aceita apenas o conteúdo textual gerado nesta etapa.",
         });
       if (result.kind === "invalid") return sendValidationError(reply);
+      await analytics?.capture(session.user.id, "ai_proposal_approved", {
+        kind: input.data.kind === "flashcard" ? "flashcard" : "quiz",
+        quantity: 1,
+        scope: "improvement",
+      });
       return { materialId: result.materialId, updatedAt: result.updatedAt };
     });
 
@@ -434,6 +442,7 @@ export const createAiGenerationRoutes = ({
           .status(404)
           .send({ code: "COLLECTION_NOT_FOUND", message: "A coleção não foi encontrada." });
       if (result.kind === "invalid-items") return sendValidationError(reply);
+      await analytics?.capture(session.user.id, "ai_proposal_approved", result.analytics);
       return { createdIds: result.createdIds, revision: result.revision };
     });
   };

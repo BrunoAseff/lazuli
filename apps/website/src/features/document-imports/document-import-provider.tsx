@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  analyticsImportFormatFromMimeType,
   DOCUMENT_IMPORT_BINARY_MAX_BYTES,
   DOCUMENT_IMPORT_MARKDOWN_MAX_BYTES,
   DOCUMENT_IMPORT_MAX_ACTIVE,
@@ -26,6 +27,7 @@ import {
   inferImportMimeType,
   uploadDocumentImport,
 } from "./document-import-api.ts";
+import { captureAnalyticsEvent } from "@/features/analytics/analytics-client.ts";
 import { collectNewlyCompletedImports } from "./document-import-completion-tracker.ts";
 import { DocumentImportTray } from "./document-import-tray.tsx";
 import { DocumentImportDialog, type PreparedImportFile } from "./document-import-dialog.tsx";
@@ -80,6 +82,7 @@ export const DocumentImportProvider = ({
   }, [imports.isError]);
   const importFiles = useCallback(
     async (projectId: string, parentId: string | null, files: PreparedImportFile[]) => {
+      const filesToImport = files.slice(0, DOCUMENT_IMPORT_MAX_ACTIVE);
       const requestedBytes = files
         .slice(0, DOCUMENT_IMPORT_MAX_ACTIVE)
         .reduce((total, prepared) => total + prepared.file.size, 0);
@@ -98,7 +101,15 @@ export const DocumentImportProvider = ({
       let importedFiles = 0;
       if (files.length > DOCUMENT_IMPORT_MAX_ACTIVE)
         toast.warning(`Importaremos somente os primeiros ${DOCUMENT_IMPORT_MAX_ACTIVE} arquivos.`);
-      for (const prepared of files.slice(0, DOCUMENT_IMPORT_MAX_ACTIVE)) {
+      const formats = filesToImport.map(({ file }) => {
+        const mimeType = inferImportMimeType(file);
+        return mimeType ? analyticsImportFormatFromMimeType(mimeType) : "other";
+      });
+      captureAnalyticsEvent("document_import_started", {
+        fileCount: filesToImport.length,
+        format: formats.every((format) => format === formats[0]) ? formats[0]! : "other",
+      });
+      for (const prepared of filesToImport) {
         const { file, originalName } = prepared;
         const mimeType = inferImportMimeType(file);
         if (!mimeType) {

@@ -2,6 +2,7 @@ import { PROJECT_PAGE_SIZE, type ProjectListQuery, type UpdateProjectInput } fro
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
+import { captureAnalyticsEvent } from "@/features/analytics/analytics-client.ts";
 import { billingKeys } from "@/features/billing/api/billing-queries.ts";
 import {
   fetchProject,
@@ -52,7 +53,10 @@ export const useProjectDocuments = (
 export const useCreateProject = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: postProject,
+    mutationFn: (input: Parameters<typeof postProject>[0]) => {
+      captureAnalyticsEvent("project_creation_started", {});
+      return postProject(input);
+    },
     onSuccess: async () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() }),

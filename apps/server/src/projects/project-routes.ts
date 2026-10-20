@@ -7,6 +7,7 @@ import {
 import type { FastifyPluginAsync } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
@@ -22,6 +23,7 @@ import {
 } from "./project-queries.ts";
 
 type ProjectRoutesOptions = {
+  analytics: AnalyticsService;
   auth: Auth;
   database: Database;
   enforceCommercialLimits?: boolean;
@@ -35,6 +37,7 @@ const serializeProject = (value: NonNullable<Awaited<ReturnType<typeof getProjec
 });
 
 export const createProjectRoutes = ({
+  analytics,
   auth,
   database,
   enforceCommercialLimits = true,
@@ -100,6 +103,7 @@ export const createProjectRoutes = ({
           { created: result.created, projectId: result.project.id, userId: session.user.id },
           "project creation completed",
         );
+        if (result.created) await analytics.capture(session.user.id, "project_created", {});
         return reply.status(result.created ? 201 : 200).send(serializeProject(result.project));
       } catch (error) {
         request.log.error({ err: error, userId: session.user.id }, "project creation failed");

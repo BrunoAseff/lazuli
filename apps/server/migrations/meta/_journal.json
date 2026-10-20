@@ -162,6 +162,13 @@
       "when": 1792067161667,
       "tag": "0022_misty_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792517431207,
+      "tag": "0023_burly_frightful_four",
+      "breakpoints": true
     }
   ]
 }

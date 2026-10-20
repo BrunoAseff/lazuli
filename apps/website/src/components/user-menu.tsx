@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { ChartLineIcon } from "@phosphor-icons/react";
 import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -18,6 +19,8 @@ import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { useBillingSummary } from "@/features/billing/api/billing-queries.ts";
 import { ManageSubscriptionAction } from "@/features/billing/components/manage-subscription-action.tsx";
+import { resetAnalytics } from "@/features/analytics/analytics-client.ts";
+import { useAnalyticsSettings } from "@/features/analytics/analytics-provider.tsx";
 
 type UserMenuProps = {
   mobile?: boolean;
@@ -41,6 +44,7 @@ export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const analyticsSettings = useAnalyticsSettings();
   const summary = useBillingSummary();
   const planName =
     summary.data?.plan === "specialist"
@@ -63,6 +67,7 @@ export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
       return;
     }
 
+    resetAnalytics();
     queryClient.clear();
     localStorage.removeItem(`lazuli-document-imports-completed-dismissed-at:${user.id}`);
     await navigate("/login", { replace: true });
@@ -106,6 +111,10 @@ export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <ManageSubscriptionAction />
+            <DropdownMenuItem onSelect={analyticsSettings.openPreferences}>
+              <ChartLineIcon aria-hidden="true" />
+              Privacidade de métricas
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               disabled={isSigningOut}

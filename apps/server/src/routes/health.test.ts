@@ -6,6 +6,7 @@ import { buildApp } from "../app.ts";
 import type { ServerEnv } from "../config.ts";
 
 const testEnv: ServerEnv = {
+  ANALYTICS_ENABLED: false,
   AI_GENERATION_TIMEOUT_MS: 45_000,
   AI_MODEL: "gpt-6-luna",
   AI_REAL_CALLS_ENABLED: false,
@@ -19,6 +20,7 @@ const testEnv: ServerEnv = {
   LOG_LEVEL: "fatal",
   LOG_PRETTY: false,
   NODE_ENV: "test",
+  POSTHOG_HOST: "https://eu.i.posthog.com",
   RESEND_API_KEY: "re_test",
   S3_ACCESS_KEY_ID: "lazuli",
   S3_BUCKET: "lazuli-assets",

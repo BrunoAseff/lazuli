@@ -7,6 +7,7 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import type Stripe from "stripe";
 
 import type { Auth } from "../auth/auth.ts";
+import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
@@ -15,6 +16,7 @@ import { getCommercialSummary } from "./commercial-service.ts";
 import type { StripeBillingService } from "./stripe-billing-service.ts";
 
 type Options = {
+  analytics?: AnalyticsService;
   auth: Auth;
   database: Database;
   stripe: StripeBillingService | null;
@@ -41,6 +43,7 @@ const runBillingAction = async <Result>(
 };
 
 export const createCommercialRoutes = ({
+  analytics,
   auth,
   database,
   stripe,
@@ -76,9 +79,19 @@ export const createCommercialRoutes = ({
       const input = createCheckoutSessionSchema.safeParse(request.body);
       if (!input.success) return sendValidationError(reply);
       if (!stripe) return sendBillingUnavailable(reply);
-      return runBillingAction(request, reply, () =>
+      const result = await runBillingAction(request, reply, () =>
         stripe.createCheckout(session.user.id, input.data.plan, input.data.returnTo),
       );
+      if (
+        result &&
+        typeof result === "object" &&
+        "destination" in result &&
+        result.destination === "checkout"
+      )
+        await analytics?.capture(session.user.id, "checkout_started", {
+          plan: input.data.plan,
+        });
+      return result;
     });
 
     app.post("/api/billing/portal-sessions", async (request, reply) => {

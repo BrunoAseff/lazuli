@@ -296,6 +296,7 @@ export const createPracticeSession = async (
       if (duplicateId.userId === userId && duplicateId.collectionId === collectionId)
         return {
           kind: "ok" as const,
+          created: false,
           session: await sessionPayload(tx, userId, duplicateId.id, now),
         };
       return { kind: "conflict" as const };
@@ -356,7 +357,11 @@ export const createPracticeSession = async (
         position,
       })),
     );
-    return { kind: "ok" as const, session: await sessionPayload(tx, userId, input.id, now) };
+    return {
+      kind: "ok" as const,
+      created: true,
+      session: await sessionPayload(tx, userId, input.id, now),
+    };
   });
 
 export const getPracticeSession = async (
@@ -389,6 +394,7 @@ export const submitPracticeReview = async (
     if (existing && existing.sessionId === sessionId && existing.practiceItemId === input.itemId)
       return {
         kind: "ok" as const,
+        completed: false,
         session: await sessionPayload(tx, userId, existing.sessionId, now),
       };
     if (existing) return { kind: "conflict" as const };
@@ -467,7 +473,12 @@ export const submitPracticeReview = async (
         })
         .where(eq(flashcardPracticeSession.id, sessionId));
     }
-    return { kind: "ok" as const, session: await sessionPayload(tx, userId, sessionId, now) };
+    const result = await sessionPayload(tx, userId, sessionId, now);
+    return {
+      kind: "ok" as const,
+      completed: result?.status === "completed",
+      session: result,
+    };
   });
 
 export const abandonPracticeSession = async (
