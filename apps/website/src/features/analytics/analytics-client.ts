@@ -16,6 +16,7 @@ let consentRevision = 0;
 
 const PUBLIC_ANALYTICS_PATHS = new Set([
   "/",
+  "/dashboard",
   "/documents",
   "/flashcards",
   "/forgot-password",

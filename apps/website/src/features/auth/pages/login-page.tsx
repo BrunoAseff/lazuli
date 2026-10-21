@@ -49,7 +49,7 @@ export const LoginPage = () => {
       return;
     }
 
-    const destination = (location.state as LocationState | null)?.from ?? "/documents";
+    const destination = (location.state as LocationState | null)?.from ?? "/dashboard";
     await navigate(destination, { replace: true });
   });
 
