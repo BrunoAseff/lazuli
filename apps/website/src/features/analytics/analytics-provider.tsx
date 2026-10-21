@@ -6,10 +6,11 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
+import { Label } from "@/components/ui/label.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
 import { analyticsConfigured, disableAnalytics, enableAnalytics } from "./analytics-client.ts";
 import { useAnalyticsPreference, useUpdateAnalyticsPreference } from "./api/analytics-queries.ts";
 
@@ -45,7 +46,6 @@ export const AnalyticsProvider = ({
   const choose = async (status: "granted" | "denied") => {
     try {
       await updatePreference.mutateAsync({ status });
-      setPreferencesOpen(false);
     } catch {
       toast.error("Não foi possível salvar sua preferência. Tente novamente.");
     }
@@ -60,8 +60,8 @@ export const AnalyticsProvider = ({
       {undecided && (
         <aside className="fixed inset-x-3 bottom-3 z-50 mx-auto grid max-w-xl gap-3 rounded-[var(--radius-overlay)] border bg-popover p-4 text-sm shadow-lg sm:grid-cols-[1fr_auto] sm:items-center">
           <p className="text-muted-foreground">
-            Podemos coletar eventos de uso associados ao ID interno da sua conta para melhorar o
-            Lazúli. Não enviamos nome, e-mail, URLs nem conteúdo de estudo.
+            Queremos coletar métricas de uso para melhorar o Lazúli. Não coletamos dados pessoais
+            nem seus materiais.
           </p>
           <div className="flex justify-end gap-2">
             <Button
@@ -85,22 +85,21 @@ export const AnalyticsProvider = ({
           <DialogHeader>
             <DialogTitle>Métricas de uso</DialogTitle>
             <DialogDescription>
-              Quando permitido, enviamos somente eventos de uso associados ao ID interno da conta.
-              Não enviamos nome, e-mail, URLs nem conteúdo de estudo.
+              Quando permitido, coletamos métricas de uso para melhorar o Lazúli. Não coletamos
+              dados pessoais nem seus materiais.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button
-              disabled={updatePreference.isPending}
-              onClick={() => void choose("denied")}
-              variant="outline"
-            >
-              Não permitir
-            </Button>
-            <Button disabled={updatePreference.isPending} onClick={() => void choose("granted")}>
-              Permitir
-            </Button>
-          </DialogFooter>
+          <div className="flex items-center justify-between gap-4 rounded-[var(--radius)] border bg-muted/35 px-3 py-3">
+            <Label className="cursor-pointer" htmlFor="analytics-preference">
+              Permitir métricas de uso
+            </Label>
+            <Switch
+              checked={preference.data?.status === "granted"}
+              disabled={preference.isPending || preference.isError || updatePreference.isPending}
+              id="analytics-preference"
+              onCheckedChange={(checked) => void choose(checked ? "granted" : "denied")}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </AnalyticsContext.Provider>
