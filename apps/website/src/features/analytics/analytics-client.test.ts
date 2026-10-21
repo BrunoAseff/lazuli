@@ -47,7 +47,9 @@ describe("analytics client", () => {
       expect.objectContaining({
         advanced_disable_flags: true,
         autocapture: false,
-        capture_pageview: false,
+        capture_pageleave: true,
+        capture_performance: true,
+        capture_pageview: "history_change",
         disable_session_recording: true,
         disable_surveys: true,
         persistence: "memory",
@@ -80,6 +82,66 @@ describe("analytics client", () => {
         uuid: "event-2",
       }),
     ).toBeNull();
+
+    const pageview = config.before_send({
+      event: "$pageview",
+      properties: {
+        $current_url:
+          "https://lazuli.example.com/documents/private-project/document/private-document?token=private#selection",
+        $pathname: "/documents/private-project/document/private-document",
+        $prev_pageview_pathname: "/flashcards/private-collection",
+        $referrer: "https://example.com/private-path",
+        $referring_domain: "example.com",
+        $session_entry_pathname: "/quizzes/private-quiz",
+        $session_entry_url: "https://lazuli.example.com/quizzes/private-quiz?source=private",
+        $session_id: "session-1",
+        distinct_id: "user-1",
+        title: "Material privado",
+        token: "phc_test",
+      },
+      uuid: "event-3",
+    });
+    expect(pageview?.properties).toEqual({
+      $current_url: "https://lazuli.example.com/documents/:projectId/document/:documentId",
+      $geoip_disable: true,
+      $pathname: "/documents/:projectId/document/:documentId",
+      $prev_pageview_pathname: "/flashcards/:collectionId",
+      $process_person_profile: false,
+      $referring_domain: "example.com",
+      $session_entry_pathname: "/quizzes/:collectionId",
+      $session_entry_url: "https://lazuli.example.com/quizzes/:collectionId",
+      $session_id: "session-1",
+      distinct_id: "user-1",
+      token: "phc_test",
+    });
+    expect(JSON.stringify(pageview)).not.toContain("private");
+
+    const webVitals = config.before_send({
+      event: "$web_vitals",
+      properties: {
+        $current_url: "https://lazuli.example.com/documents/private-project?token=private",
+        $pathname: "/documents/private-project",
+        $session_id: "session-1",
+        $web_vitals_LCP_event: { attribution: { element: "Material privado" } },
+        $web_vitals_LCP_value: 1234,
+        $web_vitals_INP_value: 75,
+        distinct_id: "user-1",
+        token: "phc_test",
+      },
+      uuid: "event-4",
+    });
+    expect(webVitals?.properties).toEqual({
+      $current_url: "https://lazuli.example.com/documents/:projectId",
+      $geoip_disable: true,
+      $pathname: "/documents/:projectId",
+      $process_person_profile: false,
+      $session_id: "session-1",
+      $web_vitals_INP_value: 75,
+      $web_vitals_LCP_value: 1234,
+      distinct_id: "user-1",
+      token: "phc_test",
+    });
+    expect(JSON.stringify(webVitals)).not.toContain("private");
   });
 
   it("resets identity before persisting the opted-out state", async () => {

@@ -14,7 +14,112 @@ let statePromise: Promise<PostHog | null> = Promise.resolve(null);
 let enabledUserId: string | null = null;
 let consentRevision = 0;
 
+const PUBLIC_ANALYTICS_PATHS = new Set([
+  "/",
+  "/documents",
+  "/flashcards",
+  "/forgot-password",
+  "/login",
+  "/quizzes",
+  "/register",
+  "/reset-password",
+  "/verify-email",
+]);
+const PRIVATE_ANALYTICS_PATHS = [
+  [/^\/documents\/[^/]+\/document\/[^/]+$/, "/documents/:projectId/document/:documentId"],
+  [/^\/documents\/[^/]+$/, "/documents/:projectId"],
+  [/^\/flashcards\/[^/]+$/, "/flashcards/:collectionId"],
+  [/^\/quizzes\/[^/]+\/attempts\/[^/]+$/, "/quizzes/:collectionId/attempts/:attemptId"],
+  [/^\/quizzes\/[^/]+$/, "/quizzes/:collectionId"],
+] as const;
+const NAVIGATION_PROPERTY_NAMES = [
+  "distinct_id",
+  "token",
+  "$browser",
+  "$browser_version",
+  "$device_type",
+  "$host",
+  "$lib",
+  "$lib_version",
+  "$os",
+  "$os_version",
+  "$pageview_id",
+  "$prev_pageview_duration",
+  "$prev_pageview_id",
+  "$referring_domain",
+  "$screen_height",
+  "$screen_width",
+  "$session_entry_referring_domain",
+  "$session_id",
+  "$viewport_height",
+  "$viewport_width",
+  "$window_id",
+] as const;
+
+const sanitizePathname = (value: unknown) => {
+  if (typeof value !== "string") return undefined;
+  const pathname = value.length > 1 ? value.replace(/\/$/, "") : value;
+  if (PUBLIC_ANALYTICS_PATHS.has(pathname)) return pathname;
+  return PRIVATE_ANALYTICS_PATHS.find(([pattern]) => pattern.test(pathname))?.[1] ?? "/other";
+};
+
+const sanitizeUrl = (value: unknown) => {
+  if (typeof value !== "string") return undefined;
+  try {
+    const url = new URL(value);
+    return `${url.origin}${sanitizePathname(url.pathname)}`;
+  } catch {
+    return undefined;
+  }
+};
+
+const sanitizeNavigationPayload = (payload: CaptureResult) => {
+  const properties = Object.fromEntries(
+    NAVIGATION_PROPERTY_NAMES.flatMap((key) =>
+      key in payload.properties ? [[key, payload.properties[key]]] : [],
+    ),
+  );
+  const currentUrl = sanitizeUrl(payload.properties.$current_url);
+  const entryUrl = sanitizeUrl(payload.properties.$session_entry_url);
+  const pathname = sanitizePathname(payload.properties.$pathname) ?? "/other";
+  const previousPathname = sanitizePathname(payload.properties.$prev_pageview_pathname);
+  const entryPathname = sanitizePathname(payload.properties.$session_entry_pathname);
+  return {
+    ...payload,
+    properties: {
+      ...properties,
+      ...(currentUrl ? { $current_url: currentUrl } : {}),
+      ...(entryUrl ? { $session_entry_url: entryUrl } : {}),
+      ...(entryPathname ? { $session_entry_pathname: entryPathname } : {}),
+      ...(previousPathname ? { $prev_pageview_pathname: previousPathname } : {}),
+      $geoip_disable: true,
+      $pathname: pathname,
+      $process_person_profile: false,
+    },
+  };
+};
+
+const sanitizeWebVitalsPayload = (payload: CaptureResult) => {
+  const navigationPayload = sanitizeNavigationPayload(payload);
+  const metrics = Object.fromEntries(
+    Object.entries(payload.properties).filter(
+      ([key, value]) =>
+        key.startsWith("$web_vitals_") && key.endsWith("_value") && typeof value === "number",
+    ),
+  );
+  return {
+    ...navigationPayload,
+    properties: {
+      ...navigationPayload.properties,
+      ...metrics,
+    },
+  };
+};
+
 const sanitizeAnalyticsPayload = (payload: CaptureResult) => {
+  if (payload.event === "$pageview" || payload.event === "$pageleave")
+    return sanitizeNavigationPayload(payload);
+  if (payload.event === "$web_vitals") return sanitizeWebVitalsPayload(payload);
   const event = payload.event as AnalyticsEventName;
   const schema = analyticsEventSchemas[event];
   if (!schema) return null;
@@ -50,8 +155,9 @@ const getClient = () => {
         autocapture: false,
         before_send: sanitizeAnalyticsPayload,
         capture_exceptions: false,
-        capture_pageview: false,
-        capture_pageleave: false,
+        capture_performance: true,
+        capture_pageview: "history_change",
+        capture_pageleave: true,
         disable_session_recording: true,
         disable_surveys: true,
         opt_out_capturing_by_default: true,
