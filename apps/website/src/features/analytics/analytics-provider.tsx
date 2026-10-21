@@ -60,8 +60,8 @@ export const AnalyticsProvider = ({
       {undecided && (
         <aside className="fixed inset-x-3 bottom-3 z-50 mx-auto grid max-w-xl gap-3 rounded-[var(--radius-overlay)] border bg-popover p-4 text-sm shadow-lg sm:grid-cols-[1fr_auto] sm:items-center">
           <p className="text-muted-foreground">
-            Queremos coletar métricas de uso para melhorar o Lazúli. Não coletamos dados pessoais
-            nem seus materiais.
+            Para melhorar o Lazúli, coletamos métricas de uso vinculadas à sua conta e informações
+            técnicas do dispositivo. Não coletamos seu nome, e-mail nem seus materiais.
           </p>
           <div className="flex justify-end gap-2">
             <Button
@@ -85,8 +85,9 @@ export const AnalyticsProvider = ({
           <DialogHeader>
             <DialogTitle>Métricas de uso</DialogTitle>
             <DialogDescription>
-              Quando permitido, coletamos métricas de uso para melhorar o Lazúli. Não coletamos
-              dados pessoais nem seus materiais.
+              Quando permitido, coletamos métricas de uso vinculadas à sua conta sem incluir nome ou
+              e-mail, além de informações técnicas do dispositivo e navegador. Seus materiais não
+              são coletados.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-between gap-4 rounded-[var(--radius)] border bg-muted/35 px-3 py-3">

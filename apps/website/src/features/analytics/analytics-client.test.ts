@@ -11,6 +11,7 @@ const posthog = vi.hoisted(() => ({
 }));
 
 vi.mock("posthog-js/dist/module.no-external", () => ({ default: posthog }));
+vi.mock("posthog-js/dist/web-vitals", () => ({}));
 
 beforeEach(() => {
   vi.resetModules();
@@ -48,7 +49,7 @@ describe("analytics client", () => {
         advanced_disable_flags: true,
         autocapture: false,
         capture_pageleave: true,
-        capture_performance: true,
+        capture_performance: { web_vitals_attribution: false },
         capture_pageview: "history_change",
         disable_session_recording: true,
         disable_surveys: true,

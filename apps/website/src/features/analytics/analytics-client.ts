@@ -148,14 +148,17 @@ const sanitizeAnalyticsPayload = (payload: CaptureResult) => {
 
 const getClient = () => {
   if (!clientPromise)
-    clientPromise = import("posthog-js/dist/module.no-external").then(({ default: posthog }) => {
+    clientPromise = Promise.all([
+      import("posthog-js/dist/module.no-external"),
+      import("posthog-js/dist/web-vitals"),
+    ]).then(([{ default: posthog }]) => {
       posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
         advanced_disable_flags: true,
         api_host: import.meta.env.VITE_POSTHOG_HOST || "https://eu.i.posthog.com",
         autocapture: false,
         before_send: sanitizeAnalyticsPayload,
         capture_exceptions: false,
-        capture_performance: true,
+        capture_performance: { web_vitals_attribution: false },
         capture_pageview: "history_change",
         capture_pageleave: true,
         disable_session_recording: true,
