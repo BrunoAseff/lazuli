@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router";
+import { HouseLineIcon } from "@phosphor-icons/react/HouseLine";
 
 import { BrandBadge } from "@/components/brand-mark.tsx";
 import {
@@ -29,6 +30,7 @@ import { BillingStatusNotice } from "@/features/billing/components/billing-statu
 import { useRecentProjects } from "@/features/projects/use-recent-projects.ts";
 
 const primaryNavigation = [
+  { label: "Início", path: "/dashboard", Icon: HouseLineIcon },
   { label: "Documentos", path: "/documents", Icon: DocumentDomainIcon },
   { label: "Flashcards", path: "/flashcards", Icon: FlashcardDomainIcon },
   { label: "Quizzes", path: "/quizzes", Icon: QuizDomainIcon },
@@ -50,10 +52,10 @@ export const AppSidebar = () => {
     <Sidebar className="border-0" collapsible="offcanvas">
       <SidebarHeader className="px-3 pt-4 pb-2">
         <NavLink
-          aria-label="Ir para projetos"
+          aria-label="Ir para o início"
           className="flex h-9 items-center gap-2 rounded-md px-1 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           onClick={closeMobileNavigation}
-          to="/documents"
+          to="/dashboard"
         >
           <BrandBadge />
           <span className="font-heading text-[1.35rem] font-medium tracking-[-0.02em]">Lazúli</span>
@@ -69,7 +71,11 @@ export const AppSidebar = () => {
                   <SidebarMenuButton
                     asChild
                     className="h-8 rounded-md px-2 text-[0.9rem] font-normal data-active:font-normal [&_svg]:size-[1.1rem]"
-                    isActive={location.pathname.startsWith(path)}
+                    isActive={
+                      path === "/dashboard"
+                        ? location.pathname === path
+                        : location.pathname.startsWith(path)
+                    }
                   >
                     <NavLink onClick={closeMobileNavigation} to={path}>
                       <Icon aria-hidden="true" weight="duotone" />

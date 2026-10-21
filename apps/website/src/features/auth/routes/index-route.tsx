@@ -14,5 +14,5 @@ export const IndexRoute = () => {
     return <SessionError />;
   }
 
-  return <Navigate replace to={data ? "/documents" : "/login"} />;
+  return <Navigate replace to={data ? "/dashboard" : "/login"} />;
 };

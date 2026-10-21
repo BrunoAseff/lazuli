@@ -3,6 +3,7 @@ export * from "./ai-credits.ts";
 export * from "./analytics.ts";
 export * from "./auth.ts";
 export * from "./billing.ts";
+export * from "./dashboard.ts";
 export * from "./documents.ts";
 export * from "./flashcards.ts";
 export * from "./projects.ts";

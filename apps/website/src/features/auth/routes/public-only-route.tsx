@@ -31,5 +31,5 @@ export const PublicOnlyRoute = () => {
 
   if (route.view === "error") return <SessionError />;
 
-  return route.view === "authenticated" ? <Navigate replace to="/documents" /> : <Outlet />;
+  return route.view === "authenticated" ? <Navigate replace to="/dashboard" /> : <Outlet />;
 };
