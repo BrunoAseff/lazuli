@@ -136,4 +136,24 @@ describe("dashboard query decisions", () => {
     expect(empty.flashcardRecallRate).toBeNull();
     expect(empty.quizAccuracyRate).toBeNull();
   });
+
+  it("uses the user's local calendar day for the weekly window", () => {
+    const now = new Date("2026-10-22T02:30:00.000Z");
+    const local = buildWeeklyActivity(
+      [],
+      [{ date: "2026-10-21", successful: 1, total: 1 }],
+      now,
+      "America/Sao_Paulo",
+    );
+    const utc = buildWeeklyActivity([], [], now);
+
+    expect(local.days[0]?.date).toBe("2026-10-15");
+    expect(local.days.at(-1)).toEqual({
+      date: "2026-10-21",
+      flashcardReviews: 0,
+      quizAnswers: 1,
+      total: 1,
+    });
+    expect(utc.days.at(-1)?.date).toBe("2026-10-22");
+  });
 });

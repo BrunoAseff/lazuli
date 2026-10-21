@@ -91,16 +91,34 @@ type DailyMetric = {
 
 const utcDay = (value: Date) => value.toISOString().slice(0, 10);
 
+const dateKeyInTimeZone = (value: Date, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone,
+    year: "numeric",
+  }).formatToParts(value);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+};
+
+const shiftDateKey = (date: string, days: number) => {
+  const [year, month, day] = date.split("-").map(Number);
+  return utcDay(new Date(Date.UTC(year!, month! - 1, day!) + days * DAY_MS));
+};
+
 export const buildWeeklyActivity = (
   flashcardDays: DailyMetric[],
   quizDays: DailyMetric[],
   now: Date,
+  timeZone = "UTC",
 ): DashboardResponse["weeklyActivity"] => {
-  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const today = dateKeyInTimeZone(now, timeZone);
   const flashcardByDay = new Map(flashcardDays.map((item) => [item.date, item]));
   const quizByDay = new Map(quizDays.map((item) => [item.date, item]));
   const days: DashboardWeeklyDay[] = Array.from({ length: 7 }, (_, index) => {
-    const date = utcDay(new Date(today - (6 - index) * DAY_MS));
+    const date = shiftDateKey(today, index - 6);
     const flashcardMetric = flashcardByDay.get(date);
     const quizMetric = quizByDay.get(date);
     const flashcardReviews = flashcardMetric?.total ?? 0;
@@ -223,14 +241,16 @@ export const dismissDashboardOnboarding = async (
 export const getDashboard = async (
   database: Database,
   userId: string,
+  timeZone = "UTC",
   now = new Date(),
 ): Promise<DashboardResponse> => {
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 6 * DAY_MS,
-  );
-  const end = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) + DAY_MS,
-  );
+  const today = dateKeyInTimeZone(now, timeZone);
+  const activityStartDay = shiftDateKey(today, -6);
+  const activityEndDay = shiftDateKey(today, 1);
+  const activityStart = sql<Date>`(${activityStartDay}::date::timestamp at time zone ${timeZone})`;
+  const activityEnd = sql<Date>`(${activityEndDay}::date::timestamp at time zone ${timeZone})`;
+  const flashcardActivityDay = sql<string>`to_char(${flashcardReview.reviewedAt} at time zone ${timeZone}, 'YYYY-MM-DD')`;
+  const quizActivityDay = sql<string>`to_char(${quizAttemptItem.answeredAt} at time zone ${timeZone}, 'YYYY-MM-DD')`;
   const relevantGenerationTypes = ["selection_generation", "collection_generation"] as const;
   const availableCard = lte(flashcard.dueAt, now);
   const dueReview = and(isNotNull(flashcard.lastReviewedAt), availableCard);
@@ -409,7 +429,7 @@ export const getDashboard = async (
       .limit(CANDIDATE_LIMIT),
     database
       .select({
-        date: sql<string>`to_char(${flashcardReview.reviewedAt} at time zone 'UTC', 'YYYY-MM-DD')`,
+        date: flashcardActivityDay,
         successful:
           sql<number>`count(*) filter (where ${flashcardReview.rating} in ('hard', 'good', 'easy'))`.mapWith(
             Number,
@@ -424,11 +444,16 @@ export const getDashboard = async (
           eq(flashcardPracticeSession.userId, userId),
         ),
       )
-      .where(and(gte(flashcardReview.reviewedAt, start), lt(flashcardReview.reviewedAt, end)))
-      .groupBy(sql`to_char(${flashcardReview.reviewedAt} at time zone 'UTC', 'YYYY-MM-DD')`),
+      .where(
+        and(
+          gte(flashcardReview.reviewedAt, activityStart),
+          lt(flashcardReview.reviewedAt, activityEnd),
+        ),
+      )
+      .groupBy(flashcardActivityDay),
     database
       .select({
-        date: sql<string>`to_char(${quizAttemptItem.answeredAt} at time zone 'UTC', 'YYYY-MM-DD')`,
+        date: quizActivityDay,
         successful:
           sql<number>`count(*) filter (where ${quizAttemptItem.isCorrect} = true)`.mapWith(Number),
         total: count().mapWith(Number),
@@ -441,11 +466,11 @@ export const getDashboard = async (
       .where(
         and(
           isNotNull(quizAttemptItem.answeredAt),
-          gte(quizAttemptItem.answeredAt, start),
-          lt(quizAttemptItem.answeredAt, end),
+          gte(quizAttemptItem.answeredAt, activityStart),
+          lt(quizAttemptItem.answeredAt, activityEnd),
         ),
       )
-      .groupBy(sql`to_char(${quizAttemptItem.answeredAt} at time zone 'UTC', 'YYYY-MM-DD')`),
+      .groupBy(quizActivityDay),
   ]);
 
   const [ownDocument, generationProgress, flashcardPractice, quizPractice, onboardingDismissal] =
@@ -582,6 +607,6 @@ export const getDashboard = async (
       visible: !onboardingDismissal && steps.some(({ completed }) => !completed),
       steps,
     },
-    weeklyActivity: buildWeeklyActivity(flashcardDays, quizDays, now),
+    weeklyActivity: buildWeeklyActivity(flashcardDays, quizDays, now, timeZone),
   };
 };

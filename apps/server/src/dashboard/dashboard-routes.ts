@@ -1,5 +1,6 @@
 import {
   dashboardOnboardingDismissalSchema,
+  dashboardQuerySchema,
   dashboardResponseSchema,
   dismissDashboardOnboardingSchema,
 } from "@lazuli/shared";
@@ -14,6 +15,15 @@ import { dismissDashboardOnboarding, getDashboard } from "./dashboard-queries.ts
 
 type DashboardRoutesOptions = { auth: Auth; database: Database; websiteUrl: string };
 
+const normalizeTimeZone = (value?: string) => {
+  if (!value) return "UTC";
+  try {
+    return new Intl.DateTimeFormat("en-US", { timeZone: value }).resolvedOptions().timeZone;
+  } catch {
+    return null;
+  }
+};
+
 export const createDashboardRoutes = ({
   auth,
   database,
@@ -26,8 +36,14 @@ export const createDashboardRoutes = ({
     app.get("/api/dashboard", async (request, reply) => {
       const session = await requireSession(auth, request, reply);
       if (!session) return;
+      const input = dashboardQuerySchema.safeParse(request.query);
+      if (!input.success) return sendValidationError(reply);
+      const timeZone = normalizeTimeZone(input.data.tz);
+      if (!timeZone) return sendValidationError(reply);
       try {
-        return dashboardResponseSchema.parse(await getDashboard(database, session.user.id));
+        return dashboardResponseSchema.parse(
+          await getDashboard(database, session.user.id, timeZone),
+        );
       } catch (error) {
         request.log.error({ err: error, userId: session.user.id }, "dashboard loading failed");
         return reply.status(500).send({

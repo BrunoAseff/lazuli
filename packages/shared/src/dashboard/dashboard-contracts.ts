@@ -9,6 +9,10 @@ import { quizAttemptIdSchema, quizCollectionIdSchema } from "../quizzes/quiz-con
 
 const nonnegativeMetricSchema = z.number().int().nonnegative();
 
+export const dashboardQuerySchema = z
+  .object({ tz: z.string().trim().min(1).max(100).optional() })
+  .strict();
+
 export const dashboardRecentDocumentSchema = z.object({
   documentId: projectIdSchema,
   documentTitle: z.string(),
