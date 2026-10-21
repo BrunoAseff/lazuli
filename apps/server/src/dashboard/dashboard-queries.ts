@@ -450,7 +450,7 @@ export const getDashboard = async (
           lt(flashcardReview.reviewedAt, activityEnd),
         ),
       )
-      .groupBy(flashcardActivityDay),
+      .groupBy(sql`1`),
     database
       .select({
         date: quizActivityDay,
@@ -470,7 +470,7 @@ export const getDashboard = async (
           lt(quizAttemptItem.answeredAt, activityEnd),
         ),
       )
-      .groupBy(quizActivityDay),
+      .groupBy(sql`1`),
   ]);
 
   const [ownDocument, generationProgress, flashcardPractice, quizPractice, onboardingDismissal] =
