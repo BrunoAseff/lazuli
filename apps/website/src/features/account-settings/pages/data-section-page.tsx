@@ -23,6 +23,7 @@ import {
   useUpdateAnalyticsPreference,
 } from "@/features/analytics/api/analytics-queries.ts";
 import { authClient } from "@/features/auth/auth-client.ts";
+import { PasswordInput } from "@/features/auth/components/password-input.tsx";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
 import {
   useAccountProfile,
@@ -352,11 +353,10 @@ export const DataSectionPage = () => {
             {hasPassword && (
               <label className="grid gap-1.5 text-sm" htmlFor="delete-password">
                 Senha atual
-                <Input
+                <PasswordInput
                   autoComplete="current-password"
                   id="delete-password"
                   onChange={(event) => setPassword(event.target.value)}
-                  type="password"
                   value={password}
                 />
               </label>
