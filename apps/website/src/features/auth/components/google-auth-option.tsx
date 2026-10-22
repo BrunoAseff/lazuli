@@ -58,12 +58,13 @@ export const GoogleAuthOption = ({ callbackPath = "/dashboard" }: { callbackPath
         errorCallbackURL: `${window.location.origin}/login?error=google`,
         provider: "google",
       });
-      if (result.error)
+      if (result.error) {
+        setPending(false);
         setError(getAuthErrorMessage(result.error, "Não foi possível continuar com o Google."));
+      }
     } catch {
-      setError("Não foi possível continuar com o Google. Verifique sua conexão e tente novamente.");
-    } finally {
       setPending(false);
+      setError("Não foi possível continuar com o Google. Verifique sua conexão e tente novamente.");
     }
   };
 
