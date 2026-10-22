@@ -374,7 +374,7 @@ const writeArchive = async (
         `Preparada em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
         "",
         "Os dados tabulares estão na pasta dados em arquivos CSV, que podem ser abertos em qualquer planilha.",
-        "Os arquivos originais enviados ao Lazúli estão na pasta arquivos.",
+        "Os arquivos originais enviados ao Lazúli estão na pasta files.",
         "",
       ].join("\n"),
       { name: "LEIA-ME.txt" },
