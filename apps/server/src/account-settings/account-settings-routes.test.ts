@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import { APIError } from "better-auth/api";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Auth } from "../auth/auth.ts";
@@ -130,7 +131,9 @@ describe("account settings routes", () => {
 
   it("discards staged object cleanup when account deletion is rejected", async () => {
     const { app, deleteUser, rollbackAccountDeletion } = await register();
-    deleteUser.mockRejectedValueOnce(new Error("delete failed"));
+    deleteUser.mockRejectedValueOnce(
+      new APIError("BAD_REQUEST", { code: "INVALID_PASSWORD", message: "Invalid password" }),
+    );
 
     const response = await app.inject({
       headers: { origin: "http://localhost:3000" },
@@ -140,6 +143,55 @@ describe("account settings routes", () => {
     });
 
     expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "ACCOUNT_REAUTHENTICATION_FAILED" });
     expect(rollbackAccountDeletion).toHaveBeenCalledWith("user-1");
+  });
+
+  it("does not misreport an internal deletion failure as invalid credentials", async () => {
+    const { app, deleteUser, rollbackAccountDeletion } = await register();
+    deleteUser.mockRejectedValueOnce(new Error("database unavailable"));
+
+    const response = await app.inject({
+      headers: { origin: "http://localhost:3000" },
+      method: "DELETE",
+      payload: { confirmationEmail: "ana@example.com", password: "secret" },
+      url: "/api/account",
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toMatchObject({ code: "ACCOUNT_DELETION_FAILED" });
+    expect(rollbackAccountDeletion).toHaveBeenCalledWith("user-1");
+  });
+
+  it("uses a dedicated rate limit for session revocation", async () => {
+    queries.revokeOwnedSession.mockResolvedValue(true);
+    queries.createAccountExport.mockResolvedValue("export-1");
+    const { app } = await register();
+    const headers = { origin: "http://localhost:3000" };
+
+    for (let index = 0; index < 20; index += 1) {
+      const response = await app.inject({
+        headers,
+        method: "DELETE",
+        url: `/api/account-settings/sessions/session-${index + 2}`,
+      });
+      expect(response.statusCode).toBe(200);
+    }
+
+    const limited = await app.inject({
+      headers,
+      method: "DELETE",
+      url: "/api/account-settings/sessions/session-22",
+    });
+    expect(limited.statusCode).toBe(429);
+    expect(limited.json()).toMatchObject({ code: "SESSION_REVOCATION_RATE_LIMITED" });
+
+    const exportResponse = await app.inject({
+      headers,
+      method: "POST",
+      payload: { categories: ["account"] },
+      url: "/api/account-exports",
+    });
+    expect(exportResponse.statusCode).toBe(202);
   });
 });

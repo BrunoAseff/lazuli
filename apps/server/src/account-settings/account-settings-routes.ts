@@ -7,6 +7,7 @@ import {
   updateStudyPreferenceSchema,
 } from "@lazuli/shared";
 import type { FastifyPluginAsync } from "fastify";
+import { APIError } from "better-auth/api";
 import { fromNodeHeaders } from "better-auth/node";
 
 import type { Auth } from "../auth/auth.ts";
@@ -42,8 +43,18 @@ export const createAccountSettingsRoutes = ({
   async function accountSettingsRoutes(app) {
     const mutationLimiter = createRequestRateLimiter({ limit: 40, windowMs: 10 * 60_000 });
     const sensitiveLimiter = createRequestRateLimiter({ limit: 6, windowMs: 60 * 60_000 });
+    const sessionRevocationLimiter = createRequestRateLimiter({ limit: 20, windowMs: 10 * 60_000 });
     const authorizeMutation = createMutationAuthorizer(auth, websiteUrl, mutationLimiter);
     const authorizeSensitiveMutation = createMutationAuthorizer(auth, websiteUrl, sensitiveLimiter);
+    const authorizeSessionRevocation = createMutationAuthorizer(
+      auth,
+      websiteUrl,
+      sessionRevocationLimiter,
+      {
+        code: "SESSION_REVOCATION_RATE_LIMITED",
+        message: "Muitas sessões foram encerradas em pouco tempo. Aguarde e tente novamente.",
+      },
+    );
 
     app.get("/api/account-settings/profile", async (request, reply) => {
       const session = await requireSession(auth, request, reply);
@@ -80,7 +91,7 @@ export const createAccountSettingsRoutes = ({
     app.delete<{ Params: { sessionId: string } }>(
       "/api/account-settings/sessions/:sessionId",
       async (request, reply) => {
-        const current = await authorizeSensitiveMutation(request, reply);
+        const current = await authorizeSessionRevocation(request, reply);
         if (!current) return;
         const revoked = await revokeOwnedSession(
           database,
@@ -93,7 +104,7 @@ export const createAccountSettingsRoutes = ({
     );
 
     app.delete("/api/account-settings/sessions", async (request, reply) => {
-      const current = await authorizeSensitiveMutation(request, reply);
+      const current = await authorizeSessionRevocation(request, reply);
       if (!current) return;
       await revokeOtherOwnedSessions(database, current.user.id, current.session.id);
       return { success: true };
@@ -128,10 +139,25 @@ export const createAccountSettingsRoutes = ({
         return { success: true };
       } catch (error) {
         rollbackAccountDeletion?.(current.user.id);
-        request.log.warn({ err: error, userId: current.user.id }, "account deletion rejected");
-        return reply.status(400).send({
-          code: input.data.password ? "ACCOUNT_REAUTHENTICATION_FAILED" : "FRESH_SESSION_REQUIRED",
-          message: "Não foi possível confirmar sua identidade.",
+        const authCode = error instanceof APIError ? error.body?.code : undefined;
+        if (authCode === "INVALID_PASSWORD" || authCode === "CREDENTIAL_ACCOUNT_NOT_FOUND") {
+          request.log.warn({ authCode, userId: current.user.id }, "account deletion rejected");
+          return reply.status(400).send({
+            code: "ACCOUNT_REAUTHENTICATION_FAILED",
+            message: "Não foi possível confirmar sua identidade.",
+          });
+        }
+        if (authCode === "SESSION_EXPIRED" || authCode === "SESSION_NOT_FRESH") {
+          request.log.warn({ authCode, userId: current.user.id }, "account deletion rejected");
+          return reply.status(400).send({
+            code: "FRESH_SESSION_REQUIRED",
+            message: "Não foi possível confirmar sua identidade.",
+          });
+        }
+        request.log.error({ err: error, userId: current.user.id }, "account deletion failed");
+        return reply.status(500).send({
+          code: "ACCOUNT_DELETION_FAILED",
+          message: "Não foi possível excluir a conta. Tente novamente.",
         });
       }
     });

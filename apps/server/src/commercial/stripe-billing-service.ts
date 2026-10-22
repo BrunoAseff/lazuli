@@ -179,14 +179,21 @@ export const createStripeBillingService = (
     if (customer && customer.environment !== environment)
       throw new Error("Stripe webhook environment does not match the billing customer");
     const userId: string = resolvedUserId;
-    if (!customer)
+    const priceId = subscription.items.data[0]?.price.id;
+    const plan = priceId ? planFromPrice(priceId) : null;
+    if (!priceId || !plan) throw new Error(`Unknown Stripe price ${priceId ?? "missing"}`);
+    if (!customer) {
+      const [owner] = await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
+      if (!owner) return { activated: false, previous: null, plan, userId };
       await tx
         .insert(billingCustomer)
         .values({ environment, userId, stripeCustomerId: customerId })
         .onConflictDoNothing({ target: billingCustomer.userId });
-    const priceId = subscription.items.data[0]?.price.id;
-    const plan = priceId ? planFromPrice(priceId) : null;
-    if (!priceId || !plan) throw new Error(`Unknown Stripe price ${priceId ?? "missing"}`);
+    }
     const period = getPeriod(subscription);
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`billing-sync:${userId}`}))`);
     const [previous] = await tx

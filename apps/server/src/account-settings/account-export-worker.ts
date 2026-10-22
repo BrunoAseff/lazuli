@@ -38,7 +38,8 @@ import type { ObjectStorage } from "../storage/object-storage.ts";
 
 const POLL_INTERVAL_MS = 2_000;
 const LEASE_MS = 2 * 60_000;
-const MAX_EMAIL_ATTACHMENT_BYTES = 35_000_000;
+const LEASE_HEARTBEAT_MS = LEASE_MS / 2;
+const MAX_EMAIL_ATTACHMENT_BYTES = 28_000_000;
 
 type ClaimedExport = typeof accountExport.$inferSelect;
 
@@ -364,31 +365,40 @@ const writeArchive = async (
     },
   });
   const completed = pipeline(archive, byteLimit, output);
-  const data = await selectOwnedData(database, job.userId, job.categories);
-  archive.append(
-    [
-      "Cópia dos seus dados do Lazúli",
-      `Preparada em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
-      "",
-      "Os dados tabulares estão na pasta dados em arquivos CSV, que podem ser abertos em qualquer planilha.",
-      "Os arquivos originais enviados ao Lazúli estão na pasta arquivos.",
-      "",
-    ].join("\n"),
-    { name: "LEIA-ME.txt" },
-  );
-  for (const [name, value] of Object.entries(data))
-    if (name !== "formatVersion" && name !== "exportedAt")
-      archive.append(createCsv(value), {
-        name: `dados/${csvNames[name] ?? safeFilename(name)}.csv`,
-      });
-  await addPrivateFiles(
-    archive,
-    database,
-    storage,
-    job.userId,
-    job.categories.includes("projects"),
-  );
-  await Promise.all([archive.finalize(), completed]);
+  void completed.catch(() => undefined);
+  try {
+    const data = await selectOwnedData(database, job.userId, job.categories);
+    archive.append(
+      [
+        "Cópia dos seus dados do Lazúli",
+        `Preparada em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
+        "",
+        "Os dados tabulares estão na pasta dados em arquivos CSV, que podem ser abertos em qualquer planilha.",
+        "Os arquivos originais enviados ao Lazúli estão na pasta arquivos.",
+        "",
+      ].join("\n"),
+      { name: "LEIA-ME.txt" },
+    );
+    for (const [name, value] of Object.entries(data))
+      if (name !== "formatVersion" && name !== "exportedAt")
+        archive.append(createCsv(value), {
+          name: `dados/${csvNames[name] ?? safeFilename(name)}.csv`,
+        });
+    await addPrivateFiles(
+      archive,
+      database,
+      storage,
+      job.userId,
+      job.categories.includes("projects"),
+    );
+    await archive.finalize();
+    await completed;
+  } catch (error) {
+    archive.abort();
+    output.destroy();
+    await completed.catch(() => undefined);
+    throw error;
+  }
 };
 
 export const createAccountExportWorker = (
@@ -407,34 +417,53 @@ export const createAccountExportWorker = (
     try {
       const job = await claimNextExport(database, workerId);
       if (!job) return;
-      const directory = await mkdtemp(join(tmpdir(), "lazuli-export-"));
-      const destination = join(directory, `${job.id}.zip`);
+      const heartbeat = setInterval(() => {
+        void database
+          .update(accountExport)
+          .set({ leasedUntil: new Date(Date.now() + LEASE_MS), updatedAt: new Date() })
+          .where(
+            and(
+              eq(accountExport.id, job.id),
+              eq(accountExport.leaseOwner, workerId),
+              eq(accountExport.status, "processing"),
+            ),
+          )
+          .catch((error) =>
+            logger.error({ err: error, exportId: job.id }, "account export heartbeat failed"),
+          );
+      }, LEASE_HEARTBEAT_MS);
       try {
-        await writeArchive(database, storage, job, destination);
-        const file = await stat(destination);
-        if (file.size > MAX_EMAIL_ATTACHMENT_BYTES)
-          throw new Error("Account export exceeded the maximum email attachment size");
-        const [owner] = await database
-          .select({ email: user.email, emailVerified: user.emailVerified, name: user.name })
-          .from(user)
-          .where(eq(user.id, job.userId))
-          .limit(1);
-        if (!owner?.emailVerified) throw new Error("Account export owner has no verified email");
-        await sendReadyEmail({
-          attachment: await readFile(destination),
-          email: owner.email,
-          exportId: job.id,
-          filename: `dados-lazuli-${new Date().toISOString().slice(0, 10)}.zip`,
-          name: owner.name,
-        });
-        await database
-          .delete(accountExport)
-          .where(and(eq(accountExport.id, job.id), eq(accountExport.leaseOwner, workerId)));
-      } catch (error) {
-        logger.error({ err: error, exportId: job.id }, "account export processing failed");
-        await failExport(database, job, workerId);
+        const directory = await mkdtemp(join(tmpdir(), "lazuli-export-"));
+        const destination = join(directory, `${job.id}.zip`);
+        try {
+          await writeArchive(database, storage, job, destination);
+          const file = await stat(destination);
+          if (file.size > MAX_EMAIL_ATTACHMENT_BYTES)
+            throw new Error("Account export exceeded the maximum email attachment size");
+          const [owner] = await database
+            .select({ email: user.email, emailVerified: user.emailVerified, name: user.name })
+            .from(user)
+            .where(eq(user.id, job.userId))
+            .limit(1);
+          if (!owner?.emailVerified) throw new Error("Account export owner has no verified email");
+          await sendReadyEmail({
+            attachment: await readFile(destination),
+            email: owner.email,
+            exportId: job.id,
+            filename: `dados-lazuli-${new Date().toISOString().slice(0, 10)}.zip`,
+            name: owner.name,
+          });
+          await database
+            .delete(accountExport)
+            .where(and(eq(accountExport.id, job.id), eq(accountExport.leaseOwner, workerId)));
+        } catch (error) {
+          logger.error({ err: error, exportId: job.id }, "account export processing failed");
+          await failExport(database, job, workerId);
+        } finally {
+          await rm(directory, { force: true, recursive: true });
+        }
       } finally {
-        await rm(directory, { force: true, recursive: true });
+        clearInterval(heartbeat);
       }
     } catch (error) {
       logger.error({ err: error }, "account export worker iteration failed");

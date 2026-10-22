@@ -64,26 +64,34 @@ export const AccountSectionPage = () => {
     if (!emailChanged || !emailValid) return;
     setEmailFeedback(null);
     setEmailPending(true);
-    const { error } = await authClient.changeEmail({
-      callbackURL: `${window.location.origin}/settings/account?emailChanged=true`,
-      newEmail: normalizedEmail,
-    });
-    setEmailPending(false);
-    if (error) {
+    try {
+      const { error } = await authClient.changeEmail({
+        callbackURL: `${window.location.origin}/settings/account?emailChanged=true`,
+        newEmail: normalizedEmail,
+      });
+      if (error) {
+        setEmailFeedback({
+          kind: "error",
+          text: getAuthErrorMessage(
+            error,
+            "Não foi possível solicitar a alteração. Entre novamente se sua sessão não for recente.",
+          ),
+        });
+        return;
+      }
+      setEmailFeedback({
+        kind: "success",
+        text: "Enviamos a confirmação. Seu e-mail atual continua ativo até a verificação.",
+      });
+      setEmail(profile.data.email);
+    } catch {
       setEmailFeedback({
         kind: "error",
-        text: getAuthErrorMessage(
-          error,
-          "Não foi possível solicitar a alteração. Entre novamente se sua sessão não for recente.",
-        ),
+        text: "Não foi possível solicitar a alteração. Verifique sua conexão e tente novamente.",
       });
-      return;
+    } finally {
+      setEmailPending(false);
     }
-    setEmailFeedback({
-      kind: "success",
-      text: "Enviamos a confirmação. Seu e-mail atual continua ativo até a verificação.",
-    });
-    setEmail(profile.data.email);
   };
 
   return (
@@ -112,6 +120,7 @@ export const AccountSectionPage = () => {
               </>
             ) : null
           }
+          htmlFor="account-name"
           label="Nome"
           message={
             updateName.isError ? (
@@ -159,6 +168,7 @@ export const AccountSectionPage = () => {
               </>
             ) : null
           }
+          htmlFor="account-email"
           label="E-mail"
           message={
             emailFeedback ? (

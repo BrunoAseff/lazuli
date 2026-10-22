@@ -15,6 +15,10 @@ export const createMutationAuthorizer = (
   auth: Auth,
   websiteUrl: string,
   limiter: RequestRateLimiter,
+  rateLimitError: { code: string; message: string } = {
+    code: "RATE_LIMITED",
+    message: "Muitas alterações foram feitas em pouco tempo. Aguarde e tente novamente.",
+  },
 ) =>
   async function authorizeMutation(
     request: Parameters<typeof requireSession>[1],
@@ -24,10 +28,7 @@ export const createMutationAuthorizer = (
     const session = await requireSession(auth, request, reply);
     if (!session) return null;
     if (!limiter.consume(session.user.id)) {
-      reply.status(429).send({
-        code: "RATE_LIMITED",
-        message: "Muitas alterações foram feitas em pouco tempo. Aguarde e tente novamente.",
-      });
+      reply.status(429).send(rateLimitError);
       return null;
     }
     return session;

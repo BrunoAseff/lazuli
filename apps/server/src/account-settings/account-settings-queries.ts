@@ -1,5 +1,5 @@
 import { ACCOUNT_RETENTION_RECOMMENDED, type AccountExportCategory } from "@lazuli/shared";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, gt, ne } from "drizzle-orm";
 
 import type { Database } from "../database/client.ts";
 import {
@@ -82,7 +82,7 @@ export const listSafeSessions = async (
       userAgent: session.userAgent,
     })
     .from(session)
-    .where(eq(session.userId, userId))
+    .where(and(eq(session.userId, userId), gt(session.expiresAt, new Date())))
     .orderBy(desc(session.updatedAt), desc(session.createdAt));
   return {
     items: items.map((item) => ({

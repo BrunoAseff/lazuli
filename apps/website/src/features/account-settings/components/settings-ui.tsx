@@ -40,11 +40,13 @@ export const SettingsSurface = ({
 export const SettingsField = ({
   action,
   children,
+  htmlFor,
   label,
   message,
 }: {
   action?: ReactNode;
   children: ReactNode;
+  htmlFor?: string;
   label: string;
   message?: ReactNode;
 }) => (
@@ -54,7 +56,13 @@ export const SettingsField = ({
       action ? "sm:grid-cols-[4rem_minmax(0,1fr)_10rem]" : "sm:grid-cols-[4rem_minmax(0,1fr)]",
     )}
   >
-    <p className="pt-2 text-sm text-muted-foreground">{label}</p>
+    {htmlFor ? (
+      <label className="pt-2 text-sm text-muted-foreground" htmlFor={htmlFor}>
+        {label}
+      </label>
+    ) : (
+      <p className="pt-2 text-sm text-muted-foreground">{label}</p>
+    )}
     <div className="min-w-0">{children}</div>
     {action && <div className="flex items-center gap-1.5 sm:min-h-9 sm:justify-end">{action}</div>}
     {message && (
@@ -134,7 +142,7 @@ export const InlineFeedback = ({
 );
 
 export const SettingsLoading = () => (
-  <div className="space-y-6" aria-label="Carregando configurações">
+  <div className="space-y-6" aria-label="Carregando configurações" role="status">
     <Skeleton className="h-10 w-48" />
     <div className="rounded-[var(--radius-panel)] bg-card/60 p-6">
       <Skeleton className="h-6 w-40" />

@@ -142,6 +142,7 @@ export const DataSectionPage = () => {
       });
       resetAnalytics();
       queryClient.clear();
+      await session.refetch();
       await navigate("/login", { replace: true });
     } catch {
       // The mutation error remains visible inside the confirmation dialog.

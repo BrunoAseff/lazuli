@@ -120,25 +120,33 @@ export const SecuritySectionPage = () => {
       return;
     }
     setPasswordPending(true);
-    const { error } = await authClient.changePassword({
-      currentPassword,
-      newPassword,
-      revokeOtherSessions: true,
-    });
-    setPasswordPending(false);
-    if (error) {
+    try {
+      const { error } = await authClient.changePassword({
+        currentPassword,
+        newPassword,
+        revokeOtherSessions: true,
+      });
+      if (error) {
+        setPasswordFeedback({
+          kind: "error",
+          text: getAuthErrorMessage(error, "Não foi possível alterar a senha."),
+        });
+        return;
+      }
+      closePasswordDialog();
+      setPasswordFeedback({
+        kind: "success",
+        text: "Senha alterada. As outras sessões foram encerradas.",
+      });
+      void sessions.refetch();
+    } catch {
       setPasswordFeedback({
         kind: "error",
-        text: getAuthErrorMessage(error, "Não foi possível alterar a senha."),
+        text: "Não foi possível alterar a senha. Verifique sua conexão e tente novamente.",
       });
-      return;
+    } finally {
+      setPasswordPending(false);
     }
-    closePasswordDialog();
-    setPasswordFeedback({
-      kind: "success",
-      text: "Senha alterada. As outras sessões foram encerradas.",
-    });
-    void sessions.refetch();
   };
 
   const linkGoogle = async () => {
@@ -154,18 +162,25 @@ export const SecuritySectionPage = () => {
   const requestPasswordSetup = async () => {
     setMethodFeedback(null);
     setPasswordSetupPending(true);
-    const { error } = await authClient.requestPasswordReset({
-      email: profile.data!.email,
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setPasswordSetupPending(false);
-    if (error) {
+    try {
+      const { error } = await authClient.requestPasswordReset({
+        email: profile.data!.email,
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        setMethodFeedback(
+          getAuthErrorMessage(error, "Não foi possível enviar o link para criar uma senha."),
+        );
+        return;
+      }
+      setPasswordFeedback({ kind: "success", text: "Enviamos um link para você criar uma senha." });
+    } catch {
       setMethodFeedback(
-        getAuthErrorMessage(error, "Não foi possível enviar o link para criar uma senha."),
+        "Não foi possível enviar o link para criar uma senha. Verifique sua conexão e tente novamente.",
       );
-      return;
+    } finally {
+      setPasswordSetupPending(false);
     }
-    setPasswordFeedback({ kind: "success", text: "Enviamos um link para você criar uma senha." });
   };
 
   const unlinkGoogle = async () => {
@@ -189,9 +204,14 @@ export const SecuritySectionPage = () => {
   };
 
   const confirmSessionRevocation = async () => {
-    if (pendingSession === "others") await revokeOthers.mutateAsync();
-    else if (pendingSession) await revokeSession.mutateAsync(pendingSession);
-    setPendingSession(null);
+    try {
+      if (pendingSession === "others") await revokeOthers.mutateAsync();
+      else if (pendingSession) await revokeSession.mutateAsync(pendingSession);
+    } catch {
+      setMethodFeedback("Não foi possível encerrar a sessão. Tente novamente.");
+    } finally {
+      setPendingSession(null);
+    }
   };
 
   const methodMessage = methodFeedback

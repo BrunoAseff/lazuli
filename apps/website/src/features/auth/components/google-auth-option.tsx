@@ -33,21 +33,37 @@ export const GoogleAuthOption = ({ callbackPath = "/dashboard" }: { callbackPath
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (capabilities.isPending || capabilities.isError || !capabilities.data?.google) return null;
+  if (capabilities.isPending) return null;
+
+  if (capabilities.isError)
+    return (
+      <div className="mb-5 grid gap-3">
+        <AuthFeedback kind="error">Não foi possível verificar o acesso com Google.</AuthFeedback>
+        <Button onClick={() => void capabilities.refetch()} type="button" variant="outline">
+          Tentar novamente
+        </Button>
+      </div>
+    );
+
+  if (!capabilities.data?.google) return null;
 
   const continueWithGoogle = async () => {
     setPending(true);
     setError(null);
     const safeCallbackPath =
       callbackPath.startsWith("/") && !callbackPath.startsWith("//") ? callbackPath : "/dashboard";
-    const result = await authClient.signIn.social({
-      callbackURL: new URL(safeCallbackPath, window.location.origin).toString(),
-      errorCallbackURL: `${window.location.origin}/login?error=google`,
-      provider: "google",
-    });
-    if (result.error) {
+    try {
+      const result = await authClient.signIn.social({
+        callbackURL: new URL(safeCallbackPath, window.location.origin).toString(),
+        errorCallbackURL: `${window.location.origin}/login?error=google`,
+        provider: "google",
+      });
+      if (result.error)
+        setError(getAuthErrorMessage(result.error, "Não foi possível continuar com o Google."));
+    } catch {
+      setError("Não foi possível continuar com o Google. Verifique sua conexão e tente novamente.");
+    } finally {
       setPending(false);
-      setError(getAuthErrorMessage(result.error, "Não foi possível continuar com o Google."));
     }
   };
 

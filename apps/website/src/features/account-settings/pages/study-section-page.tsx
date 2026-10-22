@@ -81,6 +81,7 @@ export const StudySectionPage = () => {
               <label className="relative" htmlFor="retention-value">
                 <Input
                   aria-describedby="retention-explanation retention-recommendation"
+                  aria-label="Retenção desejada em porcentagem"
                   className="h-full rounded-none border-y-0 pr-7 text-center tabular-nums focus-visible:relative"
                   id="retention-value"
                   max={ACCOUNT_RETENTION_MAX}
