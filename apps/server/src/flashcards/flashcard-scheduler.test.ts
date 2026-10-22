@@ -33,4 +33,22 @@ describe("flashcard scheduler", () => {
     expect(hard.reps).toBe(1);
     expect(again.lastReviewedAt).toEqual(now);
   });
+
+  it("schedules a mature card sooner when the desired retention is higher", () => {
+    const mature = {
+      ...fresh,
+      difficulty: 5,
+      dueAt: now,
+      elapsedDays: 10,
+      lastReviewedAt: new Date("2026-08-13T12:00:00.000Z"),
+      reps: 5,
+      scheduledDays: 10,
+      srsState: "review" as const,
+      stability: 10,
+    };
+    const lowerRetention = scheduleFlashcardReview(mature, "good", now, 80).schedule;
+    const higherRetention = scheduleFlashcardReview(mature, "good", now, 95).schedule;
+
+    expect(higherRetention.dueAt.getTime()).toBeLessThan(lowerRetention.dueAt.getTime());
+  });
 });

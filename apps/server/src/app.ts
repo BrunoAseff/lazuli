@@ -4,6 +4,9 @@ import rawBody from "fastify-raw-body";
 import Fastify from "fastify";
 
 import { createAiCreditReconciler } from "./ai-credits/ai-credit-reconciler.ts";
+import { createAccountDeletionLifecycle } from "./account-settings/account-deletion.ts";
+import { createAccountExportWorker } from "./account-settings/account-export-worker.ts";
+import { createAccountSettingsRoutes } from "./account-settings/account-settings-routes.ts";
 import { createAnalyticsRoutes } from "./analytics/analytics-routes.ts";
 import { createAnalyticsService } from "./analytics/analytics-service.ts";
 import { createAiCreditRoutes } from "./ai-credits/ai-credit-routes.ts";
@@ -44,9 +47,17 @@ export const buildApp = (env: ServerEnv) => {
     trustProxy: env.TRUST_PROXY,
   });
   const database = createDatabase(env.DATABASE_URL);
-  const auth = createAuth(env, database.db, app.log);
   const analytics = createAnalyticsService(env, database.db, app.log);
   const storage = createObjectStorage(env);
+  const stripeBilling = createStripeBillingService(env, database.db, analytics);
+  const accountDeletion = createAccountDeletionLifecycle({
+    database: database.db,
+    logger: app.log,
+    storage,
+    stripe: stripeBilling,
+  });
+  const auth = createAuth(env, database.db, app.log, accountDeletion);
+  const accountExportWorker = createAccountExportWorker(database.db, storage, env, app.log);
   const importWorker = createDocumentImportWorker(
     database.db,
     storage,
@@ -63,7 +74,6 @@ export const buildApp = (env: ServerEnv) => {
     store: createAiGenerationStore(database.db),
   });
   const aiCollectionWorker = createAiCollectionWorker(database.db, aiGenerationService, app.log);
-  const stripeBilling = createStripeBillingService(env, database.db, analytics);
   const commercialMaintenanceWorker = createCommercialMaintenanceWorker(
     createCommercialMaintenanceService(database.db, stripeBilling),
     app.log,
@@ -96,6 +106,15 @@ export const buildApp = (env: ServerEnv) => {
   });
 
   app.register(createAuthRoutes(auth, env));
+  app.register(
+    createAccountSettingsRoutes({
+      auth,
+      database: database.db,
+      googleEnabled: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+      rollbackAccountDeletion: (userId) => accountDeletion.rollback(userId),
+      websiteUrl: env.WEBSITE_URL,
+    }),
+  );
   app.register(createAnalyticsRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
   app.register(
     createCommercialRoutes({
@@ -201,6 +220,7 @@ export const buildApp = (env: ServerEnv) => {
     aiCreditReconciler.stop();
     commercialMaintenanceWorker.stop();
     aiCollectionWorker.stop();
+    await accountExportWorker.stop();
     await importWorker.stop();
     await analytics.shutdown();
     storage.destroy();
@@ -211,6 +231,7 @@ export const buildApp = (env: ServerEnv) => {
     app.addHook("onReady", async () => {
       await storage.ensureBucket();
       importWorker.start();
+      accountExportWorker.start();
       aiCollectionWorker.start();
       aiCreditReconciler.start();
       commercialMaintenanceWorker.start();

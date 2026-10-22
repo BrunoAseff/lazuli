@@ -472,6 +472,31 @@ export const createStripeBillingService = (
 
   return {
     stripe,
+    async cancelForAccountDeletion(userId: string) {
+      const [customer] = await database
+        .select({
+          environment: billingCustomer.environment,
+          stripeCustomerId: billingCustomer.stripeCustomerId,
+        })
+        .from(billingCustomer)
+        .where(eq(billingCustomer.userId, userId))
+        .limit(1);
+      if (!customer) return;
+      if (customer.environment !== environment)
+        throw new Error("Stripe environment does not match the billing account");
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customer.stripeCustomerId,
+        limit: 100,
+        status: "all",
+      });
+      for (const subscription of subscriptions.data)
+        if (isManageableStripeSubscription(subscription))
+          await stripe.subscriptions.cancel(
+            subscription.id,
+            {},
+            { idempotencyKey: `lazuli:account-deletion:${userId}:${subscription.id}` },
+          );
+    },
     async createCheckout(userId: string, plan: PaidPlan, returnTo?: string) {
       const customer = await ensureCustomer(userId);
       return database.transaction(async (tx) => {

@@ -13,6 +13,7 @@ import {
   flashcardPracticeSession,
   flashcardReview,
   studyMaterialReference,
+  userStudyPreference,
 } from "../database/schema/index.ts";
 import { summarizeFlashcardContent } from "./flashcard-queries.ts";
 import {
@@ -88,7 +89,22 @@ const ratingCounts = async (tx: Transaction, sessionId: string) => {
   return result;
 };
 
-const nextItem = async (tx: Transaction, sessionId: string, now: Date, lock = false) => {
+const getDesiredRetention = async (tx: Transaction, userId: string) => {
+  const [preference] = await tx
+    .select({ value: userStudyPreference.desiredRetention })
+    .from(userStudyPreference)
+    .where(eq(userStudyPreference.userId, userId))
+    .limit(1);
+  return preference?.value ?? 90;
+};
+
+const nextItem = async (
+  tx: Transaction,
+  sessionId: string,
+  now: Date,
+  desiredRetention: number,
+  lock = false,
+) => {
   const query = tx
     .select({
       itemId: flashcardPracticeItem.id,
@@ -135,12 +151,13 @@ const nextItem = async (tx: Transaction, sessionId: string, now: Date, lock = fa
       questionHasImage: summarizeFlashcardContent(row.question).hasImage,
       answerHasImage: summarizeFlashcardContent(row.answer).hasImage,
     },
-    intervals: previewFlashcardRatings(schedule, now),
+    intervals: previewFlashcardRatings(schedule, now, desiredRetention),
     schedule,
   };
 };
 
 const sessionPayload = async (tx: Transaction, userId: string, sessionId: string, now: Date) => {
+  const desiredRetention = await getDesiredRetention(tx, userId);
   let session = await ownedSession(tx, userId, sessionId, true);
   if (!session) return null;
   if (session.status === "active") {
@@ -169,7 +186,8 @@ const sessionPayload = async (tx: Transaction, userId: string, sessionId: string
       session = { ...session, totalCards: normalizedTotal };
     }
   }
-  let item = session.status === "active" ? await nextItem(tx, sessionId, now) : null;
+  let item =
+    session.status === "active" ? await nextItem(tx, sessionId, now, desiredRetention) : null;
   if (session.status === "active" && !item) {
     const finishedAt = now;
     await tx
@@ -407,11 +425,12 @@ export const submitPracticeReview = async (
     const session = await ownedSession(tx, userId, sessionId, true);
     if (!session) return { kind: "not-found" as const };
     if (session.status !== "active") return { kind: "finished" as const };
-    const item = await nextItem(tx, sessionId, now, true);
+    const desiredRetention = await getDesiredRetention(tx, userId);
+    const item = await nextItem(tx, sessionId, now, desiredRetention, true);
     if (!item) return { kind: "finished" as const };
     if (item.id !== input.itemId) return { kind: "conflict" as const };
     const previous = item.schedule;
-    const { schedule } = scheduleFlashcardReview(previous, input.rating, now);
+    const { schedule } = scheduleFlashcardReview(previous, input.rating, now, desiredRetention);
     await tx.insert(flashcardReview).values({
       id: input.id,
       flashcardId: item.card.id,

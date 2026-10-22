@@ -1,5 +1,6 @@
 export const APP_NAME = "Lazúli";
 
+export * from "./account-settings/account-settings-contracts.ts";
 export * from "./analytics/analytics-contracts.ts";
 export * from "./ai/ai-contracts.ts";
 export * from "./auth/auth-constants.ts";

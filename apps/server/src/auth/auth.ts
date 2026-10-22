@@ -14,12 +14,25 @@ import type { Database } from "../database/client.ts";
 import * as schema from "../database/schema/index.ts";
 import { createVerificationEmailSender } from "../email/send-verification-email.ts";
 import { createPasswordResetEmailSender } from "../email/send-password-reset-email.ts";
+import { createChangeEmailConfirmationSender } from "../email/send-change-email-confirmation.ts";
 import { initializeNewUser } from "../onboarding/onboarding-content.ts";
 import { isValidAccountName, normalizeAccountName } from "./account-name.ts";
 
-export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBaseLogger) => {
+type AuthLifecycle = {
+  afterDelete?: (user: { id: string }) => Promise<void>;
+  beforeDelete?: (user: { id: string }) => Promise<void>;
+};
+
+export const createAuth = (
+  env: ServerEnv,
+  database: Database,
+  logger: FastifyBaseLogger,
+  lifecycle: AuthLifecycle = {},
+) => {
   const sendVerificationEmail = createVerificationEmailSender(env, logger);
   const sendPasswordResetEmail = createPasswordResetEmailSender(env, logger);
+  const sendChangeEmailConfirmation = createChangeEmailConfirmationSender(env, logger);
+  const googleConfigured = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
   return betterAuth({
     advanced: {
@@ -49,6 +62,18 @@ export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBa
               });
             }
 
+            return { data: { ...user, name } };
+          },
+        },
+        update: {
+          before: async (user) => {
+            if (user.name === undefined) return;
+            const name = normalizeAccountName(user.name);
+            if (!isValidAccountName(name))
+              throw new APIError("BAD_REQUEST", {
+                code: "INVALID_NAME",
+                message: "Name must contain between 2 and 80 characters.",
+              });
             return { data: { ...user, name } };
           },
         },
@@ -87,6 +112,15 @@ export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBa
         });
       },
     },
+    account: {
+      accountLinking: {
+        allowDifferentEmails: false,
+        allowUnlinkingAll: false,
+        enabled: true,
+        requireLocalEmailVerified: true,
+        trustedProviders: googleConfigured ? ["google"] : [],
+      },
+    },
     rateLimit: {
       customRules: {
         "/request-password-reset": {
@@ -103,7 +137,34 @@ export const createAuth = (env: ServerEnv, database: Database, logger: FastifyBa
       window: 60,
     },
     secret: env.BETTER_AUTH_SECRET,
+    session: { freshAge: 15 * 60 },
+    socialProviders: googleConfigured
+      ? {
+          google: {
+            clientId: env.GOOGLE_CLIENT_ID!,
+            clientSecret: env.GOOGLE_CLIENT_SECRET!,
+          },
+        }
+      : {},
     trustedOrigins: [env.WEBSITE_URL],
+    user: {
+      changeEmail: {
+        enabled: true,
+        sendChangeEmailConfirmation: async ({ token, url, user }) => {
+          await sendChangeEmailConfirmation({
+            email: user.email,
+            name: user.name,
+            token,
+            url,
+          });
+        },
+      },
+      deleteUser: {
+        enabled: true,
+        afterDelete: lifecycle.afterDelete,
+        beforeDelete: lifecycle.beforeDelete,
+      },
+    },
   });
 };
 

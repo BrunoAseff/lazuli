@@ -107,4 +107,24 @@ describe("server environment", () => {
       }).ANALYTICS_ENABLED,
     ).toBe(true);
   });
+
+  it("enables Google only when both OAuth credentials are configured", () => {
+    expect(
+      parseServerEnv({
+        ...validEnvironment,
+        GOOGLE_CLIENT_ID: "google-client-id",
+        GOOGLE_CLIENT_SECRET: "google-client-secret",
+      }),
+    ).toMatchObject({
+      GOOGLE_CLIENT_ID: "google-client-id",
+      GOOGLE_CLIENT_SECRET: "google-client-secret",
+    });
+    expect(() =>
+      parseServerEnv({ ...validEnvironment, GOOGLE_CLIENT_ID: "google-client-id" }),
+    ).toThrow("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET");
+    expect(
+      parseServerEnv({ ...validEnvironment, GOOGLE_CLIENT_ID: "", GOOGLE_CLIENT_SECRET: "" })
+        .GOOGLE_CLIENT_ID,
+    ).toBeUndefined();
+  });
 });

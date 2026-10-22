@@ -176,6 +176,20 @@
       "when": 1792558702261,
       "tag": "0024_puzzling_random",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792608669279,
+      "tag": "0025_chief_thunderbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792643363991,
+      "tag": "0026_melted_mauler",
+      "breakpoints": true
     }
   ]
 }

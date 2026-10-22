@@ -14,6 +14,7 @@ import { AuthFeedback } from "@/features/auth/components/auth-feedback.tsx";
 import { AuthEmailField, AuthPasswordField } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
 import { AuthSubmitButton } from "@/features/auth/components/auth-submit-button.tsx";
+import { GoogleAuthOption } from "@/features/auth/components/google-auth-option.tsx";
 
 type LocationState = {
   from?: string;
@@ -25,6 +26,7 @@ export const LoginPage = () => {
   const [searchParams] = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const destination = (location.state as LocationState | null)?.from ?? "/dashboard";
   const form = useForm<LoginValues>({
     defaultValues: { email: "", password: "", rememberMe: true },
     mode: "onChange",
@@ -49,7 +51,6 @@ export const LoginPage = () => {
       return;
     }
 
-    const destination = (location.state as LocationState | null)?.from ?? "/dashboard";
     await navigate(destination, { replace: true });
   });
 
@@ -81,6 +82,8 @@ export const LoginPage = () => {
           </Link>
         </AuthFeedback>
       )}
+
+      <GoogleAuthOption callbackPath={destination} />
 
       <form className="grid gap-5" noValidate onSubmit={onSubmit}>
         <AuthEmailField

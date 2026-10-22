@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { fromNodeHeaders } from "better-auth/node";
+import { authCapabilitiesSchema } from "@lazuli/shared";
 
 import type { ServerEnv } from "../config.ts";
 
@@ -9,6 +10,12 @@ type AuthHandler = {
 
 export const createAuthRoutes = (auth: AuthHandler, env: ServerEnv): FastifyPluginAsync =>
   async function authRoutes(app) {
+    app.get("/api/auth/capabilities", async () =>
+      authCapabilitiesSchema.parse({
+        google: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+      }),
+    );
+
     app.route({
       method: ["GET", "POST"],
       url: "/api/auth/*",

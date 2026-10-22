@@ -38,6 +38,21 @@ const DocumentEditorPage = lazy(
 const EditorialDesignPreviewPage = lazy(
   () => import("@/features/design-preview/pages/editorial-design-preview-page.tsx"),
 );
+const AccountSettingsLayout = lazy(
+  () => import("@/features/account-settings/pages/account-settings-layout.tsx"),
+);
+const AccountSectionPage = lazy(
+  () => import("@/features/account-settings/pages/account-section-page.tsx"),
+);
+const SecuritySectionPage = lazy(
+  () => import("@/features/account-settings/pages/security-section-page.tsx"),
+);
+const StudySectionPage = lazy(
+  () => import("@/features/account-settings/pages/study-section-page.tsx"),
+);
+const DataSectionPage = lazy(
+  () => import("@/features/account-settings/pages/data-section-page.tsx"),
+);
 
 export const App = () => (
   <Suspense fallback={<SessionLoading />}>
@@ -60,6 +75,13 @@ export const App = () => (
           <Route element={<QuizCollectionListPage />} path="quizzes" />
           <Route element={<QuizCollectionPage />} path="quizzes/:collectionId" />
           <Route element={<QuizAttemptPage />} path="quizzes/:collectionId/attempts/:attemptId" />
+          <Route element={<AccountSettingsLayout />} path="settings">
+            <Route element={<Navigate replace to="account" />} index />
+            <Route element={<AccountSectionPage />} path="account" />
+            <Route element={<SecuritySectionPage />} path="security" />
+            <Route element={<StudySectionPage />} path="study" />
+            <Route element={<DataSectionPage />} path="data" />
+          </Route>
           <Route
             element={<FlashcardPracticePage />}
             path="flashcards/:collectionId/practice/:sessionId"

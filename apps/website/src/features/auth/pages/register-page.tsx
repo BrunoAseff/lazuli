@@ -17,6 +17,7 @@ import {
 } from "@/features/auth/components/auth-form-field.tsx";
 import { AuthLayout } from "@/features/auth/components/auth-layout.tsx";
 import { AuthSubmitButton } from "@/features/auth/components/auth-submit-button.tsx";
+import { GoogleAuthOption } from "@/features/auth/components/google-auth-option.tsx";
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
@@ -53,6 +54,8 @@ export const RegisterPage = () => {
         description="Comece sua base pessoal de conhecimento com uma conta gratuita."
         title="Crie sua conta"
       />
+
+      <GoogleAuthOption />
 
       <form className="grid gap-4" noValidate onSubmit={onSubmit}>
         <AuthFormField error={form.formState.errors.name?.message} id="name" label="Nome">
