@@ -179,6 +179,7 @@ const getClient = () => {
 
 export const enableAnalytics = (userId: string) => {
   if (!analyticsConfigured) return;
+  if (enabledUserId === userId) return;
   consentRevision += 1;
   enabledUserId = userId;
   const revision = consentRevision;
@@ -195,6 +196,7 @@ export const enableAnalytics = (userId: string) => {
 };
 
 export const disableAnalytics = () => {
+  if (!enabledUserId) return;
   enabledUserId = null;
   consentRevision += 1;
   const revision = consentRevision;
@@ -203,8 +205,8 @@ export const disableAnalytics = () => {
       .then(() => clientPromise)
       .then((posthog) => {
         if (!posthog || revision !== consentRevision || enabledUserId) return null;
-        posthog.reset();
         posthog.opt_out_capturing();
+        posthog.reset();
         return null;
       })
       .catch(() => null);
