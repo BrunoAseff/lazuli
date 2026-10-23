@@ -1,12 +1,8 @@
-import {
-  createProjectSchema,
-  type ProjectCoverKey,
-  type ProjectSummary,
-  projectTitleSchema,
-} from "@lazuli/shared";
+import { createProjectSchema, type ProjectSummary, projectTitleSchema } from "@lazuli/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangleIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -36,12 +32,22 @@ import {
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
-import { useCreateProject, useDeleteProject, useUpdateProject } from "../api/project-queries.ts";
-import { ProjectApiError } from "../api/project-api.ts";
+import {
+  projectKeys,
+  useCreateProject,
+  useDeleteProject,
+  useUpdateProject,
+} from "../api/project-queries.ts";
+import { ProjectApiError, patchProject } from "../api/project-api.ts";
 import { getProjectErrorMessage } from "../project-messages.ts";
-import { CoverPicker } from "./cover-picker.tsx";
+import {
+  initialCoverSelection,
+  ProjectCoverEditor,
+  uploadProjectCover,
+} from "./project-cover-editor.tsx";
 import { getCommercialLimit } from "@/features/billing/billing-errors.ts";
 import type { CommercialLimitDetails } from "@lazuli/shared";
+import { createProjectWithCover } from "../create-project-with-cover.ts";
 
 const renameProjectSchema = z.object({ title: projectTitleSchema });
 type RenameProjectValues = z.input<typeof renameProjectSchema>;
@@ -57,6 +63,11 @@ export const CreateProjectDialog = ({
   open: boolean;
 }) => {
   const mutation = useCreateProject();
+  const client = useQueryClient();
+  const [selection, setSelection] = useState(initialCoverSelection);
+  const [created, setCreated] = useState<ProjectSummary | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [coverError, setCoverError] = useState("");
   const form = useForm<CreateProjectValues>({
     resolver: zodResolver(createProjectSchema),
     mode: "onChange",
@@ -67,18 +78,48 @@ export const CreateProjectDialog = ({
     },
   });
 
-  const close = () => {
+  const close = (success = false) => {
+    if (created && !success) toast.info("O projeto foi mantido com a capa atual.");
     onOpenChange(false);
     form.reset({ id: crypto.randomUUID(), title: "", coverKey: "library" });
     mutation.reset();
+    setCreated(null);
+    setSelection(initialCoverSelection());
+    setCoverError("");
   };
 
   const submit = form.handleSubmit(async (values) => {
+    setSubmitting(true);
+    setCoverError("");
+    let current = created;
     try {
-      await mutation.mutateAsync(createProjectSchema.parse(values));
+      await createProjectWithCover({
+        input: createProjectSchema.parse(values),
+        selection,
+        existing: current,
+        onCreated: (project) => {
+          current = project;
+          setCreated(project);
+        },
+        operations: {
+          create: (input) => mutation.mutateAsync(input),
+          upload: uploadProjectCover,
+          update: patchProject,
+        },
+      });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: projectKeys.lists() }),
+        client.invalidateQueries({ queryKey: ["account-settings", "usage"] }),
+      ]);
       toast.success("Projeto criado.");
-      close();
+      close(true);
     } catch (error) {
+      if (current) {
+        setCoverError(
+          "O projeto foi criado, mas não foi possível salvar a capa. Tente novamente ou mantenha a capa atual.",
+        );
+        return;
+      }
       const limit = getCommercialLimit(error);
       if (limit) {
         onLimit?.(limit);
@@ -90,51 +131,64 @@ export const CreateProjectDialog = ({
           "Não foi possível criar o projeto.",
         ),
       );
+    } finally {
+      setSubmitting(false);
     }
   });
 
   return (
     <Dialog
       open={open}
-      onOpenChange={(nextOpen) => !mutation.isPending && (nextOpen ? onOpenChange(true) : close())}
+      onOpenChange={(nextOpen) => !submitting && (nextOpen ? onOpenChange(true) : close())}
     >
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl">Novo projeto</DialogTitle>
           <DialogDescription>
             Organize documentos relacionados em um único espaço.
           </DialogDescription>
         </DialogHeader>
-        <form className="grid gap-5" onSubmit={submit}>
-          <div className="grid gap-2">
-            <Label htmlFor="new-project-title">Título</Label>
-            <Input
-              {...form.register("title")}
-              aria-describedby="new-project-title-error"
-              aria-invalid={Boolean(form.formState.errors.title)}
-              autoFocus
-              disabled={mutation.isPending}
-              id="new-project-title"
-              maxLength={100}
-              placeholder="Ex.: Física moderna"
-            />
-            <FormFieldError
-              id="new-project-title-error"
-              message={form.formState.errors.title?.message}
-            />
+        <form className="flex min-h-0 flex-1 flex-col gap-5" onSubmit={submit}>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto -mx-1 px-1">
+            <div className="grid gap-2">
+              <Label htmlFor="new-project-title">Título</Label>
+              <Input
+                {...form.register("title")}
+                aria-describedby="new-project-title-error"
+                aria-invalid={Boolean(form.formState.errors.title)}
+                autoFocus
+                disabled={submitting}
+                readOnly={Boolean(created)}
+                id="new-project-title"
+                maxLength={100}
+                placeholder="Ex.: Física moderna"
+              />
+              <FormFieldError
+                id="new-project-title-error"
+                message={form.formState.errors.title?.message}
+              />
+            </div>
+            <ProjectCoverEditor value={selection} onChange={setSelection} disabled={submitting} />
+            {coverError && (
+              <p className="text-sm text-destructive" role="alert">
+                {coverError}
+              </p>
+            )}
           </div>
-          <CoverPicker
-            disabled={mutation.isPending}
-            onChange={(coverKey) => form.setValue("coverKey", coverKey, { shouldValidate: true })}
-            value={form.watch("coverKey") ?? null}
-          />
           <DialogFooter>
-            <DialogCancelButton disabled={mutation.isPending} onClick={close}>
-              Cancelar
+            <DialogCancelButton disabled={submitting} onClick={() => close()}>
+              {created ? "Manter capa atual" : "Cancelar"}
             </DialogCancelButton>
-            <Button disabled={!form.formState.isValid || mutation.isPending} type="submit">
-              {mutation.isPending && <Spinner />}
-              {mutation.isPending ? "Criando..." : "Criar projeto"}
+            <Button
+              disabled={
+                !form.formState.isValid ||
+                submitting ||
+                (selection.mode === "upload" && !selection.file)
+              }
+              type="submit"
+            >
+              {submitting && <Spinner />}
+              {submitting ? "Salvando…" : created ? "Salvar capa" : "Criar projeto"}
             </Button>
           </DialogFooter>
         </form>
@@ -234,74 +288,7 @@ export const RenameProjectDialog = ({
   );
 };
 
-export const ChangeProjectCoverDialog = ({
-  onOpenChange,
-  open,
-  project,
-}: {
-  onOpenChange: (open: boolean) => void;
-  open: boolean;
-  project: ProjectSummary;
-}) => {
-  const [coverKey, setCoverKey] = useState<ProjectCoverKey | null>(project.coverKey);
-  const mutation = useUpdateProject(project.id);
-
-  useEffect(() => {
-    if (open) setCoverKey(project.coverKey);
-  }, [open, project.coverKey]);
-
-  const close = () => {
-    onOpenChange(false);
-    mutation.reset();
-  };
-
-  const save = async () => {
-    if (coverKey === project.coverKey) return;
-
-    try {
-      await mutation.mutateAsync({ coverKey });
-      toast.success(coverKey ? "Capa atualizada." : "Capa removida.");
-      close();
-    } catch (error) {
-      toast.error(
-        getProjectErrorMessage(
-          error instanceof ProjectApiError ? error : null,
-          "Não foi possível alterar a capa.",
-        ),
-      );
-    }
-  };
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => !mutation.isPending && (nextOpen ? onOpenChange(true) : close())}
-    >
-      <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl">Alterar capa</DialogTitle>
-          <DialogDescription>
-            Escolha uma imagem para identificar {project.title}.
-          </DialogDescription>
-        </DialogHeader>
-        <CoverPicker disabled={mutation.isPending} onChange={setCoverKey} value={coverKey} />
-        <DialogFooter>
-          <DialogCancelButton disabled={mutation.isPending} onClick={close}>
-            Cancelar
-          </DialogCancelButton>
-          <Button
-            disabled={mutation.isPending || coverKey === project.coverKey}
-            onClick={save}
-            type="button"
-          >
-            {mutation.isPending && <Spinner />}
-            {mutation.isPending ? "Salvando..." : "Salvar capa"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
+export { ChangeProjectCoverDialog } from "./change-project-cover-dialog.tsx";
 
 export const DeleteProjectDialog = ({
   onDeleted,

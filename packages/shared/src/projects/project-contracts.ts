@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { favoriteFilterShape } from "../favorites.ts";
 
 export const PROJECT_PAGE_SIZE = 12;
 export const PROJECT_MAX_PAGE_SIZE = 24;
@@ -26,8 +27,13 @@ export const projectTitleSchema = z
   .transform((title) => title.replace(/\s+/g, " "));
 
 export const projectIdSchema = z.uuid();
+export const recentProjectsRequestSchema = z.object({ ids: z.array(projectIdSchema).max(4) });
+export const recentProjectsResponseSchema = z.object({
+  items: z.array(z.object({ id: projectIdSchema, title: z.string() })),
+});
 
 export const projectListQuerySchema = z.object({
+  ...favoriteFilterShape,
   query: z.string().trim().max(100).default(""),
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce
@@ -48,6 +54,9 @@ export const updateProjectSchema = z
   .object({
     title: projectTitleSchema.optional(),
     coverKey: projectCoverKeySchema.nullable().optional(),
+    expectedCover: z
+      .object({ assetId: z.uuid().nullable(), key: projectCoverKeySchema.nullable() })
+      .optional(),
   })
   .refine(({ coverKey, title }) => coverKey !== undefined || title !== undefined, {
     message: "Informe ao menos uma alteração.",
@@ -64,6 +73,8 @@ export const projectSummarySchema = z.object({
   id: projectIdSchema,
   title: z.string(),
   coverKey: projectCoverKeySchema.nullable(),
+  coverAssetId: z.uuid().nullable().optional(),
+  coverThumbnailAssetId: z.uuid().nullable().optional(),
   documentCount: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),

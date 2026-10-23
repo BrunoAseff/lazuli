@@ -28,6 +28,8 @@ import { authClient } from "@/features/auth/auth-client.ts";
 import { AiCreditBalance } from "@/features/ai/components/ai-credit-balance.tsx";
 import { BillingStatusNotice } from "@/features/billing/components/billing-status-notice.tsx";
 import { useRecentProjects } from "@/features/projects/use-recent-projects.ts";
+import { FavoriteSidebar } from "@/features/favorites/favorite-sidebar.tsx";
+import { GlobalSearchButton } from "@/features/search/global-search-button.tsx";
 
 const primaryNavigation = [
   { label: "Início", path: "/dashboard", Icon: HouseLineIcon },
@@ -63,6 +65,7 @@ export const AppSidebar = () => {
       </SidebarHeader>
 
       <SidebarContent className="px-2 pt-2">
+        <GlobalSearchButton />
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             <SidebarMenu className="gap-0.5">
@@ -88,6 +91,7 @@ export const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        <FavoriteSidebar onNavigate={closeMobileNavigation} />
         {recentProjects.length > 0 && (
           <SidebarGroup className="mt-5 p-0">
             <SidebarGroupLabel className="h-auto px-2 pb-1.5 text-[0.68rem] font-medium tracking-[0.12em] text-muted-foreground uppercase">

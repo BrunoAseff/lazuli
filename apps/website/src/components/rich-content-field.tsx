@@ -1,5 +1,5 @@
 import { useCreateBlockNote } from "@blocknote/react";
-import { BlockNoteView } from "@blocknote/shadcn";
+import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
 
 import { LocalizedBlockNoteInput } from "@/features/documents/editor/localized-blocknote-input.tsx";
 import { cn } from "@/lib/utils.ts";
@@ -56,7 +56,6 @@ export const RichContentField = ({
         onChange={onChange}
         shadCNComponents={blockNoteComponents}
         sideMenu={false}
-        theme="light"
       />
     </div>
     {error && (

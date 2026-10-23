@@ -6,7 +6,7 @@ import { Transform, type Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { AccountExportCategory } from "@lazuli/shared";
 import { type Archiver, ZipArchive } from "archiver";
-import { and, asc, eq, inArray, isNotNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 
 import type { ServerEnv } from "../config.ts";
@@ -32,8 +32,12 @@ import {
   user,
   userAnalyticsPreference,
   userStudyPreference,
+  userInterfacePreference,
+  userFavorite,
 } from "../database/schema/index.ts";
-import { createAccountExportEmailSender } from "../email/send-account-export-email.ts";
+import { enqueueLifecycleEmail } from "../email/email-outbox.ts";
+import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { storageObjectDeletion } from "../database/schema/index.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 
 const POLL_INTERVAL_MS = 2_000;
@@ -113,6 +117,8 @@ const csvNames: Record<string, string> = {
   references: "referencias",
   studyPreferences: "preferencias-estudo",
   subscription: "assinatura",
+  interfacePreference: "preferencias-aparencia",
+  favorites: "favoritos",
 };
 
 const claimNextExport = (database: Database, workerId: string) =>
@@ -142,6 +148,12 @@ const claimNextExport = (database: Database, workerId: string) =>
           updatedAt: now,
         })
         .where(eq(accountExport.id, next.id));
+      await enqueueLifecycleEmail(tx, {
+        key: `export-failed/${next.id}`,
+        userId: next.userId,
+        kind: "export_failed",
+        afterKey: `export-requested/${next.id}`,
+      });
       return null;
     }
     const [claimed] = await tx
@@ -161,17 +173,27 @@ const claimNextExport = (database: Database, workerId: string) =>
 
 const failExport = async (database: Database, job: ClaimedExport, workerId: string) => {
   const terminal = job.attempts >= job.maxAttempts;
-  await database
-    .update(accountExport)
-    .set({
-      availableAt: new Date(Date.now() + Math.min(60_000, 2 ** job.attempts * 1_000)),
-      errorCode: terminal ? "EXPORT_PROCESSING_FAILED" : null,
-      leaseOwner: null,
-      leasedUntil: null,
-      status: terminal ? "failed" : "queued",
-      updatedAt: new Date(),
-    })
-    .where(and(eq(accountExport.id, job.id), eq(accountExport.leaseOwner, workerId)));
+  await database.transaction(async (tx) => {
+    const updated = await tx
+      .update(accountExport)
+      .set({
+        availableAt: new Date(Date.now() + Math.min(60_000, 2 ** job.attempts * 1_000)),
+        errorCode: terminal ? "EXPORT_PROCESSING_FAILED" : null,
+        leaseOwner: null,
+        leasedUntil: null,
+        status: terminal ? "failed" : "queued",
+        updatedAt: new Date(),
+      })
+      .where(and(eq(accountExport.id, job.id), eq(accountExport.leaseOwner, workerId)))
+      .returning({ id: accountExport.id });
+    if (terminal && updated.length)
+      await enqueueLifecycleEmail(tx, {
+        key: `export-failed/${job.id}`,
+        userId: job.userId,
+        kind: "export_failed",
+        afterKey: `export-requested/${job.id}`,
+      });
+  });
 };
 
 const selectOwnedData = async (
@@ -218,6 +240,15 @@ const selectOwnedData = async (
     result.studyPreferences = study[0] ?? { desiredRetention: 90 };
     result.analyticsPreference = analytics[0] ?? null;
     result.subscription = subscriptions[0] ?? null;
+    const [appearance, favorites] = await Promise.all([
+      database
+        .select({ theme: userInterfacePreference.theme })
+        .from(userInterfacePreference)
+        .where(eq(userInterfacePreference.userId, userId)),
+      database.select().from(userFavorite).where(eq(userFavorite.userId, userId)),
+    ]);
+    result.interfacePreference = appearance[0] ?? { theme: "system" };
+    result.favorites = favorites;
   }
 
   const projects = selected.has("projects")
@@ -318,29 +349,15 @@ const addPrivateFiles = async (
   includeProjects: boolean,
 ) => {
   if (!includeProjects) return;
-  const [assets, covers] = await Promise.all([
-    database
-      .select({ id: asset.id, key: asset.objectKey, name: asset.originalName })
-      .from(asset)
-      .where(eq(asset.userId, userId)),
-    database
-      .select({ id: project.id, key: project.coverKey })
-      .from(project)
-      .where(and(eq(project.userId, userId), isNotNull(project.coverKey))),
-  ]);
+  const assets = await database
+    .select({ id: asset.id, key: asset.objectKey, name: asset.originalName })
+    .from(asset)
+    .where(eq(asset.userId, userId));
   for (const file of assets) {
     const object = await storage.get(file.key);
     if (object.Body)
       archive.append(object.Body as Readable, {
         name: `files/assets/${file.id}-${safeFilename(file.name)}`,
-      });
-  }
-  for (const cover of covers) {
-    if (!cover.key) continue;
-    const object = await storage.get(cover.key);
-    if (object.Body)
-      archive.append(object.Body as Readable, {
-        name: `files/project-covers/${cover.id}-${safeFilename(cover.key.split("/").at(-1) ?? "cover")}`,
       });
   }
 };
@@ -408,7 +425,6 @@ export const createAccountExportWorker = (
   logger: FastifyBaseLogger,
 ) => {
   const workerId = `account-export:${process.pid}:${crypto.randomUUID()}`;
-  const sendReadyEmail = createAccountExportEmailSender(env, logger);
   let timer: NodeJS.Timeout | undefined;
   let inFlight: Promise<void> | undefined;
   let stopped = false;
@@ -446,16 +462,39 @@ export const createAccountExportWorker = (
             .where(eq(user.id, job.userId))
             .limit(1);
           if (!owner?.emailVerified) throw new Error("Account export owner has no verified email");
-          await sendReadyEmail({
-            attachment: await readFile(destination),
-            email: owner.email,
-            exportId: job.id,
-            filename: `dados-lazuli-${new Date().toISOString().slice(0, 10)}.zip`,
-            name: owner.name,
+          const objectKey = `${job.userId}/account-exports/${job.id}/${crypto.randomUUID()}.zip`;
+          await enqueueObjectDeletions(database, [objectKey], 24 * 60 * 60_000);
+          await storage.put(objectKey, await readFile(destination), "application/zip", file.size);
+          await database.transaction(async (tx) => {
+            const saved = await tx
+              .update(accountExport)
+              .set({
+                status: "ready",
+                objectKey,
+                byteSize: file.size,
+                readyAt: new Date(),
+                leaseOwner: null,
+                leasedUntil: null,
+                updatedAt: new Date(),
+              })
+              .where(and(eq(accountExport.id, job.id), eq(accountExport.leaseOwner, workerId)))
+              .returning({ id: accountExport.id });
+            if (!saved.length) return;
+            await tx
+              .delete(storageObjectDeletion)
+              .where(eq(storageObjectDeletion.objectKey, objectKey));
+            await enqueueLifecycleEmail(tx, {
+              key: `export-ready/${job.id}`,
+              userId: job.userId,
+              kind: "export_ready",
+              afterKey: `export-requested/${job.id}`,
+              payload: {
+                exportId: job.id,
+                attachmentKey: objectKey,
+                filename: `dados-lazuli-${new Date().toISOString().slice(0, 10)}.zip`,
+              },
+            });
           });
-          await database
-            .delete(accountExport)
-            .where(and(eq(accountExport.id, job.id), eq(accountExport.leaseOwner, workerId)));
         } catch (error) {
           logger.error({ err: error, exportId: job.id }, "account export processing failed");
           await failExport(database, job, workerId);
@@ -481,6 +520,7 @@ export const createAccountExportWorker = (
   };
 
   return {
+    run,
     start() {
       launch();
     },

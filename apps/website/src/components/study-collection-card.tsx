@@ -6,15 +6,21 @@ export const StudyCollectionCard = ({
   actions,
   children,
   identity,
+  favorite,
 }: {
   actions: ReactNode;
   children: ReactNode;
   identity: ReactNode;
+  favorite?: ReactNode;
 }) => (
   <article className="grid min-w-0 gap-4 rounded-xl border bg-card px-4 py-4 transition-colors hover:bg-accent/45 sm:px-5">
     <div className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-      <div className="min-w-0">{identity}</div>
+      <div className="flex min-w-0 items-start gap-2">
+        <div className="min-w-0 flex-1">{identity}</div>
+        {favorite && <div className="shrink-0 sm:hidden">{favorite}</div>}
+      </div>
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:justify-self-end">
+        {favorite && <div className="hidden sm:block">{favorite}</div>}
         {actions}
       </div>
     </div>

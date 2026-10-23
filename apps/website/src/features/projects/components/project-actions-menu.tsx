@@ -8,10 +8,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
-import { cn } from "@/lib/utils.ts";
+import type { FavoriteTarget } from "@lazuli/shared";
+import { FavoriteMenuItem } from "@/features/favorites/favorite-menu-item.tsx";
 
 type ProjectActionsMenuProps = {
   className?: string;
+  favorite?: FavoriteTarget;
   onChangeCover: () => void;
   onDelete: () => void;
   onRename: () => void;
@@ -19,22 +21,19 @@ type ProjectActionsMenuProps = {
 
 export const ProjectActionsMenu = ({
   className,
+  favorite,
   onChangeCover,
   onDelete,
   onRename,
 }: ProjectActionsMenuProps) => (
   <DropdownMenu modal={false}>
     <DropdownMenuTrigger asChild>
-      <Button
-        aria-label="Abrir ações do projeto"
-        className={cn("bg-card bg-clip-border shadow-none", className)}
-        size="icon-sm"
-        variant="outline"
-      >
+      <Button aria-label="Abrir ações do projeto" className={className} size="icon" variant="ghost">
         <EllipsisIcon aria-hidden="true" />
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
+      {favorite && <FavoriteMenuItem target={favorite} />}
       <DropdownMenuItem onSelect={onRename}>
         <PencilIcon aria-hidden="true" />
         Renomear

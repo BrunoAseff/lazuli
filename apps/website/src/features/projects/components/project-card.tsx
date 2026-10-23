@@ -7,6 +7,7 @@ import { formatProjectDate } from "../format-project-date.ts";
 import { HighlightText } from "@/components/highlight-text.tsx";
 import { ProjectActionsMenu } from "./project-actions-menu.tsx";
 import { ProjectCover } from "./project-cover.tsx";
+import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 
 type ProjectCardProps = {
   listLocation: string;
@@ -32,9 +33,12 @@ export const ProjectCard = ({
       state={{ projectListLocation: listLocation }}
       to={`/documents/${project.id}`}
     >
-      <ProjectCover coverKey={project.coverKey} />
+      <ProjectCover
+        coverKey={project.coverKey}
+        assetId={project.coverThumbnailAssetId ?? project.coverAssetId}
+      />
     </Link>
-    <div className="grid gap-3 p-4">
+    <div className="flex flex-1 flex-col gap-3 p-4">
       <div className="flex min-w-0 items-start gap-3">
         <Link
           className="min-w-0 flex-1 font-heading text-xl leading-tight font-medium [overflow-wrap:anywhere] underline-offset-4 outline-none hover:underline focus-visible:underline"
@@ -43,8 +47,14 @@ export const ProjectCard = ({
         >
           <HighlightText query={query} text={project.title} />
         </Link>
+        <FavoriteButton
+          kind="project"
+          id={project.id}
+          title={project.title}
+          className="-mt-2 -mr-2"
+        />
       </div>
-      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <div className="mt-auto flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <DocumentDomainIcon aria-hidden="true" className="size-4" weight="duotone" />
           {project.documentCount} {project.documentCount === 1 ? "documento" : "documentos"}
@@ -53,6 +63,7 @@ export const ProjectCard = ({
       </div>
     </div>
     <ProjectActionsMenu
+      favorite={{ kind: "project", id: project.id }}
       className="absolute top-2 right-2 opacity-0 transition-opacity group-hover/project-card:opacity-100 group-focus-within/project-card:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
       onChangeCover={onChangeCover}
       onDelete={onDelete}

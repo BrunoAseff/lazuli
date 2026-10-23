@@ -7,6 +7,7 @@ import { formatProjectDate } from "../format-project-date.ts";
 import { ProjectActionsMenu } from "./project-actions-menu.tsx";
 import { ProjectCover } from "./project-cover.tsx";
 import type { ProjectAction } from "../project-types.ts";
+import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 
 type ProjectTableProps = {
   listLocation: string;
@@ -54,7 +55,7 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
           <th className="hidden w-44 px-4 py-3 font-medium md:table-cell" scope="col">
             Atualizado em
           </th>
-          <th className="w-14 px-3 py-3" scope="col">
+          <th className="w-24 px-2 py-3" scope="col">
             <span className="sr-only">Ações</span>
           </th>
         </tr>
@@ -68,6 +69,7 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
                   className="hidden h-10 w-[4.5rem] shrink-0 rounded-[var(--radius)] sm:grid"
                   compact
                   coverKey={project.coverKey}
+                  assetId={project.coverThumbnailAssetId ?? project.coverAssetId}
                 />
                 <div className="min-w-0">
                   <ProjectTitleLink listLocation={listLocation} project={project} query={query} />
@@ -85,12 +87,16 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
               <time dateTime={project.updatedAt}>{formatProjectDate(project.updatedAt)}</time>
             </td>
             <td className="px-3 py-3 text-right">
-              <ProjectActionsMenu
-                className="border-transparent bg-transparent shadow-none group-hover:border-border group-hover:bg-background"
-                onChangeCover={() => onAction("cover", project)}
-                onDelete={() => onAction("delete", project)}
-                onRename={() => onAction("rename", project)}
-              />
+              <div className="flex items-center justify-end gap-1">
+                <FavoriteButton kind="project" id={project.id} title={project.title} />
+                <ProjectActionsMenu
+                  favorite={{ kind: "project", id: project.id }}
+                  className="shadow-none"
+                  onChangeCover={() => onAction("cover", project)}
+                  onDelete={() => onAction("delete", project)}
+                  onRename={() => onAction("rename", project)}
+                />
+              </div>
             </td>
           </tr>
         ))}

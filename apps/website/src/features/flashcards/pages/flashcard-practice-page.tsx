@@ -1,5 +1,5 @@
 import { useCreateBlockNote } from "@blocknote/react";
-import { BlockNoteView } from "@blocknote/shadcn";
+import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
 import type { FlashcardPracticeSession, FlashcardRating } from "@lazuli/shared";
 import { ArrowLeftIcon, LoaderCircleIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -257,7 +257,6 @@ const RichContent = ({ content }: { content: LazuliDocumentBlock }) => {
       className="lazuli-editor lazuli-flashcard-practice"
       editable={false}
       editor={editor}
-      theme="light"
     />
   );
 };

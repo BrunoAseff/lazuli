@@ -26,6 +26,7 @@ import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 export const FlashcardCollectionListPage = () => {
   const {
     clearFilters,
+    favorites,
     page,
     project,
     query,
@@ -40,6 +41,7 @@ export const FlashcardCollectionListPage = () => {
   const input = flashcardCollectionListQuerySchema.parse({
     page,
     pageSize: FLASHCARD_COLLECTION_PAGE_SIZE,
+    favorites,
     project,
     query,
     status,
@@ -55,7 +57,7 @@ export const FlashcardCollectionListPage = () => {
   usePaginationClamp(page, collections.data?.pagination.totalPages, setPage);
 
   const hasItems = Boolean(collections.data?.items.length);
-  const hasFilters = Boolean(query || project);
+  const hasFilters = Boolean(query || project || favorites);
   const isEmpty = collections.data?.pagination.totalItems === 0 && !hasFilters;
   const noResults = collections.data?.pagination.totalItems === 0 && hasFilters;
 

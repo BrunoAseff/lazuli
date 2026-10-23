@@ -1,5 +1,6 @@
 import {
   accountSessionsSchema,
+  appearancePreferenceSchema,
   accountSettingsProfileSchema,
   createAccountExportSchema,
   deleteAccountSchema,
@@ -9,6 +10,9 @@ import {
 import type { FastifyPluginAsync } from "fastify";
 import { APIError } from "better-auth/api";
 import { fromNodeHeaders } from "better-auth/node";
+import { eq } from "drizzle-orm";
+import { userInterfacePreference } from "../database/schema/index.ts";
+import { getAccountUsage } from "./account-usage.ts";
 
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
@@ -62,6 +66,37 @@ export const createAccountSettingsRoutes = ({
       const profile = await getAccountProfile(database, session.user.id, googleEnabled);
       if (!profile) return reply.status(404).send({ code: "ACCOUNT_NOT_FOUND" });
       return accountSettingsProfileSchema.parse(profile);
+    });
+
+    app.get("/api/account-settings/usage", async (request, reply) => {
+      const current = await requireSession(auth, request, reply);
+      if (current) return getAccountUsage(database, current.user.id);
+    });
+
+    app.get("/api/account-settings/appearance", async (request, reply) => {
+      const current = await requireSession(auth, request, reply);
+      if (!current) return;
+      const [preference] = await database
+        .select({ theme: userInterfacePreference.theme })
+        .from(userInterfacePreference)
+        .where(eq(userInterfacePreference.userId, current.user.id))
+        .limit(1);
+      return appearancePreferenceSchema.parse(preference ?? { theme: "system" });
+    });
+
+    app.put("/api/account-settings/appearance", async (request, reply) => {
+      const current = await authorizeMutation(request, reply);
+      if (!current) return;
+      const input = appearancePreferenceSchema.safeParse(request.body);
+      if (!input.success) return sendValidationError(reply);
+      await database
+        .insert(userInterfacePreference)
+        .values({ userId: current.user.id, ...input.data })
+        .onConflictDoUpdate({
+          target: userInterfacePreference.userId,
+          set: { ...input.data, updatedAt: new Date() },
+        });
+      return input.data;
     });
 
     app.get("/api/account-settings/study", async (request, reply) => {

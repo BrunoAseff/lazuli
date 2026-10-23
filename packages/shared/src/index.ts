@@ -1,6 +1,8 @@
 export const APP_NAME = "Lazúli";
 
 export * from "./account-settings/account-settings-contracts.ts";
+export * from "./favorites.ts";
+export * from "./global-search.ts";
 export * from "./analytics/analytics-contracts.ts";
 export * from "./ai/ai-contracts.ts";
 export * from "./auth/auth-constants.ts";

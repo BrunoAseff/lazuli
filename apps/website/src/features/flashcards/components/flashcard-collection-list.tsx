@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress.tsx";
 import { formatMediumDateTime } from "@/lib/date-format.ts";
 import type { StudyCollectionAction } from "@/lib/study-actions.ts";
 import { FlashcardPracticeButton } from "./flashcard-practice-button.tsx";
+import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 
 const practiceLabel = (collection: FlashcardCollectionSummary) => {
   if (collection.totalCards === 0) return "Sem prática agendada";
@@ -38,6 +39,9 @@ export const FlashcardCollectionList = ({
       const progress = calculateFlashcardProgress(collection.studiedCards, collection.totalCards);
       return (
         <StudyCollectionCard
+          favorite={
+            <FavoriteButton kind="flashcards" id={collection.id} title={collection.title} />
+          }
           actions={
             <>
               <StudyCollectionOpenAction
@@ -54,6 +58,7 @@ export const FlashcardCollectionList = ({
                 />
               )}
               <StudyCollectionActions
+                favoriteTarget={{ kind: "flashcards", id: collection.id }}
                 archived={Boolean(collection.archivedAt)}
                 onArchive={() => onAction("archive", collection)}
                 onDelete={() => onAction("delete", collection)}

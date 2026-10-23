@@ -7,6 +7,7 @@ import { SearchInput } from "@/components/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { cn } from "@/lib/utils.ts";
+import { FavoriteFilter } from "@/features/favorites/favorite-filter.tsx";
 
 export const StudyCollectionToolbar = ({
   onClearSearch,
@@ -88,6 +89,7 @@ export const StudyCollectionToolbar = ({
             ))}
           </div>
         </div>
+        <FavoriteFilter />
       </PopoverContent>
     </Popover>
     {action}

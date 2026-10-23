@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import type { FastifyBaseLogger } from "fastify";
-import { Resend } from "resend";
+import { createEmailTransport } from "./email-transport.ts";
 
 import type { ServerEnv } from "../config.ts";
 import { createAccountExportEmail } from "./account-export-email.ts";
 
 export const createAccountExportEmailSender = (env: ServerEnv, logger: FastifyBaseLogger) => {
-  const resend = new Resend(env.RESEND_API_KEY);
+  const send = createEmailTransport(env);
   return async ({
     attachment,
     email,
@@ -21,18 +21,14 @@ export const createAccountExportEmailSender = (env: ServerEnv, logger: FastifyBa
     name: string;
   }) => {
     const message = createAccountExportEmail({ name });
-    const { error } = await resend.emails.send(
-      {
-        attachments: [{ content: attachment, contentType: "application/zip", filename }],
-        from: env.AUTH_EMAIL_FROM,
-        to: email,
+    await send({
+      to: email,
+      message: {
         ...message,
+        attachments: [{ content: attachment, contentType: "application/zip", filename }],
       },
-      {
-        idempotencyKey: `account-export/${createHash("sha256").update(exportId).digest("hex").slice(0, 32)}`,
-      },
-    );
-    if (error) throw new Error(`Resend rejected account export email: ${error.name}`);
+      idempotencyKey: `account-export/${createHash("sha256").update(exportId).digest("hex").slice(0, 32)}`,
+    });
     logger.info({ exportId }, "account export email sent");
   };
 };

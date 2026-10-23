@@ -34,11 +34,15 @@ import { createFlashcardRoutes } from "./flashcards/flashcard-routes.ts";
 import { createFlashcardPracticeRoutes } from "./flashcards/flashcard-practice-routes.ts";
 import { createLogger } from "./logger.ts";
 import { createProjectRoutes } from "./projects/project-routes.ts";
+import { createProjectCoverRoutes } from "./projects/project-cover-routes.ts";
 import { createQuizCollectionRoutes } from "./quizzes/quiz-collection-routes.ts";
 import { createQuizRoutes } from "./quizzes/quiz-routes.ts";
 import { createReferenceRoutes } from "./references/reference-routes.ts";
 import { createAuthRoutes } from "./routes/auth-routes.ts";
 import { healthRoutes } from "./routes/health.ts";
+import { createFavoriteRoutes } from "./favorites/favorite-routes.ts";
+import { createGlobalSearchRoutes } from "./search/global-search-routes.ts";
+import { createLifecycleEmailWorker } from "./email/email-worker.ts";
 import { createObjectStorage } from "./storage/object-storage.ts";
 
 export const buildApp = (env: ServerEnv) => {
@@ -58,6 +62,7 @@ export const buildApp = (env: ServerEnv) => {
   });
   const auth = createAuth(env, database.db, app.log, accountDeletion);
   const accountExportWorker = createAccountExportWorker(database.db, storage, env, app.log);
+  const lifecycleEmailWorker = createLifecycleEmailWorker(database.db, storage, env, app.log);
   const importWorker = createDocumentImportWorker(
     database.db,
     storage,
@@ -106,6 +111,19 @@ export const buildApp = (env: ServerEnv) => {
   });
 
   app.register(createAuthRoutes(auth, env));
+  app.register(createFavoriteRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
+  app.register(
+    createProjectCoverRoutes({
+      auth,
+      database: database.db,
+      storage,
+      websiteUrl: env.WEBSITE_URL,
+      enforceCommercialLimits: env.COMMERCIAL_LIMITS_ENFORCED,
+    }),
+  );
+  app.register(
+    createGlobalSearchRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }),
+  );
   app.register(
     createAccountSettingsRoutes({
       auth,
@@ -217,6 +235,7 @@ export const buildApp = (env: ServerEnv) => {
   app.register(healthRoutes);
 
   app.addHook("onClose", async () => {
+    await lifecycleEmailWorker.stop();
     aiCreditReconciler.stop();
     commercialMaintenanceWorker.stop();
     aiCollectionWorker.stop();
@@ -232,6 +251,7 @@ export const buildApp = (env: ServerEnv) => {
       await storage.ensureBucket();
       importWorker.start();
       accountExportWorker.start();
+      lifecycleEmailWorker.start();
       aiCollectionWorker.start();
       aiCreditReconciler.start();
       commercialMaintenanceWorker.start();

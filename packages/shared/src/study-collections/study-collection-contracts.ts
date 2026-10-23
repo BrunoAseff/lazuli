@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { favoriteFilterShape } from "../favorites.ts";
 
 import { projectIdSchema } from "../projects/project-contracts.ts";
 
@@ -16,6 +17,7 @@ export const studyCollectionStatusSchema = z.enum(["active", "archived"]);
 export const studyCollectionProjectFilterSchema = z.union([projectIdSchema, z.literal("none")]);
 
 export const studyCollectionListQueryShape = {
+  ...favoriteFilterShape,
   query: z.string().trim().max(100).default(""),
   project: studyCollectionProjectFilterSchema.optional(),
   status: studyCollectionStatusSchema.default("active"),

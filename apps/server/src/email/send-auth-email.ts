@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { FastifyBaseLogger } from "fastify";
-import { Resend } from "resend";
+import { createEmailTransport } from "./email-transport.ts";
 
 import type { ServerEnv } from "../config.ts";
 
@@ -31,23 +31,16 @@ export const createAuthEmailSender = (
     logMessage: string;
   },
 ) => {
-  const resend = new Resend(env.RESEND_API_KEY);
+  const send = createEmailTransport(env);
 
   return async ({ email, name, token, url }: AuthEmailData) => {
     const message = options.createMessage({ name, url });
     const operationId = createHash("sha256").update(token).digest("hex").slice(0, 32);
-    const { error } = await resend.emails.send(
-      {
-        from: env.AUTH_EMAIL_FROM,
-        to: email,
-        ...message,
-      },
-      { idempotencyKey: `${options.idempotencyPrefix}/${operationId}` },
-    );
-
-    if (error) {
-      throw new Error(`Resend rejected authentication email: ${error.name}`);
-    }
+    await send({
+      to: email,
+      message,
+      idempotencyKey: `${options.idempotencyPrefix}/${operationId}`,
+    });
 
     logger.info({ email: maskEmail(email) }, options.logMessage);
   };

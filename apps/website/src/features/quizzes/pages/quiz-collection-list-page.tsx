@@ -22,6 +22,7 @@ import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 export const QuizCollectionListPage = () => {
   const {
     clearFilters,
+    favorites,
     page,
     project,
     query,
@@ -35,6 +36,7 @@ export const QuizCollectionListPage = () => {
   const input = quizCollectionListQuerySchema.parse({
     page,
     pageSize: QUIZ_COLLECTION_PAGE_SIZE,
+    favorites,
     project,
     query,
     status,
@@ -50,7 +52,7 @@ export const QuizCollectionListPage = () => {
   usePaginationClamp(page, collections.data?.pagination.totalPages, setPage);
 
   const hasItems = Boolean(collections.data?.items.length);
-  const hasFilters = Boolean(query || project);
+  const hasFilters = Boolean(query || project || favorites);
   const isEmpty = collections.data?.pagination.totalItems === 0 && !hasFilters;
   const noResults = collections.data?.pagination.totalItems === 0 && hasFilters;
 

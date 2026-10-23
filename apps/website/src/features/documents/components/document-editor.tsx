@@ -14,7 +14,7 @@ import {
   FormattingToolbarController,
   useCreateBlockNote,
 } from "@blocknote/react";
-import { BlockNoteView } from "@blocknote/shadcn";
+import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useBlocker, useLocation, useNavigate } from "react-router";
@@ -72,6 +72,7 @@ import {
 import { LocalizedBlockNoteInput } from "../editor/localized-blocknote-input.tsx";
 import { DocumentSaveStatus, type DocumentSaveState } from "./document-save-status.tsx";
 import { safeReturnTo } from "../document-navigation.ts";
+import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 
 const blockNoteComponents = { Input: { Input: LocalizedBlockNoteInput } };
 const compactWorkspaceMaxWidth = 56 * 16;
@@ -113,6 +114,13 @@ export const DocumentEditor = ({
   const [pendingLinkConfirmationOpen, setPendingLinkConfirmationOpen] = useState(false);
   const [compactEditorChrome, setCompactEditorChrome] = useState(false);
   const location = useLocation();
+  const globalSearch = (
+    location.state as { globalSearch?: { documentId?: unknown; query?: unknown } } | null
+  )?.globalSearch;
+  const initialSearchQuery =
+    globalSearch?.documentId === documentId && typeof globalSearch.query === "string"
+      ? globalSearch.query.slice(0, 200)
+      : "";
   const navigate = useNavigate();
   const createReference = useCreateReferences();
   const pendingTarget = useMemo(() => {
@@ -660,7 +668,12 @@ export const DocumentEditor = ({
               </Button>
             )}
             <DocumentReferencesButton onClick={() => setDocumentReferencesOpen(true)} />
-            <DocumentFind editorRef={editorContainerRef} showTrigger={false} />
+            <FavoriteButton kind="document" id={documentId} title={title} />
+            <DocumentFind
+              editorRef={editorContainerRef}
+              showTrigger={false}
+              initialQuery={initialSearchQuery}
+            />
             <Button
               onClick={async () => {
                 const blocks = collectDocumentTextBlocks(editor.document as DocumentBlock[]);
@@ -765,7 +778,6 @@ export const DocumentEditor = ({
                 setDirty(true);
               }}
               shadCNComponents={blockNoteComponents}
-              theme="light"
             >
               {compactEditorChrome ? (
                 <ExperimentalMobileFormattingToolbarController

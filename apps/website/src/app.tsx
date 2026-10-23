@@ -50,6 +50,12 @@ const SecuritySectionPage = lazy(
 const StudySectionPage = lazy(
   () => import("@/features/account-settings/pages/study-section-page.tsx"),
 );
+const AppearanceSectionPage = lazy(
+  () => import("@/features/account-settings/pages/appearance-section-page.tsx"),
+);
+const UsageSectionPage = lazy(
+  () => import("@/features/account-settings/pages/usage-section-page.tsx"),
+);
 const DataSectionPage = lazy(
   () => import("@/features/account-settings/pages/data-section-page.tsx"),
 );
@@ -81,6 +87,8 @@ export const App = () => (
             <Route element={<AccountSectionPage />} path="account" />
             <Route element={<SecuritySectionPage />} path="security" />
             <Route element={<StudySectionPage />} path="study" />
+            <Route element={<AppearanceSectionPage />} path="appearance" />
+            <Route element={<UsageSectionPage />} path="usage" />
             <Route element={<DataSectionPage />} path="data" />
           </Route>
           <Route

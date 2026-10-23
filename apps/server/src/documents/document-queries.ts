@@ -7,7 +7,7 @@ import type {
 import { and, asc, eq, inArray, isNull, lt, max, sql } from "drizzle-orm";
 import { isDeepStrictEqual } from "node:util";
 
-import type { Database } from "../database/client.ts";
+import type { Database, QueryExecutor } from "../database/client.ts";
 import { getStorageLimitBytes } from "../commercial/commercial-service.ts";
 import { exceedsCommercialLimit } from "../commercial/commercial-limit-enforcement.ts";
 import {
@@ -372,7 +372,7 @@ const collectReferencedAssetIds = (content: SaveDocumentContentInput["content"])
 };
 
 export const createAsset = async (
-  db: Database,
+  db: QueryExecutor,
   values: typeof asset.$inferInsert,
   enforceCommercialLimits = true,
 ) => {

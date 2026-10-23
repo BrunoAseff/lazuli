@@ -42,8 +42,9 @@ export const useProjectDocuments = (
   projectId: string,
   page: number,
   pageSize = PROJECT_PAGE_SIZE,
+  filters: Pick<ProjectListQuery, "favorites"> = {},
 ) => {
-  const input = { page, pageSize, query: "" };
+  const input = { page, pageSize, query: "", ...filters };
   return useQuery({
     queryKey: projectKeys.documents(projectId, input),
     queryFn: ({ signal }) => fetchProjectDocuments(projectId, input, signal),
@@ -87,6 +88,7 @@ export const useDeleteProject = (projectId: string) => {
     onSuccess: async () => {
       queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["projects", "recent"] }),
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() }),
         queryClient.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcardCollections }),
       ]);

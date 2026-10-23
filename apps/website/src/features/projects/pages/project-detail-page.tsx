@@ -114,6 +114,7 @@ export const ProjectDetailPage = () => {
           <ProjectCover
             className="max-h-72 min-h-32 sm:min-h-44"
             coverKey={currentProject.coverKey}
+            assetId={currentProject.coverAssetId}
           />
           <ProjectActionsMenu
             className="absolute top-3 right-3"
@@ -134,18 +135,20 @@ export const ProjectDetailPage = () => {
         </div>
 
         <section className="mt-7 sm:mt-8" aria-labelledby="project-documents-title">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <h2
               className="font-heading text-xl font-medium sm:text-2xl"
               id="project-documents-title"
             >
               Documentos recentes
             </h2>
-            <ViewModeToggle
-              label="Visualização dos documentos recentes"
-              onChange={changeDocumentView}
-              value={documentView}
-            />
+            <div className="flex items-center gap-2">
+              <ViewModeToggle
+                label="Visualização dos documentos recentes"
+                onChange={changeDocumentView}
+                value={documentView}
+              />
+            </div>
           </div>
 
           {documents.isPending && (

@@ -1,6 +1,6 @@
 import { DOCUMENT_IMPORT_MAX_ACTIVE } from "@lazuli/shared";
-import { PlusIcon, UploadCloudIcon, XIcon } from "lucide-react";
-import { useRef, useState, type DragEvent } from "react";
+import { UploadCloudIcon, XIcon } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -15,8 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { useIsMobile } from "@/hooks/use-mobile.ts";
-import { cn } from "@/lib/utils.ts";
+import { FileDropzone } from "@/components/file-dropzone.tsx";
 import { acceptedDocumentImportTypes, inferImportMimeType } from "./document-import-api.ts";
 
 export type PreparedImportFile = { file: File; originalName: string };
@@ -40,11 +39,8 @@ export const DocumentImportDialog = ({
   onSubmit: (files: PreparedImportFile[]) => Promise<boolean>;
   open: boolean;
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging] = useState(false);
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const isMobile = useIsMobile();
   const addFiles = (incoming: File[]) => {
     const available = DOCUMENT_IMPORT_MAX_ACTIVE - files.length;
     if (available <= 0) {
@@ -67,14 +63,8 @@ export const DocumentImportDialog = ({
   const close = (nextOpen: boolean) => {
     if (!nextOpen) {
       setFiles([]);
-      setDragging(false);
     }
     onOpenChange(nextOpen);
-  };
-  const drop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setDragging(false);
-    addFiles(Array.from(event.dataTransfer.files));
   };
   return (
     <Dialog
@@ -91,47 +81,12 @@ export const DocumentImportDialog = ({
             Revise os arquivos antes de enviá-los. São aceitos PDF textual, DOCX, Markdown e texto.
           </DialogDescription>
         </DialogHeader>
-        <input
+        <FileDropzone
           accept={acceptedDocumentImportTypes}
-          className="sr-only"
           multiple
-          onChange={(event) => {
-            addFiles(Array.from(event.target.files ?? []));
-            event.currentTarget.value = "";
-          }}
-          ref={inputRef}
-          type="file"
+          disabled={submitting}
+          onFiles={addFiles}
         />
-        <div
-          className={cn(
-            "grid min-h-28 place-items-center rounded-xl border border-dashed p-4 text-center transition-colors sm:min-h-36 sm:p-5 sm:hover:border-primary/55 sm:hover:bg-primary-soft/45 sm:hover:text-primary",
-            dragging && "border-foreground bg-muted/50",
-          )}
-          onDragEnter={(event) => {
-            event.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false);
-          }}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={drop}
-        >
-          <div>
-            <UploadCloudIcon className="mx-auto mb-3 size-7 text-muted-foreground" />
-            <p className="font-medium">
-              {isMobile
-                ? "Selecione os arquivos no seu dispositivo"
-                : "Arraste os arquivos para cá"}
-            </p>
-            {!isMobile && (
-              <p className="mt-1 text-xs text-muted-foreground">ou escolha no seu dispositivo</p>
-            )}
-            <Button className="mt-4" onClick={() => inputRef.current?.click()} variant="outline">
-              <PlusIcon /> {isMobile ? "Selecionar arquivos" : "Escolher arquivos"}
-            </Button>
-          </div>
-        </div>
         {files.length > 0 && (
           <div className="lazuli-thin-scrollbar max-h-60 space-y-2 overflow-y-auto pr-1">
             {files.map((item) => (

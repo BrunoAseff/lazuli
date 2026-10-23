@@ -50,6 +50,8 @@ export const useStudyCollectionListState = () => {
       const next = new URLSearchParams(current);
       next.delete("query");
       next.delete("project");
+      next.delete("favorites");
+      next.delete("sort");
       next.delete("page");
       return next;
     });
@@ -60,6 +62,7 @@ export const useStudyCollectionListState = () => {
     page,
     project,
     query,
+    favorites: searchParams.get("favorites") === "only" ? ("only" as const) : undefined,
     searchValue,
     setPage,
     setSearchValue,

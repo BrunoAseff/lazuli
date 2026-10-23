@@ -1,5 +1,5 @@
 import { useCreateBlockNote } from "@blocknote/react";
-import { BlockNoteView } from "@blocknote/shadcn";
+import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
 import type { QuizAttempt } from "@lazuli/shared";
 import {
   ArrowLeftIcon,
@@ -339,7 +339,6 @@ const RichContent = ({ content }: { content: unknown[] }) => {
       editor={editor}
       sideMenu={false}
       slashMenu={false}
-      theme="light"
     />
   );
 };
@@ -435,8 +434,8 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
                 <div
                   className={cn(
                     "flex items-start gap-3 rounded-lg border px-4 py-3 sm:items-center",
-                    correct && "border-success bg-success/10",
-                    selected && !correct && "border-destructive bg-destructive/5",
+                    correct && "border-success/40 bg-success/10",
+                    selected && !correct && "border-destructive/40 bg-destructive/5",
                   )}
                   key={option.id}
                 >

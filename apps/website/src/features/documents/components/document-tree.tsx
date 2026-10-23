@@ -468,7 +468,7 @@ export const DocumentTree = ({
                       <DropdownMenuTrigger asChild>
                         <Button
                           aria-label={`Ações de ${item.title}`}
-                          className="absolute right-1 size-7 opacity-0 hover:bg-transparent group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 data-[state=open]:bg-transparent data-[state=open]:opacity-100"
+                          className="absolute right-1 size-7 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
                           size="icon"
                           variant="ghost"
                         >

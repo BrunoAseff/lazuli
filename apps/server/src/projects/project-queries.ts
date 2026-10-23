@@ -4,7 +4,7 @@ import {
   type ProjectListQuery,
   type UpdateProjectInput,
 } from "@lazuli/shared";
-import { and, count, desc, eq, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, or, sql, inArray, type SQL } from "drizzle-orm";
 
 import { resolveEffectiveEntitlement } from "../commercial/commercial-entitlements.ts";
 import type { Database, QueryExecutor } from "../database/client.ts";
@@ -16,7 +16,8 @@ import {
   projectItem,
   userStorage,
 } from "../database/schema/index.ts";
-import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
+import { enqueueObjectDeletions, releaseStoredObjects } from "../storage/storage-cleanup.ts";
+import { isFavoriteSql } from "../favorites/favorite-queries.ts";
 
 const createSearchCondition = (query: string) => {
   if (!query) {
@@ -31,13 +32,20 @@ const projectSelection = {
   id: project.id,
   title: project.title,
   coverKey: project.coverKey,
+  coverAssetId: project.coverAssetId,
+  coverThumbnailAssetId: project.coverThumbnailAssetId,
   documentCount: count(projectItem.id).mapWith(Number),
   createdAt: project.createdAt,
   updatedAt: project.updatedAt,
 };
 
 export const listProjects = async (database: Database, userId: string, input: ProjectListQuery) => {
-  const where = and(eq(project.userId, userId), createSearchCondition(input.query));
+  const favorite = isFavoriteSql(userId, "project", project.id);
+  const where = and(
+    eq(project.userId, userId),
+    createSearchCondition(input.query),
+    input.favorites === "only" ? favorite : undefined,
+  );
   const [total] = await database.select({ value: count() }).from(project).where(where);
   const totalItems = total?.value ?? 0;
 
@@ -117,16 +125,24 @@ export const createProject = async (
   });
 };
 
+export class ProjectCoverChangedError extends Error {
+  constructor() {
+    super("COVER_CHANGED");
+  }
+}
+
 export const updateProject = async (
   database: Database,
   userId: string,
   projectId: string,
   input: UpdateProjectInput,
 ) => {
-  const changedConditions = [];
+  const changedConditions: SQL[] = [];
   const values: {
     title?: string;
     coverKey?: string | null;
+    coverAssetId?: null;
+    coverThumbnailAssetId?: null;
     updatedAt: Date;
   } = { updatedAt: new Date() };
 
@@ -136,16 +152,47 @@ export const updateProject = async (
   }
   if (input.coverKey !== undefined) {
     values.coverKey = input.coverKey;
-    changedConditions.push(sql`${project.coverKey} IS DISTINCT FROM ${input.coverKey}`);
+    values.coverAssetId = null;
+    values.coverThumbnailAssetId = null;
+    changedConditions.push(
+      sql`(${project.coverKey} IS DISTINCT FROM ${input.coverKey} or ${project.coverAssetId} is not null)`,
+    );
   }
 
-  const [updated] = await database
-    .update(project)
-    .set(values)
-    .where(and(eq(project.id, projectId), eq(project.userId, userId), or(...changedConditions)))
-    .returning({ id: project.id });
+  return database.transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(project)
+      .where(and(eq(project.id, projectId), eq(project.userId, userId)))
+      .for("update");
+    if (!current) return null;
+    if (
+      input.coverKey !== undefined &&
+      input.expectedCover &&
+      ((current.coverAssetId ?? null) !== input.expectedCover.assetId ||
+        current.coverKey !== input.expectedCover.key)
+    )
+      throw new ProjectCoverChangedError();
+    const [updated] = await tx
+      .update(project)
+      .set(values)
+      .where(and(eq(project.id, projectId), eq(project.userId, userId), or(...changedConditions)))
+      .returning({ id: project.id });
 
-  return getProject(database, userId, updated?.id ?? projectId);
+    if (input.coverKey !== undefined) {
+      const ids = [current.coverAssetId, current.coverThumbnailAssetId].filter((id): id is string =>
+        Boolean(id),
+      );
+      if (ids.length) {
+        const removed = await tx
+          .delete(asset)
+          .where(and(eq(asset.userId, userId), inArray(asset.id, ids)))
+          .returning();
+        await releaseStoredObjects(tx, userId, removed);
+      }
+    }
+    return getProject(tx, userId, updated?.id ?? projectId);
+  });
 };
 
 export const deleteProject = async (database: Database, userId: string, projectId: string) =>
@@ -215,6 +262,7 @@ export const listProjectDocuments = async (
   const where = and(
     eq(projectItem.projectId, projectId),
     eq(projectItem.type, "document"),
+    input.favorites === "only" ? isFavoriteSql(userId, "document", projectItem.id) : undefined,
     input.query
       ? sql<boolean>`unaccent(lower(${projectItem.title})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`
       : undefined,

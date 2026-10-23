@@ -63,7 +63,7 @@ export const StudyCollectionListPage = ({
     <h1 className="font-heading text-4xl font-normal tracking-tight sm:text-5xl">{title}</h1>
     <StudyCollectionToolbar
       action={
-        <Button className="shrink-0" onClick={onCreate}>
+        <Button aria-label="Nova coleção" className="shrink-0" onClick={onCreate}>
           <PlusIcon aria-hidden="true" data-icon="inline-start" />
           <span className="hidden sm:inline">Nova coleção</span>
         </Button>

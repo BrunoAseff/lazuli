@@ -5,6 +5,7 @@ import { DocumentDomainIcon } from "@/components/domain-icons.ts";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import type { ViewMode } from "@/components/view-mode-toggle.tsx";
 import { formatProjectDate } from "@/features/projects/format-project-date.ts";
+import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 
 export const RecentDocuments = ({
   items,
@@ -19,32 +20,40 @@ export const RecentDocuments = ({
     return (
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((document) => (
-          <Link
-            className="group flex min-w-0 flex-col justify-between rounded-xl border bg-card p-4 transition-colors hover:border-foreground/30 hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 sm:min-h-32"
-            key={document.id}
-            to={`/documents/${projectId}/document/${document.id}`}
-          >
-            <div>
-              <DocumentDomainIcon
-                aria-hidden="true"
-                className="mb-4 size-5 text-muted-foreground"
-                weight="duotone"
-              />
-              <OverflowTooltip text={document.title}>
-                {(ref) => (
-                  <span
-                    className="block font-heading text-lg leading-snug [overflow-wrap:anywhere] group-hover:underline sm:truncate sm:text-xl sm:leading-tight"
-                    ref={ref as React.RefObject<HTMLSpanElement>}
-                  >
-                    {document.title}
-                  </span>
-                )}
-              </OverflowTooltip>
-            </div>
-            <time className="mt-4 text-xs text-muted-foreground" dateTime={document.updatedAt}>
-              Atualizado em {formatProjectDate(document.updatedAt)}
-            </time>
-          </Link>
+          <div key={document.id} className="relative min-w-0">
+            <Link
+              className="group flex h-full min-w-0 flex-col justify-between rounded-xl border bg-card p-4 transition-colors hover:border-foreground/30 hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 sm:min-h-32"
+              key={document.id}
+              to={`/documents/${projectId}/document/${document.id}`}
+            >
+              <div>
+                <DocumentDomainIcon
+                  aria-hidden="true"
+                  className="mb-4 size-5 text-muted-foreground"
+                  weight="duotone"
+                />
+                <OverflowTooltip text={document.title}>
+                  {(ref) => (
+                    <span
+                      className="block font-heading text-lg leading-snug [overflow-wrap:anywhere] group-hover:underline sm:truncate sm:text-xl sm:leading-tight"
+                      ref={ref as React.RefObject<HTMLSpanElement>}
+                    >
+                      {document.title}
+                    </span>
+                  )}
+                </OverflowTooltip>
+              </div>
+              <time className="mt-4 text-xs text-muted-foreground" dateTime={document.updatedAt}>
+                Atualizado em {formatProjectDate(document.updatedAt)}
+              </time>
+            </Link>
+            <FavoriteButton
+              kind="document"
+              id={document.id}
+              title={document.title}
+              className="absolute top-2 right-2"
+            />
+          </div>
         ))}
       </div>
     );
