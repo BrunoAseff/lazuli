@@ -16,7 +16,13 @@ export const PrivateRoute = () => {
   }
 
   if (!data) {
-    return <Navigate replace state={{ from: location.pathname }} to="/login" />;
+    return (
+      <Navigate
+        replace
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+        to="/login"
+      />
+    );
   }
 
   return <Outlet />;

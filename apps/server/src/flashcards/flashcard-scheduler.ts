@@ -1,14 +1,26 @@
-import type { FlashcardRating, FlashcardSrsState } from "@lazuli/shared";
+import {
+  ACCOUNT_RETENTION_RECOMMENDED,
+  type FlashcardRating,
+  type FlashcardSrsState,
+} from "@lazuli/shared";
 import { fsrs, Rating, State, type Card } from "ts-fsrs";
 
 export const FLASHCARD_SCHEDULER_VERSION = "ts-fsrs@5.4.1";
 
-const scheduler = fsrs({
-  request_retention: 0.9,
-  maximum_interval: 36_500,
-  enable_fuzz: false,
-  enable_short_term: true,
-});
+const schedulers = new Map<number, ReturnType<typeof fsrs>>();
+
+const getScheduler = (desiredRetention = ACCOUNT_RETENTION_RECOMMENDED) => {
+  const existing = schedulers.get(desiredRetention);
+  if (existing) return existing;
+  const scheduler = fsrs({
+    request_retention: desiredRetention / 100,
+    maximum_interval: 36_500,
+    enable_fuzz: false,
+    enable_short_term: true,
+  });
+  schedulers.set(desiredRetention, scheduler);
+  return scheduler;
+};
 
 const ratings = {
   again: Rating.Again,
@@ -84,8 +96,12 @@ const toStored = (card: Card): StoredSchedule => ({
   lastReviewedAt: card.last_review ?? null,
 });
 
-export const previewFlashcardRatings = (value: StoredSchedule, now: Date) => {
-  const preview = scheduler.repeat(toCard(value), now);
+export const previewFlashcardRatings = (
+  value: StoredSchedule,
+  now: Date,
+  desiredRetention = ACCOUNT_RETENTION_RECOMMENDED,
+) => {
+  const preview = getScheduler(desiredRetention).repeat(toCard(value), now);
   return (Object.keys(ratings) as FlashcardRating[]).map((rating) => {
     const card = preview[ratings[rating]].card;
     assertSchedule(card, now);
@@ -101,8 +117,9 @@ export const scheduleFlashcardReview = (
   value: StoredSchedule,
   rating: FlashcardRating,
   now: Date,
+  desiredRetention = ACCOUNT_RETENTION_RECOMMENDED,
 ) => {
-  const result = scheduler.next(toCard(value), now, ratings[rating]);
+  const result = getScheduler(desiredRetention).next(toCard(value), now, ratings[rating]);
   assertSchedule(result.card, now);
   return { schedule: toStored(result.card), log: result.log };
 };

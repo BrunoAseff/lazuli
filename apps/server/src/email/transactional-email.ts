@@ -19,7 +19,7 @@ export const escapeEmailHtml = (value: string) =>
     .replaceAll("'", "&#39;");
 
 type TransactionalEmailOptions = {
-  action: {
+  action?: {
     href: string;
     label: string;
   };
@@ -36,8 +36,8 @@ export const createTransactionalEmailHtml = ({
   preheader,
   title,
 }: TransactionalEmailOptions) => {
-  const safeHref = escapeEmailHtml(action.href);
-  const safeActionLabel = escapeEmailHtml(action.label);
+  const safeHref = action ? escapeEmailHtml(action.href) : null;
+  const safeActionLabel = action ? escapeEmailHtml(action.label) : null;
   const safePreheader = escapeEmailHtml(preheader);
   const safeTitle = escapeEmailHtml(title);
 
@@ -69,7 +69,9 @@ export const createTransactionalEmailHtml = ({
               <td style="border:1px solid ${EMAIL_COLORS.border};border-radius:16px;background:${EMAIL_COLORS.surface};padding:32px 24px">
                 <h1 style="margin:0 0 18px;font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:500;line-height:1.2;color:${EMAIL_COLORS.foreground}">${safeTitle}</h1>
                 ${childrenHtml}
-                <table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="margin:28px auto 26px">
+                ${
+                  action
+                    ? `<table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="margin:28px auto 26px">
                   <tr>
                     <td bgcolor="${EMAIL_COLORS.primary}" style="border-radius:10px">
                       <a href="${safeHref}" style="display:inline-block;padding:13px 20px;color:${EMAIL_COLORS.primaryForeground};font-size:15px;font-weight:600;line-height:1;text-decoration:none">${safeActionLabel}</a>
@@ -79,7 +81,9 @@ export const createTransactionalEmailHtml = ({
                 <div style="margin:0 0 24px;padding:16px;border-radius:10px;background:${EMAIL_COLORS.background};color:${EMAIL_COLORS.muted};font-size:12px;line-height:1.55;overflow-wrap:anywhere">
                   Se o botão não funcionar, copie e cole este endereço no navegador:<br>
                   <a href="${safeHref}" style="color:${EMAIL_COLORS.primary};text-decoration:underline">${safeHref}</a>
-                </div>
+                </div>`
+                    : ""
+                }
                 <div style="border-top:1px solid ${EMAIL_COLORS.border};padding-top:20px;color:${EMAIL_COLORS.muted};font-size:13px;line-height:1.6">${footerHtml}</div>
               </td>
             </tr>

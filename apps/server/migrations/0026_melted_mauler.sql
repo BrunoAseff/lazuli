@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "account_export_one_active_per_user_idx" ON "account_export" USING btree ("user_id") WHERE "account_export"."status" in ('queued', 'processing');

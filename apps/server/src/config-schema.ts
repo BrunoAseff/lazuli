@@ -39,6 +39,8 @@ const serverEnvSchema = z
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
     DATABASE_URL: z.url(),
+    GOOGLE_CLIENT_ID: optionalNonEmptyEnvironmentValue,
+    GOOGLE_CLIENT_SECRET: optionalNonEmptyEnvironmentValue,
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("debug"),
     LOG_PRETTY: booleanEnvironmentValue(true),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -76,6 +78,12 @@ const serverEnvSchema = z
         code: "custom",
         message: "POSTHOG_API_KEY is required when ANALYTICS_ENABLED=true",
         path: ["POSTHOG_API_KEY"],
+      });
+    if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET))
+      context.addIssue({
+        code: "custom",
+        message: "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured together",
+        path: [env.GOOGLE_CLIENT_ID ? "GOOGLE_CLIENT_SECRET" : "GOOGLE_CLIENT_ID"],
       });
     if (env.BILLING_ENABLED)
       for (const key of [

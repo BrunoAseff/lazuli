@@ -15,6 +15,28 @@ afterEach(async () => {
 });
 
 describe("authRoutes", () => {
+  it("reports Google availability without exposing OAuth credentials", async () => {
+    const app = Fastify();
+    apps.push(app);
+    await app.register(
+      createAuthRoutes(
+        { handler: vi.fn() },
+        {
+          ...env,
+          GOOGLE_CLIENT_ID: "client-id",
+          GOOGLE_CLIENT_SECRET: "client-secret",
+        },
+      ),
+    );
+
+    const response = await app.inject({ method: "GET", url: "/api/auth/capabilities" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ google: true });
+    expect(response.body).not.toContain("client-id");
+    expect(response.body).not.toContain("client-secret");
+  });
+
   it("forwards the request and every session cookie returned by Better Auth", async () => {
     const handler = vi.fn(async (request: Request) => {
       expect(request.url).toBe("http://localhost:3001/api/auth/sign-in/email");

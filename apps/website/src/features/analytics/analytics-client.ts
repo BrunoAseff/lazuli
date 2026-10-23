@@ -24,6 +24,10 @@ const PUBLIC_ANALYTICS_PATHS = new Set([
   "/quizzes",
   "/register",
   "/reset-password",
+  "/settings/account",
+  "/settings/data",
+  "/settings/security",
+  "/settings/study",
   "/verify-email",
 ]);
 const PRIVATE_ANALYTICS_PATHS = [
