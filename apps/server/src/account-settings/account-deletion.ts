@@ -11,6 +11,7 @@ import {
   project,
 } from "../database/schema/index.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
+import { enqueueLifecycleEmail } from "../email/email-outbox.ts";
 import {
   enqueueObjectDeletions,
   processPendingObjectDeletions,
@@ -53,6 +54,12 @@ export const createAccountDeletionLifecycle = ({
       if (subscription && !stripe)
         throw new Error("Billing must be available before deleting a subscribed account");
       await stripe?.cancelForAccountDeletion(user.id);
+      await enqueueLifecycleEmail(database, {
+        key: `account-deleted/${user.id}`,
+        userId: user.id,
+        kind: "account_deleted",
+        readyWhen: "deleted",
+      });
 
       const [assets, covers, imports, exports] = await Promise.all([
         database.select({ key: asset.objectKey }).from(asset).where(eq(asset.userId, user.id)),

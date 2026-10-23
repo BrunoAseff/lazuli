@@ -2,6 +2,7 @@ import { ACCOUNT_RETENTION_RECOMMENDED, type AccountExportCategory } from "@lazu
 import { and, desc, eq, gt, ne } from "drizzle-orm";
 
 import type { Database } from "../database/client.ts";
+import { enqueueLifecycleEmail } from "../email/email-outbox.ts";
 import {
   account,
   accountExport,
@@ -112,10 +113,19 @@ export const createAccountExport = async (
   categories: AccountExportCategory[],
 ) => {
   const id = crypto.randomUUID();
-  const [created] = await database
-    .insert(accountExport)
-    .values({ categories, id, userId })
-    .onConflictDoNothing()
-    .returning({ id: accountExport.id });
-  return created?.id ?? null;
+  return database.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(accountExport)
+      .values({ categories, id, userId })
+      .onConflictDoNothing()
+      .returning({ id: accountExport.id });
+    if (created)
+      await enqueueLifecycleEmail(tx, {
+        key: `export-requested/${id}`,
+        userId,
+        kind: "export_requested",
+        payload: { categories },
+      });
+    return created?.id ?? null;
+  });
 };

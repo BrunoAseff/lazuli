@@ -9,6 +9,7 @@ type FlashcardPracticeButtonProps = {
   className?: string;
   dueCards: number;
   onClick: () => void;
+  fullWidthOnMobile?: boolean;
   size?: "sm" | "lg";
   title: string;
   totalCards: number;
@@ -29,6 +30,7 @@ export const FlashcardPracticeButton = ({
   archived = false,
   className,
   dueCards,
+  fullWidthOnMobile = true,
   onClick,
   size = "sm",
   title,
@@ -38,7 +40,7 @@ export const FlashcardPracticeButton = ({
   const button = (
     <Button
       aria-label={`Praticar ${title}`}
-      className={cn("w-full sm:w-auto", className)}
+      className={cn(fullWidthOnMobile && "w-full sm:w-auto", className)}
       disabled={Boolean(disabledReason)}
       onClick={onClick}
       size={size}
@@ -53,7 +55,7 @@ export const FlashcardPracticeButton = ({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="inline-flex w-full sm:w-auto" tabIndex={0}>
+        <span className={cn("inline-flex", fullWidthOnMobile && "w-full sm:w-auto")} tabIndex={0}>
           {button}
         </span>
       </TooltipTrigger>

@@ -128,12 +128,12 @@ export const DashboardPage = () => {
             )}
           >
             {hasDocuments && (
-              <div className={cn(continuationInLibrary && "order-2 lg:order-1")}>
+              <div className={cn("min-w-0", continuationInLibrary && "order-2 lg:order-1")}>
                 <DashboardRecentDocuments documents={data.recentDocuments} />
               </div>
             )}
             {continuationInLibrary && (
-              <div className={cn(hasDocuments && "order-1 lg:order-2")}>
+              <div className={cn("min-w-0", hasDocuments && "order-1 lg:order-2")}>
                 <DashboardContinuations quizzes={data.quizContinuations} />
               </div>
             )}

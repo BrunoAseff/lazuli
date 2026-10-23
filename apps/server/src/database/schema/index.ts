@@ -10,3 +10,5 @@ export * from "./flashcards.ts";
 export * from "./projects.ts";
 export * from "./quizzes.ts";
 export * from "./references.ts";
+export * from "./favorites.ts";
+export * from "./email.ts";

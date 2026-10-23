@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
+import { ThemeProvider } from "next-themes";
 import { createBrowserRouter, RouterProvider } from "react-router";
 
 import { App } from "./app.tsx";
@@ -27,9 +28,17 @@ const router = createBrowserRouter([{ path: "*", Component: App, ErrorBoundary: 
 
 createRoot(rootElement).render(
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <RouterProvider router={router} />
-      <Toaster />
-    </TooltipProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      storageKey="lazuli-theme"
+      disableTransitionOnChange
+    >
+      <TooltipProvider>
+        <RouterProvider router={router} />
+        <Toaster />
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>,
 );

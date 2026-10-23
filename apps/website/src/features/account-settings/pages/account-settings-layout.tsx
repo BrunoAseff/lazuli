@@ -2,6 +2,8 @@ import { DatabaseIcon } from "@phosphor-icons/react/Database";
 import { GraduationCapIcon } from "@phosphor-icons/react/GraduationCap";
 import { ShieldCheckIcon } from "@phosphor-icons/react/ShieldCheck";
 import { UserCircleIcon } from "@phosphor-icons/react/UserCircle";
+import { PaletteIcon } from "@phosphor-icons/react/Palette";
+import { HardDriveIcon } from "@phosphor-icons/react/HardDrive";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 
 import { ContentPage } from "@/components/content-page.tsx";
@@ -17,6 +19,8 @@ import { cn } from "@/lib/utils.ts";
 const sections = [
   { Icon: UserCircleIcon, label: "Conta", path: "/settings/account" },
   { Icon: ShieldCheckIcon, label: "Acesso e segurança", path: "/settings/security" },
+  { Icon: PaletteIcon, label: "Aparência", path: "/settings/appearance" },
+  { Icon: HardDriveIcon, label: "Uso e materiais", path: "/settings/usage" },
   { Icon: GraduationCapIcon, label: "Estudo", path: "/settings/study" },
   { Icon: DatabaseIcon, label: "Dados e privacidade", path: "/settings/data" },
 ] as const;
@@ -28,7 +32,7 @@ export const AccountSettingsLayout = () => {
 
   return (
     <ContentPage maxWidth="5xl">
-      <div className="md:hidden">
+      <div className="lg:hidden">
         <Select value={current.path} onValueChange={(value) => void navigate(value)}>
           <SelectTrigger className="w-full" aria-label="Seção das configurações">
             <SelectValue />
@@ -44,8 +48,8 @@ export const AccountSettingsLayout = () => {
         </Select>
       </div>
 
-      <div className="mt-6 grid items-start gap-8 md:mt-0 md:grid-cols-[12rem_minmax(0,1fr)] lg:gap-12">
-        <nav aria-label="Configurações" className="sticky top-8 hidden md:block">
+      <div className="mt-6 grid items-start gap-8 lg:mt-0 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-12">
+        <nav aria-label="Configurações" className="sticky top-8 hidden lg:block">
           <ul className="grid gap-1">
             {sections.map(({ Icon, label, path }) => (
               <li key={path}>

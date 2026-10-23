@@ -9,6 +9,7 @@ type CollectionListQuery = {
   project?: string;
   query: string;
   status: string;
+  favorites?: "all" | "only";
 };
 
 export const createStudyCollectionApi = <
@@ -38,6 +39,7 @@ export const createStudyCollectionApi = <
         project: input.project,
         query: input.query,
         status: input.status,
+        favorites: input.favorites,
       });
       return apiRequest(`${path}?${params}`, listSchema, { signal });
     },

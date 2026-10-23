@@ -18,6 +18,7 @@ import {
 import { ownsProject } from "../projects/project-ownership.ts";
 import { releaseStoredObjects } from "../storage/storage-cleanup.ts";
 import { deleteReferencesForTargets } from "../references/reference-queries.ts";
+import { isFavoriteSql } from "../favorites/favorite-queries.ts";
 
 const collectionSelection = {
   id: quizCollection.id,
@@ -135,6 +136,7 @@ const enrichCollections = async (
 const createCollectionWhere = (userId: string, input: QuizCollectionListQuery) =>
   and(
     eq(quizCollection.userId, userId),
+    input.favorites === "only" ? isFavoriteSql(userId, "quizzes", quizCollection.id) : undefined,
     input.status === "active"
       ? isNull(quizCollection.archivedAt)
       : isNotNull(quizCollection.archivedAt),

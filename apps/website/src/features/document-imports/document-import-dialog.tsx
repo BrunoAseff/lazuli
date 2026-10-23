@@ -1,6 +1,6 @@
 import { DOCUMENT_IMPORT_MAX_ACTIVE } from "@lazuli/shared";
-import { PlusIcon, UploadCloudIcon, XIcon } from "lucide-react";
-import { useRef, useState, type DragEvent } from "react";
+import { UploadCloudIcon, XIcon } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { cn } from "@/lib/utils.ts";
+import { FileDropzone } from "@/components/file-dropzone.tsx";
 import { acceptedDocumentImportTypes, inferImportMimeType } from "./document-import-api.ts";
 
 export type PreparedImportFile = { file: File; originalName: string };
@@ -39,8 +39,6 @@ export const DocumentImportDialog = ({
   onSubmit: (files: PreparedImportFile[]) => Promise<boolean>;
   open: boolean;
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging] = useState(false);
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const addFiles = (incoming: File[]) => {
@@ -65,14 +63,8 @@ export const DocumentImportDialog = ({
   const close = (nextOpen: boolean) => {
     if (!nextOpen) {
       setFiles([]);
-      setDragging(false);
     }
     onOpenChange(nextOpen);
-  };
-  const drop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setDragging(false);
-    addFiles(Array.from(event.dataTransfer.files));
   };
   return (
     <Dialog
@@ -89,45 +81,19 @@ export const DocumentImportDialog = ({
             Revise os arquivos antes de enviá-los. São aceitos PDF textual, DOCX, Markdown e texto.
           </DialogDescription>
         </DialogHeader>
-        <input
+        <FileDropzone
           accept={acceptedDocumentImportTypes}
-          className="sr-only"
           multiple
-          onChange={(event) => {
-            addFiles(Array.from(event.target.files ?? []));
-            event.currentTarget.value = "";
-          }}
-          ref={inputRef}
-          type="file"
+          disabled={submitting}
+          onFiles={addFiles}
         />
-        <div
-          className={cn(
-            "grid min-h-36 place-items-center rounded-xl border border-dashed p-5 text-center transition-colors hover:border-primary/55 hover:bg-primary-soft/45 hover:text-primary",
-            dragging && "border-foreground bg-muted/50",
-          )}
-          onDragEnter={(event) => {
-            event.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false);
-          }}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={drop}
-        >
-          <div>
-            <UploadCloudIcon className="mx-auto mb-3 size-7 text-muted-foreground" />
-            <p className="font-medium">Arraste os arquivos para cá</p>
-            <p className="mt-1 text-xs text-muted-foreground">ou escolha no seu dispositivo</p>
-            <Button className="mt-4" onClick={() => inputRef.current?.click()} variant="outline">
-              <PlusIcon /> Escolher arquivos
-            </Button>
-          </div>
-        </div>
         {files.length > 0 && (
           <div className="lazuli-thin-scrollbar max-h-60 space-y-2 overflow-y-auto pr-1">
             {files.map((item) => (
-              <div className="flex items-center gap-3 rounded-lg border px-3 py-2" key={item.id}>
+              <div
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 sm:flex sm:gap-3"
+                key={item.id}
+              >
                 <DocumentDomainIcon
                   className="size-[1.125rem] shrink-0 text-muted-foreground"
                   weight="duotone"
@@ -150,7 +116,7 @@ export const DocumentImportDialog = ({
                     {item.extension}
                   </span>
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">
+                <span className="col-start-2 shrink-0 text-xs text-muted-foreground sm:col-auto">
                   {formatBytes(item.file.size)}
                 </span>
                 <Button

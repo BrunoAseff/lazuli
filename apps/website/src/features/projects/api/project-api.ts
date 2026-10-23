@@ -14,8 +14,8 @@ import { buildSearchParams } from "@/lib/search-params.ts";
 
 export { ApiError as ProjectApiError };
 
-const toSearchParams = ({ page, pageSize, query }: ProjectListQuery) => {
-  return buildSearchParams({ page, pageSize, query });
+const toSearchParams = ({ page, pageSize, query, favorites }: ProjectListQuery) => {
+  return buildSearchParams({ page, pageSize, query, favorites });
 };
 
 export const fetchProjects = (

@@ -17,6 +17,7 @@ import { createPasswordResetEmailSender } from "../email/send-password-reset-ema
 import { createChangeEmailConfirmationSender } from "../email/send-change-email-confirmation.ts";
 import { initializeNewUser } from "../onboarding/onboarding-content.ts";
 import { isValidAccountName, normalizeAccountName } from "./account-name.ts";
+import { enqueueLifecycleEmail } from "../email/email-outbox.ts";
 
 type AuthLifecycle = {
   afterDelete?: (user: { id: string }) => Promise<void>;
@@ -51,6 +52,12 @@ export const createAuth = (
         create: {
           after: async (user) => {
             await initializeNewUser(database, user.id);
+            await enqueueLifecycleEmail(database, {
+              key: `welcome/${user.id}`,
+              userId: user.id,
+              kind: "welcome",
+              readyWhen: "verified",
+            });
           },
           before: async (user) => {
             const name = normalizeAccountName(user.name);

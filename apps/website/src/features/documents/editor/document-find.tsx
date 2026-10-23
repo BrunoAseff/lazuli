@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { getHighlightSegments } from "@/components/highlight-text.tsx";
 
 const MATCH_HIGHLIGHT = "lazuli-document-search-match";
 const CURRENT_HIGHLIGHT = "lazuli-document-search-current";
@@ -29,7 +30,6 @@ const clearSearchHighlights = () => {
 
 const findRanges = (root: HTMLElement, query: string) => {
   const ranges: Range[] = [];
-  const normalizedQuery = query.toLocaleLowerCase("pt-BR");
 
   for (const block of Array.from(root.querySelectorAll<HTMLElement>(".bn-block-content"))) {
     const nodes: Array<{ node: Text; start: number; end: number }> = [];
@@ -50,10 +50,12 @@ const findRanges = (root: HTMLElement, query: string) => {
       current = walker.nextNode();
     }
 
-    const normalizedText = text.toLocaleLowerCase("pt-BR");
-    let matchStart = normalizedText.indexOf(normalizedQuery);
-    while (matchStart >= 0) {
-      const matchEnd = matchStart + normalizedQuery.length;
+    let offset = 0;
+    for (const segment of getHighlightSegments(text, query)) {
+      const matchStart = offset;
+      const matchEnd = offset + segment.text.length;
+      offset = matchEnd;
+      if (!segment.highlighted) continue;
       const startNode = nodes.find(({ start, end }) => matchStart >= start && matchStart < end);
       const endNode = nodes.find(({ start, end }) => matchEnd > start && matchEnd <= end);
       if (startNode && endNode) {
@@ -63,7 +65,6 @@ const findRanges = (root: HTMLElement, query: string) => {
         ranges.push(range);
         if (ranges.length === MAX_SEARCH_RESULTS) return { ranges, truncated: true };
       }
-      matchStart = normalizedText.indexOf(normalizedQuery, matchStart + normalizedQuery.length);
     }
   }
 
@@ -73,12 +74,20 @@ const findRanges = (root: HTMLElement, query: string) => {
 export const DocumentFind = ({
   editorRef,
   showTrigger = true,
+  initialQuery = "",
 }: {
   editorRef: RefObject<HTMLDivElement | null>;
   showTrigger?: boolean;
+  initialQuery?: string;
 }) => {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(Boolean(initialQuery));
+  const [query, setQuery] = useState(initialQuery);
+  useEffect(() => {
+    if (initialQuery) {
+      setOpen(true);
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
   const [matches, setMatches] = useState<Range[]>([]);
   const [truncated, setTruncated] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);

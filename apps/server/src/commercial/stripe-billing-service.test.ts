@@ -5,8 +5,31 @@ import {
   becameActiveSubscription,
   hasScheduledStripeCancellation,
   isManageableStripeSubscription,
+  isReusableCheckoutSession,
   selectPreferredStripeSubscription,
 } from "./stripe-billing-service.ts";
+
+describe("localized Checkout session reuse", () => {
+  const session = {
+    locale: "pt-BR",
+    mode: "subscription",
+    metadata: { lazuliUserId: "owner", plan: "essential" },
+    url: "https://checkout.stripe.com/session",
+  } as const;
+
+  it("reuses only a localized session for the same owner and plan", () => {
+    expect(isReusableCheckoutSession(session, "owner", "essential")).toBe(true);
+    expect(isReusableCheckoutSession({ ...session, locale: null }, "owner", "essential")).toBe(
+      false,
+    );
+    expect(isReusableCheckoutSession({ ...session, locale: "en" }, "owner", "essential")).toBe(
+      false,
+    );
+    expect(isReusableCheckoutSession(session, "other", "essential")).toBe(false);
+    expect(isReusableCheckoutSession(session, "owner", "specialist")).toBe(false);
+    expect(isReusableCheckoutSession({ ...session, url: null }, "owner", "essential")).toBe(false);
+  });
+});
 
 describe("subscription activation transition", () => {
   it("counts only the first transition into active access", () => {

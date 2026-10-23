@@ -1,6 +1,7 @@
 import { CoinsIcon } from "@phosphor-icons/react/Coins";
 import { ArrowUpRightIcon } from "@phosphor-icons/react/ArrowUpRight";
 import { HardDriveIcon } from "@phosphor-icons/react/HardDrive";
+import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -39,7 +40,11 @@ export const AiCreditBalance = () => {
           creditsCritical && "bg-destructive/10 text-destructive",
         )}
       >
-        <div className="flex items-center gap-2.5">
+        <Link
+          to="/settings/usage"
+          aria-label="Ver uso e materiais"
+          className="flex items-center gap-2.5 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <span
             className={cn(
               "grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary",
@@ -58,7 +63,7 @@ export const AiCreditBalance = () => {
               "—"
             )}
           </span>
-        </div>
+        </Link>
         {data?.credits.renewsAt && (
           <div className="flex items-center justify-between gap-2 border-t border-border/65 pt-1.5 text-[0.68rem]">
             <span className="text-muted-foreground">Próxima renovação</span>

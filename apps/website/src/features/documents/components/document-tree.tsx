@@ -49,6 +49,7 @@ type Props = {
   onClose?: () => void;
   onNavigate?: () => void;
   closeIcon?: DocumentTreeCloseIcon;
+  showProjectLink?: boolean;
 };
 
 type PendingCreation = {
@@ -66,6 +67,7 @@ export const DocumentTree = ({
   onClose,
   onNavigate,
   closeIcon = "panel",
+  showProjectLink = true,
 }: Props) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -466,7 +468,7 @@ export const DocumentTree = ({
                       <DropdownMenuTrigger asChild>
                         <Button
                           aria-label={`Ações de ${item.title}`}
-                          className="absolute right-1 size-7 opacity-0 hover:bg-transparent group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 data-[state=open]:bg-transparent data-[state=open]:opacity-100"
+                          className="absolute right-1 size-7 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
                           size="icon"
                           variant="ghost"
                         >
@@ -547,17 +549,19 @@ export const DocumentTree = ({
   return (
     <div className="flex h-full min-h-0 flex-col bg-transparent">
       <div className="px-3 pt-3 pb-1">
-        <Link
-          className="inline-flex h-7 items-center text-xs text-muted-foreground hover:text-foreground"
-          to="/documents"
-        >
-          ← Projetos
-        </Link>
+        {showProjectLink && (
+          <Link
+            className="inline-flex h-7 items-center text-xs text-muted-foreground hover:text-foreground"
+            to="/documents"
+          >
+            ← Projetos
+          </Link>
+        )}
         {projectTitle && (
           <OverflowTooltip side="right" text={projectTitle}>
             {(ref) => (
               <p
-                className="mt-1 truncate font-heading text-lg leading-6"
+                className={cn("truncate font-heading text-lg leading-6", showProjectLink && "mt-1")}
                 ref={ref as React.RefObject<HTMLParagraphElement>}
               >
                 {projectTitle}

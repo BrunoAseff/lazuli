@@ -19,8 +19,8 @@ export const EmptyState = ({
 }) => (
   <section
     className={cn(
-      "grid place-items-center rounded-xl border border-dashed bg-card/40 px-5 text-center",
-      minHeight === "lg" ? "min-h-72" : minHeight === "sm" ? "min-h-44" : "min-h-64",
+      "grid place-items-center rounded-xl border border-dashed bg-card/40 px-5 py-7 text-center",
+      minHeight === "lg" ? "sm:min-h-72" : minHeight === "sm" ? "sm:min-h-44" : "sm:min-h-64",
     )}
   >
     <div className="max-w-sm">
@@ -33,7 +33,7 @@ export const EmptyState = ({
       >
         <Icon className="size-5" />
       </span>
-      <h2 className="font-heading text-2xl font-medium">{title}</h2>
+      <h2 className="font-heading text-xl font-medium sm:text-2xl">{title}</h2>
       <div className="mt-2 text-sm leading-6 text-muted-foreground">{description}</div>
       {action && <div className="mt-5">{action}</div>}
     </div>

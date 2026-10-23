@@ -3,8 +3,11 @@ import {
   projectIdSchema,
   projectListQuerySchema,
   updateProjectSchema,
+  recentProjectsRequestSchema,
 } from "@lazuli/shared";
 import type { FastifyPluginAsync } from "fastify";
+import { and, eq, inArray } from "drizzle-orm";
+import { project } from "../database/schema/index.ts";
 
 import type { Auth } from "../auth/auth.ts";
 import type { AnalyticsService } from "../analytics/analytics-service.ts";
@@ -20,6 +23,7 @@ import {
   listProjectDocuments,
   listProjects,
   updateProject,
+  ProjectCoverChangedError,
 } from "./project-queries.ts";
 
 type ProjectRoutesOptions = {
@@ -44,6 +48,20 @@ export const createProjectRoutes = ({
   websiteUrl,
 }: ProjectRoutesOptions): FastifyPluginAsync =>
   async function projectRoutes(app) {
+    app.post("/api/projects/recent", async (request, reply) => {
+      if (!requireTrustedOrigin(websiteUrl, request, reply)) return;
+      const session = await requireSession(auth, request, reply);
+      if (!session) return;
+      const input = recentProjectsRequestSchema.safeParse(request.body);
+      if (!input.success) return sendValidationError(reply);
+      if (!input.data.ids.length) return { items: [] };
+      return {
+        items: await database
+          .select({ id: project.id, title: project.title })
+          .from(project)
+          .where(and(eq(project.userId, session.user.id), inArray(project.id, input.data.ids))),
+      };
+    });
     app.get("/api/projects", async (request, reply) => {
       const session = await requireSession(auth, request, reply);
       if (!session) return;
@@ -167,6 +185,11 @@ export const createProjectRoutes = ({
         request.log.info({ projectId: projectId.data, userId: session.user.id }, "project updated");
         return serializeProject(result);
       } catch (error) {
+        if (error instanceof ProjectCoverChangedError)
+          return reply.status(409).send({
+            code: "COVER_CHANGED",
+            message: "A capa foi alterada em outra aba. Reabra este diálogo para continuar.",
+          });
         request.log.error(
           { err: error, projectId: projectId.data, userId: session.user.id },
           "project update failed",

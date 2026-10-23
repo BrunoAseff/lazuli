@@ -10,6 +10,7 @@ import { QuizCollectionMark } from "@/components/quiz-collection-mark.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { formatMediumDateTime } from "@/lib/date-format.ts";
 import type { StudyCollectionAction } from "@/lib/study-actions.ts";
+import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 
 const scoreLabel = (score: QuizCollectionSummary["lastScore"]) =>
   score
@@ -28,6 +29,7 @@ export const QuizCollectionList = ({
   <div className="space-y-2">
     {collections.map((collection) => (
       <StudyCollectionCard
+        favorite={<FavoriteButton kind="quizzes" id={collection.id} title={collection.title} />}
         actions={
           <>
             <StudyCollectionOpenAction
@@ -55,6 +57,7 @@ export const QuizCollectionList = ({
               </Button>
             )}
             <StudyCollectionActions
+              favoriteTarget={{ kind: "quizzes", id: collection.id }}
               archived={Boolean(collection.archivedAt)}
               onArchive={() => onAction("archive", collection)}
               onDelete={() => onAction("delete", collection)}

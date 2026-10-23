@@ -30,6 +30,7 @@ import { ViewModeToggle, type ViewMode } from "@/components/view-mode-toggle.tsx
 import type { ProjectAction } from "../project-types.ts";
 import { useBillingSummary } from "@/features/billing/api/billing-queries.ts";
 import { useBilling } from "@/features/billing/billing-context.tsx";
+import { FavoriteFilterMenu } from "@/features/favorites/favorite-filter.tsx";
 
 const getInitialView = (): ViewMode =>
   localStorage.getItem("lazuli-project-view") === "table" ? "table" : "cards";
@@ -50,7 +51,8 @@ export const ProjectListPage = () => {
     action: ProjectAction;
     project: ProjectSummary;
   } | null>(null);
-  const projects = useProjects({ page, pageSize: PROJECT_PAGE_SIZE, query });
+  const favorites = searchParams.get("favorites") === "only" ? "only" : undefined;
+  const projects = useProjects({ page, pageSize: PROJECT_PAGE_SIZE, query, favorites });
   const listLocation = `${location.pathname}${location.search}`;
 
   const setPage = useCallback(
@@ -70,6 +72,8 @@ export const ProjectListPage = () => {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.delete("query");
+      next.delete("favorites");
+      next.delete("sort");
       next.delete("page");
       return next;
     });
@@ -93,18 +97,24 @@ export const ProjectListPage = () => {
   };
 
   const hasProjects = Boolean(projects.data?.items.length);
-  const isEmptyLibrary = projects.data?.pagination.totalItems === 0 && !query;
-  const hasNoResults = projects.data?.pagination.totalItems === 0 && Boolean(query);
+  const isEmptyLibrary = projects.data?.pagination.totalItems === 0 && !query && !favorites;
+  const hasNoResults = projects.data?.pagination.totalItems === 0 && Boolean(query || favorites);
 
   return (
     <ContentPage maxWidth="6xl">
-      <h1 className="font-heading text-4xl font-medium tracking-tight sm:text-5xl">Projetos</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="font-heading text-3xl font-medium tracking-tight sm:text-5xl">Projetos</h1>
+        <Button onClick={openCreate}>
+          <PlusIcon aria-hidden="true" data-icon="inline-start" />
+          Novo projeto
+        </Button>
+      </div>
 
-      <div className="my-7 flex flex-wrap items-center gap-2">
+      <div className="my-5 flex flex-wrap items-center gap-2 sm:my-7">
         <SearchInput
           aria-label="Pesquisar projetos"
           className="h-9"
-          containerClassName="min-w-56 flex-1"
+          containerClassName="min-w-40 flex-1"
           disabled={!projects.isPending && isEmptyLibrary}
           maxLength={100}
           onClear={clearSearch}
@@ -112,13 +122,10 @@ export const ProjectListPage = () => {
           placeholder="Pesquisar projetos"
           value={searchValue}
         />
+        <FavoriteFilterMenu />
         <div className="ml-auto">
           <ViewModeToggle label="Visualização dos projetos" onChange={changeView} value={view} />
         </div>
-        <Button onClick={openCreate}>
-          <PlusIcon aria-hidden="true" data-icon="inline-start" />
-          Novo projeto
-        </Button>
       </div>
 
       {projects.isPending && <ProjectListSkeleton view={view} />}

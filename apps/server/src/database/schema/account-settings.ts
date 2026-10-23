@@ -24,6 +24,22 @@ export const accountExportStatus = pgEnum("account_export_status", [
   "revoked",
 ]);
 
+export const userInterfacePreference = pgTable(
+  "user_interface_preference",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    theme: text("theme", { enum: ["system", "light", "dark"] })
+      .default("system")
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    check("user_interface_theme_check", sql`${table.theme} in ('system', 'light', 'dark')`),
+  ],
+);
+
 export const userStudyPreference = pgTable(
   "user_study_preference",
   {

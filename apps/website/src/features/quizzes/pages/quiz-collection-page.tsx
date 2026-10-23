@@ -254,12 +254,14 @@ export const QuizCollectionPage = () => {
           )}
         >
           <header className="px-5 pt-5 pb-3">
-            <Link
-              className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
-              to="/quizzes"
-            >
-              <ArrowLeftIcon className="size-3.5" /> Coleções
-            </Link>
+            <div className="flex items-center justify-between gap-2">
+              <Link
+                className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
+                to="/quizzes"
+              >
+                <ArrowLeftIcon className="size-3.5" /> Coleções
+              </Link>
+            </div>
             <div className="mt-3 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <OverflowTooltip text={summary.title}>

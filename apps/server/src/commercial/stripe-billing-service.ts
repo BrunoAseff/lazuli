@@ -7,6 +7,9 @@ import type { AnalyticsService } from "../analytics/analytics-service.ts";
 import { lockAiCreditAccount } from "../ai-credits/ai-credit-transactions.ts";
 import type { ServerEnv } from "../config.ts";
 import type { Database, Transaction } from "../database/client.ts";
+import { enqueueLifecycleEmail } from "../email/email-outbox.ts";
+import { resolveEffectiveEntitlement } from "./commercial-entitlements.ts";
+import type { LifecycleEmailKind } from "../email/lifecycle-email.ts";
 import {
   billingCustomer,
   billingSubscription,
@@ -29,6 +32,18 @@ const TERMINAL_SUBSCRIPTION_STATUS_VALUES: BillingSubscriptionStatus[] = [
   "incomplete_expired",
 ];
 const WEBHOOK_PROCESSING_STALE_MS = 10 * 60 * 1_000;
+const BILLING_LOCALE = "pt-BR" as const;
+
+export const isReusableCheckoutSession = (
+  session: Pick<Stripe.Checkout.Session, "locale" | "mode" | "metadata" | "url">,
+  userId: string,
+  plan: PaidPlan,
+) =>
+  session.mode === "subscription" &&
+  session.locale === BILLING_LOCALE &&
+  session.metadata?.lazuliUserId === userId &&
+  session.metadata.plan === plan &&
+  Boolean(session.url);
 
 export const isManageableStripeSubscription = (subscription: Stripe.Subscription) =>
   !TERMINAL_SUBSCRIPTION_STATUS_VALUES.includes(subscription.status as BillingSubscriptionStatus);
@@ -249,6 +264,37 @@ export const createStripeBillingService = (
         },
         setWhere: lte(billingSubscription.providerUpdatedAt, eventCreatedAt),
       });
+    const kinds: LifecycleEmailKind[] = [];
+    const active = ACTIVATED_SUBSCRIPTION_STATUSES.has(subscription.status);
+    const canceled = hasScheduledStripeCancellation(subscription);
+    if (
+      active &&
+      (!previous || previous.plan !== plan || !ACTIVE_SUBSCRIPTION_STATUSES.has(previous.status))
+    )
+      kinds.push("plan_changed");
+    if (
+      ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status) &&
+      canceled !== Boolean(previous?.cancelAtPeriodEnd)
+    )
+      kinds.push(canceled ? "cancellation_scheduled" : "cancellation_reversed");
+    if (subscription.status === "canceled" && previous && previous.status !== "canceled")
+      kinds.push("plan_ended");
+    for (const kind of kinds) {
+      const effective =
+        kind === "plan_ended" ? await resolveEffectiveEntitlement(tx, userId) : null;
+      await enqueueLifecycleEmail(tx, {
+        key: `subscription/${subscription.id}/${kind}/${period.start?.getTime() ?? "none"}/${eventCreatedAt.getTime()}`,
+        userId,
+        kind,
+        payload: {
+          plan: effective?.name ?? COMMERCIAL_PLAN_CATALOG[plan].name,
+          effectiveAt: (kind === "cancellation_scheduled" && subscription.cancel_at
+            ? new Date(subscription.cancel_at * 1000)
+            : period.end
+          )?.toISOString(),
+        },
+      });
+    }
     return {
       activated: becameActiveSubscription({
         nextStatus: subscription.status as BillingSubscriptionStatus,
@@ -396,6 +442,7 @@ export const createStripeBillingService = (
   const createPortalSessionForCustomer = async (customer: string, returnTo?: string) => {
     const session = await stripe.billingPortal.sessions.create({
       customer,
+      locale: BILLING_LOCALE,
       return_url: getReturnUrl(returnTo, "portal"),
     });
     return { destination: "portal" as const, url: session.url };
@@ -538,12 +585,8 @@ export const createStripeBillingService = (
           limit: 100,
           status: "open",
         });
-        const existing = openSessions.data.find(
-          (session) =>
-            session.mode === "subscription" &&
-            session.metadata?.lazuliUserId === userId &&
-            session.metadata.plan === plan &&
-            session.url,
+        const existing = openSessions.data.find((session) =>
+          isReusableCheckoutSession(session, userId, plan),
         );
         if (existing?.url) return { destination: "checkout" as const, url: existing.url };
 
@@ -551,6 +594,7 @@ export const createStripeBillingService = (
         const session = await stripe.checkout.sessions.create(
           {
             mode: "subscription",
+            locale: BILLING_LOCALE,
             customer,
             line_items: [{ price: prices[plan], quantity: 1 }],
             allow_promotion_codes: true,
@@ -560,7 +604,7 @@ export const createStripeBillingService = (
             success_url: getReturnUrl(returnTo, "success"),
             cancel_url: getReturnUrl(returnTo, "canceled"),
           },
-          { idempotencyKey: `lazuli:checkout:${userId}:${plan}:${window}` },
+          { idempotencyKey: `lazuli:checkout:${BILLING_LOCALE}:${userId}:${plan}:${window}` },
         );
         if (!session.url) throw new Error("Stripe checkout did not return a URL");
         return { destination: "checkout" as const, url: session.url };

@@ -184,6 +184,7 @@ export const asset = pgTable(
       "asset_target_check",
       sql`(
         (${table.projectId} is null and ${table.documentId} is null and ${table.flashcardId} is null and ${table.quizQuestionId} is null)
+        or (${table.projectId} is not null and ${table.documentId} is null and ${table.flashcardId} is null and ${table.quizQuestionId} is null)
         or (${table.projectId} is not null and ${table.documentId} is not null and ${table.flashcardId} is null and ${table.quizQuestionId} is null)
         or (${table.projectId} is null and ${table.documentId} is null and ${table.flashcardId} is not null and ${table.quizQuestionId} is null)
         or (${table.projectId} is null and ${table.documentId} is null and ${table.flashcardId} is null and ${table.quizQuestionId} is not null)

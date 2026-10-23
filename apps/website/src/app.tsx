@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 
-import { SessionLoading } from "@/features/auth/components/session-feedback.tsx";
+import { SessionEnding, SessionLoading } from "@/features/auth/components/session-feedback.tsx";
 import { IndexRoute } from "@/features/auth/routes/index-route.tsx";
 import { PrivateRoute } from "@/features/auth/routes/private-route.tsx";
 import { PublicOnlyRoute } from "@/features/auth/routes/public-only-route.tsx";
@@ -50,6 +50,12 @@ const SecuritySectionPage = lazy(
 const StudySectionPage = lazy(
   () => import("@/features/account-settings/pages/study-section-page.tsx"),
 );
+const AppearanceSectionPage = lazy(
+  () => import("@/features/account-settings/pages/appearance-section-page.tsx"),
+);
+const UsageSectionPage = lazy(
+  () => import("@/features/account-settings/pages/usage-section-page.tsx"),
+);
 const DataSectionPage = lazy(
   () => import("@/features/account-settings/pages/data-section-page.tsx"),
 );
@@ -65,6 +71,7 @@ export const App = () => (
       </Route>
       <Route element={<VerifyEmailPage />} path="verify-email" />
       <Route element={<ResetPasswordPage />} path="reset-password" />
+      <Route element={<SessionEnding />} path="signing-out" />
       <Route element={<PrivateRoute />}>
         <Route element={<EditorialDesignPreviewPage />} path="design-preview" />
         <Route element={<AppShell />}>
@@ -80,6 +87,8 @@ export const App = () => (
             <Route element={<AccountSectionPage />} path="account" />
             <Route element={<SecuritySectionPage />} path="security" />
             <Route element={<StudySectionPage />} path="study" />
+            <Route element={<AppearanceSectionPage />} path="appearance" />
+            <Route element={<UsageSectionPage />} path="usage" />
             <Route element={<DataSectionPage />} path="data" />
           </Route>
           <Route

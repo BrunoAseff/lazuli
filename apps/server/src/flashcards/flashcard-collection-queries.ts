@@ -29,6 +29,7 @@ import {
 } from "../database/schema/index.ts";
 import { ownsProject } from "../projects/project-ownership.ts";
 import { deleteCards } from "./flashcard-queries.ts";
+import { isFavoriteSql } from "../favorites/favorite-queries.ts";
 
 const COLLECTION_DELETE_BATCH_SIZE = 500;
 
@@ -126,6 +127,9 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
 const createCollectionWhere = (userId: string, input: FlashcardCollectionListQuery) =>
   and(
     eq(flashcardCollection.userId, userId),
+    input.favorites === "only"
+      ? isFavoriteSql(userId, "flashcards", flashcardCollection.id)
+      : undefined,
     input.status === "active"
       ? isNull(flashcardCollection.archivedAt)
       : isNotNull(flashcardCollection.archivedAt),

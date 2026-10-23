@@ -1,4 +1,24 @@
 import { z } from "zod";
+import { commercialSummarySchema } from "../billing/billing-contracts.ts";
+
+export const accountUsageSchema = z.object({
+  commercial: commercialSummarySchema,
+  library: z.object({
+    projects: z.number().nonnegative(),
+    documents: z.number().nonnegative(),
+    flashcardCollections: z.number().nonnegative(),
+    archivedFlashcardCollections: z.number().nonnegative(),
+    flashcards: z.number().nonnegative(),
+    quizzes: z.number().nonnegative(),
+    archivedQuizzes: z.number().nonnegative(),
+    questions: z.number().nonnegative(),
+  }),
+  cycle: z.object({
+    startsAt: z.iso.datetime(),
+    endsAt: z.iso.datetime(),
+    consumed: z.number().nonnegative(),
+  }),
+});
 
 export const ACCOUNT_RETENTION_MIN = 80;
 export const ACCOUNT_RETENTION_MAX = 95;
@@ -14,6 +34,9 @@ export const accountSettingsProfileSchema = z.object({
 });
 
 export const authCapabilitiesSchema = z.object({ google: z.boolean() });
+
+export const appearancePreferenceSchema = z.object({ theme: z.enum(["system", "light", "dark"]) });
+export type AppearancePreference = z.infer<typeof appearancePreferenceSchema>;
 
 export const updateAccountNameSchema = z.object({
   name: z.string().trim().min(2).max(80),

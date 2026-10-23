@@ -11,6 +11,7 @@ import {
 import { ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu.tsx";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu.tsx";
 import type { DocumentTreeCreateType } from "../document-tree-types.ts";
+import { FavoriteMenuItem } from "@/features/favorites/favorite-menu-item.tsx";
 
 export const DocumentTreeActions = ({
   context = false,
@@ -33,6 +34,9 @@ export const DocumentTreeActions = ({
   const Separator = context ? ContextMenuSeparator : DropdownMenuSeparator;
   return (
     <>
+      {item.type === "document" && (
+        <FavoriteMenuItem target={{ kind: "document", id: item.id }} context={context} />
+      )}
       <Item onSelect={onRename}>
         <PencilIcon /> Renomear
       </Item>
