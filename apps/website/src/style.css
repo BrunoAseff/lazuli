@@ -520,6 +520,12 @@
   animation: lazuli-image-loading 1.4s ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .lazuli-image-loading {
+    animation: none;
+  }
+}
+
 @keyframes lazuli-image-loading {
   from {
     background-position: 200% 0;

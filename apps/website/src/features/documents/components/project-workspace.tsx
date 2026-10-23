@@ -78,7 +78,6 @@ export const ProjectWorkspace = ({
             <PopoverContent
               align="end"
               className="h-[min(72svh,36rem)] w-[min(calc(100vw-2rem),20rem)] overflow-hidden p-0 shadow-[var(--shadow-overlay)]"
-              onOpenAutoFocus={(event) => event.preventDefault()}
               side="bottom"
               sideOffset={8}
             >
