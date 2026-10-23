@@ -98,9 +98,15 @@ export const ProjectListPage = () => {
 
   return (
     <ContentPage maxWidth="6xl">
-      <h1 className="font-heading text-4xl font-medium tracking-tight sm:text-5xl">Projetos</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="font-heading text-3xl font-medium tracking-tight sm:text-5xl">Projetos</h1>
+        <Button onClick={openCreate}>
+          <PlusIcon aria-hidden="true" data-icon="inline-start" />
+          Novo projeto
+        </Button>
+      </div>
 
-      <div className="my-7 flex flex-wrap items-center gap-2">
+      <div className="my-5 flex items-center gap-2 sm:my-7">
         <SearchInput
           aria-label="Pesquisar projetos"
           className="h-9"
@@ -115,10 +121,6 @@ export const ProjectListPage = () => {
         <div className="ml-auto">
           <ViewModeToggle label="Visualização dos projetos" onChange={changeView} value={view} />
         </div>
-        <Button onClick={openCreate}>
-          <PlusIcon aria-hidden="true" data-icon="inline-start" />
-          Novo projeto
-        </Button>
       </div>
 
       {projects.isPending && <ProjectListSkeleton view={view} />}

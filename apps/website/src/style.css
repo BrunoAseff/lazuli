@@ -211,17 +211,10 @@
   min-height: 100svh;
 }
 
-html:has(.project-workspace),
-body:has(.project-workspace),
-#app:has(.project-workspace) {
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-}
-
 .project-workspace {
   container-type: inline-size;
-  height: calc(100dvh - 3.5rem);
+  min-height: calc(100svh - 3.5rem);
+  overflow: visible;
 }
 
 .project-workspace-grid {
@@ -238,19 +231,44 @@ body:has(.project-workspace),
 .project-workspace-content {
   grid-column: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.document-editor-page,
+.document-editor-scroll {
+  min-height: 100%;
+  overflow: visible;
+}
+
+.document-editor-toolbar {
+  top: 3.5rem;
 }
 
 .project-files-trigger {
   display: inline-flex;
 }
 
+/* 56rem workspace + the 13.375rem application sidebar. Below this width the
+   workspace uses the document's native page scroll instead of a locked shell. */
+@media (min-width: 69.375rem) {
+  html:has(.project-workspace),
+  body:has(.project-workspace),
+  #app:has(.project-workspace) {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
 @container (min-width: 56rem) {
   .project-workspace {
     height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .project-workspace-grid {
+    height: 100%;
     grid-template-columns: 15.5rem minmax(0, 1fr);
   }
 
@@ -265,6 +283,25 @@ body:has(.project-workspace),
 
   .project-workspace-content {
     grid-column: 2;
+    overflow: hidden;
+  }
+
+  .document-editor-page,
+  .document-editor-scroll {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .document-editor-page {
+    overflow: hidden;
+  }
+
+  .document-editor-scroll {
+    overflow-y: auto;
+  }
+
+  .document-editor-toolbar {
+    top: 0;
   }
 
   .project-files-trigger {
@@ -336,6 +373,12 @@ body:has(.project-workspace),
   min-height: 65vh;
 }
 
+.lazuli-document-editor img,
+.lazuli-document-editor video {
+  max-width: 100%;
+  height: auto;
+}
+
 .lazuli-document-editor .bn-inline-content {
   line-height: 1.72;
 }
@@ -344,12 +387,73 @@ body:has(.project-workspace),
   letter-spacing: -0.02em;
 }
 
-.lazuli-document-editor [data-content-type="heading"][data-level="1"] {
+.lazuli-document-editor [data-content-type="heading"][data-level="1"],
+.lazuli-document-editor h1.bn-inline-content {
   font-size: 2rem;
+  line-height: 1.2;
 }
 
-.lazuli-document-editor [data-content-type="heading"][data-level="2"] {
+.lazuli-document-editor [data-content-type="heading"][data-level="2"],
+.lazuli-document-editor h2.bn-inline-content {
   font-size: 1.625rem;
+  line-height: 1.25;
+}
+
+@container (max-width: 55.999rem) {
+  .document-editor-scroll,
+  .lazuli-document-editor .bn-editor {
+    touch-action: pan-y;
+  }
+
+  .lazuli-document-editor [data-content-type="table"],
+  .lazuli-document-editor [data-content-type="table"] .tableWrapper {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .lazuli-document-editor .bn-mobile-formatting-toolbar {
+    width: auto;
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    background: var(--popover);
+    border-top: 1px solid var(--border);
+  }
+
+  .lazuli-document-editor .bn-mobile-formatting-toolbar > .bn-formatting-toolbar {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 40rem) {
+  .lazuli-document-editor.bn-container {
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .lazuli-document-editor .bn-inline-content {
+    line-height: 1.65;
+  }
+
+  .lazuli-document-editor [data-content-type="heading"][data-level="1"],
+  .lazuli-document-editor h1.bn-inline-content {
+    font-size: 1.625rem;
+    line-height: 1.2;
+  }
+
+  .lazuli-document-editor [data-content-type="heading"][data-level="2"],
+  .lazuli-document-editor h2.bn-inline-content {
+    font-size: 1.375rem;
+    line-height: 1.25;
+  }
 }
 
 .lazuli-flashcard-editor .bn-editor {
@@ -388,6 +492,30 @@ body:has(.project-workspace),
   place-items: center;
   color: var(--muted-foreground);
   font-size: 0.875rem;
+}
+
+.lazuli-image-loading {
+  width: min(32rem, calc(100vw - 3rem));
+  min-height: 12rem;
+  border-radius: var(--radius);
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    color-mix(in oklab, var(--muted) 70%, var(--background)) 50%,
+    var(--muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: lazuli-image-loading 1.4s ease-in-out infinite;
+}
+
+@keyframes lazuli-image-loading {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
 }
 
 .lazuli-editor .bn-inline-content {

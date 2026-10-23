@@ -322,6 +322,7 @@ export const FlashcardCollectionPage = () => {
                 archived={Boolean(summary.archivedAt)}
                 className="shrink-0"
                 dueCards={summary.dueCards}
+                fullWidthOnMobile={false}
                 onClick={() => setPracticeOpen(true)}
                 size="lg"
                 title={summary.title}

@@ -20,7 +20,7 @@ export const RecentDocuments = ({
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((document) => (
           <Link
-            className="group flex min-h-32 flex-col justify-between rounded-xl border bg-card p-4 transition-colors hover:border-foreground/30 hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+            className="group flex min-w-0 flex-col justify-between rounded-xl border bg-card p-4 transition-colors hover:border-foreground/30 hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 sm:min-h-32"
             key={document.id}
             to={`/documents/${projectId}/document/${document.id}`}
           >
@@ -33,7 +33,7 @@ export const RecentDocuments = ({
               <OverflowTooltip text={document.title}>
                 {(ref) => (
                   <span
-                    className="block truncate font-heading text-xl leading-tight group-hover:underline"
+                    className="block font-heading text-lg leading-snug [overflow-wrap:anywhere] group-hover:underline sm:truncate sm:text-xl sm:leading-tight"
                     ref={ref as React.RefObject<HTMLSpanElement>}
                   >
                     {document.title}
