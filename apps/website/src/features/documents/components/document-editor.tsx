@@ -9,7 +9,11 @@ import {
 } from "@lazuli/shared";
 import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
 import { CheckIcon } from "@phosphor-icons/react/Check";
-import { FormattingToolbarController, useCreateBlockNote } from "@blocknote/react";
+import {
+  ExperimentalMobileFormattingToolbarController,
+  FormattingToolbarController,
+  useCreateBlockNote,
+} from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -70,6 +74,7 @@ import { DocumentSaveStatus, type DocumentSaveState } from "./document-save-stat
 import { safeReturnTo } from "../document-navigation.ts";
 
 const blockNoteComponents = { Input: { Input: LocalizedBlockNoteInput } };
+const compactWorkspaceMaxWidth = 56 * 16;
 const toDocumentBlocks = (blocks: LazuliDocumentBlock) => blocks as unknown as DocumentBlock[];
 export const DocumentEditor = ({
   projectId,
@@ -106,6 +111,7 @@ export const DocumentEditor = ({
   const [adjustingAnchorId, setAdjustingAnchorId] = useState<string | null>(null);
   const [pendingSelectionAvailable, setPendingSelectionAvailable] = useState(false);
   const [pendingLinkConfirmationOpen, setPendingLinkConfirmationOpen] = useState(false);
+  const [compactEditorChrome, setCompactEditorChrome] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const createReference = useCreateReferences();
@@ -169,6 +175,16 @@ export const DocumentEditor = ({
   );
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const titleElementRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const workspace = editorContainerRef.current?.closest<HTMLElement>(".project-workspace");
+    if (!workspace) return;
+    const update = () =>
+      setCompactEditorChrome(workspace.getBoundingClientRect().width < compactWorkspaceMaxWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(workspace);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     if (data.item.title === savedTitle.current) return;
     setTitle((current) => {
@@ -630,9 +646,9 @@ export const DocumentEditor = ({
 
   return (
     <>
-      <div className="mr-1 h-full min-h-0 overflow-y-auto lazuli-thin-scrollbar">
-        <header className="sticky top-0 z-20 bg-card/92 px-4 backdrop-blur sm:px-6">
-          <div className="flex h-[3.75rem] items-center justify-end gap-2">
+      <div className="document-editor-scroll mr-1 lazuli-thin-scrollbar">
+        <header className="document-editor-toolbar sticky z-20 border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:border-b-0 sm:bg-card/92 sm:px-6">
+          <div className="flex h-12 items-center justify-end gap-2 sm:h-[3.75rem]">
             {contextualReturnTo && (
               <Button
                 className="mr-auto"
@@ -690,11 +706,11 @@ export const DocumentEditor = ({
             />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[52rem] px-5 pt-8 pb-24 sm:px-8 sm:pt-12">
+        <main className="mx-auto w-full max-w-[52rem] px-5 pt-6 pb-24 sm:px-8 sm:pt-12">
           <Textarea
             aria-label="Título do documento"
             autoComplete="off"
-            className="mb-8 min-h-16 w-full resize-none overflow-hidden border-transparent bg-transparent px-0 py-1 font-heading text-5xl leading-[1.02] font-normal tracking-[-0.04em] shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:text-6xl md:text-6xl"
+            className="mb-6 min-h-12 w-full resize-none overflow-hidden border-transparent bg-transparent px-0 py-1 font-heading text-3xl leading-[1.08] font-normal tracking-[-0.035em] shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:mb-8 sm:min-h-16 sm:text-6xl sm:leading-[1.02] md:text-6xl"
             data-1p-ignore
             data-lpignore="true"
             maxLength={100}
@@ -729,6 +745,7 @@ export const DocumentEditor = ({
               className="lazuli-editor lazuli-document-editor"
               editor={editor}
               formattingToolbar={false}
+              sideMenu={!compactEditorChrome}
               onChange={() => {
                 if (saveState !== "conflict") {
                   if (!adjustingAnchorRef.current && !aiAction) setAutoSavePaused(false);
@@ -750,7 +767,13 @@ export const DocumentEditor = ({
               shadCNComponents={blockNoteComponents}
               theme="light"
             >
-              <FormattingToolbarController formattingToolbar={formattingToolbar} />
+              {compactEditorChrome ? (
+                <ExperimentalMobileFormattingToolbarController
+                  formattingToolbar={formattingToolbar}
+                />
+              ) : (
+                <FormattingToolbarController formattingToolbar={formattingToolbar} />
+              )}
             </BlockNoteView>
           </div>
           <p aria-live="assertive" className="sr-only">

@@ -145,18 +145,30 @@ describe("analytics client", () => {
     expect(JSON.stringify(webVitals)).not.toContain("private");
   });
 
-  it("resets identity before persisting the opted-out state", async () => {
+  it("opts out before resetting identity and does not repeat disabled transitions", async () => {
     const { disableAnalytics, enableAnalytics } = await import("./analytics-client.ts");
     enableAnalytics("user-1");
     await vi.waitFor(() => expect(posthog.identify).toHaveBeenCalledOnce());
     posthog.reset.mockClear();
 
     disableAnalytics();
+    disableAnalytics();
 
     await vi.waitFor(() => expect(posthog.opt_out_capturing).toHaveBeenCalledOnce());
-    expect(posthog.reset.mock.invocationCallOrder[0]).toBeLessThan(
-      posthog.opt_out_capturing.mock.invocationCallOrder[0]!,
+    expect(posthog.opt_out_capturing.mock.invocationCallOrder[0]).toBeLessThan(
+      posthog.reset.mock.invocationCallOrder[0]!,
     );
+  });
+
+  it("does not reset consent again when the same user is already enabled", async () => {
+    const { enableAnalytics } = await import("./analytics-client.ts");
+
+    enableAnalytics("user-1");
+    enableAnalytics("user-1");
+
+    await vi.waitFor(() => expect(posthog.identify).toHaveBeenCalledOnce());
+    expect(posthog.reset).toHaveBeenCalledOnce();
+    expect(posthog.opt_in_capturing).toHaveBeenCalledOnce();
   });
 
   it("drops undeclared properties locally", async () => {

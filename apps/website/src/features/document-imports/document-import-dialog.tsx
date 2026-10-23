@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { useIsMobile } from "@/hooks/use-mobile.ts";
 import { cn } from "@/lib/utils.ts";
 import { acceptedDocumentImportTypes, inferImportMimeType } from "./document-import-api.ts";
 
@@ -43,6 +44,7 @@ export const DocumentImportDialog = ({
   const [dragging, setDragging] = useState(false);
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const isMobile = useIsMobile();
   const addFiles = (incoming: File[]) => {
     const available = DOCUMENT_IMPORT_MAX_ACTIVE - files.length;
     if (available <= 0) {
@@ -102,7 +104,7 @@ export const DocumentImportDialog = ({
         />
         <div
           className={cn(
-            "grid min-h-36 place-items-center rounded-xl border border-dashed p-5 text-center transition-colors hover:border-primary/55 hover:bg-primary-soft/45 hover:text-primary",
+            "grid min-h-28 place-items-center rounded-xl border border-dashed p-4 text-center transition-colors sm:min-h-36 sm:p-5 sm:hover:border-primary/55 sm:hover:bg-primary-soft/45 sm:hover:text-primary",
             dragging && "border-foreground bg-muted/50",
           )}
           onDragEnter={(event) => {
@@ -117,17 +119,26 @@ export const DocumentImportDialog = ({
         >
           <div>
             <UploadCloudIcon className="mx-auto mb-3 size-7 text-muted-foreground" />
-            <p className="font-medium">Arraste os arquivos para cá</p>
-            <p className="mt-1 text-xs text-muted-foreground">ou escolha no seu dispositivo</p>
+            <p className="font-medium">
+              {isMobile
+                ? "Selecione os arquivos no seu dispositivo"
+                : "Arraste os arquivos para cá"}
+            </p>
+            {!isMobile && (
+              <p className="mt-1 text-xs text-muted-foreground">ou escolha no seu dispositivo</p>
+            )}
             <Button className="mt-4" onClick={() => inputRef.current?.click()} variant="outline">
-              <PlusIcon /> Escolher arquivos
+              <PlusIcon /> {isMobile ? "Selecionar arquivos" : "Escolher arquivos"}
             </Button>
           </div>
         </div>
         {files.length > 0 && (
           <div className="lazuli-thin-scrollbar max-h-60 space-y-2 overflow-y-auto pr-1">
             {files.map((item) => (
-              <div className="flex items-center gap-3 rounded-lg border px-3 py-2" key={item.id}>
+              <div
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 sm:flex sm:gap-3"
+                key={item.id}
+              >
                 <DocumentDomainIcon
                   className="size-[1.125rem] shrink-0 text-muted-foreground"
                   weight="duotone"
@@ -150,7 +161,7 @@ export const DocumentImportDialog = ({
                     {item.extension}
                   </span>
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">
+                <span className="col-start-2 shrink-0 text-xs text-muted-foreground sm:col-auto">
                   {formatBytes(item.file.size)}
                 </span>
                 <Button

@@ -14,7 +14,7 @@ import { CircleNotchIcon } from "@phosphor-icons/react/CircleNotch";
 import { ArrowClockwiseIcon } from "@phosphor-icons/react/ArrowClockwise";
 import { CheckIcon } from "@phosphor-icons/react/Check";
 import { Trash2Icon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
@@ -92,6 +92,7 @@ export const AiMaterialImprovementDialog = ({
   const [quizOptions, setQuizOptions] = useState<QuizOptionDraft[]>([]);
   const [discardConfirmationOpen, setDiscardConfirmationOpen] = useState(false);
   const [closeAfterDiscard, setCloseAfterDiscard] = useState(false);
+  const generationRequest = useRef(0);
   const balance = useAiCreditBalance();
   const create = useCreateAiMaterialImprovement();
   const generation = useAiMaterialImprovement(operationId);
@@ -133,6 +134,7 @@ export const AiMaterialImprovementDialog = ({
   }, [generation.isError, operationId]);
 
   const generate = async (regenerate = false) => {
+    const request = ++generationRequest.current;
     try {
       const response = await create.mutateAsync({
         idempotencyKey: crypto.randomUUID(),
@@ -143,10 +145,12 @@ export const AiMaterialImprovementDialog = ({
         guidance,
         ...(regenerate && draft ? { regenerateOperationId: draft.operationId } : {}),
       });
+      if (request !== generationRequest.current) return;
       if (response.status === "completed") {
         setOperationId(response.draft.operationId);
       } else setOperationId(response.operationId);
     } catch {
+      if (request !== generationRequest.current) return;
       toast.error("Não foi possível gerar a melhoria.");
     }
   };
@@ -221,10 +225,7 @@ export const AiMaterialImprovementDialog = ({
       setDiscardConfirmationOpen(true);
       return;
     }
-    if (busy) {
-      onOpenChange(false);
-      return;
-    }
+    generationRequest.current += 1;
     reset();
     onOpenChange(false);
   };
@@ -402,7 +403,9 @@ export const AiMaterialImprovementDialog = ({
             </>
           ) : (
             <>
-              <DialogCancelButton disabled={apply.isPending}>Fechar</DialogCancelButton>
+              <DialogCancelButton disabled={apply.isPending} onClick={requestClose}>
+                Fechar
+              </DialogCancelButton>
               <CreditUpgradeGuard available={balance.data?.available} cost={AI_CREDITS_PER_ITEM}>
                 <Button
                   disabled={busy || (balance.data?.available ?? 0) < AI_CREDITS_PER_ITEM}

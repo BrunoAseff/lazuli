@@ -43,7 +43,7 @@ export const AppShell = () => {
         >
           <AppSidebar />
           <SidebarInset>
-            <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4 md:hidden">
+            <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:hidden">
               <SidebarTrigger />
               <Separator orientation="vertical" />
               <BrandBadge className="size-8" />

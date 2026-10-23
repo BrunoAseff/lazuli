@@ -16,19 +16,22 @@ export const DocumentSaveStatus = ({
   if (state === "saved")
     return (
       <span className="flex h-9 items-center gap-2 text-sm text-muted-foreground" role="status">
-        <CloudCheckIcon className="size-4 text-success" /> Alterações salvas
+        <CloudCheckIcon className="size-4 text-success" />
+        <span className="sr-only sm:not-sr-only">Alterações salvas</span>
       </span>
     );
   if (state === "saving")
     return (
       <span className="flex h-9 items-center gap-2 text-sm text-muted-foreground" role="status">
-        <LoaderCircleIcon className="size-4 animate-spin" /> Salvando…
+        <LoaderCircleIcon className="size-4 animate-spin" />
+        <span className="sr-only sm:not-sr-only">Salvando…</span>
       </span>
     );
   if (state === "pending")
     return (
       <span className="flex h-9 items-center gap-2 text-sm text-muted-foreground" role="status">
-        <CloudUploadIcon className="size-4" /> Alterações não salvas
+        <CloudUploadIcon className="size-4" />
+        <span className="sr-only sm:not-sr-only">Alterações não salvas</span>
       </span>
     );
   return (

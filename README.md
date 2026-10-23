@@ -87,3 +87,7 @@ DATABASE_URL='postgresql://...' BACKUP_DIRECTORY=./backups vp run db:backup
 ```
 
 Os dumps são criados com permissões privadas e não devem ser commitados.
+
+### Runbooks operacionais
+
+- [Retomada do Railway após o incidente de 21 de outubro de 2026](docs/runbooks/railway-security-incident-2026-10.md)

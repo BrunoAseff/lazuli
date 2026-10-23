@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { ChevronsUpDownIcon, LogOutIcon, SettingsIcon } from "lucide-react";
-import { useNavigate } from "react-router";
-import { toast } from "sonner";
+import { useLocation, useNavigate } from "react-router";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";
 import {
@@ -15,10 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu.tsx";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
-import { authClient } from "@/features/auth/auth-client.ts";
+import { startSignOut } from "@/features/auth/sign-out.ts";
 import { useBillingSummary } from "@/features/billing/api/billing-queries.ts";
 import { ManageSubscriptionAction } from "@/features/billing/components/manage-subscription-action.tsx";
-import { resetAnalytics } from "@/features/analytics/analytics-client.ts";
 
 type UserMenuProps = {
   mobile?: boolean;
@@ -40,7 +37,7 @@ const getInitials = (name: string) =>
 
 export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const location = useLocation();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const summary = useBillingSummary();
   const planName =
@@ -50,24 +47,14 @@ export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
         ? "Essencial"
         : "Básico";
 
-  const signOut = async () => {
+  const signOut = () => {
     if (isSigningOut) {
       return;
     }
 
     setIsSigningOut(true);
-    const { error } = await authClient.signOut();
-
-    if (error) {
-      setIsSigningOut(false);
-      toast.error("Não foi possível sair. Tente novamente.");
-      return;
-    }
-
-    resetAnalytics();
-    queryClient.clear();
-    localStorage.removeItem(`lazuli-document-imports-completed-dismissed-at:${user.id}`);
-    await navigate("/login", { replace: true });
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
+    startSignOut({ returnTo, userId: user.id });
   };
 
   return (
@@ -113,11 +100,7 @@ export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
               Configurações
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              disabled={isSigningOut}
-              onSelect={() => void signOut()}
-              variant="destructive"
-            >
+            <DropdownMenuItem disabled={isSigningOut} onSelect={signOut} variant="destructive">
               {isSigningOut ? <Spinner aria-hidden="true" /> : <LogOutIcon aria-hidden="true" />}
               {isSigningOut ? "Saindo…" : "Sair"}
             </DropdownMenuItem>

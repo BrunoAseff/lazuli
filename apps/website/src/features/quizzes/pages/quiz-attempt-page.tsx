@@ -121,7 +121,7 @@ export const QuizAttemptPage = () => {
     <main className="flex min-h-full flex-col bg-background px-4 py-5 sm:px-8 sm:py-7 lg:px-12">
       <div className="mx-auto w-full max-w-5xl rounded-xl border bg-card px-4 py-5 sm:px-7 lg:px-10">
         <header className="border-b pb-5">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start justify-between gap-3 sm:items-center sm:gap-4">
             <Button
               aria-label="Sair do quiz"
               onClick={() => setExitOpen(true)}
@@ -131,12 +131,14 @@ export const QuizAttemptPage = () => {
               <ArrowLeftIcon />
             </Button>
             <div className="min-w-0 flex-1">
-              <h1 className="truncate font-heading text-xl">{attempt.collectionTitle}</h1>
+              <h1 className="font-heading text-lg leading-snug [overflow-wrap:anywhere] sm:text-xl">
+                {attempt.collectionTitle}
+              </h1>
               <p className="text-xs text-muted-foreground">
                 {attempt.answeredQuestions} de {attempt.totalQuestions} respondidas
               </p>
             </div>
-            <span className="text-sm tabular-nums">
+            <span className="shrink-0 pt-1 text-xs tabular-nums sm:pt-0 sm:text-sm">
               {index + 1} / {attempt.totalQuestions}
             </span>
           </div>
@@ -203,7 +205,7 @@ export const QuizAttemptPage = () => {
                       <span className="block font-medium">Questão {itemIndex + 1}</span>
                       <span
                         className={cn(
-                          "block truncate text-sm text-muted-foreground",
+                          "block text-sm text-muted-foreground [overflow-wrap:anywhere] sm:truncate",
                           !selectedOption && "text-destructive",
                         )}
                       >
@@ -432,7 +434,7 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
               return (
                 <div
                   className={cn(
-                    "flex items-center gap-3 rounded-lg border px-4 py-3",
+                    "flex items-start gap-3 rounded-lg border px-4 py-3 sm:items-center",
                     correct && "border-success bg-success/10",
                     selected && !correct && "border-destructive bg-destructive/5",
                   )}
@@ -445,21 +447,23 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
                   ) : (
                     <CircleIcon className="size-5 text-muted-foreground" />
                   )}
-                  <span>{option.text}</span>
-                  {(correct || selected) && (
-                    <span
-                      className={cn(
-                        "ml-auto text-xs font-medium",
-                        correct ? "text-success" : "text-destructive",
-                      )}
-                    >
-                      {selected && correct
-                        ? "Sua resposta · correta"
-                        : selected
-                          ? "Sua resposta"
-                          : "Resposta correta"}
-                    </span>
-                  )}
+                  <span className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-4">
+                    <span className="block [overflow-wrap:anywhere]">{option.text}</span>
+                    {(correct || selected) && (
+                      <span
+                        className={cn(
+                          "mt-1.5 block shrink-0 text-xs font-medium sm:mt-0 sm:ml-auto",
+                          correct ? "text-success" : "text-destructive",
+                        )}
+                      >
+                        {selected && correct
+                          ? "Sua resposta · correta"
+                          : selected
+                            ? "Sua resposta"
+                            : "Resposta correta"}
+                      </span>
+                    )}
+                  </span>
                 </div>
               );
             })}

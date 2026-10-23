@@ -24,11 +24,8 @@ export const ProjectWorkspace = ({
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   return (
-    <div className="project-workspace min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
-      <div
-        className="project-workspace-grid h-full min-h-0 min-w-0"
-        data-tree-collapsed={collapsed}
-      >
+    <div className="project-workspace min-w-0 flex-1 bg-background">
+      <div className="project-workspace-grid min-h-0 min-w-0" data-tree-collapsed={collapsed}>
         <aside
           className={cn(
             "project-workspace-tree sticky top-0 h-svh overflow-hidden py-2 transition-[width] duration-200 ease-out",
@@ -66,11 +63,11 @@ export const ProjectWorkspace = ({
             </Button>
           </div>
         </aside>
-        <div className="project-workspace-content h-full min-h-0 min-w-0 overflow-hidden">
+        <div className="project-workspace-content min-h-0 min-w-0">
           <Popover onOpenChange={setOpen} open={open}>
             <PopoverTrigger asChild>
               <Button
-                className="project-files-trigger fixed right-4 bottom-4 z-30 size-11 bg-card shadow-[var(--shadow-overlay)]"
+                className="project-files-trigger fixed top-2.5 right-4 z-50 size-9 bg-card"
                 size="icon-lg"
                 variant="outline"
               >
@@ -81,8 +78,9 @@ export const ProjectWorkspace = ({
             <PopoverContent
               align="end"
               className="h-[min(72svh,36rem)] w-[min(calc(100vw-2rem),20rem)] overflow-hidden p-0 shadow-[var(--shadow-overlay)]"
-              side="top"
-              sideOffset={10}
+              onOpenAutoFocus={(event) => event.preventDefault()}
+              side="bottom"
+              sideOffset={8}
             >
               <DocumentTree
                 activeDocumentId={activeDocumentId}
@@ -90,6 +88,7 @@ export const ProjectWorkspace = ({
                 onNavigate={() => setOpen(false)}
                 projectId={projectId}
                 projectTitle={projectTitle}
+                showProjectLink={false}
               />
             </PopoverContent>
           </Popover>

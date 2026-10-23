@@ -100,10 +100,10 @@ export const ProjectDetailPage = () => {
   const currentProject = project.data;
 
   return (
-    <div className="mr-1 flex h-full min-h-0 flex-col overflow-y-auto px-5 pt-7 pb-8 sm:px-8 lg:px-12 lg:pt-7 lg:pb-10 lazuli-thin-scrollbar">
+    <div className="mr-1 flex h-full min-h-0 flex-col overflow-y-auto px-5 pt-5 pb-8 sm:px-8 sm:pt-7 lg:px-12 lg:pb-10 lazuli-thin-scrollbar">
       <div className="mx-auto w-full max-w-6xl">
         <Link
-          className="project-home-back mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          className="project-home-back mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline sm:mb-6"
           to={backLocation}
         >
           <ArrowLeftIcon aria-hidden="true" className="size-4" />
@@ -111,7 +111,10 @@ export const ProjectDetailPage = () => {
         </Link>
 
         <div className="relative overflow-hidden rounded-xl border bg-card">
-          <ProjectCover className="max-h-72 min-h-44" coverKey={currentProject.coverKey} />
+          <ProjectCover
+            className="max-h-72 min-h-32 sm:min-h-44"
+            coverKey={currentProject.coverKey}
+          />
           <ProjectActionsMenu
             className="absolute top-3 right-3"
             onChangeCover={() => setAction("cover")}
@@ -120,8 +123,8 @@ export const ProjectDetailPage = () => {
           />
         </div>
 
-        <div className="mt-7 flex flex-col gap-1.5">
-          <h1 className="font-heading text-4xl font-medium tracking-tight [overflow-wrap:anywhere] sm:text-5xl">
+        <div className="mt-5 flex flex-col gap-1 sm:mt-7 sm:gap-1.5">
+          <h1 className="font-heading text-3xl leading-tight font-medium tracking-tight [overflow-wrap:anywhere] sm:text-5xl">
             {currentProject.title}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -130,9 +133,12 @@ export const ProjectDetailPage = () => {
           </p>
         </div>
 
-        <section className="mt-8" aria-labelledby="project-documents-title">
+        <section className="mt-7 sm:mt-8" aria-labelledby="project-documents-title">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="font-heading text-2xl font-medium" id="project-documents-title">
+            <h2
+              className="font-heading text-xl font-medium sm:text-2xl"
+              id="project-documents-title"
+            >
               Documentos recentes
             </h2>
             <ViewModeToggle

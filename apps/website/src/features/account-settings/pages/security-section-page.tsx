@@ -1,6 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
@@ -15,10 +14,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
-import { resetAnalytics } from "@/features/analytics/analytics-client.ts";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 import { PasswordInput } from "@/features/auth/components/password-input.tsx";
+import { startSignOut } from "@/features/auth/sign-out.ts";
 import {
   useAccountProfile,
   useAccountSessions,
@@ -66,12 +65,12 @@ const formatActivity = (value: string) =>
   }).format(new Date(value));
 
 export const SecuritySectionPage = () => {
+  const currentSession = authClient.useSession();
   const profile = useAccountProfile();
   const sessions = useAccountSessions();
   const revokeSession = useRevokeAccountSession();
   const revokeOthers = useRevokeOtherAccountSessions();
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -195,12 +194,9 @@ export const SecuritySectionPage = () => {
     await profile.refetch();
   };
 
-  const signOutCurrent = async () => {
-    const { error } = await authClient.signOut();
-    if (error) return;
-    resetAnalytics();
-    queryClient.clear();
-    await navigate("/login", { replace: true });
+  const signOutCurrent = () => {
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
+    startSignOut({ returnTo, userId: currentSession.data?.user.id });
   };
 
   const confirmSessionRevocation = async () => {
@@ -313,9 +309,7 @@ export const SecuritySectionPage = () => {
               </div>
               <Button
                 className="justify-self-start rounded-md sm:justify-self-end"
-                onClick={() =>
-                  item.isCurrent ? void signOutCurrent() : setPendingSession(item.id)
-                }
+                onClick={() => (item.isCurrent ? signOutCurrent() : setPendingSession(item.id))}
                 variant="destructive"
               >
                 {item.isCurrent ? "Sair deste dispositivo" : "Encerrar sessão"}

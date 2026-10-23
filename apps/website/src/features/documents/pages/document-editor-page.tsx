@@ -14,7 +14,7 @@ export const DocumentEditorPage = () => {
   const document = useDocument(projectId, documentId);
   if (document.isPending)
     return (
-      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="document-editor-page flex flex-1 flex-col">
         <div className="flex h-[3.75rem] items-center justify-end border-b px-6">
           <Skeleton className="h-5 w-32" />
         </div>
@@ -41,7 +41,7 @@ export const DocumentEditorPage = () => {
       </div>
     );
   return (
-    <div className="h-full min-h-0 overflow-hidden">
+    <div className="document-editor-page">
       <DocumentEditor
         data={document.data}
         documentId={documentId}

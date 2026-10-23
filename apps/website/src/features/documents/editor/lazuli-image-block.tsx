@@ -8,31 +8,36 @@ import {
 } from "@blocknote/react";
 import { ImageBrokenIcon } from "@phosphor-icons/react/ImageBroken";
 import { TrashIcon } from "@phosphor-icons/react/Trash";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
+import { getImagePresentation } from "./image-presentation.ts";
 
 const TRANSPARENT_IMAGE = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
 const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageBlockConfig>) => {
   const pendingUpload = !props.block.props.url;
   const resolved = useResolveUrl(props.block.props.url || TRANSPARENT_IMAGE);
-  const resolutionFailed = resolved.loadingState === "error";
-  const source = resolved.loadingState === "loading" ? props.block.props.url : resolved.downloadUrl;
-  const [loadFailed, setLoadFailed] = useState(false);
-
-  useEffect(() => setLoadFailed(false), [source]);
+  const [failedSource, setFailedSource] = useState<string>();
+  const presentation = getImagePresentation(pendingUpload, resolved, failedSource);
 
   return (
     <ResizableFileBlockWrapper
       {...(props as any)}
       buttonIcon={<ImageBrokenIcon aria-hidden size={24} weight="duotone" />}
     >
-      {pendingUpload ? (
+      {presentation.kind === "uploading" ? (
         <div className="lazuli-image-uploading" contentEditable={false}>
           Enviando imagem…
         </div>
-      ) : loadFailed || resolutionFailed ? (
+      ) : presentation.kind === "loading" ? (
+        <div
+          aria-label="Carregando imagem"
+          className="lazuli-image-loading"
+          contentEditable={false}
+          role="status"
+        />
+      ) : presentation.kind === "error" ? (
         <div className="lazuli-broken-image" contentEditable={false}>
           <ImageBrokenIcon aria-hidden weight="duotone" />
           <div>
@@ -56,8 +61,8 @@ const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageB
           className="bn-visual-media"
           contentEditable={false}
           draggable={false}
-          onError={() => setLoadFailed(true)}
-          src={source}
+          onError={() => setFailedSource(presentation.source)}
+          src={presentation.source}
           width={props.block.props.previewWidth}
         />
       )}
