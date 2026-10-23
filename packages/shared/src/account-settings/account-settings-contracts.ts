@@ -35,9 +35,6 @@ export const accountSettingsProfileSchema = z.object({
 
 export const authCapabilitiesSchema = z.object({ google: z.boolean() });
 
-export const appearancePreferenceSchema = z.object({ theme: z.enum(["system", "light", "dark"]) });
-export type AppearancePreference = z.infer<typeof appearancePreferenceSchema>;
-
 export const updateAccountNameSchema = z.object({
   name: z.string().trim().min(2).max(80),
 });
