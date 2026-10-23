@@ -189,6 +189,7 @@ export const AiMaterialImprovementDialog = ({
       await apply.mutateAsync(appliedInput);
       onApplied?.(appliedInput);
       toast.success("Melhoria aplicada ao material.");
+      generationRequest.current += 1;
       reset();
       onOpenChange(false);
     } catch {
@@ -209,6 +210,7 @@ export const AiMaterialImprovementDialog = ({
     if (!draft) return;
     try {
       await discard.mutateAsync();
+      generationRequest.current += 1;
       reset();
       setDiscardConfirmationOpen(false);
       if (closeAfterDiscard) onOpenChange(false);
