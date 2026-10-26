@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router";
 import { HouseLineIcon } from "@phosphor-icons/react/HouseLine";
+import { ChartBarIcon } from "@phosphor-icons/react/ChartBar";
 
 import { BrandBadge } from "@/components/brand-mark.tsx";
 import {
@@ -36,6 +37,7 @@ const primaryNavigation = [
   { label: "Documentos", path: "/documents", Icon: DocumentDomainIcon },
   { label: "Flashcards", path: "/flashcards", Icon: FlashcardDomainIcon },
   { label: "Quizzes", path: "/quizzes", Icon: QuizDomainIcon },
+  { label: "Estatísticas", path: "/statistics", Icon: ChartBarIcon },
 ] as const;
 
 export const AppSidebar = () => {

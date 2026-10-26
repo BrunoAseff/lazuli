@@ -30,6 +30,7 @@ const PUBLIC_ANALYTICS_PATHS = new Set([
   "/settings/security",
   "/settings/study",
   "/settings/usage",
+  "/statistics",
   "/verify-email",
 ]);
 const PRIVATE_ANALYTICS_PATHS = [

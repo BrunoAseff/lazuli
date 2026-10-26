@@ -62,7 +62,7 @@ function SelectContent({
         data-slot="select-content"
         data-align-trigger={position === "item-aligned"}
         className={cn(
-          `relative z-50 max-h-(--radix-select-content-available-height) w-(--radix-select-trigger-width) origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto p-1.5 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ${overlaySurface} ${overlayMotion}`,
+          `relative z-50 max-h-(--radix-select-content-available-height) w-(--radix-select-trigger-width) min-w-max max-w-[calc(100vw-16px)] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto p-1.5 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ${overlaySurface} ${overlayMotion}`,
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,
@@ -85,7 +85,7 @@ function SelectLabel({ className, ...props }: React.ComponentProps<typeof Select
   return (
     <SelectPrimitive.Label
       data-slot="select-label"
-      className={cn("px-1.5 py-1 text-xs text-muted-foreground", className)}
+      className={cn("px-1.5 py-1 text-xs whitespace-nowrap text-muted-foreground", className)}
       {...props}
     />
   );
@@ -99,18 +99,17 @@ function SelectItem({
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
-      className={cn(
-        `${menuItem} w-full pr-8 [&_svg]:text-muted-foreground *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2`,
-        className,
-      )}
+      className={cn(`${menuItem} w-full [&_svg]:text-muted-foreground`, className)}
       {...props}
     >
-      <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center">
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      </span>
+      <span className="pointer-events-none ml-3 flex size-4 shrink-0 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
           <CheckIcon className="pointer-events-none" />
         </SelectPrimitive.ItemIndicator>
       </span>
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
   );
 }

@@ -165,6 +165,7 @@ const attemptItemBaseSchema = z.object({
 });
 export const activeQuizAttemptItemSchema = attemptItemBaseSchema;
 export const resultQuizAttemptItemSchema = attemptItemBaseSchema.extend({
+  questionId: quizQuestionIdSchema.nullable(),
   correctOptionId: quizOptionIdSchema,
   isCorrect: z.boolean(),
 });

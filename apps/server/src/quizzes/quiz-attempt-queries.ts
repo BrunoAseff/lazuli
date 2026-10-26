@@ -273,6 +273,11 @@ export const createQuizAttempt = async (
           id: crypto.randomUUID(),
           attemptId: input.id,
           questionId: question.id,
+          originalQuestionId: question.id,
+          questionFingerprint: sql<string>`lazuli_quiz_fingerprint(
+            ${JSON.stringify(question.content)}::jsonb,
+            ${JSON.stringify(values.map(({ id, text, position: optionPosition }) => ({ id, text, position: optionPosition })))}::jsonb,
+            ${values.find(({ isCorrect }) => isCorrect)!.id})`,
           position,
           question: question.content,
           options: values.map(({ id, text, position: optionPosition }) => ({

@@ -1,7 +1,10 @@
 import type { DashboardResponse } from "@lazuli/shared";
 import { ChartBarIcon } from "@phosphor-icons/react/ChartBar";
+import { Link } from "react-router";
+import { useState } from "react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
+import { chartTooltipClass, ChartTooltipValues } from "@/components/chart-tooltip.tsx";
 import { DashboardSectionTitle } from "./dashboard-section-title.tsx";
 
 const dayFormatter = new Intl.DateTimeFormat("pt-BR", {
@@ -31,6 +34,7 @@ export const DashboardWeeklyActivity = ({
 }: {
   activity: DashboardResponse["weeklyActivity"];
 }) => {
+  const [activeDay, setActiveDay] = useState<string | null>(null);
   const maximum = Math.max(...activity.days.map(({ total }) => total), 1);
   const flashcardTotal = activity.days.reduce((total, day) => total + day.flashcardReviews, 0);
   const quizTotal = activity.days.reduce((total, day) => total + day.quizAnswers, 0);
@@ -110,10 +114,21 @@ export const DashboardWeeklyActivity = ({
                   const date = fullDateFormatter.format(toDate(day.date));
                   const accessibleLabel = `${date}: ${flashcardReviewCount(day.flashcardReviews)} e ${quizAnswerCount(day.quizAnswers)}`;
                   return (
-                    <Tooltip key={day.date}>
+                    <Tooltip
+                      key={day.date}
+                      open={activeDay === day.date}
+                      onOpenChange={(open) =>
+                        setActiveDay((current) =>
+                          open ? day.date : current === day.date ? null : current,
+                        )
+                      }
+                    >
                       <TooltipTrigger asChild>
                         <button
                           aria-label={accessibleLabel}
+                          onClick={() =>
+                            setActiveDay((current) => (current === day.date ? null : day.date))
+                          }
                           className="group flex h-full items-end rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           type="button"
                         >
@@ -136,12 +151,27 @@ export const DashboardWeeklyActivity = ({
                           </span>
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="top" sideOffset={6}>
-                        <div>
-                          <p className="font-medium capitalize">{date}</p>
-                          <p>{flashcardReviewCount(day.flashcardReviews)}</p>
-                          <p>{quizAnswerCount(day.quizAnswers)}</p>
-                        </div>
+                      <TooltipContent
+                        side="top"
+                        sideOffset={6}
+                        className={chartTooltipClass}
+                        hideArrow
+                      >
+                        <ChartTooltipValues
+                          title={date}
+                          items={[
+                            {
+                              label: "Revisões de flashcards",
+                              value: day.flashcardReviews,
+                              color: "var(--primary)",
+                            },
+                            {
+                              label: "Respostas de quizzes",
+                              value: day.quizAnswers,
+                              color: "var(--warning)",
+                            },
+                          ]}
+                        />
                       </TooltipContent>
                     </Tooltip>
                   );
@@ -162,7 +192,7 @@ export const DashboardWeeklyActivity = ({
 
           <dl className="mt-5 grid grid-cols-2 gap-3 rounded-lg bg-muted/35 p-4">
             <div>
-              <dt className="text-xs text-muted-foreground">Flashcards lembrados</dt>
+              <dt className="text-xs text-muted-foreground">Avaliações positivas</dt>
               <dd className="mt-0.5 font-heading text-xl tabular-nums">
                 {activity.flashcardRecallRate === null
                   ? "Sem dados"
@@ -180,6 +210,12 @@ export const DashboardWeeklyActivity = ({
           </dl>
         </div>
       )}
+      <Link
+        className="mt-4 w-fit rounded text-sm text-primary underline-offset-4 hover:underline focus-visible:outline-2"
+        to="/statistics"
+      >
+        Ver estatísticas
+      </Link>
     </section>
   );
 };

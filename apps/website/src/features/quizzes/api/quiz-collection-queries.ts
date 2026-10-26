@@ -36,7 +36,11 @@ export const useQuizCollections = (input: QuizCollectionListQuery, enabled = tru
     queryFn: ({ signal }) => fetchQuizCollections(input, signal),
   });
 
-const useInvalidateCollections = () => useInvalidateQueryKey(quizCollectionKeys.lists());
+const useInvalidateCollections = () => {
+  const collections = useInvalidateQueryKey(quizCollectionKeys.lists());
+  const metrics = useInvalidateQueryKey(QUERY_KEY_ROOTS.studyMetrics);
+  return () => Promise.all([collections(), metrics()]);
+};
 
 export const useCreateQuizCollection = () => {
   const invalidate = useInvalidateCollections();
