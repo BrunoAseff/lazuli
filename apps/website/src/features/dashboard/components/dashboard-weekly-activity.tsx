@@ -126,9 +126,15 @@ export const DashboardWeeklyActivity = ({
                       <TooltipTrigger asChild>
                         <button
                           aria-label={accessibleLabel}
-                          onClick={() =>
-                            setActiveDay((current) => (current === day.date ? null : day.date))
-                          }
+                          onPointerDown={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                          }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setActiveDay((current) => (current === day.date ? null : day.date));
+                          }}
                           className="group flex h-full items-end rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                           type="button"
                         >

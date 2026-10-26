@@ -49,6 +49,17 @@ export const presetRange = (days: number) => {
   }
   return { from: shiftLocalDate(to, 1 - days), to };
 };
+export const metricsPeriodFromParams = (params: URLSearchParams) => {
+  const value = params.get("period");
+  const preset =
+    value === "custom" || ["7", "30", "90", "365"].includes(value ?? "") ? value! : "30";
+  const range = presetRange(preset === "custom" ? 30 : Number(preset));
+  return {
+    preset,
+    from: preset === "custom" ? (params.get("from") ?? range.from) : range.from,
+    to: preset === "custom" ? (params.get("to") ?? range.to) : range.to,
+  };
+};
 export const validRange = (from: string, to: string) =>
   /^\d{4}-\d{2}-\d{2}$/.test(from) &&
   /^\d{4}-\d{2}-\d{2}$/.test(to) &&

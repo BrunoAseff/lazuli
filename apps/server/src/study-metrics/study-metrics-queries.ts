@@ -236,14 +236,14 @@ export const getStudyRanking = async (
         view === "flashcards"
           ? await db.execute(sql`with ${bounds(input)}, ${flashcardRows(userId, input)},
           t as (select flashcard_id, bool_or(archived) as archived, count(*)::int as n,
-            count(*) filter(where rating='again')::int as failures from eligible group by flashcard_id having count(*)>=3)
+            count(*) filter(where rating='again')::int as failures from eligible group by flashcard_id having count(*)>=${STUDY_METRICS_MIN_RANK})
           select (select count(*)::int from f) as practice, count(*)::int as qualified,
           count(*) filter(where failures>0)::int as matching,
           (select count(*) filter(where rating='again')::int from eligible) as failures from t`)
           : await db.execute(sql`with ${bounds(input)}, ${quizRows(userId, input, false, true)},
           t as (select original_question_id,question_fingerprint,
             count(*) filter(where is_correct)::int as successes, count(*) filter(where not is_correct)::int as failures
-            from q where original_question_id is not null and question_fingerprint is not null group by original_question_id,question_fingerprint having count(distinct attempt_id)>=3)
+            from q where original_question_id is not null and question_fingerprint is not null group by original_question_id,question_fingerprint having count(distinct attempt_id)>=${STUDY_METRICS_MIN_RANK})
           select (select count(*)::int from q) as practice, count(*)::int as qualified,
           count(*) filter(where ${input.order === "correct" ? sql`successes` : sql`failures`}>0)::int as matching,
           (select count(*) filter(where ${input.order === "correct" ? sql`is_correct` : sql`not is_correct`})::int from q) as failures from t`);

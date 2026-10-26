@@ -27,7 +27,7 @@ import { MetricsChart } from "./metrics-chart.tsx";
 import { MetricsRanking, MetricsAttempts } from "./metrics-ranking.tsx";
 import { useMetrics } from "./metrics-api.ts";
 import { useMetricsScroll, useMetricsOnline } from "./use-metrics-window.ts";
-import { formatCount, presetRange, validRange } from "./metrics-format.ts";
+import { formatCount, metricsPeriodFromParams, validRange } from "./metrics-format.ts";
 import { MetricValue, rateValue, ResultBar, MetricsError } from "./metrics-ui.tsx";
 
 function MetricsSummary({
@@ -220,17 +220,16 @@ export default function StudyMetricsPage() {
   const [params, setParams] = useSearchParams();
   const [periodOpen, setPeriodOpen] = useState(false);
   const view = studyMetricsViewSchema.catch("overview").parse(params.get("view") ?? "overview");
-  const defaults = presetRange(30);
+  const { preset, from, to } = metricsPeriodFromParams(params);
   const input: StudyMetricsQuery = {
-    from: params.get("from") ?? defaults.from,
-    to: params.get("to") ?? defaults.to,
+    from,
+    to,
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     compare: params.get("compare") === "true" ? "true" : "false",
     ...(view !== "overview" && params.get(`${view}Collection`)
       ? { collectionId: params.get(`${view}Collection`)! }
       : {}),
   };
-  const preset = params.get("period") ?? "30";
   const valid =
     studyMetricsQuerySchema.safeParse(input).success && validRange(input.from, input.to);
   const result = useMetrics(view, input, valid);
