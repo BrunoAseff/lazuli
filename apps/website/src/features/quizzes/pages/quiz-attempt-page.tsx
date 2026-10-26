@@ -349,8 +349,10 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
   const collection = useQuizCollection(attempt.collectionId);
   const [params, setParams] = useSearchParams();
   const requestedQuestion = params.get("question");
-  const requestedIndex = attempt.items.findIndex(
-    ({ questionId }) => questionId === requestedQuestion,
+  const requestedIndex = attempt.items.findIndex(({ id, questionId }) =>
+    params.get("item")
+      ? id === params.get("item")
+      : Boolean(requestedQuestion) && questionId === requestedQuestion,
   );
   const reviewIndex = requestedIndex >= 0 ? requestedIndex : 0;
   const item = attempt.items[reviewIndex]!;
@@ -359,17 +361,22 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
     setParams(
       (current) => {
         const updated = new URLSearchParams(current);
-        updated.set("question", item.questionId);
+        updated.set("item", item.id);
+        if (item.questionId) updated.set("question", item.questionId);
+        else updated.delete("question");
         return updated;
       },
       { replace: true },
     );
-  }, [item.questionId, requestedIndex, setParams]);
+  }, [item.id, item.questionId, requestedIndex, setParams]);
   const selectQuestion = (index: number) =>
     setParams(
       (current) => {
         const updated = new URLSearchParams(current);
-        updated.set("question", attempt.items[index]!.questionId);
+        updated.set("item", attempt.items[index]!.id);
+        const questionId = attempt.items[index]!.questionId;
+        if (questionId) updated.set("question", questionId);
+        else updated.delete("question");
         updated.delete("reference");
         return updated;
       },
@@ -468,10 +475,12 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
             })}
           </div>
           <div className="mt-5">
-            <MaterialReferencesButton
-              count={item.referenceCount}
-              target={{ id: item.questionId, type: "quizQuestion" }}
-            />
+            {item.questionId && (
+              <MaterialReferencesButton
+                count={item.referenceCount}
+                target={{ id: item.questionId, type: "quizQuestion" }}
+              />
+            )}
           </div>
           <div className="mt-6 flex justify-between">
             <Button

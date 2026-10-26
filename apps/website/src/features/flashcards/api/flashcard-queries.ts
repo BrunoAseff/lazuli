@@ -70,6 +70,7 @@ export const useSubmitPracticeReview = (sessionId: string, collectionId: string)
   return useMutation({
     mutationFn: (input: SubmitFlashcardReviewInput) => postPracticeReview(sessionId, input),
     onSuccess: async (session) => {
+      void client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.studyMetrics });
       client.setQueryData(flashcardKeys.practiceSession(sessionId), session);
       if (session.status === "completed")
         await Promise.all([
@@ -121,6 +122,7 @@ const useInvalidateFlashcards = (collectionId: string) => {
   return async (otherCollectionId?: string) => {
     await Promise.all([
       client.invalidateQueries({ queryKey: flashcardKeys.collection(collectionId) }),
+      client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.studyMetrics }),
       client.invalidateQueries({ queryKey: flashcardCollectionKeys.lists() }),
       otherCollectionId && otherCollectionId !== collectionId
         ? client.invalidateQueries({ queryKey: flashcardKeys.collection(otherCollectionId) })

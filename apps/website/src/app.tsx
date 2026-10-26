@@ -8,6 +8,7 @@ import { PublicOnlyRoute } from "@/features/auth/routes/public-only-route.tsx";
 
 const AppShell = lazy(() => import("@/app/layouts/app-shell.tsx"));
 const DashboardPage = lazy(() => import("@/features/dashboard/pages/dashboard-page.tsx"));
+const StudyMetricsPage = lazy(() => import("@/features/study-metrics/study-metrics-page.tsx"));
 const LoginPage = lazy(() => import("@/features/auth/pages/login-page.tsx"));
 const RegisterPage = lazy(() => import("@/features/auth/pages/register-page.tsx"));
 const VerifyEmailPage = lazy(() => import("@/features/auth/pages/verify-email-page.tsx"));
@@ -76,6 +77,7 @@ export const App = () => (
         <Route element={<EditorialDesignPreviewPage />} path="design-preview" />
         <Route element={<AppShell />}>
           <Route element={<DashboardPage />} path="dashboard" />
+          <Route element={<StudyMetricsPage />} path="statistics" />
           <Route element={<ProjectListPage />} path="documents" />
           <Route element={<FlashcardCollectionListPage />} path="flashcards" />
           <Route element={<FlashcardCollectionPage />} path="flashcards/:collectionId" />

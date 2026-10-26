@@ -28,7 +28,11 @@ export const useFlashcardCollections = (input: FlashcardCollectionListQuery, ena
     queryFn: ({ signal }) => fetchFlashcardCollections(input, signal),
   });
 
-const useInvalidateCollections = () => useInvalidateQueryKey(flashcardCollectionKeys.lists());
+const useInvalidateCollections = () => {
+  const collections = useInvalidateQueryKey(flashcardCollectionKeys.lists());
+  const metrics = useInvalidateQueryKey(QUERY_KEY_ROOTS.studyMetrics);
+  return () => Promise.all([collections(), metrics()]);
+};
 
 export const useCreateFlashcardCollection = () => {
   const invalidate = useInvalidateCollections();

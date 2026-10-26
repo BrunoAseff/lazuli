@@ -239,6 +239,13 @@
       "when": 1792761051748,
       "tag": "0033_simple_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792783985209,
+      "tag": "0034_yielding_ma_gnuci",
+      "breakpoints": true
     }
   ]
 }

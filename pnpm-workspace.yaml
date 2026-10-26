@@ -33,6 +33,7 @@ catalog:
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
   cmdk: 1.1.1
+  date-fns: ^4.4.0
   dotenv: ^17.4.2
   drizzle-kit: ^0.31.10
   drizzle-orm: ^0.45.2
@@ -52,9 +53,11 @@ catalog:
   posthog-node: ^5.56.2
   radix-ui: ^1.5.0
   react: ^19.2.7
+  react-day-picker: ^10.0.2
   react-dom: ^19.2.7
   react-hook-form: ^7.85.0
   react-router: ^8.3.0
+  recharts: ^3.10.1
   resend: ^6.20.0
   sanitize-html: ^2.17.7
   shadcn: ^4.18.0

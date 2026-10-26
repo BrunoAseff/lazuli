@@ -9,6 +9,7 @@
     "db:studio": "drizzle-kit studio",
     "ai:smoke": "tsx src/ai/ai-smoke.ts",
     "extras:smoke": "tsx src/extras/extras-local-smoke.ts",
+    "metrics:smoke": "tsx src/study-metrics/metrics-local-smoke.ts",
     "email:preview": "tsx src/extras/render-email-previews.ts",
     "ai:credits:grant": "tsx src/ai-credits/grant-ai-credits.ts",
     "commercial:admin": "tsx src/commercial/commercial-admin.ts",

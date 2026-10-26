@@ -162,6 +162,9 @@ export const quizAttemptItem = pgTable(
       .notNull()
       .references(() => quizAttempt.id, { onDelete: "cascade" }),
     questionId: text("question_id").references(() => quizQuestion.id, { onDelete: "set null" }),
+    // Immutable identity survives removal of the live question. It is not a foreign key.
+    originalQuestionId: text("original_question_id"),
+    questionFingerprint: text("question_fingerprint"),
     position: integer("position").notNull(),
     question: jsonb("question").$type<unknown[]>().notNull(),
     options: jsonb("options").$type<QuizAttemptOptionSnapshot[]>().notNull(),

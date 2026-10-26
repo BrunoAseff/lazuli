@@ -1,4 +1,5 @@
 export const QUERY_KEY_ROOTS = {
+  studyMetrics: ["study-metrics"] as const,
   accountSettings: ["account-settings"] as const,
   analytics: ["analytics"] as const,
   ai: ["ai"] as const,

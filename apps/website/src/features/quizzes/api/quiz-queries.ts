@@ -5,6 +5,7 @@ import type {
   UpdateQuizQuestionInput,
 } from "@lazuli/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 
 import { quizCollectionKeys } from "./quiz-collection-queries.ts";
 import {
@@ -48,6 +49,7 @@ const useInvalidateQuiz = (_collectionId: string) => {
   return async () => {
     await Promise.all([
       client.invalidateQueries({ queryKey: quizKeys.all }),
+      client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.studyMetrics }),
       client.invalidateQueries({ queryKey: quizCollectionKeys.all }),
     ]);
   };
@@ -123,6 +125,7 @@ export const useCompleteQuizAttempt = (attemptId: string) => {
     onSuccess: (attempt) => {
       client.setQueryData(quizKeys.attempt(attemptId), attempt);
       void client.invalidateQueries({ queryKey: quizCollectionKeys.all });
+      void client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.studyMetrics });
     },
   });
 };

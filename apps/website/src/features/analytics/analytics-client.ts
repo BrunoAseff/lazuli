@@ -8,7 +8,8 @@ import type { CaptureResult, PostHog } from "posthog-js/dist/module.no-external"
 export const analyticsConfigured =
   import.meta.env.PROD &&
   import.meta.env.VITE_ANALYTICS_ENABLED === "true" &&
-  Boolean(import.meta.env.VITE_POSTHOG_KEY);
+  Boolean(import.meta.env.VITE_POSTHOG_KEY) &&
+  Boolean(import.meta.env.VITE_POSTHOG_HOST);
 let clientPromise: Promise<PostHog> | null = null;
 let statePromise: Promise<PostHog | null> = Promise.resolve(null);
 let enabledUserId: string | null = null;
@@ -30,6 +31,7 @@ const PUBLIC_ANALYTICS_PATHS = new Set([
   "/settings/security",
   "/settings/study",
   "/settings/usage",
+  "/statistics",
   "/verify-email",
 ]);
 const PRIVATE_ANALYTICS_PATHS = [
@@ -95,6 +97,7 @@ const sanitizeNavigationPayload = (payload: CaptureResult) => {
     ...payload,
     properties: {
       ...properties,
+      analyticsIdentity: "account",
       ...(currentUrl ? { $current_url: currentUrl } : {}),
       ...(entryUrl ? { $session_entry_url: entryUrl } : {}),
       ...(entryPathname ? { $session_entry_pathname: entryPathname } : {}),
@@ -124,6 +127,8 @@ const sanitizeWebVitalsPayload = (payload: CaptureResult) => {
 };
 
 const sanitizeAnalyticsPayload = (payload: CaptureResult) => {
+  // Never send anonymous events or events belonging to a previous account.
+  if (!enabledUserId || payload.properties.distinct_id !== enabledUserId) return null;
   if (payload.event === "$pageview" || payload.event === "$pageleave")
     return sanitizeNavigationPayload(payload);
   if (payload.event === "$web_vitals") return sanitizeWebVitalsPayload(payload);
@@ -147,13 +152,14 @@ const sanitizeAnalyticsPayload = (payload: CaptureResult) => {
     properties: {
       ...technicalProperties,
       ...validated.data,
+      analyticsIdentity: "account",
       $geoip_disable: true,
       $process_person_profile: false,
     },
   };
 };
 
-const getClient = () => {
+const getClient = (userId: string) => {
   if (!clientPromise)
     clientPromise = Promise.all([
       import("posthog-js/dist/module.no-external"),
@@ -161,7 +167,12 @@ const getClient = () => {
     ]).then(([{ default: posthog }]) => {
       posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
         advanced_disable_flags: true,
-        api_host: import.meta.env.VITE_POSTHOG_HOST || "https://eu.i.posthog.com",
+        api_host: import.meta.env.VITE_POSTHOG_HOST,
+        ui_host: "https://eu.posthog.com",
+        defaults: "2026-05-30",
+        // identify() is intentionally disabled by person_profiles: "never".
+        // Seed the account ID before the SDK can capture its first pageview.
+        bootstrap: { distinctID: userId, isIdentifiedID: true },
         autocapture: false,
         before_send: sanitizeAnalyticsPayload,
         capture_exceptions: false,
@@ -186,12 +197,16 @@ export const enableAnalytics = (userId: string) => {
   enabledUserId = userId;
   const revision = consentRevision;
   statePromise = statePromise
-    .then(() => getClient())
+    .then(() =>
+      revision === consentRevision && enabledUserId === userId ? getClient(userId) : null,
+    )
     .then((posthog) => {
-      if (revision !== consentRevision || enabledUserId !== userId) return null;
-      posthog.reset();
+      if (!posthog || revision !== consentRevision || enabledUserId !== userId) return null;
+      // Stored SDK consent may already be granted on a fresh page load. Stop
+      // capture before resetting; reset otherwise clears active consent and warns.
+      posthog.opt_out_capturing();
+      posthog.reset({ bootstrap: { distinctID: userId, isIdentifiedID: true } });
       posthog.opt_in_capturing({ captureEventName: false });
-      posthog.identify(userId);
       return posthog;
     })
     .catch(() => null);
@@ -208,7 +223,7 @@ export const disableAnalytics = () => {
       .then((posthog) => {
         if (!posthog || revision !== consentRevision || enabledUserId) return null;
         posthog.opt_out_capturing();
-        posthog.reset();
+        posthog.reset({ bootstrap: {} });
         return null;
       })
       .catch(() => null);

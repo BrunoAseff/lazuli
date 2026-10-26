@@ -75,6 +75,7 @@ export const useUpdateProject = (projectId: string) => {
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() }),
         queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) }),
         queryClient.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcardCollections }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.studyMetrics }),
         queryClient.invalidateQueries({ queryKey: billingKeys.summary() }),
       ]);
     },
@@ -89,6 +90,7 @@ export const useDeleteProject = (projectId: string) => {
       queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["projects", "recent"] }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.studyMetrics }),
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() }),
         queryClient.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcardCollections }),
       ]);

@@ -9,13 +9,15 @@ export const EmptyState = ({
   iconClassName,
   minHeight = "md",
   title,
+  compact = false,
 }: {
   action?: ReactNode;
-  description: ReactNode;
+  description?: ReactNode;
   icon: ComponentType<{ className?: string }>;
   iconClassName?: string;
   minHeight?: "sm" | "md" | "lg";
   title: string;
+  compact?: boolean;
 }) => (
   <section
     className={cn(
@@ -33,8 +35,17 @@ export const EmptyState = ({
       >
         <Icon className="size-5" />
       </span>
-      <h2 className="font-heading text-xl font-medium sm:text-2xl">{title}</h2>
-      <div className="mt-2 text-sm leading-6 text-muted-foreground">{description}</div>
+      <h2
+        className={cn(
+          "font-heading font-medium",
+          compact ? "text-lg sm:text-xl" : "text-xl sm:text-2xl",
+        )}
+      >
+        {title}
+      </h2>
+      {description && (
+        <div className="mt-2 text-sm leading-6 text-muted-foreground">{description}</div>
+      )}
       {action && <div className="mt-5">{action}</div>}
     </div>
   </section>
