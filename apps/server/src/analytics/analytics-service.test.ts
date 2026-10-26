@@ -61,7 +61,7 @@ describe("analytics service", () => {
       disableGeoip: true,
       distinctId: "user-1",
       event: "project_created",
-      properties: { $process_person_profile: false },
+      properties: { analyticsIdentity: "account", $process_person_profile: false },
     });
   });
 

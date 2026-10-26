@@ -40,7 +40,11 @@ export const createAnalyticsService = (
       client.capture({
         distinctId: userId,
         event,
-        properties: { ...validatedProperties, $process_person_profile: false },
+        properties: {
+          ...validatedProperties,
+          analyticsIdentity: "account",
+          $process_person_profile: false,
+        },
         disableGeoip: true,
       });
     } catch (error) {
