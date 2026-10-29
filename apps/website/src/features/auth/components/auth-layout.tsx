@@ -17,7 +17,7 @@ export const AuthLayout = ({ children }: { children: ReactNode }) => (
 
     <section className="flex min-h-svh flex-col px-5 py-6 sm:px-10 lg:px-14 xl:px-20">
       <header className="flex items-center justify-between">
-        <Link className="font-heading text-2xl font-semibold tracking-tight" to="/login">
+        <Link className="font-heading text-2xl font-semibold tracking-tight" to="/">
           Lazúli
         </Link>
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">

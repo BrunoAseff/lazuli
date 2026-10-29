@@ -1,18 +1,12 @@
+import { lazy } from "react";
 import { Navigate } from "react-router";
 
 import { authClient } from "@/features/auth/auth-client.ts";
-import { SessionError, SessionLoading } from "@/features/auth/components/session-feedback.tsx";
+const LandingPage = lazy(() => import("@/features/landing/landing-page.tsx"));
 
 export const IndexRoute = () => {
-  const { data, error, isPending } = authClient.useSession();
+  const { data } = authClient.useSession();
 
-  if (isPending) {
-    return <SessionLoading />;
-  }
-
-  if (error) {
-    return <SessionError />;
-  }
-
-  return <Navigate replace to={data ? "/dashboard" : "/login"} />;
+  // The public page remains useful while session resolution is pending or offline.
+  return data ? <Navigate replace to="/dashboard" /> : <LandingPage />;
 };
