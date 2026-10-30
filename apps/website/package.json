@@ -18,6 +18,7 @@
     "@lazuli/shared": "workspace:*",
     "@phosphor-icons/react": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "animejs": "catalog:",
     "better-auth": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",

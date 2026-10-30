@@ -1,0 +1,16 @@
+@media print {
+  .lazuli-legal-page {
+    --background: #fff;
+    --foreground: #111;
+    --muted-foreground: #444;
+    --border: #ddd;
+    --primary: #005b8a;
+    background: #fff;
+    color: #111;
+  }
+
+  .lazuli-legal-page h1,
+  .lazuli-legal-page h2 {
+    break-after: avoid;
+  }
+}

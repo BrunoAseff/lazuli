@@ -4,6 +4,8 @@ type AuthError = {
 };
 
 const messagesByCode: Record<string, string> = {
+  LEGAL_ACCEPTANCE_REQUIRED:
+    "Confirme os Termos de Uso vigentes. Se a página estiver aberta há algum tempo, atualize-a antes de tentar novamente.",
   EMAIL_NOT_VERIFIED: "Confirme seu e-mail antes de entrar.",
   INVALID_EMAIL_OR_PASSWORD: "E-mail ou senha incorretos.",
   INVALID_NAME: "Informe um nome entre 2 e 80 caracteres.",

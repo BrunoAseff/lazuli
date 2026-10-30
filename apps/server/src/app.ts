@@ -45,6 +45,9 @@ import { createFavoriteRoutes } from "./favorites/favorite-routes.ts";
 import { createGlobalSearchRoutes } from "./search/global-search-routes.ts";
 import { createLifecycleEmailWorker } from "./email/email-worker.ts";
 import { createObjectStorage } from "./storage/object-storage.ts";
+import { createLegalAccessGuard } from "./legal/legal-access.ts";
+import { createLegalRoutes } from "./legal/legal-routes.ts";
+import { getLegalStatus } from "./legal/legal-service.ts";
 
 export const buildApp = (env: ServerEnv) => {
   const app = Fastify({
@@ -111,6 +114,11 @@ export const buildApp = (env: ServerEnv) => {
     });
   });
 
+  app.addHook(
+    "preHandler",
+    createLegalAccessGuard(auth, (userId) => getLegalStatus(database.db, userId)),
+  );
+  app.register(createLegalRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
   app.register(createAuthRoutes(auth, env));
   app.register(createFavoriteRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
   app.register(

@@ -36,6 +36,8 @@ export const apiRequest = async <T>(
   const response = await fetch(`${API_URL}${path}`, { ...init, credentials: "include", headers });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as { code?: string } | null;
+    if (payload?.code === "LEGAL_ACCEPTANCE_REQUIRED" && typeof window !== "undefined")
+      window.dispatchEvent(new Event("lazuli:legal-required"));
     throw new ApiError(response.status, payload?.code, payload);
   }
   if (!schema) return undefined as T;

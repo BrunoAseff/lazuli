@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import authEditorialImage from "@/assets/auth-editorial.webp";
+import { LegalLinks } from "@/features/legal/legal-links.tsx";
 
 export const AuthLayout = ({ children }: { children: ReactNode }) => (
   <main className="grid min-h-svh bg-background lg:grid-cols-[minmax(0,1.05fr)_minmax(28rem,0.95fr)]">
@@ -17,7 +18,7 @@ export const AuthLayout = ({ children }: { children: ReactNode }) => (
 
     <section className="flex min-h-svh flex-col px-5 py-6 sm:px-10 lg:px-14 xl:px-20">
       <header className="flex items-center justify-between">
-        <Link className="font-heading text-2xl font-semibold tracking-tight" to="/login">
+        <Link className="font-heading text-2xl font-semibold tracking-tight" to="/">
           Lazúli
         </Link>
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -28,6 +29,7 @@ export const AuthLayout = ({ children }: { children: ReactNode }) => (
       <div className="flex flex-1 items-center justify-center py-12">
         <div className="w-full max-w-[25rem]">{children}</div>
       </div>
+      <LegalLinks newTab className="pb-2" />
     </section>
   </main>
 );

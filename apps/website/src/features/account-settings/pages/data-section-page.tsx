@@ -23,6 +23,7 @@ import {
   useUpdateAnalyticsPreference,
 } from "@/features/analytics/api/analytics-queries.ts";
 import { authClient } from "@/features/auth/auth-client.ts";
+import { LegalLinks } from "@/features/legal/legal-links.tsx";
 import { PasswordInput } from "@/features/auth/components/password-input.tsx";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
 import {
@@ -180,7 +181,7 @@ export const DataSectionPage = () => {
         title="Métricas de uso"
       >
         <p className="text-sm text-muted-foreground">
-          Ajude a melhorar o Lazúli sem compartilhar dados pessoais ou materiais.{" "}
+          Ajude a melhorar o Lazúli sem enviar o conteúdo dos seus materiais.{" "}
           <Button
             className="h-auto p-0 align-baseline text-sm"
             onClick={() => setAnalyticsInfoOpen(true)}
@@ -230,6 +231,10 @@ export const DataSectionPage = () => {
           </p>
         </SettingsPreferenceRow>
       </SettingsSurface>
+
+      <div className="mt-6">
+        <LegalLinks newTab className="justify-start" />
+      </div>
 
       <Dialog open={analyticsInfoOpen} onOpenChange={setAnalyticsInfoOpen}>
         <DialogContent className="sm:max-w-md">

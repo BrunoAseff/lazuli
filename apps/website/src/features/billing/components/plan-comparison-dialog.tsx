@@ -11,6 +11,7 @@ import { CrownIcon } from "@phosphor-icons/react/Crown";
 import { MedalIcon } from "@phosphor-icons/react/Medal";
 
 import { Button } from "@/components/ui/button.tsx";
+import { LegalLinks } from "@/features/legal/legal-links.tsx";
 import {
   Dialog,
   DialogContent,
@@ -289,6 +290,7 @@ export const PlanComparisonDialog = ({
           </p>
         )}
         <DialogFooter>
+          <LegalLinks newTab className="mr-auto self-center text-xs" />
           <Button disabled={busy} onClick={() => onOpenChange(false)} variant="outline">
             Fechar
           </Button>
