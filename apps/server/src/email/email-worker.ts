@@ -31,6 +31,7 @@ export const createLifecycleEmailWorker = (
         await database.execute(sql`insert into email_outbox (id, deduplication_key, user_id, recipient, kind, payload, ready_when)
           select gen_random_uuid()::text, 'welcome/' || u.id, u.id, u.email, 'welcome', jsonb_build_object('name',u.name), 'verified'
           from "user" u where u.created_at >= (select activated_at from email_rollout where key='lifecycle-v1')
+          and exists (select 1 from legal_acceptance l where l.user_id=u.id)
           and not exists (select 1 from email_outbox e where e.deduplication_key='welcome/' || u.id)
           order by u.created_at, u.id limit 100 on conflict (deduplication_key) do nothing`);
         await database.execute(sql`update email_outbox set status='failed', recipient=null, payload='{}'::jsonb, rendered=null, user_id=null

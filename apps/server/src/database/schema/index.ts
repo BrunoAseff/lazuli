@@ -12,3 +12,4 @@ export * from "./quizzes.ts";
 export * from "./references.ts";
 export * from "./favorites.ts";
 export * from "./email.ts";
+export * from "./legal.ts";

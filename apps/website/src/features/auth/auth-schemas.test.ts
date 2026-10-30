@@ -14,6 +14,7 @@ describe("authentication form schemas", () => {
       email: "aluna@example.com",
       name: "Ana Silva",
       password: "correct-horse",
+      acceptedTerms: true,
     });
 
     expect(result.success).toBe(true);
@@ -25,6 +26,7 @@ describe("authentication form schemas", () => {
       email: "not-an-email",
       name: " ",
       password: "short",
+      acceptedTerms: false,
     });
 
     expect(result.success).toBe(false);
@@ -49,6 +51,18 @@ describe("authentication form schemas", () => {
     expect(loginSchema.safeParse({ email: "aluna@example.com", password: "secret" }).success).toBe(
       false,
     );
+  });
+
+  it("does not infer agreement from a valid registration", () => {
+    const input = {
+      name: "Ana Silva",
+      email: "aluna@example.com",
+      password: "correct-horse",
+      confirmPassword: "correct-horse",
+    };
+    expect(registerSchema.safeParse(input).success).toBe(false);
+    expect(registerSchema.safeParse({ ...input, acceptedTerms: false }).success).toBe(false);
+    expect(registerSchema.safeParse({ ...input, acceptedTerms: true }).success).toBe(true);
   });
 
   it("uses the registration password rules when resetting a password", () => {

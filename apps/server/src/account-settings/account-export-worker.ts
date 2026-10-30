@@ -34,6 +34,8 @@ import {
   userStudyPreference,
   userInterfacePreference,
   userFavorite,
+  legalAcceptance,
+  analyticsConsentEvent,
 } from "../database/schema/index.ts";
 import { enqueueLifecycleEmail } from "../email/email-outbox.ts";
 import { enqueueObjectDeletions } from "../storage/storage-cleanup.ts";
@@ -101,6 +103,8 @@ export const createCsv = (value: unknown) => {
 const csvNames: Record<string, string> = {
   account: "conta",
   analyticsPreference: "preferencia-metricas",
+  legalAcceptances: "aceites-termos",
+  analyticsConsentEvents: "historico-preferencias-metricas",
   documents: "documentos",
   flashcardCollections: "colecoes-flashcards",
   flashcardPracticeItems: "itens-praticas-flashcards",
@@ -249,6 +253,12 @@ const selectOwnedData = async (
     ]);
     result.interfacePreference = appearance[0] ?? { theme: "system" };
     result.favorites = favorites;
+    const [acceptances, consentEvents] = await Promise.all([
+      database.select().from(legalAcceptance).where(eq(legalAcceptance.userId, userId)),
+      database.select().from(analyticsConsentEvent).where(eq(analyticsConsentEvent.userId, userId)),
+    ]);
+    result.legalAcceptances = acceptances;
+    result.analyticsConsentEvents = consentEvents;
   }
 
   const projects = selected.has("projects")

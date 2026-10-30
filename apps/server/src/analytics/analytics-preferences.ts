@@ -7,6 +7,8 @@ import { eq } from "drizzle-orm";
 
 import type { Database } from "../database/client.ts";
 import { userAnalyticsPreference } from "../database/schema/analytics.ts";
+import { analyticsConsentEvent } from "../database/schema/legal.ts";
+import { randomUUID } from "node:crypto";
 
 const serialize = (
   value: typeof userAnalyticsPreference.$inferSelect | undefined,
@@ -29,24 +31,33 @@ export const updateAnalyticsPreference = async (
   input: UpdateAnalyticsPreference,
 ) => {
   const now = new Date();
-  const [saved] = await database
-    .insert(userAnalyticsPreference)
-    .values({
-      userId,
-      status: input.status,
-      version: ANALYTICS_CONSENT_VERSION,
-      decidedAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: userAnalyticsPreference.userId,
-      set: {
+  return database.transaction(async (tx) => {
+    const [saved] = await tx
+      .insert(userAnalyticsPreference)
+      .values({
+        userId,
         status: input.status,
         version: ANALYTICS_CONSENT_VERSION,
         decidedAt: now,
         updatedAt: now,
-      },
-    })
-    .returning();
-  return serialize(saved);
+      })
+      .onConflictDoUpdate({
+        target: userAnalyticsPreference.userId,
+        set: {
+          status: input.status,
+          version: ANALYTICS_CONSENT_VERSION,
+          decidedAt: now,
+          updatedAt: now,
+        },
+      })
+      .returning();
+    await tx.insert(analyticsConsentEvent).values({
+      id: randomUUID(),
+      userId,
+      status: input.status,
+      version: ANALYTICS_CONSENT_VERSION,
+      decidedAt: now,
+    });
+    return serialize(saved);
+  });
 };

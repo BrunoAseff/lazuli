@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router";
 
 import { Input } from "@/components/ui/input.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from "@lazuli/shared";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
@@ -23,7 +25,7 @@ export const RegisterPage = () => {
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(null);
   const form = useForm<RegisterValues>({
-    defaultValues: { confirmPassword: "", email: "", name: "", password: "" },
+    defaultValues: { confirmPassword: "", email: "", name: "", password: "", acceptedTerms: false },
     mode: "onChange",
     resolver: zodResolver(registerSchema),
   });
@@ -31,12 +33,23 @@ export const RegisterPage = () => {
   const onSubmit = form.handleSubmit(async (values) => {
     setFormError(null);
     const email = values.email.trim().toLowerCase();
-    const { error } = await authClient.signUp.email({
-      callbackURL: `${window.location.origin}/login?verified=true`,
-      email,
-      name: values.name.trim().replaceAll(/\s+/g, " "),
-      password: values.password,
-    });
+    const { error } = await authClient.signUp.email(
+      {
+        callbackURL: `${window.location.origin}/login?verified=true`,
+        email,
+        name: values.name.trim().replaceAll(/\s+/g, " "),
+        password: values.password,
+      },
+      {
+        body: {
+          legalAcceptance: {
+            accepted: values.acceptedTerms,
+            termsVersion: CURRENT_TERMS_VERSION,
+            privacyVersion: CURRENT_PRIVACY_VERSION,
+          },
+        },
+      },
+    );
 
     if (error) {
       setFormError(
@@ -93,6 +106,30 @@ export const RegisterPage = () => {
         />
 
         {formError && <AuthFeedback kind="error">{formError}</AuthFeedback>}
+
+        <div className="flex items-start gap-3 text-sm">
+          <Checkbox
+            id="register-terms"
+            className="mt-0.5"
+            checked={form.watch("acceptedTerms")}
+            disabled={form.formState.isSubmitting}
+            onCheckedChange={(checked) =>
+              form.setValue("acceptedTerms", checked === true, { shouldValidate: true })
+            }
+          />
+          <label htmlFor="register-terms">
+            Concordo com os{" "}
+            <Link
+              className="underline underline-offset-4"
+              to="/termos"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Termos de Uso
+            </Link>
+            .
+          </label>
+        </div>
 
         <AuthSubmitButton
           className="mt-1"

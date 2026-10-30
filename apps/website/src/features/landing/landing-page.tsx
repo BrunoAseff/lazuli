@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { ArrowRight, ArrowUpRight, FileText, FolderOpen } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark.tsx";
+import { LegalLinks } from "@/features/legal/legal-links.tsx";
 import { StudySheet, type PaperOrigin } from "./study-sheet.tsx";
 import { PracticeExperience } from "./practice-experience.tsx";
 import { resetAccountEntryScroll } from "./account-navigation.ts";
@@ -203,6 +204,7 @@ export default function LandingPage() {
               Começar grátis <ArrowUpRight size={22} aria-hidden="true" />
             </Link>
             <div className="lp-footer-bottom">
+              <LegalLinks className="justify-start text-current" />
               <a href="#conteudo" className="lp-wordmark">
                 Lazúli
               </a>
