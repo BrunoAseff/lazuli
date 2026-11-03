@@ -6,14 +6,29 @@ import {
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState, type ComponentProps } from "react";
 
+import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import { cn } from "@/lib/utils.ts";
 
 export type QuizOptionDraft = { id: string; text: string; isCorrect: boolean };
+
+const AlternativeAction = ({
+  "aria-label": label,
+  ...props
+}: ComponentProps<typeof Button> & { "aria-label": string }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <span className="inline-flex">
+        <Button aria-label={label} {...props} />
+      </span>
+    </TooltipTrigger>
+    <TooltipContent>{label}</TooltipContent>
+  </Tooltip>
+);
 
 const normalizeOptionText = (text: string) => text.trim().toLocaleLowerCase("pt-BR");
 
@@ -56,24 +71,27 @@ export const QuizAlternativesField = ({
   readOnly?: boolean;
   touched?: boolean;
 }) => {
+  const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
+  const optionToRemove = options.find(({ id }) => id === pendingRemoval);
   const duplicateOptionIds = useMemo(() => getDuplicateQuizOptionIds(options), [options]);
   const hasValidOptionCount = options.length >= 2 && options.length <= 6;
   const hasEmptyOption = options.some(({ text }) => !text.trim());
   const hasSingleCorrectOption = options.filter(({ isCorrect }) => isCorrect).length === 1;
 
   return (
-    <fieldset className="space-y-3">
+    <fieldset className="@container/alternatives space-y-3">
       <legend className="mb-2 text-sm font-medium">Alternativas</legend>
       {options.map((option, index) => {
         const duplicated = duplicateOptionIds.has(option.id);
         const errorId = `quiz-option-${option.id}-error`;
         return (
           <div
-            className="grid gap-x-2 rounded-lg border bg-background p-2 sm:grid-cols-[minmax(0,1fr)_auto]"
+            className="grid gap-x-2 rounded-lg bg-background/70 p-2 @min-[520px]/alternatives:grid-cols-[minmax(0,1fr)_auto]"
             key={option.id}
           >
             <div className="min-w-0">
               <Input
+                className="border-input/55"
                 aria-describedby={duplicated ? errorId : undefined}
                 aria-invalid={duplicated}
                 aria-label={`Alternativa ${index + 1}`}
@@ -90,6 +108,7 @@ export const QuizAlternativesField = ({
                 value={option.text}
               />
               <div
+                aria-hidden={!duplicated}
                 aria-live="polite"
                 className={cn(
                   "grid transition-[grid-template-rows,opacity] duration-150 ease-out",
@@ -133,7 +152,7 @@ export const QuizAlternativesField = ({
                   {option.isCorrect ? "Resposta correta" : "Marcar como correta"}
                 </TooltipContent>
               </Tooltip>
-              <Button
+              <AlternativeAction
                 aria-label={`Mover alternativa ${index + 1} para cima`}
                 disabled={readOnly || index === 0}
                 onClick={() => {
@@ -146,8 +165,8 @@ export const QuizAlternativesField = ({
                 variant="ghost"
               >
                 <ArrowUpIcon />
-              </Button>
-              <Button
+              </AlternativeAction>
+              <AlternativeAction
                 aria-label={`Mover alternativa ${index + 1} para baixo`}
                 disabled={readOnly || index === options.length - 1}
                 onClick={() => {
@@ -160,17 +179,17 @@ export const QuizAlternativesField = ({
                 variant="ghost"
               >
                 <ArrowDownIcon />
-              </Button>
-              <Button
+              </AlternativeAction>
+              <AlternativeAction
                 aria-label={`Remover alternativa ${index + 1}`}
                 disabled={readOnly || options.length <= 2}
-                onClick={() => onChange(options.filter(({ id }) => id !== option.id))}
+                onClick={() => setPendingRemoval(option.id)}
                 size="icon-sm"
                 type="button"
                 variant="ghost"
               >
                 <Trash2Icon />
-              </Button>
+              </AlternativeAction>
             </div>
           </div>
         );
@@ -193,6 +212,20 @@ export const QuizAlternativesField = ({
           <PlusIcon /> Adicionar alternativa
         </Button>
       )}
+      <ConfirmationDialog
+        actionLabel="Remover alternativa"
+        destructive
+        description="Esta alternativa será removida da questão."
+        disabled={readOnly || options.length <= 2}
+        onConfirm={() => {
+          if (readOnly || options.length <= 2 || !optionToRemove) return;
+          onChange(options.filter(({ id }) => id !== optionToRemove.id));
+          setPendingRemoval(null);
+        }}
+        onOpenChange={(open) => !open && setPendingRemoval(null)}
+        open={Boolean(optionToRemove)}
+        title="Remover alternativa?"
+      />
     </fieldset>
   );
 };

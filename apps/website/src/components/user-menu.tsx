@@ -58,21 +58,21 @@ export const UserMenu = ({ mobile = false, user }: UserMenuProps) => {
   };
 
   return (
-    <SidebarMenu>
+    <SidebarMenu className="border-t border-sidebar-border/50 pt-2">
       <SidebarMenuItem>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
-              className="h-11 rounded-md px-2 shadow-none hover:shadow-none data-[state=open]:shadow-none"
+              className="h-12 rounded-md px-2 shadow-none md:h-11 hover:shadow-none data-[state=open]:shadow-none"
               size="lg"
             >
-              <Avatar className="size-8">
+              <Avatar className="size-7">
                 {user.image && <AvatarImage alt="" src={user.image} />}
                 <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
               </Avatar>
               <span className="grid min-w-0 flex-1 text-left leading-tight">
                 <span className="truncate font-normal">{user.name}</span>
-                <span className="truncate text-xs text-primary">Plano {planName}</span>
+                <span className="truncate text-xs text-muted-foreground">Plano {planName}</span>
               </span>
               <ChevronsUpDownIcon aria-hidden="true" className="ml-auto" />
             </SidebarMenuButton>

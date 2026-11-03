@@ -60,14 +60,14 @@ export const StudyCollectionListPage = ({
   title: string;
 }) => (
   <ContentPage>
-    <h1 className="font-heading text-4xl font-normal tracking-tight sm:text-5xl">{title}</h1>
+    <div className="flex items-center justify-between gap-4">
+      <h1 className="page-title">{title}</h1>
+      <Button aria-label="Nova coleção" className="shrink-0" onClick={onCreate}>
+        <PlusIcon aria-hidden="true" data-icon="inline-start" />
+        <span className="hidden sm:inline">Nova coleção</span>
+      </Button>
+    </div>
     <StudyCollectionToolbar
-      action={
-        <Button aria-label="Nova coleção" className="shrink-0" onClick={onCreate}>
-          <PlusIcon aria-hidden="true" data-icon="inline-start" />
-          <span className="hidden sm:inline">Nova coleção</span>
-        </Button>
-      }
       onClearSearch={onClearSearch}
       onProjectChange={onProjectChange}
       onSearchChange={onSearchChange}

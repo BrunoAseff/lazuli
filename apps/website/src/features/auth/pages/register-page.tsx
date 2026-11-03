@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router";
 
 import { Input } from "@/components/ui/input.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { NewTabIndicator } from "@/components/new-tab-indicator.tsx";
 import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from "@lazuli/shared";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
@@ -107,7 +108,7 @@ export const RegisterPage = () => {
 
         {formError && <AuthFeedback kind="error">{formError}</AuthFeedback>}
 
-        <div className="flex items-start gap-3 text-sm">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 text-sm leading-5">
           <Checkbox
             id="register-terms"
             className="mt-0.5"
@@ -126,6 +127,7 @@ export const RegisterPage = () => {
               rel="noopener noreferrer"
             >
               Termos de Uso
+              <NewTabIndicator />
             </Link>
             .
           </label>
@@ -143,10 +145,7 @@ export const RegisterPage = () => {
 
       <p className="mt-7 text-center text-sm text-muted-foreground">
         Já tem uma conta?{" "}
-        <Link
-          className="font-semibold text-foreground underline-offset-4 hover:underline"
-          to="/login"
-        >
+        <Link className="font-medium text-primary underline-offset-4 hover:underline" to="/login">
           Entrar
         </Link>
       </p>

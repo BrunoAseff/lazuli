@@ -43,9 +43,7 @@ export const DashboardPage = () => {
       <ContentPage maxWidth="6xl">
         <div className="grid min-h-[55vh] place-items-center text-center">
           <div className="max-w-md">
-            <h1 className="font-heading text-3xl font-medium">
-              Não foi possível carregar seu início
-            </h1>
+            <h1 className="page-title">Não foi possível carregar seu início</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Seus materiais continuam seguros. Tente carregar o resumo novamente.
             </p>
@@ -79,12 +77,12 @@ export const DashboardPage = () => {
   return (
     <ContentPage maxWidth="6xl">
       <header>
-        <h1 className="font-heading text-4xl font-medium tracking-tight sm:text-5xl">
+        <h1 className="page-title">
           {getDashboardGreeting(session?.user.name ?? "", new Date().getHours())}
         </h1>
       </header>
 
-      <div className="mt-10 space-y-8 sm:mt-12">
+      <div className="mt-6 space-y-6">
         <div
           className={cn(
             "grid items-stretch gap-8 lg:gap-12",

@@ -30,9 +30,9 @@ export const FilterSelect = ({
   value: string;
 }) => (
   <div className="space-y-2">
-    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
+    <p className="text-xs font-medium text-muted-foreground">{label}</p>
     <Select onValueChange={onChange} value={value}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger aria-label={label} className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

@@ -26,7 +26,7 @@ export const StudyCollectionIdentity = ({
       <OverflowTooltip text={title}>
         {(ref) => (
           <Link
-            className="block font-heading text-lg leading-snug font-medium [overflow-wrap:anywhere] underline-offset-4 hover:underline sm:truncate sm:text-xl"
+            className="block font-heading text-lg leading-snug font-medium [overflow-wrap:anywhere] underline-offset-4 hover:underline sm:truncate"
             ref={ref as Ref<HTMLAnchorElement>}
             to={href}
           >

@@ -8,7 +8,7 @@ import {
   type FlashcardDetail,
   type QuizQuestionDetail,
 } from "@lazuli/shared";
-import { CoinsIcon } from "@phosphor-icons/react/Coins";
+import { AiCreditCost } from "./ai-credit-cost.tsx";
 import { MagicWandIcon } from "@phosphor-icons/react/MagicWand";
 import { CircleNotchIcon } from "@phosphor-icons/react/CircleNotch";
 import { ArrowClockwiseIcon } from "@phosphor-icons/react/ArrowClockwise";
@@ -269,15 +269,7 @@ export const AiMaterialImprovementDialog = ({
                   value={guidance}
                 />
               </div>
-              <div className="flex items-center justify-between gap-4 rounded-md bg-muted px-4 py-3 text-sm">
-                <span className="flex items-center gap-2">
-                  <CoinsIcon className="size-5 text-primary" weight="duotone" />
-                  Custo: {AI_CREDITS_PER_ITEM} créditos
-                </span>
-                <span className="text-muted-foreground">
-                  Saldo: {balance.data?.available ?? "…"}
-                </span>
-              </div>
+              <AiCreditCost cost={AI_CREDITS_PER_ITEM} available={balance.data?.available} />
             </div>
           ) : (
             <div className="grid gap-7">

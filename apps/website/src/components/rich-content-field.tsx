@@ -28,8 +28,7 @@ export const RichContentField = ({
       <h3
         className={cn(
           "mb-2 text-sm font-medium",
-          appearance === "workbench" &&
-            "mb-4 text-[0.6875rem] tracking-[0.14em] text-primary uppercase",
+          appearance === "workbench" && "mb-3 text-sm font-medium text-muted-foreground",
         )}
       >
         {label}

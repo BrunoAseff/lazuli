@@ -283,22 +283,17 @@ export const DataSectionPage = () => {
             <div className="grid gap-1">
               {exportCategories.map(({ description, label, value }) => (
                 <label
-                  className="flex cursor-pointer items-start gap-3 rounded-[var(--radius)] px-3 py-3 transition-colors hover:bg-muted/55"
+                  className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 rounded-[var(--radius)] px-3 py-3 transition-colors hover:bg-muted/55"
                   htmlFor={`export-${value}`}
                   key={value}
                 >
                   <Checkbox
                     checked={categories.includes(value)}
-                    className="mt-0.5"
                     id={`export-${value}`}
                     onCheckedChange={(checked) => toggleCategory(value, checked === true)}
                   />
-                  <span>
-                    <span className="block text-sm text-foreground">{label}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {description}
-                    </span>
-                  </span>
+                  <span className="text-sm leading-5 text-foreground">{label}</span>
+                  <span className="col-start-2 text-xs text-muted-foreground">{description}</span>
                 </label>
               ))}
             </div>

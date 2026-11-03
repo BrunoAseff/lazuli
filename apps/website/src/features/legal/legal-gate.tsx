@@ -3,6 +3,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router";
 import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from "@lazuli/shared";
 import { Button } from "@/components/ui/button.tsx";
+import { NewTabIndicator } from "@/components/new-tab-indicator.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import {
   Dialog,
@@ -109,6 +110,7 @@ export const LegalGate = ({ children, userId }: { children: ReactNode; userId: s
                     className="underline underline-offset-4 hover:text-primary"
                   >
                     Termos de Uso
+                    <NewTabIndicator />
                   </Link>{" "}
                   e estou ciente da{" "}
                   <Link
@@ -118,6 +120,7 @@ export const LegalGate = ({ children, userId }: { children: ReactNode; userId: s
                     className="underline underline-offset-4 hover:text-primary"
                   >
                     Política de Privacidade
+                    <NewTabIndicator />
                   </Link>
                   .
                 </label>

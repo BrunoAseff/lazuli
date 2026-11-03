@@ -26,7 +26,7 @@ export const ProjectCard = ({
   project,
   query,
 }: ProjectCardProps) => (
-  <Card className="group/project-card relative gap-0 overflow-hidden py-0 transition-colors hover:border-foreground/30">
+  <Card className="group/project-card relative gap-0 overflow-hidden py-0 ring-border/50">
     <Link
       aria-label={`Abrir projeto ${project.title}`}
       className="block overflow-hidden outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -41,7 +41,7 @@ export const ProjectCard = ({
     <div className="flex flex-1 flex-col gap-3 p-4">
       <div className="flex min-w-0 items-start gap-3">
         <Link
-          className="min-w-0 flex-1 font-heading text-xl leading-tight font-medium [overflow-wrap:anywhere] underline-offset-4 outline-none hover:underline focus-visible:underline"
+          className="min-w-0 flex-1 font-heading text-lg leading-snug font-medium [overflow-wrap:anywhere] underline-offset-4 outline-none hover:underline focus-visible:underline"
           state={{ projectListLocation: listLocation }}
           to={`/documents/${project.id}`}
         >

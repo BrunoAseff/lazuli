@@ -11,7 +11,7 @@ import {
   type DocumentBlock,
 } from "@lazuli/shared";
 import { CircleNotchIcon } from "@phosphor-icons/react/CircleNotch";
-import { CoinsIcon } from "@phosphor-icons/react/Coins";
+import { AiCreditCost } from "./ai-credit-cost.tsx";
 import { MagicWandIcon } from "@phosphor-icons/react/MagicWand";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
@@ -475,15 +475,7 @@ export const AiCollectionGenerationDialog = ({
                   value={guidance}
                 />
               </div>
-              <div className="flex items-center gap-3 rounded-[var(--radius)] bg-muted/35 px-4 py-3 text-sm">
-                <span className="grid size-9 place-items-center rounded-full bg-primary/10 text-primary">
-                  <CoinsIcon className="size-5" weight="duotone" />
-                </span>
-                <span>Custo: {cost} créditos</span>
-                <span className="ml-auto text-muted-foreground">
-                  Saldo: {balance.data?.available ?? "…"}
-                </span>
-              </div>
+              <AiCreditCost cost={cost} available={balance.data?.available} />
             </div>
           )}
         </div>

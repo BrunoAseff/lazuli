@@ -22,7 +22,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
-import { cn } from "@/lib/utils.ts";
 import { useImportFlashcards, usePreviewFlashcardImport } from "../api/flashcard-queries.ts";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 
@@ -128,11 +127,9 @@ export const FlashcardImportDialog = ({
         <div className="min-h-0 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
           {!preview ? (
             <button
-              className={cn(
-                "grid min-h-52 w-full place-items-center rounded-xl border border-dashed p-6 text-center transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary",
-                dragging && "border-foreground bg-muted/35",
-              )}
+              className="file-drop-target grid min-h-52 w-full place-items-center rounded-xl border border-dashed p-6 text-center"
               disabled={previewImport.isPending}
+              data-dragging={dragging && !previewImport.isPending}
               onClick={() => inputRef.current?.click()}
               onDragEnter={(event) => {
                 event.preventDefault();

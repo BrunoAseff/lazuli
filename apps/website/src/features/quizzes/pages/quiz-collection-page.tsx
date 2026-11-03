@@ -24,6 +24,7 @@ import { toast } from "sonner";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { FilterSelect } from "@/components/filter-select.tsx";
+import { FilterCount } from "@/components/filter-count.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { PaginationControls } from "@/components/pagination-controls.tsx";
 import { SearchInput } from "@/components/search-input.tsx";
@@ -235,7 +236,7 @@ export const QuizCollectionPage = () => {
   if (collection.isError)
     return (
       <main className="mx-auto w-full max-w-5xl px-5 py-10">
-        <h1 className="font-heading text-3xl">Coleção não encontrada</h1>
+        <h1 className="page-title">Coleção não encontrada</h1>
         <Button asChild className="mt-4" variant="outline">
           <Link to="/quizzes">Voltar</Link>
         </Button>
@@ -245,15 +246,10 @@ export const QuizCollectionPage = () => {
   const appliedFilters = Number(input.sort !== "updated") + Number(input.status !== "active");
 
   return (
-    <main className="h-[calc(100dvh-3.5rem)] min-h-0 max-h-[calc(100dvh-3.5rem)] flex-none overflow-hidden md:h-dvh md:max-h-dvh">
-      <section className="grid h-full min-h-0 w-full md:grid-cols-[19rem_minmax(0,1fr)] xl:grid-cols-[22rem_minmax(0,1fr)]">
-        <aside
-          className={cn(
-            "min-h-0 flex-col bg-background md:flex md:border-r",
-            editor ? "hidden" : "flex",
-          )}
-        >
-          <header className="px-5 pt-5 pb-3">
+    <main className="h-[calc(100dvh-3.5rem)] min-h-0 max-h-[calc(100dvh-3.5rem)] flex-none overflow-hidden md:h-[calc(100dvh-1rem)] md:max-h-[calc(100dvh-1rem)]">
+      <section className="grid h-full min-h-0 w-full md:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)]">
+        <aside className={cn("min-h-0 flex-col bg-background md:flex", editor ? "hidden" : "flex")}>
+          <header className="px-4 pt-4 pb-3">
             <div className="flex items-center justify-between gap-2">
               <Link
                 className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
@@ -267,16 +263,13 @@ export const QuizCollectionPage = () => {
                 <OverflowTooltip text={summary.title}>
                   {(ref) => (
                     <h1
-                      className="truncate font-heading text-xl font-normal"
+                      className="line-clamp-2 font-heading text-lg leading-snug font-medium [overflow-wrap:anywhere]"
                       ref={ref as Ref<HTMLHeadingElement>}
                     >
                       {summary.title}
                     </h1>
                   )}
                 </OverflowTooltip>
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {summary.project?.title ?? "Sem projeto"}
-                </p>
               </div>
               <Button
                 className="shrink-0"
@@ -287,6 +280,16 @@ export const QuizCollectionPage = () => {
                 <PlayIcon /> {availability.data?.activeAttempt ? "Continuar" : "Iniciar"}
               </Button>
             </div>
+            <OverflowTooltip text={summary.project?.title ?? "Sem projeto"}>
+              {(ref) => (
+                <p
+                  ref={ref as Ref<HTMLParagraphElement>}
+                  className="mt-1 line-clamp-2 text-xs text-muted-foreground [overflow-wrap:anywhere]"
+                >
+                  {summary.project?.title ?? "Sem projeto"}
+                </p>
+              )}
+            </OverflowTooltip>
           </header>
           <div className="flex items-center gap-2 px-5 py-3">
             <SearchInput
@@ -301,26 +304,25 @@ export const QuizCollectionPage = () => {
                 updateParams({ query: undefined });
               }}
               onValueChange={setSearch}
-              placeholder="Buscar questões"
+              placeholder="Buscar"
               value={search}
             />
             <Popover>
               <PopoverTrigger asChild>
                 <Button
-                  aria-label="Filtrar e ordenar"
-                  className="relative"
-                  size="icon"
+                  aria-label={
+                    appliedFilters
+                      ? `Filtrar e ordenar (${appliedFilters} ${appliedFilters === 1 ? "ativo" : "ativos"})`
+                      : "Filtrar e ordenar"
+                  }
+                  className="h-9 shrink-0 px-2.5"
                   variant="outline"
                 >
                   <FilterIcon />
-                  {appliedFilters > 0 && (
-                    <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[0.625rem] text-primary-foreground">
-                      {appliedFilters}
-                    </span>
-                  )}
+                  <FilterCount count={appliedFilters} />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-72 gap-4 p-4">
+              <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] gap-4 p-4">
                 <FilterSelect
                   label="Ordenar"
                   value={input.sort}
@@ -426,7 +428,12 @@ export const QuizCollectionPage = () => {
             </div>
           )}
         </aside>
-        <div className={cn("min-h-0 min-w-0 flex-col bg-card md:flex", editor ? "flex" : "hidden")}>
+        <div
+          className={cn(
+            "@container/study-workspace min-h-0 min-w-0 flex-col bg-background md:flex",
+            editor ? "flex" : "hidden",
+          )}
+        >
           {editor && (
             <div className="flex h-12 shrink-0 items-center border-b px-3 md:hidden">
               <Button onClick={closeEditor} size="sm" variant="ghost">

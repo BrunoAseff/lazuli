@@ -64,7 +64,7 @@ export const DashboardRecentDocuments = ({
       <div className="mt-4 space-y-1">
         {documents.map((document) => (
           <Link
-            className="group flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 outline-none transition-colors hover:bg-muted/45 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+            className="group flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
             key={document.documentId}
             to={`/documents/${document.projectId}/document/${document.documentId}`}
           >
@@ -127,7 +127,7 @@ export const DashboardContinuations = ({
                 : `${collection.totalQuestions} questões · praticado recentemente`;
           return (
             <Link
-              className="group flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 outline-none transition-colors hover:bg-muted/45 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+              className="group flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
               key={`${collection.kind}:${collection.collectionId}`}
               to={href}
             >

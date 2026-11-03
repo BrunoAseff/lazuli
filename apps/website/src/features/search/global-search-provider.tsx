@@ -8,6 +8,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import {
   createContext,
+  Fragment,
   useContext,
   useEffect,
   useRef,
@@ -31,6 +32,7 @@ import {
   CommandList,
   CommandGroup,
   CommandItem,
+  CommandSeparator,
 } from "@/components/ui/command.tsx";
 import {
   Select,
@@ -216,7 +218,7 @@ export const GlobalSearchProvider = ({
             resultado.
           </DialogDescription>
           <Command shouldFilter={false} value={selected} onValueChange={setSelected}>
-            <div className="flex shrink-0 items-center gap-2 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
+            <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
               <CommandInput
                 aria-label="Pesquisar em todos os materiais"
                 placeholder="Pesquisar no Lazúli"
@@ -236,7 +238,7 @@ export const GlobalSearchProvider = ({
                 <XIcon />
               </Button>
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-4 px-4 pb-3">
+            <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3 pb-2">
               <Select
                 value={kind ?? "all"}
                 onValueChange={(value) => {
@@ -320,59 +322,61 @@ export const GlobalSearchProvider = ({
                   />
                 </div>
               )}
-              {groups.map((group) => (
-                <CommandGroup
-                  key={group.key}
-                  heading={
-                    <span className="flex items-center justify-between gap-3">
-                      {group.label}
-                      {debounced && !kind && group.items.length === 5 && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setKind(group.key);
-                            changeFilter();
-                          }}
+              {groups.map((group, index) => (
+                <Fragment key={group.key}>
+                  {index > 0 && <CommandSeparator alwaysRender />}
+                  <CommandGroup
+                    heading={
+                      <span className="flex items-center justify-between gap-3">
+                        {group.label}
+                        {debounced && !kind && group.items.length === 5 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setKind(group.key);
+                              changeFilter();
+                            }}
+                          >
+                            Ver mais
+                          </Button>
+                        )}
+                      </span>
+                    }
+                  >
+                    {group.items.map((item) => {
+                      const Icon = resultIcons[item.kind];
+                      return (
+                        <CommandItem
+                          key={`${item.kind}:${item.id}`}
+                          value={`${item.kind}:${item.id}`}
+                          onSelect={() => go(item)}
                         >
-                          Ver mais
-                        </Button>
-                      )}
-                    </span>
-                  }
-                >
-                  {group.items.map((item) => {
-                    const Icon = resultIcons[item.kind];
-                    return (
-                      <CommandItem
-                        key={`${item.kind}:${item.id}`}
-                        value={`${item.kind}:${item.id}`}
-                        onSelect={() => go(item)}
-                      >
-                        <Icon
-                          aria-hidden="true"
-                          weight="duotone"
-                          className="mt-0.5 size-[1.125rem] shrink-0 text-muted-foreground"
-                        />
-                        <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-                          <p className="text-sm leading-5">
-                            <HighlightText query={debounced} text={item.title} />
-                          </p>
-                          {item.context && (
-                            <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
-                              {item.context}
+                          <Icon
+                            aria-hidden="true"
+                            weight="duotone"
+                            className="mt-0.5 size-[1.125rem] shrink-0 text-muted-foreground"
+                          />
+                          <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                            <p className="text-sm leading-5">
+                              <HighlightText query={debounced} text={item.title} />
                             </p>
-                          )}
-                          {item.snippet && (
-                            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                              <HighlightText query={debounced} text={item.snippet} />
-                            </p>
-                          )}
-                        </div>
-                      </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
+                            {item.context && (
+                              <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
+                                {item.context}
+                              </p>
+                            )}
+                            {item.snippet && (
+                              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                                <HighlightText query={debounced} text={item.snippet} />
+                              </p>
+                            )}
+                          </div>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                </Fragment>
               ))}
               {((debounced && kind) || !debounced) &&
                 (page > 1 || (debounced ? results.data?.hasMore : favorites.data?.hasMore)) && (
@@ -403,7 +407,7 @@ export const GlobalSearchProvider = ({
                 )}
             </CommandList>
           </Command>
-          <p className="hidden shrink-0 px-4 py-2 text-xs text-muted-foreground sm:block">
+          <p className="hidden shrink-0 border-t border-border/60 px-4 py-2 text-xs text-muted-foreground sm:block">
             ↑ ↓ navegar · Enter abrir · Esc fechar
           </p>
         </DialogContent>

@@ -24,7 +24,7 @@ export const StudyItemSummaryBar = ({
   status: StudyCollectionStatus;
 }) => (
   <div
-    className={`flex min-h-14 shrink-0 items-center border-y py-2 text-xs text-muted-foreground ${count ? "px-3" : "px-5"}`}
+    className={`flex min-h-14 shrink-0 items-center border-y border-border/45 bg-card/35 py-2 text-xs text-muted-foreground ${count ? "px-3" : "px-4"}`}
   >
     {count ? (
       <div className="flex w-full min-w-0 items-center gap-1">
@@ -58,7 +58,7 @@ export const StudyItemSummaryBar = ({
         </Button>
       </div>
     ) : (
-      <div className="grid min-w-0 flex-1 grid-cols-[max-content_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
+      <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-start gap-x-2 gap-y-1.5">
         {children}
       </div>
     )}

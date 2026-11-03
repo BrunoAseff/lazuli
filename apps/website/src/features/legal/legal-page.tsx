@@ -5,6 +5,8 @@ import { LEGAL_CONTACT } from "@lazuli/shared";
 import { getLegalDocument, LEGAL_DOCUMENTS } from "@lazuli/shared/legal/documents";
 import { Button } from "@/components/ui/button.tsx";
 import { LegalLinks } from "./legal-links.tsx";
+import { useActiveLegalSection } from "./use-active-legal-section.ts";
+import { cn } from "@/lib/utils.ts";
 import "./legal-print.css";
 import {
   DropdownMenu,
@@ -21,6 +23,7 @@ export default function LegalPage() {
   const { version } = useParams();
   const kind = location.pathname.startsWith("/termos") ? "terms" : "privacy";
   const document = getLegalDocument(kind, version);
+  const activeSection = useActiveLegalSection(document?.sections);
   useEffect(() => {
     const previousTitle = window.document.title;
     window.document.title = `${document?.title ?? "Documento não encontrado"} · Lazúli`;
@@ -65,13 +68,11 @@ export default function LegalPage() {
       ) : (
         <main className="mx-auto max-w-6xl px-5 pt-7 pb-16 sm:px-8 sm:pt-12 print:p-0">
           <div className="max-w-3xl">
-            <h1 className="font-heading text-4xl leading-tight tracking-tight sm:text-5xl">
-              {document.title}
-            </h1>
+            <h1 className="page-title">{document.title}</h1>
             <p className="mt-3 text-sm text-muted-foreground">
               Vigência: {formatDate(document.effectiveAt)} · Versão {document.version}
             </p>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
               {document.summary}
             </p>
           </div>
@@ -91,7 +92,15 @@ export default function LegalPage() {
                   >
                     {document.sections.map((section) => (
                       <DropdownMenuItem asChild key={section.id}>
-                        <a href={`#${section.id}`}>{section.title}</a>
+                        <a
+                          href={`#${section.id}`}
+                          aria-current={activeSection === section.id ? "location" : undefined}
+                          className={cn(
+                            activeSection === section.id && "font-semibold text-primary",
+                          )}
+                        >
+                          {section.title}
+                        </a>
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -103,7 +112,13 @@ export default function LegalPage() {
                   {document.sections.map((section) => (
                     <li key={section.id}>
                       <a
-                        className="block py-1 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                        className={cn(
+                          "block py-1 underline-offset-4 hover:text-foreground hover:underline",
+                          activeSection === section.id
+                            ? "font-semibold text-primary"
+                            : "text-muted-foreground",
+                        )}
+                        aria-current={activeSection === section.id ? "location" : undefined}
                         href={`#${section.id}`}
                       >
                         {section.title}
@@ -120,7 +135,7 @@ export default function LegalPage() {
             <article className="min-w-0 max-w-[70ch] space-y-9 print:max-w-none">
               {document.sections.map((section) => (
                 <section className="scroll-mt-8" id={section.id} key={section.id}>
-                  <h2 className="font-heading text-2xl leading-snug">{section.title}</h2>
+                  <h2 className="font-heading text-xl leading-snug">{section.title}</h2>
                   <div className="mt-3 space-y-3 text-base leading-7 text-foreground/90">
                     {section.paragraphs.map((paragraph) => (
                       <p key={paragraph}>{paragraph}</p>
@@ -129,7 +144,7 @@ export default function LegalPage() {
                 </section>
               ))}
               <section className="border-t pt-6" aria-labelledby="legal-contact">
-                <h2 id="legal-contact" className="font-heading text-2xl">
+                <h2 id="legal-contact" className="font-heading text-xl">
                   Contato
                 </h2>
                 <a

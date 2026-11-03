@@ -2,7 +2,7 @@ import { Outlet, useMatch } from "react-router";
 import { type CSSProperties } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar.tsx";
-import { BrandBadge } from "@/components/brand-mark.tsx";
+import { BrandMark } from "@/components/brand-mark.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar.tsx";
 import { DocumentImportProvider } from "@/features/document-imports/document-import-provider.tsx";
@@ -26,20 +26,18 @@ export const AppShell = () => {
             <SidebarProvider
               style={
                 {
-                  "--sidebar-width": "13.375rem",
-                  "--sidebar-width-icon": "13.375rem",
+                  "--sidebar-width": "15.5rem",
+                  "--sidebar-width-icon": "15.5rem",
                 } as CSSProperties
               }
             >
               <AppSidebar />
-              <SidebarInset>
+              <SidebarInset className="min-w-0 md:overflow-clip md:peer-data-[variant=inset]:shadow-none">
                 <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:hidden">
                   <SidebarTrigger />
                   <Separator orientation="vertical" />
-                  <BrandBadge className="size-8" />
-                  <span className="font-heading text-xl font-medium tracking-[-0.02em]">
-                    Lazúli
-                  </span>
+                  <BrandMark className="size-6" />
+                  <span className="font-heading text-lg font-medium tracking-tight">Lazúli</span>
                   <GlobalSearchButton compact className={projectWorkspace ? "mr-12" : undefined} />
                 </header>
                 <DocumentImportProvider key={userId} userId={userId ?? ""}>

@@ -22,7 +22,7 @@ export const RecentDocuments = ({
         {items.map((document) => (
           <div key={document.id} className="relative min-w-0">
             <Link
-              className="group flex h-full min-w-0 flex-col justify-between rounded-xl border bg-card p-4 transition-colors hover:border-foreground/30 hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 sm:min-h-32"
+              className="group flex h-full min-w-0 flex-col justify-between rounded-xl border border-border/50 bg-card p-4 transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 sm:min-h-32"
               key={document.id}
               to={`/documents/${projectId}/document/${document.id}`}
             >
@@ -35,7 +35,7 @@ export const RecentDocuments = ({
                 <OverflowTooltip text={document.title}>
                   {(ref) => (
                     <span
-                      className="block font-heading text-lg leading-snug [overflow-wrap:anywhere] group-hover:underline sm:truncate sm:text-xl sm:leading-tight"
+                      className="block font-heading text-lg leading-snug [overflow-wrap:anywhere] sm:truncate"
                       ref={ref as React.RefObject<HTMLSpanElement>}
                     >
                       {document.title}
@@ -59,14 +59,14 @@ export const RecentDocuments = ({
     );
 
   return (
-    <div className="mt-5 overflow-hidden rounded-xl border bg-card">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] border-b bg-muted/35 px-4 py-2 text-xs font-medium text-muted-foreground">
+    <div className="mt-5 overflow-hidden rounded-xl border border-border/50 bg-card">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] border-b border-border/50 bg-muted/35 px-4 py-2 text-xs font-medium text-muted-foreground">
         <span>Documento</span>
         <span className="hidden sm:block">Atualizado em</span>
       </div>
       {items.map((document) => (
         <Link
-          className="group grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b px-4 transition-colors last:border-b-0 hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/40"
+          className="group grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border/40 px-4 transition-colors duration-150 last:border-b-0 hover:bg-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/40"
           key={document.id}
           to={`/documents/${projectId}/document/${document.id}`}
         >
@@ -79,7 +79,7 @@ export const RecentDocuments = ({
             <OverflowTooltip text={document.title}>
               {(ref) => (
                 <span
-                  className="truncate font-medium group-hover:underline"
+                  className="truncate font-medium"
                   ref={ref as React.RefObject<HTMLSpanElement>}
                 >
                   {document.title}

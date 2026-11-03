@@ -19,7 +19,8 @@ export const OverflowTooltip = ({
     const element = ref.current;
     if (!element) return;
     const measure = () => {
-      const next = element.scrollWidth > element.clientWidth;
+      const next =
+        element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight;
       setTruncated(next);
       if (!next) setOpen(false);
     };

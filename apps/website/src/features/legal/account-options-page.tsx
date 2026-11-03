@@ -25,7 +25,7 @@ export default function AccountOptionsPage() {
   };
   return (
     <div className="min-h-svh bg-background">
-      <header className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-5 py-5">
+      <header className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-5">
         <Link to="/" className="font-heading text-2xl font-semibold">
           Lazúli
         </Link>

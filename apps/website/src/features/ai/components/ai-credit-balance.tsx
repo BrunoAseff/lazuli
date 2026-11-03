@@ -32,24 +32,21 @@ export const AiCreditBalance = () => {
   const showStorage = data && data.storage.severity !== "normal";
 
   return (
-    <div className="mb-1.5 grid gap-1.5">
+    <div className="grid gap-2">
       <section
         aria-label="Saldo de créditos de IA"
         className={cn(
-          "grid min-w-0 gap-2 rounded-md bg-muted/60 px-2.5 py-2",
+          "grid min-w-0 gap-2 rounded-lg bg-card/50 p-3",
           creditsCritical && "bg-destructive/10 text-destructive",
         )}
       >
         <Link
           to="/settings/usage"
           aria-label="Ver uso e materiais"
-          className="flex items-center gap-2.5 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-h-7 items-center gap-2 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span
-            className={cn(
-              "grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary",
-              creditsCritical && "bg-destructive/10 text-destructive",
-            )}
+            className={cn("shrink-0 text-muted-foreground", creditsCritical && "text-destructive")}
           >
             <CoinsIcon aria-hidden="true" className="size-4" weight="duotone" />
           </span>
@@ -65,12 +62,23 @@ export const AiCreditBalance = () => {
           </span>
         </Link>
         {data?.credits.renewsAt && (
-          <div className="flex items-center justify-between gap-2 border-t border-border/65 pt-1.5 text-[0.68rem]">
-            <span className="text-muted-foreground">Próxima renovação</span>
-            <time className="shrink-0 font-medium text-foreground" dateTime={data.credits.renewsAt}>
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>Renova em</span>
+            <time className="shrink-0 tabular-nums" dateTime={data.credits.renewsAt}>
               {formatRenewalDate(data.credits.renewsAt)}
             </time>
           </div>
+        )}
+        {data?.capabilities.canUpgrade && !creditsNear && !creditsCritical && (
+          <Button
+            className="w-full justify-start px-2 text-[0.8125rem]"
+            onClick={openPlans}
+            size="sm"
+            variant="ghost"
+          >
+            <ArrowUpRightIcon />
+            Fazer upgrade
+          </Button>
         )}
         {(creditsNear || creditsCritical) && data && (
           <UpgradeHoverCard
@@ -113,12 +121,6 @@ export const AiCreditBalance = () => {
             />
           </button>
         </UpgradeHoverCard>
-      )}
-      {data?.capabilities.canUpgrade && !creditsNear && !creditsCritical && (
-        <Button className="w-full justify-start" onClick={openPlans} size="sm" variant="ghost">
-          <ArrowUpRightIcon />
-          Fazer upgrade
-        </Button>
       )}
     </div>
   );

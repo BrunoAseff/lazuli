@@ -189,7 +189,7 @@ export default function FlashcardPracticePage() {
           </Button>
         ) : (
           <>
-            <div className="my-9 h-px bg-border" />
+            <div className="my-9 h-px bg-border/45" />
             <section className="text-center" aria-labelledby="answer-title">
               <p
                 className="mb-5 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase"
@@ -294,7 +294,7 @@ const PracticeSummary = ({
       <div className="mt-8 flex flex-wrap justify-center gap-2">
         {ratings.map((rating) => (
           <div
-            className="grid min-w-28 grid-cols-[1fr_2ch] items-baseline gap-3 rounded-xl border bg-card px-4 py-3 text-left"
+            className="grid min-w-28 grid-cols-[1fr_2ch] items-baseline gap-3 rounded-xl border border-border/45 bg-card px-4 py-3 text-left"
             key={rating.value}
           >
             <p className="text-sm text-muted-foreground">{rating.label}</p>
@@ -313,9 +313,9 @@ const PracticeSummary = ({
         </Button>
       </div>
       {session.reviewedMaterials.some(({ referenceCount }) => referenceCount > 0) && (
-        <section className="mt-10 border-t pt-7 text-left">
+        <section className="mt-10 border-t border-border/45 pt-7 text-left">
           <h2 className="font-heading text-2xl">Fontes dos flashcards revisados</h2>
-          <div className="mt-4 divide-y border-y">
+          <div className="mt-4 divide-y divide-border/45 border-y border-border/45">
             {session.reviewedMaterials
               .filter(({ referenceCount }) => referenceCount > 0)
               .map((card) => (

@@ -33,7 +33,7 @@ export const DocumentEditorPage = () => {
       <div className="grid flex-1 place-items-center p-8 text-center">
         <div>
           <TriangleAlertIcon className="mx-auto mb-4 size-8 text-muted-foreground" />
-          <h1 className="font-heading text-3xl">Documento não encontrado</h1>
+          <h1 className="page-title">Documento não encontrado</h1>
           <Button asChild className="mt-5" variant="outline">
             <Link to={returnTo ?? `/documents/${projectId}`}>Voltar</Link>
           </Button>

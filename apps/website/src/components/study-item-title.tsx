@@ -21,7 +21,7 @@ export const StudyItemTitle = ({
       {(ref) => (
         <span
           className={cn(
-            "block truncate font-heading text-[0.9rem] leading-5",
+            "line-clamp-2 font-heading text-sm leading-5 [overflow-wrap:anywhere]",
             !normalizedText && "font-sans font-normal italic text-muted-foreground/80",
           )}
           ref={ref as Ref<HTMLSpanElement>}

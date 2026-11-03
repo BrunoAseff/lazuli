@@ -18,6 +18,7 @@ import {
 
 import { transferInk } from "./ink-transfer.ts";
 import type { PaperOrigin } from "./study-sheet.tsx";
+import { NewTabIndicator } from "@/components/new-tab-indicator.tsx";
 
 function Sources({ indices = [0, 1] }: { indices?: number[] }) {
   return (
@@ -30,6 +31,7 @@ function Sources({ indices = [0, 1] }: { indices?: number[] }) {
             <p>{source.text}</p>
             <a href={source.url} target="_blank" rel="noreferrer">
               Fonte do exemplo: {source.attribution}
+              <NewTabIndicator />
             </a>
           </details>
         );

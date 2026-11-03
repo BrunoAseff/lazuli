@@ -1,8 +1,8 @@
 import { NavLink, useLocation } from "react-router";
-import { HouseLineIcon } from "@phosphor-icons/react/HouseLine";
+import { HouseIcon } from "@phosphor-icons/react/House";
 import { ChartBarIcon } from "@phosphor-icons/react/ChartBar";
 
-import { BrandBadge } from "@/components/brand-mark.tsx";
+import { BrandMark } from "@/components/brand-mark.tsx";
 import {
   DocumentDomainIcon,
   FlashcardDomainIcon,
@@ -33,7 +33,7 @@ import { FavoriteSidebar } from "@/features/favorites/favorite-sidebar.tsx";
 import { GlobalSearchButton } from "@/features/search/global-search-button.tsx";
 
 const primaryNavigation = [
-  { label: "Início", path: "/dashboard", Icon: HouseLineIcon },
+  { label: "Início", path: "/dashboard", Icon: HouseIcon },
   { label: "Documentos", path: "/documents", Icon: DocumentDomainIcon },
   { label: "Flashcards", path: "/flashcards", Icon: FlashcardDomainIcon },
   { label: "Quizzes", path: "/quizzes", Icon: QuizDomainIcon },
@@ -53,20 +53,20 @@ export const AppSidebar = () => {
   };
 
   return (
-    <Sidebar className="border-0" collapsible="offcanvas">
-      <SidebarHeader className="px-3 pt-4 pb-2">
+    <Sidebar className="p-0" variant="inset" collapsible="offcanvas">
+      <SidebarHeader className="px-2 pt-3 pb-0">
         <NavLink
           aria-label="Ir para o início"
-          className="flex h-9 items-center gap-2 rounded-md px-1 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          className="flex h-8 items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           onClick={closeMobileNavigation}
           to="/dashboard"
         >
-          <BrandBadge />
-          <span className="font-heading text-[1.35rem] font-medium tracking-[-0.02em]">Lazúli</span>
+          <BrandMark className="size-6" />
+          <span className="font-heading text-lg font-medium tracking-tight">Lazúli</span>
         </NavLink>
       </SidebarHeader>
 
-      <SidebarContent className="px-2 pt-2">
+      <SidebarContent className="gap-0 px-2 pt-3">
         <GlobalSearchButton />
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
@@ -75,7 +75,7 @@ export const AppSidebar = () => {
                 <SidebarMenuItem key={path}>
                   <SidebarMenuButton
                     asChild
-                    className="h-8 rounded-md px-2 text-[0.9rem] font-normal data-active:font-normal [&_svg]:size-[1.1rem]"
+                    className="app-nav-item"
                     isActive={
                       path === "/dashboard"
                         ? location.pathname === path
@@ -95,8 +95,8 @@ export const AppSidebar = () => {
 
         <FavoriteSidebar onNavigate={closeMobileNavigation} />
         {recentProjects.length > 0 && (
-          <SidebarGroup className="mt-5 p-0">
-            <SidebarGroupLabel className="h-auto px-2 pb-1.5 text-[0.68rem] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+          <SidebarGroup className="mt-4 p-0">
+            <SidebarGroupLabel className="h-auto px-2 pb-1.5 text-xs font-normal text-muted-foreground">
               Recentes
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -108,11 +108,7 @@ export const AppSidebar = () => {
 
                   return (
                     <SidebarMenuItem key={project.id}>
-                      <SidebarMenuButton
-                        asChild
-                        className="h-8 rounded-md px-2 text-[0.875rem] font-normal data-active:font-normal [&_svg]:size-[1.05rem]"
-                        isActive={active}
-                      >
+                      <SidebarMenuButton asChild className="app-nav-item" isActive={active}>
                         <NavLink onClick={closeMobileNavigation} to={projectPath}>
                           <ProjectIcon aria-hidden="true" weight="duotone" />
                           <OverflowTooltip side="right" text={project.title}>
@@ -133,7 +129,7 @@ export const AppSidebar = () => {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="gap-1.5 p-2">
+      <SidebarFooter className="gap-2 p-2">
         <BillingStatusNotice />
         <AiCreditBalance />
         <UserMenu mobile={isMobile} user={session.user} />

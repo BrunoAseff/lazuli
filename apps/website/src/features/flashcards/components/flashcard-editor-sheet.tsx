@@ -15,6 +15,7 @@ import {
   StudyItemDetails,
 } from "@/components/study-item-editor-controls.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
 import { StudyCollectionPicker } from "@/components/study-collection-picker.tsx";
 import {
   Dialog,
@@ -345,26 +346,26 @@ const FlashcardEditor = ({
           </DialogContent>
         </Dialog>
       ) : (
-        <div className="grid min-h-0 flex-1 bg-card xl:grid-cols-[minmax(0,1fr)_18.5rem]">
-          <section className="flex min-h-0 min-w-0 flex-col overflow-y-auto px-5 py-5 lazuli-thin-scrollbar sm:px-8 lg:px-10">
+        <div className="grid min-h-0 flex-1 bg-background @min-[960px]/study-workspace:grid-cols-[minmax(0,1fr)_16rem]">
+          <section className="@container/editor m-2 flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-xl bg-card px-5 py-4 ring-1 ring-border/45 lazuli-thin-scrollbar sm:px-6 lg:px-8">
             <header className="mx-auto flex min-h-10 w-full max-w-3xl items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-2 text-[0.6875rem] text-muted-foreground">
-                <span className="rounded-md bg-muted px-2 py-1">
+              <div className="flex flex-wrap gap-2 text-muted-foreground">
+                <Badge className="bg-muted text-muted-foreground" variant="secondary">
                   {card?.srsState === "new"
                     ? "Novo"
                     : card?.srsState === "review"
                       ? "Revisão"
                       : "Aprendendo"}
-                </span>
+                </Badge>
                 {card && (
-                  <span className="rounded-md bg-muted px-2 py-1">
+                  <Badge className="bg-muted text-muted-foreground" variant="secondary">
                     {card.dueAt <= new Date().toISOString() ? "Disponível agora" : "Agendado"}
-                  </span>
+                  </Badge>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <Button
-                  className="xl:hidden"
+                  className="@min-[960px]/study-workspace:hidden"
                   onClick={() => setDetailsSheetOpen(true)}
                   size="sm"
                   variant="outline"
@@ -373,7 +374,7 @@ const FlashcardEditor = ({
                 </Button>
               </div>
             </header>
-            <div className="mx-auto w-full max-w-3xl pt-[clamp(2.5rem,7vh,5rem)] pb-12">
+            <div className="mx-auto w-full max-w-3xl pt-[clamp(1.5rem,4vh,2.5rem)] pb-8">
               {sourcePreview && <ReferenceSourcePreview text={sourcePreview} />}
               <RichContentField
                 appearance="workbench"
@@ -385,11 +386,9 @@ const FlashcardEditor = ({
                 workbenchRole="question"
               />
               <div className="my-7 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                <span className="h-px bg-border" />
-                <span className="text-[0.6875rem] tracking-[0.14em] text-muted-foreground uppercase">
-                  Resposta
-                </span>
-                <span className="h-px bg-border" />
+                <span className="h-px bg-border/50" />
+                <span className="text-xs text-muted-foreground">Resposta</span>
+                <span className="h-px bg-border/50" />
               </div>
               <RichContentField
                 appearance="workbench"
@@ -401,7 +400,7 @@ const FlashcardEditor = ({
                 workbenchRole="answer"
               />
               {!readOnly && (
-                <div className="mt-8 flex justify-end gap-2">
+                <div className="mt-8 flex flex-wrap justify-end gap-2">
                   {improveButton}
                   {card && onAction && (
                     <Button

@@ -369,8 +369,8 @@ export const DocumentTree = ({
                 <div
                   aria-grabbed={draggedId === item.id}
                   className={cn(
-                    "group relative flex h-8 cursor-pointer items-center gap-1.5 rounded-md pr-3 text-[0.875rem] transition-colors hover:bg-muted/60",
-                    isActive && "bg-muted text-foreground",
+                    "group relative flex h-8 cursor-pointer items-center gap-1.5 rounded-md pr-3 text-[0.875rem] transition-colors duration-150",
+                    isActive ? "bg-accent text-foreground" : "hover:bg-accent",
                     isDropTarget &&
                       "bg-primary-soft/35 outline-1 outline-offset-[-2px] outline-dashed outline-primary/70",
                     draggedId === item.id && "opacity-45",
@@ -602,8 +602,8 @@ export const DocumentTree = ({
       >
         <div
           className={cn(
-            "mb-1 flex h-8 items-center gap-2 rounded-md px-3 text-[0.875rem] transition-colors hover:bg-muted/60",
-            !activeDocumentId && "bg-muted text-foreground",
+            "mb-1 flex h-8 items-center gap-2 rounded-md px-3 text-[0.875rem] transition-colors duration-150",
+            !activeDocumentId ? "bg-accent text-foreground" : "hover:bg-accent",
           )}
         >
           <HomeIcon className="size-4 shrink-0 text-muted-foreground" />

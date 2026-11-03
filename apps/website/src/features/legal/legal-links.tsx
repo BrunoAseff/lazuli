@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { cn } from "@/lib/utils.ts";
+import { NewTabIndicator } from "@/components/new-tab-indicator.tsx";
 
 export const LegalLinks = ({
   className,
@@ -22,6 +23,7 @@ export const LegalLinks = ({
       rel={newTab ? "noopener noreferrer" : undefined}
     >
       Termos de Uso
+      {newTab && <NewTabIndicator />}
     </Link>
     <Link
       className="underline underline-offset-4 hover:text-foreground"
@@ -30,6 +32,7 @@ export const LegalLinks = ({
       rel={newTab ? "noopener noreferrer" : undefined}
     >
       Política de Privacidade
+      {newTab && <NewTabIndicator />}
     </Link>
   </nav>
 );

@@ -19,7 +19,7 @@ export const GlobalSearchButton = ({
       className={cn(
         compact
           ? "ml-auto shrink-0"
-          : "mb-3 w-full justify-start px-2 font-normal text-muted-foreground",
+          : "mb-2 h-10 w-full justify-start border-border/55 bg-card/65 px-2 text-foreground md:h-8 font-normal hover:bg-card",
         className,
       )}
       onClick={() => openSearch()}
@@ -28,7 +28,9 @@ export const GlobalSearchButton = ({
       {!compact && (
         <>
           <span className="flex-1 text-left">Pesquisar</span>
-          <kbd className="text-[0.65rem]">Ctrl K</kbd>
+          <kbd className="rounded-sm bg-muted/60 px-1 text-[0.6875rem] text-muted-foreground">
+            Ctrl K
+          </kbd>
         </>
       )}
     </Button>
