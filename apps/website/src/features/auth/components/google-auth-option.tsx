@@ -71,6 +71,7 @@ export const GoogleAuthOption = ({ callbackPath = "/dashboard" }: { callbackPath
   return (
     <div className="mb-5 grid gap-4">
       <Button
+        className="h-11"
         disabled={pending}
         onClick={() => void continueWithGoogle()}
         type="button"

@@ -28,6 +28,7 @@ catalog:
   "@types/yauzl": ^3.4.0
   "@vitejs/plugin-react": ^6.0.2
   ai: ^7.0.122
+  animejs: ^4.5.0
   archiver: ^8.0.0
   better-auth: ^1.6.29
   class-variance-authority: ^0.7.1

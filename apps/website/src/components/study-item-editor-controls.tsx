@@ -32,10 +32,8 @@ export const StudyItemActionsPanel = ({
   canMove?: boolean;
   onAction: (action: StudyItemAction) => void;
 }) => (
-  <section className="border-t pt-6">
-    <p className="mb-3 text-[0.6875rem] font-medium tracking-[0.12em] text-muted-foreground uppercase">
-      Ações
-    </p>
+  <section className="border-t border-border/50 pt-4">
+    <p className="mb-3 text-xs font-medium text-muted-foreground">Ações</p>
     <div className="grid grid-cols-2 gap-2">
       {canMove && !archived && (
         <Button className="h-9 justify-start" onClick={() => onAction("move")} variant="outline">
@@ -109,8 +107,8 @@ export const StudyItemDetails = ({
         <div className="px-5 pb-6">{children}</div>
       </SheetContent>
     </Sheet>
-    <aside className="hidden min-h-0 overflow-y-auto border-l bg-background px-5 py-5 lazuli-thin-scrollbar xl:block">
-      <h2 className="mb-6 font-heading text-xl font-normal">Detalhes</h2>
+    <aside className="hidden min-h-0 overflow-y-auto bg-background px-4 py-5 lazuli-thin-scrollbar @min-[960px]/study-workspace:block">
+      <h2 className="mb-5 font-heading text-lg font-medium">Detalhes</h2>
       {children}
     </aside>
   </>

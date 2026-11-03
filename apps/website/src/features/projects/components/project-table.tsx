@@ -42,9 +42,9 @@ const ProjectTitleLink = ({
 };
 
 export const ProjectTable = ({ listLocation, onAction, projects, query }: ProjectTableProps) => (
-  <div className="overflow-hidden rounded-xl border bg-card">
+  <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
     <table className="w-full table-fixed text-left text-sm">
-      <thead className="border-b bg-muted/55 text-xs text-muted-foreground">
+      <thead className="border-b border-border/50 bg-muted/35 text-xs text-muted-foreground">
         <tr>
           <th className="w-auto px-4 py-3 font-medium" scope="col">
             Projeto
@@ -60,9 +60,9 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
           </th>
         </tr>
       </thead>
-      <tbody className="divide-y">
+      <tbody className="divide-y divide-border/40">
         {projects.map((project) => (
-          <tr className="group transition-colors hover:bg-muted/25" key={project.id}>
+          <tr key={project.id}>
             <td className="px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 <ProjectCover

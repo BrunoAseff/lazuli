@@ -31,6 +31,7 @@ export const registerSchema = z
     email,
     password,
     confirmPassword: z.string().min(1, "Confirme sua senha."),
+    acceptedTerms: z.boolean().refine((value) => value, "Confirme os Termos de Uso."),
   })
   .refine(({ confirmPassword, password }) => confirmPassword === password, {
     message: "As senhas precisam ser iguais.",

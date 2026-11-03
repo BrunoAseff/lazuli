@@ -103,14 +103,14 @@ export const ProjectListPage = () => {
   return (
     <ContentPage maxWidth="6xl">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="font-heading text-3xl font-medium tracking-tight sm:text-5xl">Projetos</h1>
+        <h1 className="page-title">Projetos</h1>
         <Button onClick={openCreate}>
           <PlusIcon aria-hidden="true" data-icon="inline-start" />
           Novo projeto
         </Button>
       </div>
 
-      <div className="my-5 flex flex-wrap items-center gap-2 sm:my-7">
+      <div className="my-5 flex flex-wrap items-center gap-2">
         <SearchInput
           aria-label="Pesquisar projetos"
           className="h-9"

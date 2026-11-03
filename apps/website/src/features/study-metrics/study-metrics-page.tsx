@@ -274,9 +274,7 @@ export default function StudyMetricsPage() {
     <ContentPage maxWidth="6xl">
       <div className="@container">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-          <h1 className="font-heading text-3xl font-medium tracking-tight sm:text-4xl">
-            Estatísticas
-          </h1>
+          <h1 className="page-title">Estatísticas</h1>
           {valid && (
             <div className="flex flex-wrap items-center gap-2">
               <MetricsUpdating active={result.isFetching && !result.isPending} />

@@ -3,9 +3,9 @@ import type { FastifyPluginAsync } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
-import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
-import { sendValidationError } from "../routes/route-helpers.ts";
+import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
+import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import { getAnalyticsPreference, updateAnalyticsPreference } from "./analytics-preferences.ts";
 
 export const createAnalyticsRoutes = ({
@@ -18,6 +18,11 @@ export const createAnalyticsRoutes = ({
   websiteUrl: string;
 }): FastifyPluginAsync =>
   async function analyticsRoutes(app) {
+    const authorizeMutation = createMutationAuthorizer(
+      auth,
+      websiteUrl,
+      createRequestRateLimiter({ limit: 40, windowMs: 10 * 60_000 }),
+    );
     app.get("/api/analytics/preferences", async (request, reply) => {
       const session = await requireSession(auth, request, reply);
       if (!session) return;
@@ -27,8 +32,7 @@ export const createAnalyticsRoutes = ({
     });
 
     app.put("/api/analytics/preferences", async (request, reply) => {
-      if (!requireTrustedOrigin(websiteUrl, request, reply)) return;
-      const session = await requireSession(auth, request, reply);
+      const session = await authorizeMutation(request, reply);
       if (!session) return;
       const input = updateAnalyticsPreferenceSchema.safeParse(request.body);
       if (!input.success) return sendValidationError(reply);

@@ -146,7 +146,7 @@ export const LoginPage = () => {
       <p className="mt-7 text-center text-sm text-muted-foreground">
         Ainda não tem uma conta?{" "}
         <Link
-          className="font-semibold text-foreground underline-offset-4 hover:underline"
+          className="font-medium text-primary underline-offset-4 hover:underline"
           to="/register"
         >
           Criar conta

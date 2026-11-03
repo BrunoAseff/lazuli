@@ -63,7 +63,10 @@ export const ProjectWorkspace = ({
             </Button>
           </div>
         </aside>
-        <div className="project-workspace-content min-h-0 min-w-0">
+        <div
+          className="project-workspace-content min-h-0 min-w-0"
+          data-document-open={Boolean(activeDocumentId)}
+        >
           <Popover onOpenChange={setOpen} open={open}>
             <PopoverTrigger asChild>
               <Button

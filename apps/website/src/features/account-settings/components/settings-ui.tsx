@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils.ts";
 
 export const SettingsSectionHeader = ({ title }: { title: string }) => (
   <header className="mb-6">
-    <h1 className="font-heading text-3xl font-medium tracking-tight">{title}</h1>
+    <h1 className="page-title">{title}</h1>
   </header>
 );
 

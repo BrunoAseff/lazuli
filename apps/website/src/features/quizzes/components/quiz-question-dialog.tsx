@@ -328,11 +328,11 @@ const QuizQuestionEditor = ({
           </DialogContent>
         </Dialog>
       ) : (
-        <div className="grid min-h-0 flex-1 bg-card xl:grid-cols-[minmax(0,1fr)_18.5rem]">
-          <section className="flex min-h-0 min-w-0 flex-col overflow-y-auto px-5 py-5 lazuli-thin-scrollbar sm:px-8 lg:px-10">
-            <header className="mx-auto flex min-h-10 w-full max-w-3xl justify-end">
+        <div className="grid min-h-0 flex-1 bg-background @min-[960px]/study-workspace:grid-cols-[minmax(0,1fr)_16rem]">
+          <section className="@container/editor m-2 flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-xl bg-card px-5 py-4 ring-1 ring-border/45 lazuli-thin-scrollbar sm:px-6 lg:px-8">
+            <header className="mx-auto flex min-h-10 w-full max-w-3xl items-center justify-end">
               <Button
-                className="xl:hidden"
+                className="@min-[960px]/study-workspace:hidden"
                 onClick={() => setDetailsSheetOpen(true)}
                 size="sm"
                 variant="outline"
@@ -340,10 +340,10 @@ const QuizQuestionEditor = ({
                 <SlidersHorizontalIcon /> Detalhes
               </Button>
             </header>
-            <div className="mx-auto w-full max-w-3xl space-y-8 pt-[clamp(2rem,5vh,4rem)] pb-12">
+            <div className="mx-auto w-full max-w-3xl space-y-6 pt-[clamp(1.5rem,4vh,2.5rem)] pb-8">
               {fields}
               {!readOnly && (
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
                   {improveButton}
                   {question && onAction && (
                     <Button

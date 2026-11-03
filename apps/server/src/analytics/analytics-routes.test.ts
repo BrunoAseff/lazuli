@@ -41,6 +41,31 @@ afterEach(async () => {
 });
 
 describe("analytics preference routes", () => {
+  it("limits preference writes per authenticated account", async () => {
+    preferences.updateAnalyticsPreference.mockResolvedValue({
+      decidedAt: null,
+      status: "denied",
+      version: 1,
+    });
+    const app = await register();
+    for (let index = 0; index < 40; index++) {
+      const response = await app.inject({
+        method: "PUT",
+        url: "/api/analytics/preferences",
+        headers: { origin: "http://localhost:3000" },
+        payload: { status: "denied" },
+      });
+      expect(response.statusCode).toBe(200);
+    }
+    const limited = await app.inject({
+      method: "PUT",
+      url: "/api/analytics/preferences",
+      headers: { origin: "http://localhost:3000" },
+      payload: { status: "denied" },
+    });
+    expect(limited.statusCode).toBe(429);
+    expect(preferences.updateAnalyticsPreference).toHaveBeenCalledTimes(40);
+  });
   it("requires authentication before reading a preference", async () => {
     const app = await register(null);
 

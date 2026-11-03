@@ -223,6 +223,39 @@
   min-height: 100svh;
 }
 
+@utility app-nav-item {
+  border-radius: var(--radius-sm);
+  padding-inline: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.25rem;
+}
+
+@utility file-drop-target {
+  border-color: color-mix(in oklab, var(--border) 65%, transparent);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+
+  &:hover:not(:disabled):not([aria-disabled="true"]),
+  &[data-dragging="true"] {
+    border-color: color-mix(in oklab, var(--primary) 55%, transparent);
+    background-color: color-mix(in oklab, var(--primary) 6%, var(--card));
+  }
+}
+
+@utility page-title {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+
+  @media (min-width: 40rem) {
+    font-size: 1.75rem;
+  }
+}
+
 .project-workspace {
   container-type: inline-size;
   min-height: calc(100svh - 3.5rem);
@@ -260,9 +293,9 @@
   display: inline-flex;
 }
 
-/* 56rem workspace + the 13.375rem application sidebar. Below this width the
-   workspace uses the document's native page scroll instead of a locked shell. */
-@media (min-width: 69.375rem) {
+/* Allow the 56rem workspace, sidebar, inset and stable scrollbar gutter.
+   Narrower windows use native document scrolling instead of a locked shell. */
+@media (min-width: 73rem) {
   html:has(.project-workspace),
   body:has(.project-workspace),
   #app:has(.project-workspace) {
@@ -270,23 +303,26 @@
     min-height: 0;
     overflow: hidden;
   }
-}
 
-@container (min-width: 56rem) {
   .project-workspace {
-    height: 100dvh;
+    flex: none;
+    height: calc(100dvh - 1rem);
     min-height: 0;
     overflow: hidden;
   }
+}
 
+@container (min-width: 56rem) {
   .project-workspace-grid {
     height: 100%;
     grid-template-columns: 15.5rem minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .project-workspace-tree {
     display: block;
     grid-column: 1;
+    height: 100%;
   }
 
   .project-workspace-grid[data-tree-collapsed="true"] {
@@ -296,6 +332,13 @@
   .project-workspace-content {
     grid-column: 2;
     overflow: hidden;
+  }
+
+  .project-workspace-content[data-document-open="true"] {
+    margin: 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--border) 45%, transparent);
+    border-radius: var(--radius-panel);
+    background: var(--card);
   }
 
   .document-editor-page,
@@ -334,18 +377,6 @@
 @container (max-width: 40rem) {
   .project-workspace-content main:has(.lazuli-editor) {
     padding-inline: 1.25rem;
-  }
-}
-
-@container (min-width: 56rem) {
-  .project-workspace-content {
-    height: calc(100dvh - 1rem);
-    min-height: 0;
-    margin: 0.5rem 0.5rem 0.5rem 0;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-panel);
-    background: var(--card);
   }
 }
 

@@ -4,6 +4,7 @@ import {
   AUTH_PASSWORD_MIN_LENGTH,
   PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS,
   VERIFICATION_EMAIL_COOLDOWN_SECONDS,
+  acceptLegalSchema,
 } from "@lazuli/shared";
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -18,6 +19,7 @@ import { createChangeEmailConfirmationSender } from "../email/send-change-email-
 import { initializeNewUser } from "../onboarding/onboarding-content.ts";
 import { isValidAccountName, normalizeAccountName } from "./account-name.ts";
 import { enqueueLifecycleEmail } from "../email/email-outbox.ts";
+import { isCurrentLegalEdition, recordLegalAcceptance } from "../legal/legal-service.ts";
 
 type AuthLifecycle = {
   afterDelete?: (user: { id: string }) => Promise<void>;
@@ -50,8 +52,11 @@ export const createAuth = (
     databaseHooks: {
       user: {
         create: {
-          after: async (user) => {
+          after: async (user, context) => {
             await initializeNewUser(database, user.id);
+            // OAuth users confirm the contract in the authenticated gate, not via an untrusted callback flag.
+            if (context?.path !== "/sign-up/email") return;
+            await recordLegalAcceptance(database, user.id, "email-registration");
             await enqueueLifecycleEmail(database, {
               key: `welcome/${user.id}`,
               userId: user.id,
@@ -59,7 +64,15 @@ export const createAuth = (
               readyWhen: "verified",
             });
           },
-          before: async (user) => {
+          before: async (user, context) => {
+            if (context?.path === "/sign-up/email") {
+              const input = acceptLegalSchema.safeParse(context.body?.legalAcceptance);
+              if (!input.success || !isCurrentLegalEdition(input.data))
+                throw new APIError("BAD_REQUEST", {
+                  code: "LEGAL_ACCEPTANCE_REQUIRED",
+                  message: "Confirme os Termos de Uso vigentes para criar sua conta.",
+                });
+            }
             const name = normalizeAccountName(user.name);
 
             if (!isValidAccountName(name)) {

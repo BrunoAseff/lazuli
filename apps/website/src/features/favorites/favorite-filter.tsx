@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { mergeSearchParams } from "@/lib/search-params.ts";
+import { FilterCount } from "@/components/filter-count.tsx";
 
 export const FavoriteFilter = () => {
   const [params, setParams] = useSearchParams();
@@ -27,15 +28,19 @@ export const FavoriteFilter = () => {
 
 export const FavoriteFilterMenu = () => {
   const [params] = useSearchParams();
+  const activeFilters = Number(params.get("favorites") === "only");
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button aria-label="Filtrar projetos" variant="outline">
+        <Button
+          aria-label={
+            activeFilters ? `Filtrar projetos (${activeFilters} ativo)` : "Filtrar projetos"
+          }
+          variant="outline"
+        >
           <FilterIcon aria-hidden="true" />
           <span className="hidden sm:inline">Filtros</span>
-          {params.get("favorites") === "only" && (
-            <span className="size-1.5 rounded-full bg-primary" />
-          )}
+          <FilterCount count={activeFilters} />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 p-4">

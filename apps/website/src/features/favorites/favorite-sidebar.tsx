@@ -27,6 +27,13 @@ const favoriteIcons = {
   quizzes: QuizDomainIcon,
 };
 
+const favoriteLabels = {
+  project: "Projeto",
+  document: "Documento",
+  flashcards: "Flashcards",
+  quizzes: "Quiz",
+};
+
 export const FavoriteSidebar = ({ onNavigate }: { onNavigate: () => void }) => {
   const query = useQuery({
     queryKey: [...favoriteKeys, "list"],
@@ -35,8 +42,8 @@ export const FavoriteSidebar = ({ onNavigate }: { onNavigate: () => void }) => {
   const { openSearch } = useGlobalSearch();
   if (!query.data?.items.length && !query.isError) return null;
   return (
-    <SidebarGroup className="mt-5 p-0">
-      <SidebarGroupLabel className="h-auto px-2 pb-1.5 text-[0.68rem] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+    <SidebarGroup className="mt-4 p-0">
+      <SidebarGroupLabel className="h-auto px-2 pb-1.5 text-xs font-normal text-muted-foreground">
         Favoritos
       </SidebarGroupLabel>
       <SidebarGroupContent>
@@ -55,15 +62,16 @@ export const FavoriteSidebar = ({ onNavigate }: { onNavigate: () => void }) => {
             const Icon = favoriteIcons[item.kind];
             return (
               <SidebarMenuItem key={`${item.kind}:${item.id}`}>
-                <SidebarMenuButton
-                  asChild
-                  className="h-8 rounded-md px-2 text-[0.875rem] font-normal [&_svg]:size-[1.05rem]"
-                >
-                  <NavLink to={item.href} onClick={onNavigate}>
+                <SidebarMenuButton asChild className="app-nav-item">
+                  <NavLink
+                    aria-label={`${favoriteLabels[item.kind]}: ${item.title}`}
+                    to={item.href}
+                    onClick={onNavigate}
+                  >
                     <Icon aria-hidden="true" weight="duotone" />
                     <OverflowTooltip
                       side="right"
-                      text={item.context ? `${item.title} · ${item.context}` : item.title}
+                      text={`${item.title} · ${favoriteLabels[item.kind]}${item.context ? ` · ${item.context}` : ""}`}
                     >
                       {(ref) => (
                         <span ref={ref} className="min-w-0 flex-1 truncate">
@@ -78,7 +86,7 @@ export const FavoriteSidebar = ({ onNavigate }: { onNavigate: () => void }) => {
           })}
           <SidebarMenuItem>
             <SidebarMenuButton
-              className="text-xs text-muted-foreground"
+              className="app-nav-item text-[0.8125rem] text-muted-foreground"
               onClick={() => {
                 onNavigate();
                 openSearch(true);

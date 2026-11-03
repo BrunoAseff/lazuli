@@ -7,6 +7,8 @@ import { PrivateRoute } from "@/features/auth/routes/private-route.tsx";
 import { PublicOnlyRoute } from "@/features/auth/routes/public-only-route.tsx";
 
 const AppShell = lazy(() => import("@/app/layouts/app-shell.tsx"));
+const LegalPage = lazy(() => import("@/features/legal/legal-page.tsx"));
+const AccountOptionsPage = lazy(() => import("@/features/legal/account-options-page.tsx"));
 const DashboardPage = lazy(() => import("@/features/dashboard/pages/dashboard-page.tsx"));
 const StudyMetricsPage = lazy(() => import("@/features/study-metrics/study-metrics-page.tsx"));
 const LoginPage = lazy(() => import("@/features/auth/pages/login-page.tsx"));
@@ -65,6 +67,10 @@ export const App = () => (
   <Suspense fallback={<SessionLoading />}>
     <Routes>
       <Route element={<IndexRoute />} index />
+      <Route element={<LegalPage />} path="termos" />
+      <Route element={<LegalPage />} path="termos/:version" />
+      <Route element={<LegalPage />} path="privacidade" />
+      <Route element={<LegalPage />} path="privacidade/:version" />
       <Route element={<PublicOnlyRoute />}>
         <Route element={<LoginPage />} path="login" />
         <Route element={<RegisterPage />} path="register" />
@@ -74,6 +80,7 @@ export const App = () => (
       <Route element={<ResetPasswordPage />} path="reset-password" />
       <Route element={<SessionEnding />} path="signing-out" />
       <Route element={<PrivateRoute />}>
+        <Route element={<AccountOptionsPage />} path="account-options" />
         <Route element={<EditorialDesignPreviewPage />} path="design-preview" />
         <Route element={<AppShell />}>
           <Route element={<DashboardPage />} path="dashboard" />

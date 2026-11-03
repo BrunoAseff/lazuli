@@ -119,8 +119,8 @@ export const QuizAttemptPage = () => {
   };
   return (
     <main className="flex min-h-full flex-col bg-background px-4 py-5 sm:px-8 sm:py-7 lg:px-12">
-      <div className="mx-auto w-full max-w-5xl rounded-xl border bg-card px-4 py-5 sm:px-7 lg:px-10">
-        <header className="border-b pb-5">
+      <div className="mx-auto w-full max-w-5xl rounded-xl border border-border/45 bg-card px-4 py-5 sm:px-7 lg:px-10">
+        <header className="border-b border-border/45 pb-5">
           <div className="flex items-start justify-between gap-3 sm:items-center sm:gap-4">
             <Button
               aria-label="Sair do quiz"
@@ -189,7 +189,7 @@ export const QuizAttemptPage = () => {
                     aria-label={`Ir para a questão ${itemIndex + 1}${
                       reviewItem.selectedOptionId ? ", respondida" : ", pendente"
                     }`}
-                    className="flex w-full items-center gap-3 rounded-lg border bg-background px-3 py-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    className="flex w-full items-center gap-3 rounded-lg border border-border/50 bg-background px-3 py-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
                     key={reviewItem.id}
                     onClick={() => {
                       setIndex(itemIndex);
@@ -238,7 +238,7 @@ export const QuizAttemptPage = () => {
                 <button
                   aria-pressed={item.selectedOptionId === option.id}
                   className={cn(
-                    "flex min-h-14 w-full items-center gap-3 rounded-lg border bg-background px-4 py-3 text-left transition-colors",
+                    "flex min-h-14 w-full items-center gap-3 rounded-lg border border-border/50 bg-background px-4 py-3 text-left transition-colors",
                     item.selectedOptionId === option.id
                       ? "border-primary bg-primary/8 hover:border-primary hover:bg-primary/8"
                       : "hover:border-primary/40 hover:bg-primary/5",
@@ -259,7 +259,7 @@ export const QuizAttemptPage = () => {
             </div>
           </section>
         )}
-        <footer className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <footer className="flex flex-col gap-3 border-t border-border/45 pt-5 sm:flex-row sm:items-center sm:justify-between">
           {reviewing ? (
             <Button onClick={() => setReviewing(false)} variant="outline">
               <ArrowLeftIcon /> Voltar à questão
@@ -391,8 +391,8 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
   );
   return (
     <main className="flex min-h-full flex-col bg-background px-4 py-6 sm:px-8 sm:py-8">
-      <div className="mx-auto w-full max-w-4xl rounded-xl border bg-card px-5 py-7 sm:px-9">
-        <header className="border-b pb-8 text-center">
+      <div className="mx-auto w-full max-w-4xl rounded-xl border border-border/45 bg-card px-5 py-7 sm:px-9">
+        <header className="border-b border-border/45 pb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Resultado
           </p>
@@ -440,7 +440,7 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
               return (
                 <div
                   className={cn(
-                    "flex items-start gap-3 rounded-lg border px-4 py-3 sm:items-center",
+                    "flex items-start gap-3 rounded-lg border border-border/50 px-4 py-3 sm:items-center",
                     correct && "border-success/40 bg-success/10",
                     selected && !correct && "border-destructive/40 bg-destructive/5",
                   )}

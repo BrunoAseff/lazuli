@@ -23,6 +23,7 @@ import {
   useUpdateAnalyticsPreference,
 } from "@/features/analytics/api/analytics-queries.ts";
 import { authClient } from "@/features/auth/auth-client.ts";
+import { LegalLinks } from "@/features/legal/legal-links.tsx";
 import { PasswordInput } from "@/features/auth/components/password-input.tsx";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
 import {
@@ -93,13 +94,12 @@ export const DataSectionPage = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmationEmail, setConfirmationEmail] = useState("");
   const [password, setPassword] = useState("");
-  if (session.isPending || profile.isPending || analytics.isPending) return <SettingsLoading />;
-  if (session.error || profile.isError || analytics.isError || !profile.data || !session.data)
+  if (session.isPending || profile.isPending) return <SettingsLoading />;
+  if (session.error || profile.isError || !profile.data || !session.data)
     return (
       <SettingsError
         onRetry={() => {
           void profile.refetch();
-          void analytics.refetch();
           void session.refetch();
         }}
       />
@@ -167,20 +167,24 @@ export const DataSectionPage = () => {
 
       <SettingsSurface
         action={
-          <Switch
-            aria-label="Permitir métricas de uso"
-            checked={analytics.data?.status === "granted"}
-            disabled={updateAnalytics.isPending}
-            id="settings-analytics"
-            onCheckedChange={(checked) =>
-              updateAnalytics.mutate({ status: checked ? "granted" : "denied" })
-            }
-          />
+          analytics.isPending ? (
+            <Spinner aria-label="Carregando preferência de métricas" />
+          ) : (
+            <Switch
+              aria-label="Permitir métricas de uso"
+              checked={analytics.data?.status === "granted"}
+              disabled={analytics.isError || !analytics.data || updateAnalytics.isPending}
+              id="settings-analytics"
+              onCheckedChange={(checked) =>
+                updateAnalytics.mutate({ status: checked ? "granted" : "denied" })
+              }
+            />
+          )
         }
         title="Métricas de uso"
       >
         <p className="text-sm text-muted-foreground">
-          Ajude a melhorar o Lazúli sem compartilhar dados pessoais ou materiais.{" "}
+          Ajude a melhorar o Lazúli sem enviar o conteúdo dos seus materiais.{" "}
           <Button
             className="h-auto p-0 align-baseline text-sm"
             onClick={() => setAnalyticsInfoOpen(true)}
@@ -189,6 +193,21 @@ export const DataSectionPage = () => {
             Saiba como funciona
           </Button>
         </p>
+        {analytics.isError && (
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <InlineFeedback kind="error">
+              Não foi possível carregar esta preferência.
+            </InlineFeedback>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={analytics.isFetching}
+              onClick={() => void analytics.refetch()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        )}
         {updateAnalytics.isError && (
           <div className="mt-2">
             <InlineFeedback kind="error">Não foi possível salvar esta preferência.</InlineFeedback>
@@ -230,6 +249,10 @@ export const DataSectionPage = () => {
           </p>
         </SettingsPreferenceRow>
       </SettingsSurface>
+
+      <div className="mt-6">
+        <LegalLinks newTab className="justify-start" />
+      </div>
 
       <Dialog open={analyticsInfoOpen} onOpenChange={setAnalyticsInfoOpen}>
         <DialogContent className="sm:max-w-md">
@@ -278,22 +301,17 @@ export const DataSectionPage = () => {
             <div className="grid gap-1">
               {exportCategories.map(({ description, label, value }) => (
                 <label
-                  className="flex cursor-pointer items-start gap-3 rounded-[var(--radius)] px-3 py-3 transition-colors hover:bg-muted/55"
+                  className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 rounded-[var(--radius)] px-3 py-3 transition-colors hover:bg-muted/55"
                   htmlFor={`export-${value}`}
                   key={value}
                 >
                   <Checkbox
                     checked={categories.includes(value)}
-                    className="mt-0.5"
                     id={`export-${value}`}
                     onCheckedChange={(checked) => toggleCategory(value, checked === true)}
                   />
-                  <span>
-                    <span className="block text-sm text-foreground">{label}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {description}
-                    </span>
-                  </span>
+                  <span className="text-sm leading-5 text-foreground">{label}</span>
+                  <span className="col-start-2 text-xs text-muted-foreground">{description}</span>
                 </label>
               ))}
             </div>

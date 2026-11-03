@@ -13,7 +13,7 @@ export const StudyCollectionCard = ({
   identity: ReactNode;
   favorite?: ReactNode;
 }) => (
-  <article className="grid min-w-0 gap-4 rounded-xl border bg-card px-4 py-4 transition-colors hover:bg-accent/45 sm:px-5">
+  <article className="grid min-w-0 gap-4 rounded-xl border border-border/50 bg-card px-4 py-4 sm:px-5">
     <div className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="flex min-w-0 items-start gap-2">
         <div className="min-w-0 flex-1">{identity}</div>
@@ -24,7 +24,7 @@ export const StudyCollectionCard = ({
         {actions}
       </div>
     </div>
-    <div className="grid min-w-0 gap-4 border-t pt-4 sm:grid-cols-3 sm:gap-0 sm:divide-x">
+    <div className="grid min-w-0 gap-4 rounded-lg bg-background/65 p-3 sm:grid-cols-3 sm:gap-0">
       {children}
     </div>
   </article>
@@ -47,7 +47,7 @@ export const StudyCollectionMetric = ({
 }) => (
   <div
     className={cn(
-      "grid min-w-0 grid-cols-[auto_minmax(0,1fr)] content-start gap-x-2 gap-y-0.5 sm:px-4 first:pl-0 last:pr-0",
+      "grid min-w-0 grid-cols-[auto_minmax(0,1fr)] content-start gap-x-2 gap-y-0.5 sm:px-3 first:pl-0 last:pr-0",
       className,
     )}
   >

@@ -7,12 +7,13 @@ import {
 } from "@lazuli/shared";
 import { ArrowClockwiseIcon } from "@phosphor-icons/react/ArrowClockwise";
 import { CircleNotchIcon } from "@phosphor-icons/react/CircleNotch";
-import { CoinsIcon } from "@phosphor-icons/react/Coins";
+import { AiCreditCost } from "./ai-credit-cost.tsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
+import { NewTabIndicator } from "@/components/new-tab-indicator.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Dialog,
@@ -105,6 +106,7 @@ const SelectionInlineContent = ({ content }: { content: DocumentBlock["content"]
         target="_blank"
       >
         {rendered}
+        <NewTabIndicator />
       </a>
     ) : (
       rendered
@@ -544,17 +546,7 @@ export const AiSelectionGenerationDialog = ({
                   />
                 </div>
 
-                <div className="flex items-center gap-3 rounded-[var(--radius)] bg-muted/35 px-4 py-3 text-sm">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                    <CoinsIcon aria-hidden="true" className="size-5" weight="duotone" />
-                  </span>
-                  <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-6 gap-y-1">
-                    <span>Custo: {cost} créditos</span>
-                    <span className="text-muted-foreground">
-                      Saldo: {balance.data?.available ?? "…"} créditos
-                    </span>
-                  </div>
-                </div>
+                <AiCreditCost cost={cost} available={balance.data?.available} />
               </div>
             ) : (
               <div className="grid gap-4">

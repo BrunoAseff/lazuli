@@ -101,7 +101,7 @@ export const DashboardReviewQueue = ({
 
         <div className="m-3 flex flex-col rounded-xl bg-background/60 p-5 sm:m-4 sm:p-6">
           <div className="flex items-baseline justify-between gap-4">
-            <h3 className="font-heading text-2xl font-medium">Coleções</h3>
+            <h3 className="font-heading text-xl font-medium">Coleções</h3>
             <Link
               className="inline-flex shrink-0 items-center gap-1 text-sm text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
               to="/flashcards"
@@ -137,7 +137,7 @@ export const DashboardReviewQueue = ({
                 );
                 return session ? (
                   <Link
-                    className="flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 outline-none transition-colors hover:bg-card/70 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
                     key={collection.collectionId}
                     to={`/flashcards/${collection.collectionId}/practice/${session.sessionId}`}
                   >
@@ -145,7 +145,7 @@ export const DashboardReviewQueue = ({
                   </Link>
                 ) : (
                   <button
-                    className="flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-3 text-left outline-none transition-colors hover:bg-card/70 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-3 text-left outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
                     key={collection.collectionId}
                     onClick={() => onStartPractice(collection.collectionId)}
                     type="button"

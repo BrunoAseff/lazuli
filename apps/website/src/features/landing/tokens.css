@@ -1,0 +1,25 @@
+/* Hallmark v2 · custom: Folha viva · shared public-page tokens */
+:root {
+  --lp-paper: #f7f6f0;
+  --lp-sheet: #fffef8;
+  --lp-sheet-rim: #fffef8a6;
+  --lp-ink: #181b2d;
+  --lp-muted: #5e6172;
+  --lp-blue: #252bd3;
+  --lp-blue-deep: #141984;
+  --lp-blue-light: #6a77ef;
+  --lp-blue-soft: #e8eaff;
+  --lp-gold: #e6c474;
+  --lp-line: #d1d2d9;
+  --lp-shadow: #080c662b;
+  --lp-shade: #11194a38;
+  --lp-clear: #ffffff00;
+  --lp-white-soft: #ffffffb3;
+  --lp-success: #247c4c;
+  --lp-error: #c33f38;
+  --lp-font: var(--font-sans);
+  --lp-display: var(--font-heading);
+  --lp-width: 1400px;
+  --lp-gutter: clamp(24px, 5vw, 80px);
+  --lp-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}

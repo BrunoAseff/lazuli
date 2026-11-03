@@ -31,7 +31,11 @@ export const SearchInput = ({
     />
     <Input
       {...props}
-      className={cn("pr-9 pl-9", className)}
+      className={cn(
+        "border-input/55 pl-9 hover:border-input/80 focus-visible:border-ring",
+        value || alwaysShowClear ? "pr-9" : "pr-3",
+        className,
+      )}
       onChange={(event) => onValueChange(event.target.value)}
       type="text"
       value={value}

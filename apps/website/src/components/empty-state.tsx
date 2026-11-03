@@ -10,6 +10,7 @@ export const EmptyState = ({
   minHeight = "md",
   title,
   compact = false,
+  className,
 }: {
   action?: ReactNode;
   description?: ReactNode;
@@ -18,11 +19,13 @@ export const EmptyState = ({
   minHeight?: "sm" | "md" | "lg";
   title: string;
   compact?: boolean;
+  className?: string;
 }) => (
   <section
     className={cn(
       "grid place-items-center rounded-xl border border-dashed bg-card/40 px-5 py-7 text-center",
       minHeight === "lg" ? "sm:min-h-72" : minHeight === "sm" ? "sm:min-h-44" : "sm:min-h-64",
+      className,
     )}
   >
     <div className="max-w-sm">

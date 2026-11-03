@@ -27,11 +27,11 @@ export function FileDropzone({
   return (
     <div
       className={cn(
-        "grid min-h-28 place-items-center rounded-xl border border-dashed p-4 text-center transition-colors sm:min-h-36 sm:p-5",
-        !disabled && "hover:border-primary/55 hover:bg-primary-soft/45",
-        dragging && "border-foreground bg-muted/50",
+        "file-drop-target grid min-h-28 place-items-center rounded-xl border border-dashed p-4 text-center sm:min-h-36 sm:p-5",
         disabled && "opacity-50",
       )}
+      aria-disabled={disabled}
+      data-dragging={dragging && !disabled}
       onDragEnter={(event) => {
         event.preventDefault();
         if (!disabled) setDragging(true);
