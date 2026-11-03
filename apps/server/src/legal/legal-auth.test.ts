@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { betterAuth } from "better-auth/minimal";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { memoryAdapter } from "better-auth/adapters/memory";
+import Fastify from "fastify";
+import { createAuthRoutes } from "../routes/auth-routes.ts";
+import { legalAcceptance } from "../database/schema/legal.ts";
 import { CURRENT_TERMS, CURRENT_PRIVACY } from "@lazuli/shared/legal/documents";
 import { createAuth } from "../auth/auth.ts";
 import { parseServerEnv } from "../config-schema.ts";
@@ -12,6 +17,13 @@ const effects = vi.hoisted(() => ({
   enqueueLifecycleEmail: vi.fn(),
 }));
 vi.mock("better-auth/minimal", () => ({ betterAuth: vi.fn((options) => options) }));
+vi.mock("better-auth/adapters/drizzle", async (original) => {
+  const actual = await original<typeof import("better-auth/adapters/drizzle")>();
+  return { drizzleAdapter: vi.fn(actual.drizzleAdapter) };
+});
+vi.mock("../email/send-verification-email.ts", () => ({
+  createVerificationEmailSender: () => vi.fn(),
+}));
 vi.mock("../onboarding/onboarding-content.ts", () => ({
   initializeNewUser: effects.initializeNewUser,
 }));
@@ -44,6 +56,71 @@ beforeEach(() => {
 });
 
 describe("email and OAuth contract lifecycle", () => {
+  it("forwards explicit acceptance through HTTP signup into the stored legal row", async () => {
+    const actualAuth =
+      await vi.importActual<typeof import("better-auth/minimal")>("better-auth/minimal");
+    const actualLegal =
+      await vi.importActual<typeof import("./legal-service.ts")>("./legal-service.ts");
+    const rows: (typeof legalAcceptance.$inferInsert)[] = [];
+    const database = {
+      insert: (table: unknown) => {
+        expect(table).toBe(legalAcceptance);
+        return {
+          values: (row: typeof legalAcceptance.$inferInsert) => ({
+            onConflictDoNothing: async () => {
+              rows.push(row);
+            },
+          }),
+        };
+      },
+      query: {
+        legalAcceptance: {
+          findFirst: async () => (rows[0] ? { ...rows[0], acceptedAt: new Date() } : undefined),
+        },
+      },
+    } as unknown as Database;
+    vi.mocked(drizzleAdapter).mockReturnValueOnce(
+      memoryAdapter({ user: [], account: [], session: [], verification: [] }),
+    );
+    vi.mocked(betterAuth).mockImplementationOnce(actualAuth.betterAuth);
+    effects.recordLegalAcceptance.mockImplementationOnce(actualLegal.recordLegalAcceptance);
+    const auth = createAuth(env, database, {
+      error: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+    } as unknown as FastifyBaseLogger);
+    const app = Fastify();
+    try {
+      await app.register(createAuthRoutes(auth, env));
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/auth/sign-up/email",
+        headers: { origin: env.WEBSITE_URL },
+        payload: {
+          name: "Ana Silva",
+          email: "ana-http@example.com",
+          password: "Test-password-123!",
+          legalAcceptance: {
+            accepted: true,
+            termsVersion: CURRENT_TERMS.version,
+            privacyVersion: CURRENT_PRIVACY.version,
+          },
+        },
+      });
+      expect(response.statusCode, response.body).toBe(200);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        userId: response.json().user.id,
+        source: "email-registration",
+        termsVersion: CURRENT_TERMS.version,
+        privacyVersion: CURRENT_PRIVACY.version,
+        termsHash: actualLegal.legalDocumentHash(CURRENT_TERMS),
+        privacyHash: actualLegal.legalDocumentHash(CURRENT_PRIVACY),
+      });
+    } finally {
+      await app.close();
+    }
+  });
   const hooks = () => vi.mocked(betterAuth).mock.calls[0]![0].databaseHooks!.user!.create!;
   it.each([
     undefined,

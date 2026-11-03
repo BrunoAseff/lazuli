@@ -5,8 +5,8 @@ import { AiCreditCost } from "./ai-credit-cost.tsx";
 describe("AiCreditCost", () => {
   it("shows localized cost and balance with their units", () => {
     const markup = renderToStaticMarkup(<AiCreditCost cost={1200} available={20000} />);
-    expect(markup).toContain("1.200");
-    expect(markup).toContain("20.000");
+    expect(markup).toMatch(/Custo:\s*(?:<!-- -->)?1\.200/);
+    expect(markup).toMatch(/Saldo:\s*(?:<!-- -->)?20\.000/);
     expect(markup.match(/créditos/g)).toHaveLength(2);
   });
 

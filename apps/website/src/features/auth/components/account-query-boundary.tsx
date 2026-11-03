@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { SessionLoading } from "./session-feedback.tsx";
 
 const activeUserStorageKey = "lazuli-active-user-id";
+let lastUserId: string | null = null;
 
 // Apply identity isolation before legal/essential routes as well as the study shell.
 export const AccountQueryBoundary = ({
@@ -15,13 +16,15 @@ export const AccountQueryBoundary = ({
   const client = useQueryClient();
   const [cacheUserId, setCacheUserId] = useState<string | null>(() => {
     try {
-      return window.sessionStorage.getItem(activeUserStorageKey);
+      return window.sessionStorage.getItem(activeUserStorageKey) ?? lastUserId;
     } catch {
-      return null;
+      return lastUserId;
     }
   });
   useLayoutEffect(() => {
-    if (cacheUserId && cacheUserId !== userId) client.clear();
+    if ((cacheUserId && cacheUserId !== userId) || (lastUserId && lastUserId !== userId))
+      client.clear();
+    lastUserId = userId;
     try {
       window.sessionStorage.setItem(activeUserStorageKey, userId);
     } catch {

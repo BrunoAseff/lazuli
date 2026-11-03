@@ -94,13 +94,12 @@ export const DataSectionPage = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [confirmationEmail, setConfirmationEmail] = useState("");
   const [password, setPassword] = useState("");
-  if (session.isPending || profile.isPending || analytics.isPending) return <SettingsLoading />;
-  if (session.error || profile.isError || analytics.isError || !profile.data || !session.data)
+  if (session.isPending || profile.isPending) return <SettingsLoading />;
+  if (session.error || profile.isError || !profile.data || !session.data)
     return (
       <SettingsError
         onRetry={() => {
           void profile.refetch();
-          void analytics.refetch();
           void session.refetch();
         }}
       />
@@ -168,15 +167,19 @@ export const DataSectionPage = () => {
 
       <SettingsSurface
         action={
-          <Switch
-            aria-label="Permitir métricas de uso"
-            checked={analytics.data?.status === "granted"}
-            disabled={updateAnalytics.isPending}
-            id="settings-analytics"
-            onCheckedChange={(checked) =>
-              updateAnalytics.mutate({ status: checked ? "granted" : "denied" })
-            }
-          />
+          analytics.isPending ? (
+            <Spinner aria-label="Carregando preferência de métricas" />
+          ) : (
+            <Switch
+              aria-label="Permitir métricas de uso"
+              checked={analytics.data?.status === "granted"}
+              disabled={analytics.isError || !analytics.data || updateAnalytics.isPending}
+              id="settings-analytics"
+              onCheckedChange={(checked) =>
+                updateAnalytics.mutate({ status: checked ? "granted" : "denied" })
+              }
+            />
+          )
         }
         title="Métricas de uso"
       >
@@ -190,6 +193,21 @@ export const DataSectionPage = () => {
             Saiba como funciona
           </Button>
         </p>
+        {analytics.isError && (
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <InlineFeedback kind="error">
+              Não foi possível carregar esta preferência.
+            </InlineFeedback>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={analytics.isFetching}
+              onClick={() => void analytics.refetch()}
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        )}
         {updateAnalytics.isError && (
           <div className="mt-2">
             <InlineFeedback kind="error">Não foi possível salvar esta preferência.</InlineFeedback>

@@ -40,7 +40,7 @@ export default function LegalPage() {
     return () => {
       window.document.title = previousTitle;
     };
-  }, [document, location.hash]);
+  }, [document, location.hash, location.pathname]);
 
   return (
     <div className="lazuli-legal-page min-h-svh bg-background text-foreground">

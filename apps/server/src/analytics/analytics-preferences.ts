@@ -3,7 +3,7 @@ import {
   type AnalyticsPreference,
   type UpdateAnalyticsPreference,
 } from "@lazuli/shared";
-import { eq } from "drizzle-orm";
+import { eq, ne, or } from "drizzle-orm";
 
 import type { Database } from "../database/client.ts";
 import { userAnalyticsPreference } from "../database/schema/analytics.ts";
@@ -49,8 +49,18 @@ export const updateAnalyticsPreference = async (
           decidedAt: now,
           updatedAt: now,
         },
+        setWhere: or(
+          ne(userAnalyticsPreference.status, input.status),
+          ne(userAnalyticsPreference.version, ANALYTICS_CONSENT_VERSION),
+        ),
       })
       .returning();
+    if (!saved)
+      return serialize(
+        await tx.query.userAnalyticsPreference.findFirst({
+          where: eq(userAnalyticsPreference.userId, userId),
+        }),
+      );
     await tx.insert(analyticsConsentEvent).values({
       id: randomUUID(),
       userId,

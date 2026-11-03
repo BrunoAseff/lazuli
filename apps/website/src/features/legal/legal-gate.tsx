@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router";
-import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from "@lazuli/shared";
+import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION, type LegalStatus } from "@lazuli/shared";
 import { Button } from "@/components/ui/button.tsx";
 import { NewTabIndicator } from "@/components/new-tab-indicator.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
@@ -23,6 +23,8 @@ export const LegalGate = ({ children, userId }: { children: ReactNode; userId: s
   const client = useQueryClient();
   const { pathname } = useLocation();
   const [checked, setChecked] = useState(false);
+  const [reverificationRequired, setReverificationRequired] = useState(false);
+  const rejectionGeneration = useRef(0);
   const key = ["legal", "status", userId];
   const status = useQuery({
     queryKey: key,
@@ -31,6 +33,13 @@ export const LegalGate = ({ children, userId }: { children: ReactNode; userId: s
     retry: false,
     refetchOnMount: "always",
   });
+  const refetchStatus = status.refetch;
+  const verifyStatus = useCallback(async () => {
+    const generation = rejectionGeneration.current;
+    const result = await refetchStatus({ cancelRefetch: true });
+    if (result.isSuccess && generation === rejectionGeneration.current)
+      setReverificationRequired(false);
+  }, [refetchStatus]);
   const mutation = useMutation({
     mutationFn: () =>
       acceptLegal({
@@ -41,16 +50,28 @@ export const LegalGate = ({ children, userId }: { children: ReactNode; userId: s
     onSuccess: (saved) => client.setQueryData(key, saved),
   });
   useEffect(() => {
-    const invalidate = () =>
-      void client.invalidateQueries({ queryKey: ["legal", "status", userId] });
+    const invalidate = () => {
+      rejectionGeneration.current += 1;
+      setReverificationRequired(true);
+      // Persist the rejection across gate remounts; an offline refetch must not revive acceptance.
+      client.setQueryData<LegalStatus>(["legal", "status", userId], (cached) =>
+        cached ? { ...cached, accepted: false, acceptedAt: null } : cached,
+      );
+      void verifyStatus();
+    };
     window.addEventListener("lazuli:legal-required", invalidate);
     return () => window.removeEventListener("lazuli:legal-required", invalidate);
-  }, [client, userId]);
+  }, [client, userId, verifyStatus]);
 
   // Rights, subscription management and deletion must never be trapped behind a contract.
   if (pathname === "/account-options") return children;
-  if (status.isPending) return <SessionLoading />;
-  if (status.data?.accepted && status.data.termsVersion === CURRENT_TERMS_VERSION) return children;
+  if (status.isPending || (reverificationRequired && status.isFetching)) return <SessionLoading />;
+  if (
+    !reverificationRequired &&
+    status.data?.accepted &&
+    status.data.termsVersion === CURRENT_TERMS_VERSION
+  )
+    return children;
   const versionChanged =
     (status.data &&
       (status.data.termsVersion !== CURRENT_TERMS_VERSION ||
@@ -79,7 +100,7 @@ export const LegalGate = ({ children, userId }: { children: ReactNode; userId: s
               <Button
                 variant="outline"
                 disabled={status.isFetching}
-                onClick={() => void status.refetch()}
+                onClick={() => void verifyStatus()}
               >
                 Tentar novamente
               </Button>

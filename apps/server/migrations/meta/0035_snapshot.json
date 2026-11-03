@@ -5975,7 +5975,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "analytics_consent_event_status_check": {
+          "name": "analytics_consent_event_status_check",
+          "value": "\"analytics_consent_event\".\"status\" in ('granted', 'denied')"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.legal_acceptance": {

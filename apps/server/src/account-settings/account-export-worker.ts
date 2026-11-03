@@ -2,11 +2,11 @@ import { createWriteStream } from "node:fs";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Transform, type Readable } from "node:stream";
+import { Transform, Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { AccountExportCategory } from "@lazuli/shared";
 import { type Archiver, ZipArchive } from "archiver";
-import { and, asc, eq, inArray, lt, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import type { FastifyBaseLogger } from "fastify";
 
 import type { ServerEnv } from "../config.ts";
@@ -124,6 +124,31 @@ const csvNames: Record<string, string> = {
   interfacePreference: "preferencias-aparencia",
   favorites: "favoritos",
 };
+
+// Keep the append-only consent history bounded in memory, including while writing the CSV.
+export async function* createAnalyticsConsentCsv(database: Database, userId: string) {
+  const columns = ["id", "userId", "status", "version", "decidedAt"] as const;
+  yield `\uFEFF${columns.map(csvCell).join(",")}\r\n`;
+  let cursor: string | undefined;
+  const pageSize = 500;
+  while (true) {
+    const page = await database
+      .select()
+      .from(analyticsConsentEvent)
+      .where(
+        and(
+          eq(analyticsConsentEvent.userId, userId),
+          cursor ? gt(analyticsConsentEvent.id, cursor) : undefined,
+        ),
+      )
+      .orderBy(asc(analyticsConsentEvent.id))
+      .limit(pageSize);
+    for (const row of page)
+      yield `${columns.map((column) => csvCell(scalarText(row[column]))).join(",")}\r\n`;
+    if (page.length < pageSize) return;
+    cursor = page.at(-1)!.id;
+  }
+}
 
 const claimNextExport = (database: Database, workerId: string) =>
   database.transaction(async (tx) => {
@@ -253,12 +278,11 @@ const selectOwnedData = async (
     ]);
     result.interfacePreference = appearance[0] ?? { theme: "system" };
     result.favorites = favorites;
-    const [acceptances, consentEvents] = await Promise.all([
-      database.select().from(legalAcceptance).where(eq(legalAcceptance.userId, userId)),
-      database.select().from(analyticsConsentEvent).where(eq(analyticsConsentEvent.userId, userId)),
-    ]);
+    const acceptances = await database
+      .select()
+      .from(legalAcceptance)
+      .where(eq(legalAcceptance.userId, userId));
     result.legalAcceptances = acceptances;
-    result.analyticsConsentEvents = consentEvents;
   }
 
   const projects = selected.has("projects")
@@ -411,6 +435,10 @@ const writeArchive = async (
         archive.append(createCsv(value), {
           name: `dados/${csvNames[name] ?? safeFilename(name)}.csv`,
         });
+    if (job.categories.includes("account"))
+      archive.append(Readable.from(createAnalyticsConsentCsv(database, job.userId)), {
+        name: `dados/${csvNames.analyticsConsentEvents}.csv`,
+      });
     await addPrivateFiles(
       archive,
       database,

@@ -56,6 +56,55 @@ afterEach(async () => {
 });
 
 describe("required contract dialog", () => {
+  it("preserves cached acceptance for a transient error without a server rejection", async () => {
+    client.setQueryData(["legal", "status", "user-1"], {
+      ...pending,
+      accepted: true,
+      acceptedAt: "2026-10-29T12:00:00Z",
+    });
+    api.fetchLegalStatus.mockRejectedValue(new Error("offline"));
+    await render();
+    expect(host.textContent).toContain("Private study content");
+  });
+
+  it("blocks cached acceptance after a server rejection until successful re-verification", async () => {
+    const accepted = { ...pending, accepted: true, acceptedAt: "2026-10-29T12:00:00Z" };
+    api.fetchLegalStatus.mockResolvedValue(accepted);
+    await render();
+    expect(host.textContent).toContain("Private study content");
+    let reject!: (error: Error) => void;
+    api.fetchLegalStatus.mockImplementationOnce(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail;
+        }),
+    );
+    await act(async () => {
+      window.dispatchEvent(new Event("lazuli:legal-required"));
+    });
+    await flush();
+    expect(host.textContent).not.toContain("Private study content");
+    await act(async () => reject(new Error("offline")));
+    await flush();
+    expect(host.textContent).not.toContain("Private study content");
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+      "Não foi possível verificar",
+    );
+    expect(client.getQueryData(["legal", "status", "user-1"])).toMatchObject({ accepted: false });
+    api.fetchLegalStatus.mockRejectedValue(new Error("still offline"));
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await render();
+    expect(host.textContent).not.toContain("Private study content");
+    api.fetchLegalStatus.mockResolvedValue(accepted);
+    await act(async () =>
+      Array.from(document.querySelectorAll("button"))
+        .find((el) => el.textContent === "Tentar novamente")!
+        .click(),
+    );
+    await flush();
+    expect(host.textContent).toContain("Private study content");
+  });
   it("keeps content unmounted, blocks Escape and requires explicit agreement", async () => {
     await render();
     expect(host.textContent).not.toContain("Private study content");

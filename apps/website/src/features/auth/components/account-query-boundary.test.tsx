@@ -40,3 +40,37 @@ it("isolates account data before mounting essential routes for a different ident
     vi.unstubAllGlobals();
   }
 });
+
+it("clears the previous identity after a remount when sessionStorage throws", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(window, "sessionStorage", "get").mockImplementation(() => {
+    throw new Error("unavailable");
+  });
+  const client = new QueryClient();
+  const host = document.createElement("div");
+  document.body.append(host);
+  let root = createRoot(host);
+  const mount = (userId: string) =>
+    root.render(
+      <QueryClientProvider client={client}>
+        <AccountQueryBoundary userId={userId}>
+          <span>Ready</span>
+        </AccountQueryBoundary>
+      </QueryClientProvider>,
+    );
+  try {
+    await act(async () => mount("fallback-first"));
+    await act(async () => root.unmount());
+    client.setQueryData(["private"], "first account");
+    root = createRoot(host);
+    await act(async () => mount("fallback-second"));
+    expect(host.textContent).toBe("Ready");
+    expect(client.getQueryData(["private"])).toBeUndefined();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    client.clear();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  }
+});

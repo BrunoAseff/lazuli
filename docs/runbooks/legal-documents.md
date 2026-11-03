@@ -13,11 +13,15 @@
 - Atualizar apenas a Política não é consentimento nem exige automaticamente aceitar novos Termos.
 - Escolhas de analytics permanecem separadas e agora possuem histórico transacional. Os novos
   registros de aceite/preferências integram a categoria Conta na exportação.
-- Não há frase sobre IA no cadastro, aviso no primeiro uso nem links nas jornadas de IA/exportação.
+- Não há frase sobre IA no cadastro, aviso no primeiro uso nem links contextuais nas jornadas de IA.
+  A tela Dados e privacidade exibe links para Termos de Uso e Política de Privacidade abaixo das
+  seções de exportação e exclusão.
 
 ## Antes de publicar
 
 1. Aplicar a migração `0035_legal_acceptance` antes de iniciar o servidor atualizado.
+   Se ela já estiver aplicada, a alteração do arquivo não atualiza o banco: o CHECK de status
+   de `analytics_consent_event` precisa ser entregue por uma migração incremental.
 2. Publicar API e website de forma coordenada. O cliente antigo não conhece o modal; a API nova
    bloqueará operações sem aceite. Evitar uma janela prolongada entre os dois deploys e orientar
    atualização de abas antigas quando necessário. Não rebaixar o controle de acesso para ocultar

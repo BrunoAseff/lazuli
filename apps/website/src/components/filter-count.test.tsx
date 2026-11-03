@@ -15,12 +15,12 @@ it("shows the same count for favorites in projects and collections, and clears i
   document.body.append(host);
   const root = createRoot(host);
   const Fixture = () => {
-    const [, setParams] = useSearchParams();
+    const [params, setParams] = useSearchParams();
     return (
       <>
         <FavoriteFilterMenu />
         <StudyCollectionToolbar
-          project={undefined}
+          project={params.get("project") ?? undefined}
           status="active"
           searchValue=""
           onClearSearch={vi.fn()}
@@ -29,6 +29,9 @@ it("shows the same count for favorites in projects and collections, and clears i
           onStatusChange={vi.fn()}
         />
         <button onClick={() => setParams({})}>Limpar</button>
+        <button onClick={() => setParams({ favorites: "only", project: "project-1" })}>
+          Selecionar projeto
+        </button>
       </>
     );
   };
@@ -45,6 +48,14 @@ it("shows the same count for favorites in projects and collections, and clears i
       expect(button).not.toBeNull();
       expect(button.querySelector("span[aria-hidden=true]")?.textContent).toBe("1");
     }
+    await act(async () =>
+      Array.from(host.querySelectorAll("button"))
+        .find((button) => button.textContent === "Selecionar projeto")!
+        .click(),
+    );
+    const combined = host.querySelector('button[aria-label="Filtrar coleções (2 ativos)"]')!;
+    expect(combined).not.toBeNull();
+    expect(combined.querySelector("span[aria-hidden=true]")?.textContent).toBe("2");
     await act(async () =>
       Array.from(host.querySelectorAll("button"))
         .find((button) => button.textContent === "Limpar")!

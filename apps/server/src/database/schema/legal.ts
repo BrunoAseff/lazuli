@@ -1,4 +1,5 @@
-import { index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { check, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { user } from "./auth.ts";
 
 export const legalAcceptance = pgTable(
@@ -36,5 +37,8 @@ export const analyticsConsentEvent = pgTable(
     version: integer("version").notNull(),
     decidedAt: timestamp("decided_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index("analytics_consent_event_user_idx").on(table.userId, table.decidedAt)],
+  (table) => [
+    index("analytics_consent_event_user_idx").on(table.userId, table.decidedAt),
+    check("analytics_consent_event_status_check", sql`${table.status} in ('granted', 'denied')`),
+  ],
 );

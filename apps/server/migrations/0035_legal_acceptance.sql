@@ -3,7 +3,8 @@ CREATE TABLE "analytics_consent_event" (
 	"user_id" text NOT NULL,
 	"status" text NOT NULL,
 	"version" integer NOT NULL,
-	"decided_at" timestamp with time zone DEFAULT now() NOT NULL
+	"decided_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "analytics_consent_event_status_check" CHECK ("analytics_consent_event"."status" in ('granted', 'denied'))
 );
 --> statement-breakpoint
 CREATE TABLE "legal_acceptance" (
