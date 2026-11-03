@@ -3,7 +3,7 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   pack: {
     clean: true,
-    deps: { alwaysBundle: [/^@lazuli\/shared$/] },
+    deps: { alwaysBundle: [/^@lazuli\/shared(?:\/|$)/] },
     entry: [
       "src/index.ts",
       "src/migrate.ts",
