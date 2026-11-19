@@ -1,0 +1,152 @@
+/* Internal proposals page: toast mocks and state variants (nothing here reaches the app). */
+
+.mock-toast {
+  position: relative;
+  width: min(100%, 22.25rem);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+  padding: 0.75rem 2.5rem 0.75rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-float);
+  --tone: var(--primary);
+
+  &[data-tone="success"] {
+    --tone: var(--success);
+  }
+  &[data-tone="error"] {
+    --tone: var(--destructive);
+  }
+  &[data-style="glyph"],
+  &[data-style="facet"],
+  &[data-style="timed"] {
+    gap: 0.625rem;
+    padding: 0.625rem 2.25rem 0.625rem 0.875rem;
+  }
+}
+.mock-toast-seal {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--tone);
+  color: #fff;
+
+  & svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+.mock-toast-glyph {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  color: var(--tone);
+}
+.mock-toast-facet {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: none;
+  margin-inline: 0.125rem;
+  border-radius: 1.5px;
+  background: var(--tone);
+  transform: rotate(45deg);
+}
+.mock-toast-close {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--muted-foreground);
+  translate: 0 -50%;
+}
+.mock-toast-time {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: color-mix(in oklab, var(--tone) 45%, transparent);
+  transform-origin: left;
+  animation: mock-toast-time 4s linear both;
+
+  .mock-toast:hover & {
+    animation-play-state: paused;
+  }
+}
+@keyframes mock-toast-time {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Entry: rises and settles; the facet turns into place a beat later. */
+.mock-toast-enter {
+  animation: mock-toast-in 420ms var(--spring-settle) both;
+}
+@keyframes mock-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+.mock-toast-enter .mock-toast-facet {
+  animation: mock-facet-in 520ms var(--spring-settle) 120ms both;
+}
+@keyframes mock-facet-in {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mock-toast-enter,
+  .mock-toast-enter .mock-toast-facet,
+  .mock-toast-time {
+    animation: none;
+  }
+}
+
+/* A · the seal leads: cards stay white and neutral; colour only in the seal and the note. */
+[data-states="seal"],
+[data-states="lift"] {
+  & .choice[data-selected],
+  & .choice[data-outcome] {
+    background: var(--card);
+  }
+  & .choice[data-selected] {
+    border-color: color-mix(in oklab, var(--foreground) 40%, transparent);
+  }
+  & .choice[data-outcome] {
+    border-color: var(--border);
+  }
+  & .radio-card:has([data-state="checked"]) {
+    border-color: color-mix(in oklab, var(--foreground) 40%, transparent);
+    background: var(--card);
+  }
+}
+
+/* B · elevation: the chosen card lifts with a short shadow; answered ones lift a little less. */
+[data-states="lift"] {
+  & .choice {
+    transition:
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast),
+      translate var(--transition-fast);
+  }
+  & .choice[data-selected],
+  & .radio-card:has([data-state="checked"]) {
+    box-shadow: var(--shadow-float);
+    translate: 0 -1px;
+  }
+  & .choice[data-outcome] {
+    box-shadow: 0 1px 3px rgb(20 26 46 / 6%);
+  }
+}

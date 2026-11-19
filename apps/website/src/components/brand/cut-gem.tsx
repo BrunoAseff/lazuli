@@ -67,14 +67,62 @@ export const gemStage = (cut: number) =>
           ? "Desbastada"
           : "Bruta";
 
+/**
+ * How the uncut stone is drawn (under study):
+ * - classic: one matte body with a lit chip and a shaded side;
+ * - angular: an irregular chunk of flat faces, each shaded by where the light comes from;
+ * - mineral: the angular chunk with pale calcite inclusions, as raw lapis has.
+ */
+export type RoughStyle = "classic" | "angular" | "mineral";
+
+// Light from the upper left: a face turned that way is lighter.
+const lightDirection: Point = [-0.6, -0.8];
+const faceTone = (a: Point, b: Point, apex: Point) => {
+  const mx = (a[0] + b[0]) / 2 - apex[0];
+  const my = (a[1] + b[1]) / 2 - apex[1];
+  const length = Math.hypot(mx, my) || 1;
+  const facing = (mx * lightDirection[0] + my * lightDirection[1]) / length;
+  return facing > 0.45
+    ? "var(--gem-rough-light)"
+    : facing > -0.05
+      ? "color-mix(in oklab, var(--gem-rough) 55%, var(--gem-rough-light))"
+      : facing > -0.55
+        ? "var(--gem-rough)"
+        : "var(--gem-rough-dark)";
+};
+// Calcite inclusions, placed on the rock (they fade with it as the stone is cut).
+const inclusions: Point[][] = [
+  [
+    [18, 22],
+    [24, 19],
+    [27, 24],
+    [22, 28],
+    [17, 26],
+  ],
+  [
+    [37, 37],
+    [43, 35],
+    [45, 40],
+    [40, 43],
+  ],
+  [
+    [28, 45],
+    [32, 43],
+    [34, 47],
+    [30, 48],
+  ],
+];
+
 export const CutGem = ({
   cut,
   dull = 0,
+  rough = "classic",
   size = 72,
   className,
 }: {
   cut: number;
   dull?: number;
+  rough?: RoughStyle;
   size?: number;
   className?: string;
 }) => {
@@ -110,7 +158,29 @@ export const CutGem = ({
     >
       {/* Rough body: a matte rock with a lit chip and a shaded side. */}
       <path d={path(outline)} fill="var(--gem-rough)" />
-      <g opacity={rock}>
+      {rough !== "classic" && (
+        <g opacity={rock}>
+          {/* Flat faces fanned from an off-centre apex: a chunk, not a blob. */}
+          {outline.map((point, index) => {
+            const next = outline[(index + 1) % outline.length]!;
+            const apex: Point = [27, 29];
+            return (
+              <path
+                d={path([apex, point, next])}
+                fill={faceTone(point, next, apex)}
+                key={index}
+                stroke={faceTone(point, next, apex)}
+                strokeWidth={0.4}
+              />
+            );
+          })}
+          {rough === "mineral" &&
+            inclusions.map((shape, index) => (
+              <path d={path(shape)} fill="#e3e7f3" key={index} opacity={0.7} />
+            ))}
+        </g>
+      )}
+      <g opacity={rough === "classic" ? rock : 0}>
         <path
           d={path([
             outline[9]!,

@@ -14,6 +14,9 @@ const DesignSystemPage = import.meta.env.DEV
 const IdentityPage = import.meta.env.DEV
   ? lazy(() => import("@/features/design-system/identity-page.tsx"))
   : null;
+const ProposalsPage = import.meta.env.DEV
+  ? lazy(() => import("@/features/design-system/proposals-page.tsx"))
+  : null;
 const PublicPagePreview = import.meta.env.DEV
   ? lazy(() => import("@/features/landing/landing-page.tsx"))
   : null;
@@ -94,6 +97,7 @@ export const App = () => (
         <Route element={<AccountOptionsPage />} path="account-options" />
         <Route element={<AppShell />}>
           {DesignSystemPage && <Route element={<DesignSystemPage />} path="system" />}
+          {ProposalsPage && <Route element={<ProposalsPage />} path="system/propostas" />}
           <Route element={<DashboardPage />} path="dashboard" />
           <Route element={<StudyMetricsPage />} path="statistics" />
           <Route element={<ProjectListPage />} path="documents" />
