@@ -66,8 +66,8 @@ const exportCategories: ReadonlyArray<{
     value: "quizzes",
   },
   {
-    description: "Referências e vínculos entre materiais",
-    label: "Referências",
+    description: "Fontes e vínculos entre materiais",
+    label: "Fontes",
     value: "references",
   },
 ] as const;
@@ -328,10 +328,10 @@ export const DataSectionPage = () => {
               </Button>
             </DialogClose>
             <Button
+              pending={requestExport.isPending}
               disabled={categories.length === 0 || requestExport.isPending}
               onClick={() => void createExport()}
             >
-              {requestExport.isPending && <Spinner aria-hidden="true" />}
               Solicitar cópia
             </Button>
           </DialogFooter>
@@ -403,11 +403,11 @@ export const DataSectionPage = () => {
               Cancelar
             </Button>
             <Button
+              pending={deleteAccount.isPending}
               disabled={!canDelete || deleteAccount.isPending}
               onClick={() => void removeAccount()}
               variant="destructive"
             >
-              {deleteAccount.isPending && <Spinner aria-hidden="true" />}
               Excluir minha conta
             </Button>
           </DialogFooter>

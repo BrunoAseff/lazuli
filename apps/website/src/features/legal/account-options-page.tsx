@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { LEGAL_CONTACT } from "@lazuli/shared";
 import { Button } from "@/components/ui/button.tsx";
+import { LazuliWordmark } from "@/components/brand-mark.tsx";
 import { createBillingPortal } from "@/features/billing/api/billing-api.ts";
 import DataSectionPage from "@/features/account-settings/pages/data-section-page.tsx";
 import { SettingsSurface } from "@/features/account-settings/components/settings-ui.tsx";
@@ -26,8 +27,11 @@ export default function AccountOptionsPage() {
   return (
     <div className="min-h-svh bg-background">
       <header className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-5">
-        <Link to="/" className="font-heading text-2xl font-semibold">
-          Lazúli
+        <Link
+          to="/"
+          className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <LazuliWordmark />
         </Link>
         <Button
           variant="outline"

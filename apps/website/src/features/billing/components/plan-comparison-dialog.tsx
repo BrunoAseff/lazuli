@@ -5,10 +5,10 @@ import {
   type CommercialPlanDefinition,
   type CommercialSummary,
 } from "@lazuli/shared";
-import { CheckCircleIcon } from "@phosphor-icons/react/CheckCircle";
-import { BookOpenIcon } from "@phosphor-icons/react/BookOpen";
-import { CrownIcon } from "@phosphor-icons/react/Crown";
-import { MedalIcon } from "@phosphor-icons/react/Medal";
+import { CheckCircleIcon } from "@/components/icons.tsx";
+import { BookOpenIcon } from "@/components/icons.tsx";
+import { CrownIcon } from "@/components/icons.tsx";
+import { MedalIcon } from "@/components/icons.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
 import { LegalLinks } from "@/features/legal/legal-links.tsx";
@@ -21,7 +21,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { cn } from "@/lib/utils.ts";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
 import { useEffect, useRef, useState } from "react";
@@ -107,16 +106,16 @@ const PlanCard = ({
       )}
     >
       {plan.recommended && (
-        <span className="absolute -top-3 left-4 rounded-full bg-primary px-2.5 py-1 text-xs text-primary-foreground">
+        <span className="absolute -top-3 left-4 rounded-full bg-action px-2.5 py-1 text-xs text-action-foreground">
           Recomendado
         </span>
       )}
       <div className="grid gap-1">
         <div className="flex items-center gap-2">
-          <PlanIcon aria-hidden="true" className="size-4 text-primary" weight="duotone" />
-          <h3 className="font-heading text-xl">{plan.name}</h3>
+          <PlanIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+          <h3 className="text-sm leading-snug font-semibold">{plan.name}</h3>
         </div>
-        <p className="text-2xl tabular-nums">
+        <p className="text-xl font-medium tabular-nums">
           {plan.monthlyPriceCents === 0 ? "Grátis" : formatPrice(plan.monthlyPriceCents)}
           {plan.monthlyPriceCents > 0 && (
             <span className="text-xs text-muted-foreground">/mês</span>
@@ -138,15 +137,15 @@ const PlanCard = ({
       </div>
       <ul className="grid gap-2.5 text-sm">
         <li className="flex gap-2">
-          <CheckCircleIcon className="mt-0.5 size-4 text-primary" />
+          <CheckCircleIcon className="mt-0.5 size-4 text-muted-foreground" />
           {plan.projectLimit === null ? "Projetos ilimitados" : `${plan.projectLimit} projetos`}
         </li>
         <li className="flex gap-2">
-          <CheckCircleIcon className="mt-0.5 size-4 text-primary" />
+          <CheckCircleIcon className="mt-0.5 size-4 text-muted-foreground" />
           {formatBytes(plan.storageLimitBytes)} de armazenamento
         </li>
         <li className="flex gap-2">
-          <CheckCircleIcon className="mt-0.5 size-4 text-primary" />
+          <CheckCircleIcon className="mt-0.5 size-4 text-muted-foreground" />
           {plan.monthlyAiCredits.toLocaleString("pt-BR")} créditos de IA/mês
         </li>
         <li className="text-xs leading-relaxed text-muted-foreground">
@@ -154,6 +153,7 @@ const PlanCard = ({
         </li>
       </ul>
       <Button
+        pending={loading}
         className="mt-auto w-full"
         disabled={disabled || !canSelectPlan(plan.code, summary)}
         onClick={() => onSelect(plan.code)}
@@ -169,7 +169,6 @@ const PlanCard = ({
               : "outline"
         }
       >
-        {loading && <Spinner />}
         {getPlanAction(plan.code, summary)}
       </Button>
     </article>

@@ -9,7 +9,7 @@ import {
   ChevronsUpDownIcon,
   SlidersHorizontalIcon,
   LoaderCircleIcon,
-} from "lucide-react";
+} from "@/components/icons.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Calendar } from "@/components/ui/calendar.tsx";
 import { Switch } from "@/components/ui/switch.tsx";

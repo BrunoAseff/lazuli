@@ -239,11 +239,11 @@ export const SecuritySectionPage = () => {
               </Button>
             ) : (
               <Button
+                pending={passwordSetupPending}
                 disabled={passwordSetupPending}
                 onClick={() => void requestPasswordSetup()}
                 variant="outline"
               >
-                {passwordSetupPending && <Spinner aria-hidden="true" />}
                 Criar senha
               </Button>
             )
@@ -262,11 +262,11 @@ export const SecuritySectionPage = () => {
                   title={hasPassword ? undefined : "Crie uma senha antes de desvincular o Google"}
                   variant="outline"
                 >
-                  Desvincular
+                  Desvincular conta Google
                 </Button>
               ) : (
                 <Button onClick={() => void linkGoogle()} variant="outline">
-                  Vincular
+                  Vincular conta Google
                 </Button>
               )
             }
@@ -385,13 +385,13 @@ export const SecuritySectionPage = () => {
               Cancelar
             </DialogCancelButton>
             <Button
+              pending={passwordPending}
               disabled={
                 passwordPending || !currentPassword || newPassword.length < 8 || !confirmPassword
               }
               form="change-password-form"
               type="submit"
             >
-              {passwordPending && <Spinner aria-hidden="true" />}
               Salvar nova senha
             </Button>
           </DialogFooter>

@@ -33,8 +33,9 @@ export default function UsageSectionPage() {
   if (usage.isPending) return <SettingsLoading />;
   if (usage.isError || !usage.data) return <SettingsError onRetry={() => void usage.refetch()} />;
   const { commercial, library, cycle } = usage.data;
+  // Every label reads at the same level; the ones that lead somewhere reveal it on hover.
   const linkClass =
-    "text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground";
+    "rounded-sm underline-offset-4 outline-none transition-colors hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50";
   return (
     <div>
       <SettingsSectionHeader title="Uso e materiais" />

@@ -23,11 +23,11 @@ export const SettingsSurface = ({
   meta?: ReactNode;
   title?: string;
 }) => (
-  <section className={cn("rounded-[var(--radius-panel)] bg-card/60 p-5 sm:p-6", className)}>
+  <section className={cn("surface-panel p-5 sm:p-6", className)}>
     {(title || meta || action) && (
       <header className="mb-2 flex flex-wrap items-start justify-between gap-x-5 gap-y-2">
         <div className="min-w-0">
-          {title && <h3 className="font-heading text-xl font-medium">{title}</h3>}
+          {title && <h3 className="text-sm leading-snug font-semibold">{title}</h3>}
           {meta && <div className="mt-1 text-sm text-muted-foreground">{meta}</div>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
@@ -144,7 +144,7 @@ export const InlineFeedback = ({
 export const SettingsLoading = () => (
   <div className="space-y-6" aria-label="Carregando configurações" role="status">
     <Skeleton className="h-10 w-48" />
-    <div className="rounded-[var(--radius-panel)] bg-card/60 p-6">
+    <div className="surface-panel p-6">
       <Skeleton className="h-6 w-40" />
       <Skeleton className="mt-7 h-9 w-full" />
       <Skeleton className="mt-5 h-9 w-full" />
@@ -153,8 +153,8 @@ export const SettingsLoading = () => (
 );
 
 export const SettingsError = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="rounded-[var(--radius-panel)] bg-card/60 p-6">
-    <h2 className="font-heading text-2xl font-medium">Não foi possível carregar esta seção</h2>
+  <div className="surface-panel p-6">
+    <h2 className="text-lg font-semibold">Não foi possível carregar esta seção</h2>
     <p className="mt-2 text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
     <Button className="mt-5" onClick={onRetry} variant="outline">
       Tentar novamente

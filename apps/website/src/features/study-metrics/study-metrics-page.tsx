@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { ChartBarIcon } from "@phosphor-icons/react/ChartBar";
-import { ArrowUpRightIcon } from "lucide-react";
+import { ChartBarIcon } from "@/components/icons.tsx";
+import { ArrowRightIcon } from "@/components/icons.tsx";
 import { FlashcardDomainIcon, QuizDomainIcon } from "@/components/domain-icons.ts";
 import {
   studyMetricsQuerySchema,
@@ -14,7 +14,7 @@ import { ContentPage } from "@/components/content-page.tsx";
 import { EmptyState } from "@/components/empty-state.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { ApiError } from "@/lib/api-client.ts";
 import {
   MetricsPeriod,
@@ -107,63 +107,26 @@ function DomainSummary({
 }) {
   const flashcards = view === "flashcards",
     Icon = flashcards ? FlashcardDomainIcon : QuizDomainIcon;
-  const count = flashcards ? data.summary.evaluations : data.summary.attempts;
   return (
-    <section className="min-w-0 rounded-xl bg-card/60 p-3 sm:p-5">
-      <h2 className="mb-4 flex items-center gap-2 font-heading text-xl">
-        <Icon className="size-5 text-primary" />
-        {flashcards ? "Flashcards" : "Quizzes"}
-      </h2>
-      {count ? (
-        <div className="space-y-3">
-          <dl className="grid grid-cols-2 gap-3">
-            <MetricValue
-              label={flashcards ? "Revisões" : "Acertos"}
-              value={
-                flashcards
-                  ? formatCount(count)
-                  : rateValue(data.summary.quizCorrect, data.summary.quizAnswers)
-              }
-              previous={
-                data.previous
-                  ? flashcards
-                    ? formatCount(data.previous.evaluations)
-                    : rateValue(data.previous.quizCorrect, data.previous.quizAnswers)
-                  : undefined
-              }
-            />
-            <MetricValue
-              label={flashcards ? "Flashcards" : "Quizzes"}
-              value={formatCount(flashcards ? data.summary.cards : count)}
-            />
-          </dl>
-          {!flashcards && (
-            <div className="space-y-1.5">
-              <ResultBar
-                success={data.summary.quizCorrect}
-                total={data.summary.quizAnswers}
-                label="Acertos"
-              />
-              <p className="text-xs text-muted-foreground">
-                {data.summary.quizCorrect} de {data.summary.quizAnswers} respostas
-              </p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <p className="py-3 text-sm text-muted-foreground">
-          {flashcards
-            ? "Seus resultados começam na primeira revisão."
-            : "Conclua um quiz para ver seus resultados."}
-        </p>
-      )}
-      <Button asChild variant="ghost" className="mt-3 min-h-11 text-xs sm:min-h-9 sm:text-sm">
-        <Link to={`/statistics?${new URLSearchParams({ ...input, view, period: preset })}`}>
-          Ver {view}
-          <ArrowUpRightIcon />
-        </Link>
-      </Button>
-    </section>
+    <Button
+      asChild
+      variant="ghost"
+      className="surface-panel surface-card-action group h-auto min-w-0 justify-start gap-3 px-4 py-4 hover:bg-card"
+    >
+      <Link to={`/statistics?${new URLSearchParams({ ...input, view, period: preset })}`}>
+        <Icon aria-hidden="true" className="size-5 text-muted-foreground" />
+        <span className="min-w-0 text-left">
+          <span className="block font-semibold">Detalhar {view}</span>
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">
+            {flashcards
+              ? `${formatCount(data.summary.cards)} flashcards estudados`
+              : `${formatCount(data.summary.quizAnswers)} respostas registradas`}
+          </span>
+        </span>
+        {/* Same page, another view: an onward arrow, not an external-link mark. */}
+        <ArrowRightIcon className="ml-auto text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </Link>
+    </Button>
   );
 }
 
@@ -180,18 +143,37 @@ function Results({
 }) {
   if (view === "overview")
     return (
-      <div className="grid items-start gap-5 @min-[900px]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <section className="order-2 min-w-0 rounded-xl bg-card/50 p-4 sm:p-5 @min-[900px]:order-1">
-          <dl className="mb-5">
-            <MetricValue
-              label="Dias de estudo"
-              value={formatCount(data.summary.days)}
-              previous={data.previous ? formatCount(data.previous.days) : undefined}
-            />
-          </dl>
+      <div className="grid gap-6">
+        <dl className="surface-panel grid grid-cols-2 gap-6 p-5 sm:grid-cols-4 sm:p-6">
+          <MetricValue
+            label="Dias de estudo"
+            value={formatCount(data.summary.days)}
+            previous={data.previous ? formatCount(data.previous.days) : undefined}
+          />
+          <MetricValue
+            label="Revisões de flashcards"
+            value={formatCount(data.summary.evaluations)}
+            previous={data.previous ? formatCount(data.previous.evaluations) : undefined}
+          />
+          <MetricValue
+            label="Acertos em quizzes"
+            value={rateValue(data.summary.quizCorrect, data.summary.quizAnswers)}
+            previous={
+              data.previous
+                ? rateValue(data.previous.quizCorrect, data.previous.quizAnswers)
+                : undefined
+            }
+          />
+          <MetricValue
+            label="Quizzes concluídos"
+            value={formatCount(data.summary.attempts)}
+            previous={data.previous ? formatCount(data.previous.attempts) : undefined}
+          />
+        </dl>
+        <section className="min-w-0 surface-panel p-4 sm:p-6">
           <MetricsChart data={data} view={view} />
         </section>
-        <div className="order-1 grid min-w-0 grid-cols-2 gap-3 @min-[900px]:order-2 @min-[900px]:grid-cols-1">
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
           <DomainSummary view="flashcards" data={data} input={input} preset={preset} />
           <DomainSummary view="quizzes" data={data} input={input} preset={preset} />
         </div>
@@ -200,7 +182,7 @@ function Results({
   return (
     <div className="grid items-start gap-5 @min-[900px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
       <div className="contents min-w-0 space-y-5 @min-[900px]:block">
-        <section className="order-1 min-w-0 rounded-xl bg-card/50 p-4 sm:p-5">
+        <section className="order-1 min-w-0 surface-panel p-4 sm:p-5">
           <MetricsSummary data={data} view={view} />
           <MetricsChart data={data} view={view} />
         </section>
@@ -272,7 +254,16 @@ export default function StudyMetricsPage() {
   const unavailable = result.error instanceof ApiError && result.error.status === 404;
   return (
     <ContentPage maxWidth="6xl">
-      <div className="@container">
+      <Tabs
+        className="@container block"
+        value={view}
+        onValueChange={(value) =>
+          setParams((p) => {
+            p.set("view", value);
+            return p;
+          })
+        }
+      >
         <header className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <h1 className="page-title">Estatísticas</h1>
           {valid && (
@@ -304,161 +295,153 @@ export default function StudyMetricsPage() {
           )}
         </header>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <Tabs
-            value={view}
-            onValueChange={(value) =>
-              setParams((p) => {
-                p.set("view", value);
-                return p;
-              })
-            }
-          >
-            <TabsList variant="line" aria-label="Tipo de estatística">
-              <TabsTrigger value="overview" className="min-h-11 sm:min-h-9">
-                Visão geral
-              </TabsTrigger>
-              <TabsTrigger value="flashcards" className="min-h-11 sm:min-h-9">
-                Flashcards
-              </TabsTrigger>
-              <TabsTrigger value="quizzes" className="min-h-11 sm:min-h-9">
-                Quizzes
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <TabsList variant="line" aria-label="Tipo de estatística">
+            <TabsTrigger value="overview" className="min-h-11 sm:min-h-9">
+              Visão geral
+            </TabsTrigger>
+            <TabsTrigger value="flashcards" className="min-h-11 sm:min-h-9">
+              Flashcards
+            </TabsTrigger>
+            <TabsTrigger value="quizzes" className="min-h-11 sm:min-h-9">
+              Quizzes
+            </TabsTrigger>
+          </TabsList>
         </div>
-        {valid && input.collectionId && (
-          <div className="mb-3 @min-[640px]:hidden">
-            <CollectionFilter
-              view={view}
-              value={input.collectionId}
-              onChange={(collectionId) => change({ ...input, collectionId })}
-            />
-          </div>
-        )}
-        {!valid ? (
-          <div role="alert" className="space-y-3">
-            <p>Não foi possível usar estes filtros.</p>
-            <Button variant="outline" onClick={() => setParams({ view })}>
-              Restaurar filtros
-            </Button>
-          </div>
-        ) : result.isPending ? (
-          !online ? (
-            <EmptyState minHeight="sm" icon={ChartBarIcon} title="Você está sem conexão." />
-          ) : (
-            <div
-              role="status"
-              aria-label="Carregando estatísticas"
-              className="grid gap-5 @min-[900px]:grid-cols-[7fr_5fr]"
-            >
-              <Skeleton className="h-80" />
-              <Skeleton className="h-64" />
+        <TabsContent value={view}>
+          {valid && input.collectionId && (
+            <div className="mb-3 @min-[640px]:hidden">
+              <CollectionFilter
+                view={view}
+                value={input.collectionId}
+                onChange={(collectionId) => change({ ...input, collectionId })}
+              />
             </div>
-          )
-        ) : result.isError && (!data || unavailable) ? (
-          unavailable ? (
-            <EmptyState
-              minHeight="sm"
-              icon={ChartBarIcon}
-              title="Esta coleção não está disponível."
-              action={
-                <Button
-                  variant="outline"
-                  onClick={() => change({ ...input, collectionId: undefined })}
-                >
-                  Todas as coleções
-                </Button>
-              }
-            />
-          ) : (
-            <MetricsError
-              message={
-                result.error instanceof ApiError && result.error.status === 429
-                  ? "Aguarde um instante e tente novamente."
-                  : "Não foi possível carregar seus resultados."
-              }
-              retry={() => void result.refetch()}
-            />
-          )
-        ) : (
-          data && (
-            <div aria-busy={result.isFetching}>
-              {result.isError && online && (
-                <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 text-sm">
-                  <span>Não foi possível atualizar os resultados.</span>
+          )}
+          {!valid ? (
+            <div role="alert" className="space-y-3">
+              <p>Não foi possível usar estes filtros.</p>
+              <Button variant="outline" onClick={() => setParams({ view })}>
+                Restaurar filtros
+              </Button>
+            </div>
+          ) : result.isPending ? (
+            !online ? (
+              <EmptyState minHeight="sm" icon={ChartBarIcon} title="Você está sem conexão." />
+            ) : (
+              <div
+                role="status"
+                aria-label="Carregando estatísticas"
+                className="grid gap-5 @min-[900px]:grid-cols-[7fr_5fr]"
+              >
+                <Skeleton className="h-80" />
+                <Skeleton className="h-64" />
+              </div>
+            )
+          ) : result.isError && (!data || unavailable) ? (
+            unavailable ? (
+              <EmptyState
+                minHeight="sm"
+                icon={ChartBarIcon}
+                title="Esta coleção não está disponível."
+                action={
                   <Button
                     variant="outline"
-                    className="min-h-11 sm:min-h-9"
-                    onClick={() => void result.refetch()}
+                    onClick={() => change({ ...input, collectionId: undefined })}
                   >
-                    Tentar novamente
+                    Todas as coleções
                   </Button>
-                </div>
-              )}
-              {!online && (
-                <p role="status" className="mb-3 text-sm text-muted-foreground">
-                  Sem conexão. Mostrando os últimos resultados.
-                </p>
-              )}
-              {!practice ? (
-                <EmptyState
-                  icon={ChartBarIcon}
-                  title={
-                    input.collectionId
-                      ? "Nenhum estudo nesta coleção neste período."
-                      : data.hasHistory
-                        ? "Você não estudou neste período."
-                        : view === "flashcards"
-                          ? "Seus resultados começam na primeira revisão."
-                          : view === "quizzes"
-                            ? "Conclua um quiz para ver seus resultados."
-                            : "Seus resultados começam no primeiro estudo."
-                  }
-                  action={
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {data.hasHistory || input.collectionId ? (
-                        <>
-                          <Button
-                            variant="outline"
-                            className="min-h-11"
-                            onClick={() => setPeriodOpen(true)}
-                          >
-                            Alterar período
-                          </Button>
-                          {input.collectionId && (
+                }
+              />
+            ) : (
+              <MetricsError
+                message={
+                  result.error instanceof ApiError && result.error.status === 429
+                    ? "Aguarde um instante e tente novamente."
+                    : "Não foi possível carregar seus resultados."
+                }
+                retry={() => void result.refetch()}
+              />
+            )
+          ) : (
+            data && (
+              <div aria-busy={result.isFetching}>
+                {result.isError && online && (
+                  <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+                    <span>Não foi possível atualizar os resultados.</span>
+                    <Button
+                      variant="outline"
+                      className="min-h-11 sm:min-h-9"
+                      onClick={() => void result.refetch()}
+                    >
+                      Tentar novamente
+                    </Button>
+                  </div>
+                )}
+                {!online && (
+                  <p role="status" className="mb-3 text-sm text-muted-foreground">
+                    Sem conexão. Mostrando os últimos resultados.
+                  </p>
+                )}
+                {!practice ? (
+                  <EmptyState
+                    icon={ChartBarIcon}
+                    title={
+                      input.collectionId
+                        ? "Nenhum estudo nesta coleção neste período."
+                        : data.hasHistory
+                          ? "Você não estudou neste período."
+                          : view === "flashcards"
+                            ? "Seus resultados começam na primeira revisão."
+                            : view === "quizzes"
+                              ? "Conclua um quiz para ver seus resultados."
+                              : "Seus resultados começam no primeiro estudo."
+                    }
+                    action={
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {data.hasHistory || input.collectionId ? (
+                          <>
                             <Button
                               variant="outline"
                               className="min-h-11"
-                              onClick={() => change({ ...input, collectionId: undefined })}
+                              onClick={() => setPeriodOpen(true)}
                             >
-                              Todas as coleções
+                              Alterar período
                             </Button>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          {view !== "quizzes" && (
-                            <Button asChild variant="outline" className="min-h-11">
-                              <Link to="/flashcards">Ver flashcards</Link>
-                            </Button>
-                          )}
-                          {view !== "flashcards" && (
-                            <Button asChild variant="outline" className="min-h-11">
-                              <Link to="/quizzes">Ver quizzes</Link>
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  }
-                />
-              ) : (
-                <Results key={key} view={view} data={data} input={input} preset={preset} />
-              )}
-            </div>
-          )
-        )}
-      </div>
+                            {input.collectionId && (
+                              <Button
+                                variant="outline"
+                                className="min-h-11"
+                                onClick={() => change({ ...input, collectionId: undefined })}
+                              >
+                                Todas as coleções
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {view !== "quizzes" && (
+                              <Button asChild variant="outline" className="min-h-11">
+                                <Link to="/flashcards">Ver flashcards</Link>
+                              </Button>
+                            )}
+                            {view !== "flashcards" && (
+                              <Button asChild variant="outline" className="min-h-11">
+                                <Link to="/quizzes">Ver quizzes</Link>
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    }
+                  />
+                ) : (
+                  <Results key={key} view={view} data={data} input={input} preset={preset} />
+                )}
+              </div>
+            )
+          )}
+        </TabsContent>
+      </Tabs>
     </ContentPage>
   );
 }

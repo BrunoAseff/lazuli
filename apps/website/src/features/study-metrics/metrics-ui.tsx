@@ -1,6 +1,8 @@
+import { TickingText } from "@/components/motion/number-ticker.tsx";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button.tsx";
 import { formatCount, formatRate } from "./metrics-format.ts";
+import { motion, useReducedMotion } from "motion/react";
 
 export function ResultBar({
   success,
@@ -13,6 +15,8 @@ export function ResultBar({
   label: string;
   failure?: boolean;
 }) {
+  const reduced = useReducedMotion();
+  const fraction = total > 0 ? Math.min(1, Math.max(0, success / total)) : 0;
   return (
     <div
       role="img"
@@ -20,9 +24,11 @@ export function ResultBar({
       className="flex h-1.5 w-full overflow-hidden rounded-full bg-muted"
     >
       {total > 0 && (
-        <span
-          className={`h-full ${failure ? "bg-destructive" : "bg-primary"}`}
-          style={{ width: `${(100 * success) / total}%` }}
+        <motion.span
+          className={`h-full w-full origin-left rounded-full ${failure ? "bg-destructive" : "bg-primary"}`}
+          initial={false}
+          animate={{ scaleX: fraction }}
+          transition={{ duration: reduced ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
         />
       )}
     </div>
@@ -43,7 +49,9 @@ export function MetricValue({
   return (
     <div className="min-w-0">
       <dt className="text-xs text-muted-foreground sm:text-sm">{label}</dt>
-      <dd className="mt-1 text-2xl font-medium leading-none tabular-nums">{value}</dd>
+      <dd className="mt-1 text-xl font-medium leading-none tabular-nums">
+        {typeof value === "string" ? <TickingText text={value} /> : value}
+      </dd>
       {note && <p className="mt-2 text-xs text-muted-foreground">{note}</p>}
       {previous !== undefined && (
         <p className="mt-2 text-xs text-muted-foreground">Antes: {previous}</p>

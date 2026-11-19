@@ -1,5 +1,5 @@
-import { CalendarXIcon } from "@phosphor-icons/react/CalendarX";
-import { WarningCircleIcon } from "@phosphor-icons/react/WarningCircle";
+import { CalendarXIcon } from "@/components/icons.tsx";
+import { WarningCircleIcon } from "@/components/icons.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
 import { useBillingSummary, useOpenBillingPortal } from "../api/billing-queries.ts";
@@ -26,9 +26,9 @@ export const BillingStatusNotice = () => {
     <div className="mx-2 grid gap-2 rounded-[var(--radius)] border bg-muted/35 p-3 text-xs">
       <div className="flex items-start gap-2">
         {paymentProblem ? (
-          <WarningCircleIcon className="mt-0.5 size-4 shrink-0 text-destructive" weight="duotone" />
+          <WarningCircleIcon className="mt-0.5 size-4 shrink-0 text-destructive" />
         ) : (
-          <CalendarXIcon className="mt-0.5 size-4 shrink-0 text-primary" weight="duotone" />
+          <CalendarXIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         )}
         <p className="leading-relaxed text-muted-foreground">
           {paymentProblem
