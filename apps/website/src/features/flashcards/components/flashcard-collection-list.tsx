@@ -16,7 +16,7 @@ import { FlashcardPracticeButton } from "./flashcard-practice-button.tsx";
 import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 
 /** New cards are always available, so reviews due now are the available cards that were studied before. */
-const memorySegments = (collection: FlashcardCollectionSummary): StudyStripSegment[] => {
+export const memorySegments = (collection: FlashcardCollectionSummary): StudyStripSegment[] => {
   const due = Math.max(0, collection.dueCards - collection.newCards);
   const rest = Math.max(0, collection.totalCards - collection.newCards - due);
   return [
@@ -30,7 +30,7 @@ const memorySegments = (collection: FlashcardCollectionSummary): StudyStripSegme
   ];
 };
 
-const memoryLabel = (collection: FlashcardCollectionSummary) => {
+export const memoryLabel = (collection: FlashcardCollectionSummary) => {
   const parts = memorySegments(collection)
     .filter(({ count }) => count > 0)
     .map(({ count, label }) => `${count} ${label}`);

@@ -16,6 +16,44 @@ import type { StudyCollectionAction } from "@/lib/study-actions.ts";
 import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 import { QuizStartDialog } from "./quiz-start-dialog.tsx";
 
+/** The latest attempt as a strip: right and wrong answers, in the shared strip tones. */
+export const QuizCollectionStrip = ({ collection }: { collection: QuizCollectionSummary }) => (
+  <StudyStrip
+    emptyLabel={collection.totalQuestions === 0 ? "Nenhuma questão ainda" : "Ainda não realizado"}
+    label={
+      collection.lastScore
+        ? `Última tentativa: ${collection.lastScore.correctAnswers} de ${collection.lastScore.totalQuestions} corretas`
+        : "Nenhuma tentativa concluída"
+    }
+    noun={{ singular: "questão", plural: "questões" }}
+    segments={
+      collection.lastScore
+        ? [
+            {
+              count: collection.lastScore.correctAnswers,
+              label:
+                collection.lastScore.correctAnswers === 1
+                  ? "correta na última tentativa"
+                  : "corretas na última tentativa",
+              tone: "correct",
+            },
+            {
+              count: collection.lastScore.totalQuestions - collection.lastScore.correctAnswers,
+              // The strip shows the latest attempt; when it is the only segment it must say so,
+              // or it reads as contradicting "melhor resultado".
+              label: `${
+                collection.lastScore.totalQuestions - collection.lastScore.correctAnswers === 1
+                  ? "errada"
+                  : "erradas"
+              }${collection.lastScore.correctAnswers ? "" : " na última tentativa"}`,
+              tone: "incorrect",
+            },
+          ]
+        : []
+    }
+  />
+);
+
 export const QuizCollectionList = ({
   collections,
   onAction,
@@ -73,45 +111,7 @@ export const QuizCollectionList = ({
           }
           key={collection.id}
         >
-          <StudyStrip
-            emptyLabel={
-              collection.totalQuestions === 0 ? "Nenhuma questão ainda" : "Ainda não realizado"
-            }
-            label={
-              collection.lastScore
-                ? `Última tentativa: ${collection.lastScore.correctAnswers} de ${collection.lastScore.totalQuestions} corretas`
-                : "Nenhuma tentativa concluída"
-            }
-            noun={{ singular: "questão", plural: "questões" }}
-            segments={
-              collection.lastScore
-                ? [
-                    {
-                      count: collection.lastScore.correctAnswers,
-                      label:
-                        collection.lastScore.correctAnswers === 1
-                          ? "correta na última tentativa"
-                          : "corretas na última tentativa",
-                      tone: "correct",
-                    },
-                    {
-                      count:
-                        collection.lastScore.totalQuestions - collection.lastScore.correctAnswers,
-                      // The strip shows the latest attempt; when it is the only segment it must say so,
-                      // or it reads as contradicting "melhor resultado".
-                      label: `${
-                        collection.lastScore.totalQuestions -
-                          collection.lastScore.correctAnswers ===
-                        1
-                          ? "errada"
-                          : "erradas"
-                      }${collection.lastScore.correctAnswers ? "" : " na última tentativa"}`,
-                      tone: "incorrect",
-                    },
-                  ]
-                : []
-            }
-          />
+          <QuizCollectionStrip collection={collection} />
           <StudyCollectionNote>
             {`${collection.totalQuestions} ${collection.totalQuestions === 1 ? "questão" : "questões"}`}
             {collection.bestScoreRate !== null &&

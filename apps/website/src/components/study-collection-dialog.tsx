@@ -35,6 +35,7 @@ type SubmitInput = CreateStudyCollectionInput | UpdateStudyCollectionInput;
 export const StudyCollectionDialog = ({
   collection,
   createDescription,
+  defaultProjectId = null,
   onOpenChange,
   onReset,
   onSubmit,
@@ -44,6 +45,8 @@ export const StudyCollectionDialog = ({
 }: {
   collection?: Collection;
   createDescription: string;
+  /** A new collection made from inside a project starts in that project. */
+  defaultProjectId?: string | null;
   onOpenChange: (open: boolean) => void;
   onReset: () => void;
   onSubmit: (input: SubmitInput) => Promise<void>;
@@ -55,12 +58,18 @@ export const StudyCollectionDialog = ({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     mode: "onChange",
-    defaultValues: { title: collection?.title ?? "", projectId: collection?.project?.id ?? null },
+    defaultValues: {
+      title: collection?.title ?? "",
+      projectId: collection?.project?.id ?? defaultProjectId,
+    },
   });
   useEffect(() => {
     if (open)
-      form.reset({ title: collection?.title ?? "", projectId: collection?.project?.id ?? null });
-  }, [collection, form, open]);
+      form.reset({
+        title: collection?.title ?? "",
+        projectId: collection?.project?.id ?? defaultProjectId,
+      });
+  }, [collection, defaultProjectId, form, open]);
   const watchedTitle = form.watch("title");
   const watchedProjectId = form.watch("projectId");
   const parsedTitle = studyCollectionTitleSchema.safeParse(watchedTitle);

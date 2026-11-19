@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button.tsx";
 import { DocumentDomainIcon } from "@/components/domain-icons.ts";
 import { EmptyState } from "@/components/empty-state.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { RecentDocuments } from "@/features/documents/components/recent-documents.tsx";
 import { useDocumentImports } from "@/features/document-imports/document-import-context.ts";
 import { useCreateProjectItem } from "@/features/documents/api/document-queries.ts";
 import { documentLocation } from "@/features/documents/document-navigation.ts";
@@ -23,7 +22,11 @@ import {
 } from "../components/project-dialogs.tsx";
 import { ProjectActionsMenu } from "../components/project-actions-menu.tsx";
 import { ProjectCover } from "../components/project-cover.tsx";
-import { ViewModeToggle, type ViewMode } from "@/components/view-mode-toggle.tsx";
+import {
+  ProjectStudy,
+  projectStudyMeta,
+  useProjectCollectionCount,
+} from "../components/project-study.tsx";
 import type { ProjectAction } from "../project-types.ts";
 
 export const ProjectDetailPage = () => {
@@ -33,19 +36,13 @@ export const ProjectDetailPage = () => {
   const { openImportDialog } = useDocumentImports();
   const createItem = useCreateProjectItem(projectId);
   const [action, setAction] = useState<ProjectAction | null>(null);
-  const [documentView, setDocumentView] = useState<ViewMode>(() =>
-    localStorage.getItem("lazuli-document-view") === "table" ? "table" : "cards",
-  );
   const project = useProject(projectId);
-  const documents = useProjectDocuments(projectId, 1, 6);
+  const documents = useProjectDocuments(projectId, 1, 8);
+  const collectionCount = useProjectCollectionCount(projectId);
   const state = location.state as { projectListLocation?: unknown } | null;
   const backLocation =
     typeof state?.projectListLocation === "string" ? state.projectListLocation : "/documents";
   const notFound = project.error instanceof ProjectApiError && project.error.status === 404;
-  const changeDocumentView = (view: ViewMode) => {
-    setDocumentView(view);
-    localStorage.setItem("lazuli-document-view", view);
-  };
   const createBlankDocument = async () => {
     try {
       const item = await createItem.mutateAsync({
@@ -107,8 +104,7 @@ export const ProjectDetailPage = () => {
           <div className="min-w-0 space-y-2">
             <h1 className="page-title [overflow-wrap:anywhere]">{currentProject.title}</h1>
             <p className="text-sm text-muted-foreground">
-              {currentProject.documentCount}{" "}
-              {currentProject.documentCount === 1 ? "documento" : "documentos"}
+              {projectStudyMeta(currentProject.documentCount, collectionCount)}
             </p>
           </div>
           <ProjectActionsMenu
@@ -118,37 +114,16 @@ export const ProjectDetailPage = () => {
           />
         </div>
 
-        <section className="mt-7 sm:mt-8" aria-labelledby="project-documents-title">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-sm leading-snug font-semibold" id="project-documents-title">
-              Documentos recentes
-            </h2>
-            {Boolean(documents.data?.items.length) && !documents.isError && (
-              <ViewModeToggle
-                label="Visualização dos documentos recentes"
-                onChange={changeDocumentView}
-                value={documentView}
-              />
-            )}
-          </div>
-
+        <div className="mt-7 sm:mt-8">
           {documents.isPending && (
-            <div
-              className="mt-5 grid gap-px overflow-hidden rounded-xl border border-border/50 bg-border/40"
-              role="status"
-              aria-label="Carregando documentos"
-            >
-              {Array.from({ length: 4 }, (_, index) => (
-                <div className="flex items-center gap-3 bg-background p-4" key={index}>
-                  <Skeleton className="size-5" />
-                  <Skeleton className="h-4 w-48" />
-                </div>
-              ))}
+            <div aria-label="Carregando o projeto" className="grid gap-4" role="status">
+              <Skeleton className="h-40 w-full rounded-[var(--radius-panel)]" />
+              <Skeleton className="h-32 w-full rounded-[var(--radius-panel)]" />
             </div>
           )}
 
           {documents.isError && (
-            <div className="mt-5 rounded-xl border border-dashed p-8 text-center">
+            <div className="rounded-xl border border-dashed p-8 text-center">
               <p className="text-sm text-muted-foreground">
                 Não foi possível carregar os documentos.
               </p>
@@ -158,40 +133,36 @@ export const ProjectDetailPage = () => {
             </div>
           )}
 
-          {documents.data?.items.length === 0 && (
-            <div className="mt-5">
-              <EmptyState
-                surface="inline"
-                action={
-                  <div className="flex flex-col justify-center gap-2 sm:flex-row">
-                    <Button onClick={() => openImportDialog(projectId, null)} variant="outline">
-                      <UploadIcon />
-                      Importar documento
-                    </Button>
-                    <Button
-                      disabled={createItem.isPending}
-                      onClick={() => void createBlankDocument()}
-                    >
-                      <FilePlus2Icon />
-                      Criar documento em branco
-                    </Button>
-                  </div>
-                }
-                description="Importe um material que você já possui ou comece uma página em branco."
-                icon={DocumentDomainIcon}
-                title="Nenhum documento ainda"
-              />
-            </div>
-          )}
-
-          {documents.data && documents.data.items.length > 0 && (
-            <RecentDocuments
-              items={documents.data.items}
+          {documents.data && (
+            <ProjectStudy
+              documents={documents.data.items}
+              emptyDocuments={
+                <EmptyState
+                  surface="inline"
+                  action={
+                    <div className="flex flex-col justify-center gap-2 sm:flex-row">
+                      <Button onClick={() => openImportDialog(projectId, null)} variant="outline">
+                        <UploadIcon />
+                        Importar documento
+                      </Button>
+                      <Button
+                        disabled={createItem.isPending}
+                        onClick={() => void createBlankDocument()}
+                      >
+                        <FilePlus2Icon />
+                        Criar documento em branco
+                      </Button>
+                    </div>
+                  }
+                  description="Importe um material que você já possui ou comece uma página em branco."
+                  icon={DocumentDomainIcon}
+                  title="Nenhum documento ainda"
+                />
+              }
               projectId={projectId}
-              view={documentView}
             />
           )}
-        </section>
+        </div>
       </div>
 
       {action === "rename" && (

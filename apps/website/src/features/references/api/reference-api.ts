@@ -1,5 +1,7 @@
 import {
   createReferencesResponseSchema,
+  projectDocumentMaterialsSchema,
+  type ProjectDocumentMaterials,
   referenceListResponseSchema,
   type CreateReferencesInput,
   type CreateReferencesResponse,
@@ -35,3 +37,13 @@ export const removeReference = (referenceId: string) =>
   apiRequest(`/api/references/${encodeURIComponent(referenceId)}`, null, {
     method: "DELETE",
   });
+
+export const fetchProjectDocumentMaterials = (
+  projectId: string,
+  signal?: AbortSignal,
+): Promise<ProjectDocumentMaterials> =>
+  apiRequest(
+    `/api/projects/${encodeURIComponent(projectId)}/document-materials`,
+    projectDocumentMaterialsSchema,
+    { signal },
+  );

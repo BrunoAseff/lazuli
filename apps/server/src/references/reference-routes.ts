@@ -1,5 +1,6 @@
 import {
   createReferencesSchema,
+  projectIdSchema,
   referenceIdSchema,
   referenceListQuerySchema,
 } from "@lazuli/shared";
@@ -11,7 +12,12 @@ import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import { sendValidationError } from "../routes/route-helpers.ts";
-import { createReferences, deleteReference, listReferences } from "./reference-queries.ts";
+import {
+  countProjectDocumentMaterials,
+  createReferences,
+  deleteReference,
+  listReferences,
+} from "./reference-queries.ts";
 
 type Options = { auth: Auth; database: Database; websiteUrl: string };
 export const createReferenceRoutes =
@@ -41,6 +47,21 @@ export const createReferenceRoutes =
       const input = referenceListQuerySchema.safeParse(request.query);
       if (!input.success) return sendValidationError(reply);
       return listReferences(database, session.user.id, input.data);
+    });
+
+    app.get("/api/projects/:projectId/document-materials", async (request, reply) => {
+      const session = await requireSession(auth, request, reply);
+      if (!session) return;
+      const projectId = projectIdSchema.safeParse(
+        (request.params as { projectId?: unknown }).projectId,
+      );
+      if (!projectId.success) return sendValidationError(reply);
+      const items = await countProjectDocumentMaterials(database, session.user.id, projectId.data);
+      if (!items)
+        return reply
+          .status(404)
+          .send({ code: "PROJECT_NOT_FOUND", message: "Este projeto não foi encontrado." });
+      return { items };
     });
 
     app.post("/api/references", async (request, reply) => {
