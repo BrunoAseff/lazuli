@@ -75,6 +75,11 @@ export const projectSummarySchema = z.object({
   coverKey: projectCoverKeySchema.nullable(),
   coverAssetId: z.uuid().nullable().optional(),
   coverThumbnailAssetId: z.uuid().nullable().optional(),
+  /** The uploaded image before cropping and its framing, so the cover can be reframed later. */
+  coverSourceAssetId: z.uuid().nullable().optional(),
+  coverCropX: z.number().min(0).max(100).nullable().optional(),
+  coverCropY: z.number().min(0).max(100).nullable().optional(),
+  coverCropZoom: z.number().min(1).max(3).nullable().optional(),
   documentCount: z.number().int().nonnegative(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),

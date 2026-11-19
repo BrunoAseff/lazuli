@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { ProjectCoverKey, ProjectSummary } from "@lazuli/shared";
 import { projectSummarySchema } from "@lazuli/shared";
-import { apiRequest } from "@/lib/api-client.ts";
+import { API_URL, apiRequest } from "@/lib/api-client.ts";
+import { AutoHeight } from "@/components/auto-height.tsx";
 import { FileDropzone } from "@/components/file-dropzone.tsx";
+import { ReplaceIcon } from "@/components/icons.tsx";
+import { Button } from "@/components/ui/button.tsx";
 import { Slider } from "@/components/ui/slider.tsx";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs.tsx";
 import { CoverPicker } from "./cover-picker.tsx";
@@ -13,18 +16,39 @@ export type CoverSelection = {
   preset: ProjectCoverKey | null;
   presetChanged: boolean;
   file?: File;
+  /** The file is the stored original of the current cover: saving it only reframes. */
+  fromSource?: boolean;
   crop: { x: number; y: number; zoom: number };
   uploadId: string;
 };
-export const initialCoverSelection = (
-  project?: Pick<ProjectSummary, "coverAssetId" | "coverKey">,
-): CoverSelection => ({
+type CoverProject = Pick<
+  ProjectSummary,
+  "coverAssetId" | "coverKey" | "coverCropX" | "coverCropY" | "coverCropZoom"
+>;
+const savedCrop = (project?: CoverProject) => ({
+  x: project?.coverCropX ?? 50,
+  y: project?.coverCropY ?? 50,
+  zoom: project?.coverCropZoom ?? 1,
+});
+export const initialCoverSelection = (project?: CoverProject): CoverSelection => ({
   mode: project?.coverAssetId ? "upload" : "gallery",
   preset: project ? project.coverKey : "library",
   presetChanged: false,
-  crop: { x: 50, y: 50, zoom: 1 },
+  crop: savedCrop(project),
   uploadId: crypto.randomUUID(),
 });
+
+/** Whether saving would change anything in the upload tab. */
+export const coverUploadChanged = (selection: CoverSelection, project?: CoverProject) => {
+  if (!selection.file) return false;
+  if (!selection.fromSource) return true;
+  const saved = savedCrop(project);
+  return (
+    selection.crop.x !== saved.x ||
+    selection.crop.y !== saved.y ||
+    selection.crop.zoom !== saved.zoom
+  );
+};
 
 export const uploadProjectCover = (project: ProjectSummary, selection: CoverSelection) => {
   if (!selection.file) throw new Error("Selecione uma imagem.");
@@ -54,6 +78,11 @@ export function ProjectCoverEditor({
   const [preview, setPreview] = useState<string>();
   const [error, setError] = useState("");
   const sequence = useRef(0);
+  const picker = useRef<HTMLInputElement>(null);
+  const latest = useRef(value);
+  latest.current = value;
+  const change = useRef(onChange);
+  change.current = onChange;
   useEffect(
     () => () => {
       sequence.current += 1;
@@ -69,6 +98,30 @@ export function ProjectCoverEditor({
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [value.file]);
+  // An uploaded cover can be reframed: its stored original is loaded as the image being edited.
+  const sourceId = project?.coverSourceAssetId;
+  useEffect(() => {
+    if (!sourceId) return;
+    const controller = new AbortController();
+    void fetch(`${API_URL}/api/assets/${encodeURIComponent(sourceId)}/content`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const blob = await response.blob();
+        if (controller.signal.aborted || latest.current.file) return;
+        change.current({
+          ...latest.current,
+          file: new File([blob], "capa-original.webp", { type: blob.type || "image/webp" }),
+          fromSource: true,
+        });
+      })
+      .catch(() => {
+        /* Without the original the current cover stays, and a new image can still be chosen. */
+      });
+    return () => controller.abort();
+  }, [sourceId]);
   const choose = async (file?: File) => {
     const current = ++sequence.current;
     setError("");
@@ -89,8 +142,9 @@ export function ProjectCoverEditor({
         throw new Error("A imagem deve ter no máximo 25 megapixels.");
       if (current === sequence.current)
         onChange({
-          ...value,
+          ...latest.current,
           file,
+          fromSource: false,
           crop: { x: 50, y: 50, zoom: 1 },
           uploadId: crypto.randomUUID(),
         });
@@ -104,7 +158,7 @@ export function ProjectCoverEditor({
   return (
     <div className="py-1">
       <Tabs value={value.mode} onValueChange={(mode) => onChange({ ...value, mode })}>
-        <TabsList variant="line" className="mb-3">
+        <TabsList variant="line" className="mb-3 shrink-0">
           <TabsTrigger value="gallery" disabled={disabled}>
             Galeria
           </TabsTrigger>
@@ -112,77 +166,120 @@ export function ProjectCoverEditor({
             Enviar imagem
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="gallery" className="p-1">
-          <CoverPicker
-            disabled={disabled}
-            value={value.presetChanged ? value.preset : project?.coverAssetId ? null : value.preset}
-            onChange={(preset) => onChange({ ...value, preset, presetChanged: true })}
-          />
-        </TabsContent>
-        <TabsContent value="upload" className="space-y-3 p-1">
-          <FileDropzone
-            accept="image/jpeg,image/png,image/webp"
-            disabled={disabled}
-            buttonLabel={value.file || project?.coverAssetId ? "Trocar imagem" : "Escolher imagem"}
-            replacing={Boolean(value.file || project?.coverAssetId)}
-            onFiles={(files) => void choose(files[0])}
-          >
-            {preview ? (
-              <div className="aspect-video overflow-hidden rounded-lg">
-                <img
-                  alt="Prévia da nova capa"
-                  src={preview}
-                  className="size-full object-cover"
-                  style={{
-                    objectPosition: `${value.crop.x}% ${value.crop.y}%`,
-                    transform: `scale(${value.crop.zoom})`,
-                    transformOrigin: `${value.crop.x}% ${value.crop.y}%`,
-                  }}
-                />
-              </div>
-            ) : project?.coverAssetId ? (
-              <ProjectCover
-                coverKey={null}
-                assetId={project.coverAssetId}
-                className="h-auto rounded-lg"
-              />
-            ) : undefined}
-          </FileDropzone>
-          <p className="text-xs text-muted-foreground">JPEG, PNG ou WebP · até 10 MB e 25 MP</p>
-          {value.file && (
-            <fieldset disabled={disabled} className="space-y-1">
-              <legend className="mb-1 text-sm font-medium">Enquadramento</legend>
-              {(
-                [
-                  { key: "zoom", label: "Zoom", min: 1, max: 3, step: 0.05 },
-                  { key: "x", label: "Horizontal", min: 0, max: 100, step: 1 },
-                  { key: "y", label: "Vertical", min: 0, max: 100, step: 1 },
-                ] as const
-              ).map(({ key, label, ...range }) => (
-                <div
-                  key={key}
-                  className="grid min-h-11 grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-3 text-sm text-muted-foreground"
-                >
-                  <span>{label}</span>
-                  <Slider
-                    aria-label={label}
-                    {...range}
-                    disabled={disabled}
-                    value={[value.crop[key]]}
-                    onValueChange={([next]) => {
-                      if (next !== undefined)
-                        onChange({
-                          ...value,
-                          crop: { ...value.crop, [key]: next },
-                          uploadId: crypto.randomUUID(),
-                        });
-                    }}
-                  />
+        <AutoHeight>
+          <TabsContent value="gallery" className="p-1">
+            <CoverPicker
+              disabled={disabled}
+              value={
+                value.presetChanged
+                  ? value.preset
+                  : project?.coverAssetId
+                    ? undefined
+                    : value.preset
+              }
+              onChange={(preset) => onChange({ ...value, preset, presetChanged: true })}
+            />
+          </TabsContent>
+          <TabsContent value="upload" className="p-1">
+            <input
+              ref={picker}
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              disabled={disabled}
+              onChange={(event) => {
+                void choose(event.target.files?.[0]);
+                event.target.value = "";
+              }}
+              tabIndex={-1}
+              type="file"
+            />
+            {preview || project?.coverAssetId ? (
+              // The image and its framing side by side: everything fits without scrolling.
+              <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_13rem]">
+                <div className="aspect-video overflow-hidden rounded-lg bg-muted">
+                  {preview ? (
+                    <img
+                      alt="Prévia da capa"
+                      src={preview}
+                      className="size-full object-cover transition-[object-position,transform] duration-200 ease-out motion-reduce:transition-none"
+                      style={{
+                        objectPosition: `${value.crop.x}% ${value.crop.y}%`,
+                        transform: `scale(${value.crop.zoom})`,
+                        transformOrigin: `${value.crop.x}% ${value.crop.y}%`,
+                      }}
+                    />
+                  ) : (
+                    <ProjectCover
+                      coverKey={null}
+                      assetId={project?.coverAssetId ?? undefined}
+                      className="h-auto"
+                    />
+                  )}
                 </div>
-              ))}
-            </fieldset>
-          )}
-        </TabsContent>
+                <div className="flex flex-col gap-4">
+                  <fieldset disabled={disabled || !value.file} className="grid gap-1">
+                    <legend className="mb-1 text-sm font-medium">Enquadramento</legend>
+                    {(
+                      [
+                        { key: "zoom", label: "Zoom", min: 1, max: 3, step: 0.05 },
+                        { key: "x", label: "Horizontal", min: 0, max: 100, step: 1 },
+                        { key: "y", label: "Vertical", min: 0, max: 100, step: 1 },
+                      ] as const
+                    ).map(({ key, label, ...range }) => (
+                      <div key={key} className="grid text-sm text-muted-foreground">
+                        <span>{label}</span>
+                        <Slider
+                          aria-label={label}
+                          className="min-h-8"
+                          {...range}
+                          disabled={disabled || !value.file}
+                          value={[value.crop[key]]}
+                          onValueChange={([next]) => {
+                            if (next !== undefined)
+                              onChange({
+                                ...value,
+                                crop: { ...value.crop, [key]: next },
+                                uploadId: crypto.randomUUID(),
+                              });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </fieldset>
+                  {!value.file && !sourceId && (
+                    <p className="text-xs text-muted-foreground">
+                      Esta capa foi enviada antes do ajuste de enquadramento. Envie a imagem de novo
+                      para ajustá-la.
+                    </p>
+                  )}
+                  <div className="mt-auto grid gap-1.5">
+                    <Button
+                      className="w-fit"
+                      disabled={disabled}
+                      onClick={() => picker.current?.click()}
+                      type="button"
+                      variant="outline"
+                    >
+                      <ReplaceIcon aria-hidden="true" /> Trocar imagem
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      JPEG, PNG ou WebP · até 10 MB e 25 MP
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <FileDropzone
+                accept="image/jpeg,image/png,image/webp"
+                disabled={disabled}
+                buttonLabel="Escolher imagem"
+                description="Uma imagem para reconhecer este projeto na sua biblioteca."
+                hint="JPEG, PNG ou WebP · até 10 MB e 25 MP"
+                onFiles={(files) => void choose(files[0])}
+              />
+            )}
+          </TabsContent>
+        </AutoHeight>
       </Tabs>
       {error && (
         <p className="mt-3 text-sm text-destructive" role="alert">

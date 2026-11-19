@@ -253,6 +253,13 @@
       "when": 1793325763169,
       "tag": "0035_legal_acceptance",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795097916384,
+      "tag": "0036_project_cover_source",
+      "breakpoints": true
     }
   ]
 }

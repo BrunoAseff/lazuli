@@ -34,9 +34,17 @@ const projectSelection = {
   coverKey: project.coverKey,
   coverAssetId: project.coverAssetId,
   coverThumbnailAssetId: project.coverThumbnailAssetId,
+  coverSourceAssetId: project.coverSourceAssetId,
+  coverCropX: project.coverCropX,
+  coverCropY: project.coverCropY,
+  coverCropZoom: project.coverCropZoom,
   documentCount: count(projectItem.id).mapWith(Number),
   createdAt: project.createdAt,
-  updatedAt: project.updatedAt,
+  // "Atualizado em" is the project's latest activity: its own edits or any document's.
+  updatedAt:
+    sql<Date>`greatest(${project.updatedAt}, coalesce(max(${projectItem.updatedAt}), ${project.updatedAt}))`.mapWith(
+      (value: Date | string) => (value instanceof Date ? value : new Date(value)),
+    ),
 };
 
 export const listProjects = async (database: Database, userId: string, input: ProjectListQuery) => {
@@ -143,6 +151,10 @@ export const updateProject = async (
     coverKey?: string | null;
     coverAssetId?: null;
     coverThumbnailAssetId?: null;
+    coverSourceAssetId?: null;
+    coverCropX?: null;
+    coverCropY?: null;
+    coverCropZoom?: null;
     updatedAt: Date;
   } = { updatedAt: new Date() };
 
@@ -154,6 +166,10 @@ export const updateProject = async (
     values.coverKey = input.coverKey;
     values.coverAssetId = null;
     values.coverThumbnailAssetId = null;
+    values.coverSourceAssetId = null;
+    values.coverCropX = null;
+    values.coverCropY = null;
+    values.coverCropZoom = null;
     changedConditions.push(
       sql`(${project.coverKey} IS DISTINCT FROM ${input.coverKey} or ${project.coverAssetId} is not null)`,
     );
@@ -180,9 +196,11 @@ export const updateProject = async (
       .returning({ id: project.id });
 
     if (input.coverKey !== undefined) {
-      const ids = [current.coverAssetId, current.coverThumbnailAssetId].filter((id): id is string =>
-        Boolean(id),
-      );
+      const ids = [
+        current.coverAssetId,
+        current.coverThumbnailAssetId,
+        current.coverSourceAssetId,
+      ].filter((id): id is string => Boolean(id));
       if (ids.length) {
         const removed = await tx
           .delete(asset)
