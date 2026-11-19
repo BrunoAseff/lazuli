@@ -863,6 +863,12 @@
   text-underline-offset: 0.2em;
 }
 
+/* Marks turned off for reading: the passage reads as plain text (a jump to it still lights it). */
+[data-source-anchors="hidden"] .lazuli-source-anchor {
+  cursor: auto;
+  text-decoration: none;
+}
+
 .lazuli-source-anchor[data-reference-target="true"] {
   background: color-mix(in oklab, var(--primary) 16%, transparent);
 }

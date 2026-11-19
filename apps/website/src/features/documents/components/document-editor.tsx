@@ -74,6 +74,7 @@ import { LocalizedBlockNoteInput } from "../editor/localized-blocknote-input.tsx
 import { DocumentSaveStatus, type DocumentSaveState } from "./document-save-status.tsx";
 import { safeReturnTo } from "../document-navigation.ts";
 import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
+import { useSourceAnchorsShown } from "@/features/references/source-anchor-visibility.ts";
 
 const blockNoteComponents = { Input: { Input: LocalizedBlockNoteInput } };
 const compactWorkspaceMaxWidth = 56 * 16;
@@ -183,6 +184,7 @@ export const DocumentEditor = ({
     async () => false,
   );
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const sourceAnchorsShown = useSourceAnchorsShown();
   const titleElementRef = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const workspace = editorContainerRef.current?.closest<HTMLElement>(".project-workspace");
@@ -746,7 +748,12 @@ export const DocumentEditor = ({
               const sourceAnchor = target.closest<HTMLElement>(
                 ".lazuli-source-anchor[data-anchor-id]",
               );
-              if (sourceAnchor && event.currentTarget.contains(sourceAnchor)) {
+              // Unmarked passages read as plain text: they open nothing.
+              if (
+                sourceAnchorsShown &&
+                sourceAnchor &&
+                event.currentTarget.contains(sourceAnchor)
+              ) {
                 const anchorId = sourceAnchor.dataset.anchorId;
                 if (anchorId) setActiveAnchorId(anchorId);
                 return;
@@ -757,6 +764,7 @@ export const DocumentEditor = ({
                 return;
               event.preventDefault();
             }}
+            data-source-anchors={sourceAnchorsShown ? undefined : "hidden"}
             ref={editorContainerRef}
           >
             <BlockNoteView
@@ -1038,6 +1046,7 @@ export const DocumentEditor = ({
         }}
         onOpenChange={setDocumentReferencesOpen}
         open={documentReferencesOpen}
+        showAnchorsOption
       />
       <AlertDialog open={blocker.state === "blocked"}>
         <AlertDialogContent>

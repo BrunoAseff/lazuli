@@ -13,6 +13,7 @@ import { useEffect, useState, type Ref } from "react";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { PaginationControls } from "@/components/pagination-controls.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import { useReferences } from "../api/reference-queries.ts";
+import { setSourceAnchorsShown, useSourceAnchorsShown } from "../source-anchor-visibility.ts";
 import { ReferenceDeleteButton } from "./reference-delete-button.tsx";
 import {
   DropdownMenu,
@@ -39,6 +41,7 @@ export const DocumentReferencesDialog = ({
   onOpenChange,
   onLastReferenceRemoved,
   open,
+  showAnchorsOption = false,
 }: {
   anchorId?: string;
   documentId: string;
@@ -49,8 +52,11 @@ export const DocumentReferencesDialog = ({
   onOpenChange: (open: boolean) => void;
   onLastReferenceRemoved?: (anchorId: string) => void | Promise<void>;
   open: boolean;
+  /** The whole document's list also holds the choice of marking the linked passages in its text. */
+  showAnchorsOption?: boolean;
 }) => {
   const [page, setPage] = useState(1);
+  const anchorsShown = useSourceAnchorsShown();
   useEffect(() => setPage(1), [anchorId, documentId, open]);
   const references = useReferences(
     { anchorId, documentId, page, pageSize: REFERENCE_PAGE_SIZE },
@@ -152,10 +158,17 @@ export const DocumentReferencesDialog = ({
           )}
         </div>
         {(onAdd ||
+          showAnchorsOption ||
           onCreateFlashcard ||
           onCreateQuiz ||
           (onAdjust && Boolean(references.data?.items.length))) && (
           <div className="flex flex-wrap justify-end gap-2 border-t px-6 py-4">
+            {showAnchorsOption && (
+              <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-sm sm:mr-auto">
+                <Switch checked={anchorsShown} onCheckedChange={setSourceAnchorsShown} />
+                Sublinhar trechos ligados
+              </label>
+            )}
             {onAdjust && Boolean(references.data?.items.length) && (
               <Button className="sm:mr-auto" onClick={onAdjust} variant="ghost">
                 Ajustar trecho
