@@ -15,7 +15,7 @@ import { CircleNotchIcon } from "@/components/icons.tsx";
 import { ArrowClockwiseIcon } from "@/components/icons.tsx";
 import { CheckIcon } from "@/components/icons.tsx";
 import { Trash2Icon } from "@/components/icons.tsx";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
@@ -73,6 +73,70 @@ const richText = (content: unknown) =>
 type Material =
   | { kind: "flashcard"; value: FlashcardDetail }
   | { kind: "quizQuestion"; value: QuizQuestionDetail };
+
+/** "Antes" reads at the size of the fields it is compared with, not in the reading voice. */
+const valueClass = "font-sans text-sm leading-relaxed text-foreground";
+
+/** Beside a field's name in "Depois": whether the suggestion changed it. */
+const ChangeMark = ({ changed }: { changed: boolean }) => (
+  <span className="font-normal text-muted-foreground">{changed ? " · alterada" : " · igual"}</span>
+);
+
+/**
+ * "Antes": the material as it is, laid out field by field like the suggestion beside it
+ * (Pergunta, Resposta or Alternativas), so each field reads against its counterpart.
+ */
+const CurrentMaterial = ({
+  draft,
+  material,
+}: {
+  draft: AiMaterialImprovementDraft | null;
+  material: Material;
+}) => {
+  const field = (label: string, children: ReactNode) => (
+    <div className="grid gap-1.5">
+      <p className="font-sans text-sm font-medium text-foreground">{label}</p>
+      {children}
+    </div>
+  );
+  if (material.kind === "flashcard") {
+    const current = draft?.kind === "flashcard" ? draft.current : material.value;
+    return (
+      <div className="grid gap-5">
+        {field("Pergunta", <p className={valueClass}>{richText(current.question)}</p>)}
+        {field("Resposta", <p className={valueClass}>{richText(current.answer)}</p>)}
+      </div>
+    );
+  }
+  const content = draft?.kind === "quizQuestion" ? draft.current.content : material.value.content;
+  const options = draft?.kind === "quizQuestion" ? draft.current.options : material.value.options;
+  return (
+    <div className="grid gap-5">
+      {field("Pergunta", <p className={valueClass}>{richText(content)}</p>)}
+      {field(
+        "Alternativas",
+        <ol className="grid gap-3 font-sans text-sm">
+          {options.map((option, index) => (
+            // Same anatomy as the quiz: letter seal, the correct one sealed in green.
+            <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3" key={index}>
+              <ChoiceSeal
+                filled={false}
+                index={index}
+                outcome={option.isCorrect ? "correct" : undefined}
+              />
+              <span
+                className={option.isCorrect ? "pt-1 text-foreground" : "pt-1 text-muted-foreground"}
+              >
+                {option.text}
+                {option.isCorrect && <span className="sr-only"> (resposta correta)</span>}
+              </span>
+            </li>
+          ))}
+        </ol>,
+      )}
+    </div>
+  );
+};
 
 export const AiMaterialImprovementDialog = ({
   material,
@@ -249,61 +313,8 @@ export const AiMaterialImprovementDialog = ({
         <div className="min-h-0 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar md:overflow-hidden">
           <CreationWorkspace
             reviewing={Boolean(draft)}
-            sourceLabel="Material atual"
-            source={
-              material.kind === "flashcard" ? (
-                <div className="space-y-6">
-                  <h3>
-                    {richText(
-                      draft?.kind === "flashcard"
-                        ? draft.current.question
-                        : material.value.question,
-                    )}
-                  </h3>
-                  <p>
-                    {richText(
-                      draft?.kind === "flashcard" ? draft.current.answer : material.value.answer,
-                    )}
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <h3>
-                    {richText(
-                      draft?.kind === "quizQuestion"
-                        ? draft.current.content
-                        : material.value.content,
-                    )}
-                  </h3>
-                  <ol className="mt-5 space-y-3 font-sans text-sm">
-                    {(draft?.kind === "quizQuestion"
-                      ? draft.current.options
-                      : material.value.options
-                    ).map((option, index) => (
-                      // Same anatomy as the quiz: letter seal, the correct one sealed in green.
-                      <li
-                        key={index}
-                        className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3"
-                      >
-                        <ChoiceSeal
-                          filled={false}
-                          index={index}
-                          outcome={option.isCorrect ? "correct" : undefined}
-                        />
-                        <span
-                          className={
-                            option.isCorrect ? "pt-1 text-foreground" : "pt-1 text-muted-foreground"
-                          }
-                        >
-                          {option.text}
-                          {option.isCorrect && <span className="sr-only"> (resposta correta)</span>}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )
-            }
+            sourceLabel={draft ? "Antes" : "Material atual"}
+            source={<CurrentMaterial draft={draft} material={material} />}
           >
             {!draft ? (
               <div className="grid items-start gap-6">
@@ -337,11 +348,19 @@ export const AiMaterialImprovementDialog = ({
               <div className="grid gap-7">
                 <div>
                   <section className="grid gap-4">
-                    <p className="text-xs font-medium text-muted-foreground">Sugestão editável</p>
+                    {/* Named like the source pane ("Antes"), with what was asked of the AI. */}
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Depois · {intentLabels[draft.intent]}
+                    </p>
                     {draft.kind === "flashcard" ? (
                       <>
                         <div className="grid gap-2">
-                          <Label htmlFor="improved-question">Pergunta</Label>
+                          <Label htmlFor="improved-question">
+                            Pergunta
+                            <ChangeMark
+                              changed={question.trim() !== richText(draft.current.question)}
+                            />
+                          </Label>
                           <Textarea
                             id="improved-question"
                             onChange={(event) => setQuestion(event.target.value)}
@@ -349,7 +368,12 @@ export const AiMaterialImprovementDialog = ({
                           />
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="improved-answer">Resposta</Label>
+                          <Label htmlFor="improved-answer">
+                            Resposta
+                            <ChangeMark
+                              changed={answer.trim() !== richText(draft.current.answer)}
+                            />
+                          </Label>
                           <Textarea
                             id="improved-answer"
                             onChange={(event) => setAnswer(event.target.value)}
@@ -360,7 +384,12 @@ export const AiMaterialImprovementDialog = ({
                     ) : (
                       <>
                         <div className="grid gap-2">
-                          <Label htmlFor="improved-prompt">Pergunta</Label>
+                          <Label htmlFor="improved-prompt">
+                            Pergunta
+                            <ChangeMark
+                              changed={quizPrompt.trim() !== richText(draft.current.content)}
+                            />
+                          </Label>
                           <Textarea
                             id="improved-prompt"
                             onChange={(event) => setQuizPrompt(event.target.value)}
@@ -375,6 +404,7 @@ export const AiMaterialImprovementDialog = ({
                 {draft.warning && <p className="text-sm text-muted-foreground">{draft.warning}</p>}
                 <section>
                   <ReferenceManager
+                    appearance="review"
                     returnTo={
                       draft.kind === "flashcard"
                         ? `/flashcards/${draft.collectionId}?card=${draft.materialId}`

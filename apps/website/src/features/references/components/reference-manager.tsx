@@ -2,12 +2,13 @@ import { cn } from "@/lib/utils.ts";
 import {
   REFERENCE_MAX_PAGE_SIZE,
   collectDocumentTextBlocks,
+  type ReferenceListResponse,
   type ReferenceSource,
   type ReferenceTarget,
 } from "@lazuli/shared";
 import { CheckIcon, FileTextIcon, PencilIcon, PlusIcon } from "@/components/icons.tsx";
 import { useMemo, useState, type Ref } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { HighlightText } from "@/components/highlight-text.tsx";
@@ -32,12 +33,21 @@ import { useCreateReferences, useReferences } from "../api/reference-queries.ts"
 import { ReferenceDeleteButton } from "./reference-delete-button.tsx";
 import { ReferenceDocumentRow } from "./reference-document-row.tsx";
 import { SourceReading } from "./source-reading.tsx";
+import "@/features/ai/components/proposal-review.css";
+
+type ReferenceListItem = ReferenceListResponse["items"][number];
 
 export const ReferenceManager = ({
+  appearance = "field",
   disabled = false,
   returnTo,
   target,
 }: {
+  /**
+   * "field": a field among the material's settings (the item panel). "review": the AI dialogs'
+   * source block, the same anatomy as a proposal under review (Fonte, document and excerpt).
+   */
+  appearance?: "field" | "review";
   disabled?: boolean;
   returnTo?: string;
   target: ReferenceTarget;
@@ -64,6 +74,116 @@ export const ReferenceManager = ({
     targetType: target.type,
   });
   const count = references.data?.items.length ?? 0;
+  const items = references.data?.items ?? [];
+  const hrefOf = (reference: (typeof items)[number]) =>
+    documentLocation({
+      anchorId: reference.anchorId,
+      documentId: reference.documentId,
+      projectId: reference.projectId,
+      returnTo: returnTo ?? `${location.pathname}${location.search}`,
+    });
+  const dialogs = (
+    <>
+      <ReferenceListDialog
+        hrefOf={hrefOf}
+        items={items}
+        onAdd={() => {
+          setManagerOpen(false);
+          setPickerOpen(true);
+        }}
+        onOpenChange={setManagerOpen}
+        open={managerOpen}
+      />
+      <ReferenceSourcePickerDialog
+        onOpenChange={setPickerOpen}
+        open={pickerOpen && !disabled}
+        returnTo={returnTo}
+        target={target}
+      />
+    </>
+  );
+  if (appearance === "review") {
+    const documents = [...new Set(items.map(({ documentId }) => documentId))];
+    const excerpts = items.filter(({ anchorId, sourcePreview }) => anchorId && sourcePreview);
+    const first = items[0];
+    return (
+      <section aria-label="Fonte" className="proposal-source">
+        <p className="text-sm leading-none font-medium">Fonte</p>
+        <header className="proposal-source-head">
+          <FileTextIcon aria-hidden="true" className="proposal-source-icon" />
+          <p className="proposal-source-title">
+            {references.isPending
+              ? "Carregando…"
+              : !count
+                ? "Sem fonte"
+                : documents.length > 1
+                  ? `${documents.length} documentos`
+                  : first!.documentTitle}
+            {count > 0 && (
+              <span>
+                {excerpts.length === 0
+                  ? " · documento inteiro"
+                  : excerpts.length === 1
+                    ? " · trecho"
+                    : ` · ${excerpts.length} trechos`}
+              </span>
+            )}
+          </p>
+          {first && (
+            <Button asChild className="proposal-source-open" size="xs" variant="outline">
+              <Link to={hrefOf(first)}>Ver no documento</Link>
+            </Button>
+          )}
+          {!disabled && (
+            <Button
+              onClick={() => (count ? setManagerOpen(true) : setPickerOpen(true))}
+              size="xs"
+              type="button"
+              variant="outline"
+            >
+              {count ? (
+                <>
+                  <PencilIcon aria-hidden="true" /> Editar fontes
+                </>
+              ) : (
+                <>
+                  <PlusIcon aria-hidden="true" /> Conectar documento
+                </>
+              )}
+            </Button>
+          )}
+        </header>
+        {documents.length > 1 ? (
+          // From more than one document: each passage under its document's name.
+          <div className="mt-1 grid gap-3">
+            {excerpts.map((reference) => (
+              <div className="grid gap-1.5" key={reference.id}>
+                <p className="truncate text-xs text-muted-foreground">{reference.documentTitle}</p>
+                <div className="source-excerpt">
+                  <p className="proposal-source-quote">{reference.sourcePreview}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          !references.isPending && (
+            <div className="source-excerpt">
+              <p className="proposal-source-quote" data-empty={!excerpts[0] || undefined}>
+                {excerpts[0]?.sourcePreview ??
+                  (count
+                    ? "O material usa o documento todo."
+                    : "Este material ainda não está ligado a um documento.")}
+              </p>
+            </div>
+          )
+        )}
+        {references.isError && (
+          <p className="text-xs text-destructive">Não foi possível carregar as fontes.</p>
+        )}
+        {dialogs}
+      </section>
+    );
+  }
   return (
     <section className="grid grid-cols-[minmax(0,1fr)] gap-2 pt-4 pb-2">
       {/* Laid out like the collection field above: label, current state, then the action. */}
@@ -119,63 +239,64 @@ export const ReferenceManager = ({
       {references.isError && (
         <p className="text-xs text-destructive">Não foi possível carregar as fontes.</p>
       )}
-      <Dialog open={managerOpen} onOpenChange={setManagerOpen}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-lg">
-          <DialogHeader className="border-b px-6 py-5">
-            <DialogTitle className="pr-8">Fontes do material</DialogTitle>
-            <DialogDescription>Documentos conectados a este material.</DialogDescription>
-          </DialogHeader>
-          <div className="min-h-0 overflow-y-auto px-3 py-3 lazuli-thin-scrollbar">
-            {!count && (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                Nenhum documento vinculado.
-              </p>
-            )}
-            <div className="grid gap-1">
-              {references.data?.items.map((reference) => (
-                <ReferenceDocumentRow
-                  documentTitle={reference.documentTitle}
-                  href={documentLocation({
-                    anchorId: reference.anchorId,
-                    documentId: reference.documentId,
-                    projectId: reference.projectId,
-                    returnTo: returnTo ?? `${location.pathname}${location.search}`,
-                  })}
-                  key={reference.id}
-                  projectTitle={reference.projectTitle}
-                  scope={reference.anchorId ? "selection" : "document"}
-                  trailing={
-                    <ReferenceDeleteButton
-                      label={`Desconectar fonte: ${reference.documentTitle}`}
-                      referenceId={reference.id}
-                    />
-                  }
-                />
-              ))}
-            </div>
-          </div>
-          <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4">
-            <DialogCancelButton onClick={() => setManagerOpen(false)}>Fechar</DialogCancelButton>
-            <Button
-              onClick={() => {
-                setManagerOpen(false);
-                setPickerOpen(true);
-              }}
-            >
-              <PlusIcon aria-hidden="true" /> Conectar documento
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <ReferenceSourcePickerDialog
-        onOpenChange={setPickerOpen}
-        open={pickerOpen && !disabled}
-        returnTo={returnTo}
-        target={target}
-      />
+      {dialogs}
     </section>
   );
 };
+
+/** Every source of a material, each removable, and the way to connect another. */
+const ReferenceListDialog = ({
+  hrefOf,
+  items,
+  onAdd,
+  onOpenChange,
+  open,
+}: {
+  hrefOf: (reference: ReferenceListItem) => string;
+  items: ReferenceListItem[];
+  onAdd: () => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+}) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-lg">
+      <DialogHeader className="border-b px-6 py-5">
+        <DialogTitle className="pr-8">Fontes do material</DialogTitle>
+        <DialogDescription>Documentos conectados a este material.</DialogDescription>
+      </DialogHeader>
+      <div className="min-h-0 overflow-y-auto px-3 py-3 lazuli-thin-scrollbar">
+        {!items.length && (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Nenhum documento vinculado.
+          </p>
+        )}
+        <div className="grid gap-1">
+          {items.map((reference) => (
+            <ReferenceDocumentRow
+              documentTitle={reference.documentTitle}
+              href={hrefOf(reference)}
+              key={reference.id}
+              projectTitle={reference.projectTitle}
+              scope={reference.anchorId ? "selection" : "document"}
+              trailing={
+                <ReferenceDeleteButton
+                  label={`Desconectar fonte: ${reference.documentTitle}`}
+                  referenceId={reference.id}
+                />
+              }
+            />
+          ))}
+        </div>
+      </div>
+      <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4">
+        <DialogCancelButton onClick={() => onOpenChange(false)}>Fechar</DialogCancelButton>
+        <Button onClick={onAdd}>
+          <PlusIcon aria-hidden="true" /> Conectar documento
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+);
 
 const ReferenceSourcePickerDialog = ({
   onOpenChange,
