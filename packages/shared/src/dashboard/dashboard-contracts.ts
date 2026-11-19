@@ -99,7 +99,25 @@ export const dashboardQuizContinuationSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+/**
+ * The daily study goal behind "Sua pedra": a day counts when the person did at least
+ * STUDY_GOAL_TARGET reviews or quiz answers, or studied and left no flashcard review pending.
+ * The same goal for 10 or 100 000 flashcards; the stone reflects the last seven days.
+ */
+export const STUDY_GOAL_TARGET = 20;
+export const dashboardStudyGoalDaySchema = z.object({
+  date: z.iso.date(),
+  actions: nonnegativeMetricSchema,
+  pending: nonnegativeMetricSchema,
+  met: z.boolean(),
+});
+export const dashboardStudyGoalSchema = z.object({
+  target: z.number().int().positive(),
+  days: z.array(dashboardStudyGoalDaySchema).length(7),
+});
+
 export const dashboardResponseSchema = z.object({
+  studyGoal: dashboardStudyGoalSchema,
   reviewQueue: dashboardReviewQueueSchema,
   onboarding: dashboardOnboardingSchema,
   weeklyActivity: dashboardWeeklyActivitySchema,
