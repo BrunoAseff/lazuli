@@ -301,12 +301,15 @@ export const DataSectionPage = () => {
             <div className="grid gap-1">
               {exportCategories.map(({ description, label, value }) => (
                 <label
-                  className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 rounded-[var(--radius)] px-3 py-3 transition-colors hover:bg-muted/55"
+                  // No fill on hover: the option sits on the white dialog. The checkbox drops 1px to
+                  // meet the title's x-height, which sits below the centre of its line box.
+                  className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 rounded-[var(--radius)] px-3 py-3"
                   htmlFor={`export-${value}`}
                   key={value}
                 >
                   <Checkbox
                     checked={categories.includes(value)}
+                    className="translate-y-px"
                     id={`export-${value}`}
                     onCheckedChange={(checked) => toggleCategory(value, checked === true)}
                   />

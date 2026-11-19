@@ -116,11 +116,9 @@ export const DashboardReviewQueue = ({
           )}
         </ul>
       ) : (
-        <div className="mt-4 flex items-start gap-3">
-          <CheckCircleIcon
-            aria-hidden="true"
-            className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-          />
+        // The icon centres on its two lines, like the rows of "Continuar de onde parou".
+        <div className="mt-4 flex items-center gap-3">
+          <CheckCircleIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
           <div>
             <p className="text-[0.9375rem] font-medium">Tudo revisado por aqui</p>
             <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">
