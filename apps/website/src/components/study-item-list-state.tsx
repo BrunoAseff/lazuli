@@ -1,4 +1,4 @@
-import { PlusIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
+import { PlusIcon, SearchXIcon, TriangleAlertIcon } from "@/components/icons.tsx";
 import type { ComponentType, ReactNode } from "react";
 
 import { EmptyState } from "@/components/empty-state.tsx";
@@ -42,6 +42,7 @@ export const StudyItemListState = ({
         icon={TriangleAlertIcon}
         iconClassName="text-destructive"
         minHeight="sm"
+        surface="inline"
         title="Não foi possível carregar"
       />
     );
@@ -61,6 +62,8 @@ export const StudyItemListState = ({
         }
         icon={Icon}
         minHeight="sm"
+        // Inside the index column: no card of its own, aligned with the list's side margins.
+        surface="inline"
         title={query ? "Nenhum resultado" : emptyTitle}
       />
     );

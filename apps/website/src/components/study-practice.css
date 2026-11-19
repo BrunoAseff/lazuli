@@ -1,0 +1,446 @@
+/* Practice: the question is the page. Chrome stays at the edge; the recall happens in one reading column. */
+.practice {
+  display: flex;
+  min-height: calc(100dvh - 3.5rem);
+  flex: 1;
+  flex-direction: column;
+  padding: 1rem 1.25rem 3rem;
+
+  @media (min-width: 48rem) {
+    min-height: calc(100dvh - 1rem);
+    padding: 1.25rem 2.5rem 4rem;
+  }
+}
+
+.practice-head,
+.practice-progress,
+.practice-stage {
+  width: 100%;
+  max-width: 46rem;
+  margin-inline: auto;
+}
+
+.practice-head {
+  display: flex;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.practice-collection {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.practice-count {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.practice-progress {
+  margin-top: 0.625rem;
+}
+
+.practice-stage {
+  margin-top: 1.5rem;
+}
+
+/* The sheet is where reading and answering happen: one surface, generous inner margin. */
+.practice-sheet {
+  padding: clamp(1.5rem, 1rem + 2.5vw, 2.75rem);
+  border-radius: var(--radius-panel);
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(26 25 40 / 4%);
+
+  & + & {
+    margin-top: 1rem;
+  }
+}
+
+.practice-kicker {
+  margin-bottom: 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+/* Authored content in the reading voice, at study scale. Images keep their own size. */
+.practice-question .bn-editor,
+.practice-answer .bn-editor {
+  padding-inline: 0;
+  font-family: var(--font-reading);
+}
+.practice-question .bn-editor {
+  font-size: clamp(1.25rem, 1.05rem + 0.8vw, 1.75rem);
+  line-height: 1.32;
+  letter-spacing: -0.01em;
+}
+.practice-answer .bn-editor {
+  font-size: clamp(1.125rem, 1.05rem + 0.35vw, 1.3125rem);
+  line-height: 1.55;
+}
+.practice-question .bn-block-content,
+.practice-answer .bn-block-content {
+  padding-block: 0.125rem;
+}
+
+/* The reveal takes the place and width of the rating scale that replaces it. */
+.practice-reveal {
+  display: flex;
+  margin-top: 2.5rem;
+
+  & > button {
+    width: 100%;
+    height: 3.25rem;
+  }
+}
+
+/* Drawn by StudyReveal: the separation between what was asked and what is recalled. */
+.study-reveal-rule {
+  display: block;
+  height: 1px;
+  margin-block: 2.25rem 2rem;
+  background: linear-gradient(
+    to right,
+    var(--primary),
+    color-mix(in oklab, var(--primary) 30%, transparent) 70%,
+    transparent
+  );
+  transform-origin: left;
+}
+
+.practice-scale-label {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2.75rem;
+  margin-bottom: 0.625rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+/* Four choices on one row, each a standard bordered control with the next interval below its name.
+   In the session summary the same grid holds plain tallies (quiet tiles, no border). */
+.practice-scale {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+
+  @media (max-width: 30rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.practice-rating {
+  position: relative;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--radius);
+  text-align: left;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    scale 120ms var(--ease-out);
+  outline: none;
+
+  &:is(button) {
+    border: 1px solid var(--border);
+    background: var(--card);
+    box-shadow: 0 1px 2px rgb(20 26 46 / 4%);
+  }
+  &:not(button) {
+    background: color-mix(in oklab, var(--muted) 70%, var(--card));
+  }
+  @media (hover: hover) and (pointer: fine) {
+    &:is(button):hover:not(:disabled) {
+      border-color: color-mix(in oklab, var(--foreground) 22%, transparent);
+      background: var(--row-hover);
+    }
+  }
+  &:is(button):active:not(:disabled),
+  &[data-pressed] {
+    scale: 0.97;
+  }
+  /* The rating being recorded stays lit while the others step back. */
+  &[data-chosen] {
+    border-color: color-mix(in oklab, var(--primary) 45%, transparent);
+    background: var(--primary-soft);
+  }
+  &:focus-visible {
+    z-index: 1;
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 45%, transparent);
+  }
+  &:disabled {
+    cursor: not-allowed;
+  }
+  &:disabled:not([data-chosen]) {
+    opacity: 0.45;
+  }
+}
+
+.practice-rating-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--foreground);
+
+  [data-rating="again"] & {
+    color: var(--destructive);
+  }
+  & kbd {
+    color: var(--muted-foreground);
+  }
+}
+
+.practice-rating-interval {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-rating {
+    transition: none;
+  }
+}
+
+/* Navigation closes the sheet; space separates it from the choices, not a rule. */
+.practice-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 2.25rem;
+}
+
+.practice-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-family: var(--font-reading);
+  font-size: clamp(2.25rem, 2rem + 1vw, 2.75rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.practice-score-total {
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted-foreground);
+}
+
+/* Result: built like the app's "next study" card. What happened and what comes next on the left,
+   the ways forward on the right of the same row; then how it went, as one strip with its key. */
+.result-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem 2rem;
+
+  /* The text yields (it wraps); the actions keep their place at the end of the row. */
+  & > :first-child {
+    min-width: 0;
+    flex: 1 1 16rem;
+  }
+  & > .practice-actions {
+    flex: none;
+  }
+  & .practice-kicker {
+    margin-bottom: 0.375rem;
+  }
+}
+.result-subtitle {
+  margin-top: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.practice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  @media (max-width: 30rem) {
+    width: 100%;
+    flex-direction: column-reverse;
+    & > * {
+      width: 100%;
+    }
+  }
+}
+
+.practice-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+
+  & h2 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  & span {
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.practice-review-row {
+  display: grid;
+  width: calc(100% + 1.5rem);
+  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.875rem;
+  margin-left: -0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  text-align: left;
+  transition: background-color var(--transition-fast);
+  outline: none;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: color-mix(in oklab, var(--foreground) 4%, var(--background));
+    }
+  }
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--ring) 55%, transparent);
+  }
+  &[data-pending] .text-muted-foreground {
+    color: var(--destructive);
+  }
+}
+
+.practice-review-number {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  box-shadow: inset 0 0 0 1px var(--input);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Static tally on the same instrument used to rate. */
+.practice-tally {
+  font-family: var(--font-reading);
+  font-size: 1.5rem;
+  line-height: 1;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Result review: questions as readable rows; the open one shows its alternatives in place. */
+.result-list {
+  display: grid;
+  margin-top: 1rem;
+  border-top: 1px solid var(--line-subtle);
+}
+.result-item {
+  border-bottom: 1px solid var(--line-subtle);
+}
+.result-row {
+  display: grid;
+  width: calc(100% + 1rem);
+  grid-template-columns: 1.75rem minmax(0, 1fr) 1rem;
+  align-items: start;
+  gap: 0.875rem;
+  margin-inline: -0.5rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: var(--radius);
+  text-align: left;
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--ring) 50%, transparent);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: var(--row-hover);
+    }
+    &:hover .result-row-text,
+    &:hover .result-row-chevron {
+      color: var(--foreground);
+    }
+  }
+}
+
+/* Question number tinted by outcome: distinct from the ✓/✕ seals of the alternatives. */
+.result-badge {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+
+  &[data-outcome="correct"] {
+    background: color-mix(in oklab, var(--success) 14%, var(--card));
+    color: var(--success);
+  }
+  &[data-outcome="incorrect"] {
+    background: color-mix(in oklab, var(--destructive) 12%, var(--card));
+    color: var(--destructive);
+  }
+}
+.result-row-text {
+  padding-top: 0.125rem;
+  font-family: var(--font-reading);
+  font-size: 1.0625rem;
+  line-height: 1.45;
+  color: color-mix(in oklab, var(--foreground) 82%, transparent);
+  transition: color var(--transition-fast);
+
+  [data-open] & {
+    color: var(--foreground);
+  }
+}
+.result-row-chevron {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.3125rem;
+  color: var(--muted-foreground);
+  transition:
+    rotate 220ms var(--ease-out),
+    color var(--transition-fast);
+
+  [data-open] & {
+    rotate: 180deg;
+  }
+}
+.result-detail {
+  padding: 0 0.25rem 1.25rem 2.875rem;
+
+  & .choices {
+    margin-top: 0.25rem;
+  }
+}
+
+/* The attempt's closing moment: one centered axis for figure, indicators and next actions. */
+.result-summary {
+  display: grid;
+  gap: 1.75rem;
+}
+
+@media (max-width: 30rem) {
+  .result-detail {
+    padding-left: 0;
+  }
+}

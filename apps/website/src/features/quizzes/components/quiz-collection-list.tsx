@@ -1,21 +1,20 @@
 import type { QuizCollectionSummary } from "@lazuli/shared";
-import { BarChart3Icon, SquareCheckBig, HistoryIcon, PlayIcon } from "lucide-react";
-import { Link } from "react-router";
+import { PlayIcon } from "@/components/icons.tsx";
+import { useState } from "react";
 
 import { StudyCollectionActions } from "@/components/study-collection-actions.tsx";
-import { StudyCollectionCard, StudyCollectionMetric } from "@/components/study-collection-card.tsx";
+import {
+  StudyCollectionCard,
+  StudyCollectionNote,
+  StudyStrip,
+} from "@/components/study-collection-card.tsx";
 import { StudyCollectionIdentity } from "@/components/study-collection-identity.tsx";
 import { StudyCollectionOpenAction } from "@/components/study-collection-open-action.tsx";
 import { QuizCollectionMark } from "@/components/quiz-collection-mark.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { formatMediumDateTime } from "@/lib/date-format.ts";
 import type { StudyCollectionAction } from "@/lib/study-actions.ts";
 import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
-
-const scoreLabel = (score: QuizCollectionSummary["lastScore"]) =>
-  score
-    ? `${score.correctAnswers} de ${score.totalQuestions} · ${Math.round(score.rate * 100)}%`
-    : "Ainda não realizado";
+import { QuizStartDialog } from "./quiz-start-dialog.tsx";
 
 export const QuizCollectionList = ({
   collections,
@@ -25,86 +24,108 @@ export const QuizCollectionList = ({
   collections: QuizCollectionSummary[];
   onAction: (action: StudyCollectionAction, collection: QuizCollectionSummary) => void;
   query: string;
-}) => (
-  <div className="space-y-2">
-    {collections.map((collection) => (
-      <StudyCollectionCard
-        favorite={<FavoriteButton kind="quizzes" id={collection.id} title={collection.title} />}
-        actions={
-          <>
-            <StudyCollectionOpenAction
-              className={collection.archivedAt ? "col-span-2" : undefined}
+}) => {
+  // Starting opens the dialog here, over the list: never through the editor, where answers show.
+  const [starting, setStarting] = useState<string | null>(null);
+  return (
+    <div className="space-y-2">
+      {collections.map((collection) => (
+        <StudyCollectionCard
+          favorite={<FavoriteButton kind="quizzes" id={collection.id} title={collection.title} />}
+          actions={
+            <>
+              <StudyCollectionOpenAction
+                className={collection.archivedAt ? "col-span-2" : undefined}
+                href={`/quizzes/${collection.id}`}
+                title={collection.title}
+              />
+              {!collection.archivedAt && (
+                <Button
+                  className="w-full sm:w-auto"
+                  disabled={collection.totalQuestions === 0}
+                  onClick={() => setStarting(collection.id)}
+                  size="sm"
+                  variant={collection.totalQuestions ? "default" : "secondary"}
+                >
+                  <PlayIcon /> Iniciar
+                </Button>
+              )}
+              <StudyCollectionActions
+                favoriteTarget={{ kind: "quizzes", id: collection.id }}
+                archived={Boolean(collection.archivedAt)}
+                onArchive={() => onAction("archive", collection)}
+                onDelete={() => onAction("delete", collection)}
+                onEdit={() => onAction("edit", collection)}
+                onRestore={() => onAction("restore", collection)}
+                title={collection.title}
+              />
+            </>
+          }
+          identity={
+            <StudyCollectionIdentity
               href={`/quizzes/${collection.id}`}
+              icon={<QuizCollectionMark />}
+              metadata={collection.project?.title ?? "Sem projeto"}
+              projectTitle={collection.project?.title}
+              query={query}
               title={collection.title}
             />
-            {!collection.archivedAt && (
-              <Button
-                asChild={collection.totalQuestions > 0}
-                className="w-full sm:w-auto"
-                disabled={collection.totalQuestions === 0}
-                size="sm"
-                variant={collection.totalQuestions ? "default" : "secondary"}
-              >
-                {collection.totalQuestions > 0 ? (
-                  <Link to={`/quizzes/${collection.id}?start=true`}>
-                    <PlayIcon /> Iniciar
-                  </Link>
-                ) : (
-                  <>
-                    <PlayIcon /> Iniciar
-                  </>
-                )}
-              </Button>
-            )}
-            <StudyCollectionActions
-              favoriteTarget={{ kind: "quizzes", id: collection.id }}
-              archived={Boolean(collection.archivedAt)}
-              onArchive={() => onAction("archive", collection)}
-              onDelete={() => onAction("delete", collection)}
-              onEdit={() => onAction("edit", collection)}
-              onRestore={() => onAction("restore", collection)}
-              title={collection.title}
-            />
-          </>
-        }
-        identity={
-          <StudyCollectionIdentity
-            href={`/quizzes/${collection.id}`}
-            icon={<QuizCollectionMark />}
-            metadata={collection.project?.title ?? "Sem projeto"}
-            projectTitle={collection.project?.title}
-            query={query}
-            title={collection.title}
+          }
+          key={collection.id}
+        >
+          <StudyStrip
+            emptyLabel={
+              collection.totalQuestions === 0 ? "Nenhuma questão ainda" : "Ainda não realizado"
+            }
+            label={
+              collection.lastScore
+                ? `Última tentativa: ${collection.lastScore.correctAnswers} de ${collection.lastScore.totalQuestions} corretas`
+                : "Nenhuma tentativa concluída"
+            }
+            noun={{ singular: "questão", plural: "questões" }}
+            segments={
+              collection.lastScore
+                ? [
+                    {
+                      count: collection.lastScore.correctAnswers,
+                      label:
+                        collection.lastScore.correctAnswers === 1
+                          ? "correta na última tentativa"
+                          : "corretas na última tentativa",
+                      tone: "correct",
+                    },
+                    {
+                      count:
+                        collection.lastScore.totalQuestions - collection.lastScore.correctAnswers,
+                      // The strip shows the latest attempt; when it is the only segment it must say so,
+                      // or it reads as contradicting "melhor resultado".
+                      label: `${
+                        collection.lastScore.totalQuestions -
+                          collection.lastScore.correctAnswers ===
+                        1
+                          ? "errada"
+                          : "erradas"
+                      }${collection.lastScore.correctAnswers ? "" : " na última tentativa"}`,
+                      tone: "incorrect",
+                    },
+                  ]
+                : []
+            }
           />
-        }
-        key={collection.id}
-      >
-        <StudyCollectionMetric
-          icon={<SquareCheckBig aria-hidden="true" className="size-4" />}
-          label="Questões"
-          value={`${collection.totalQuestions} ${collection.totalQuestions === 1 ? "questão" : "questões"}`}
+          <StudyCollectionNote>
+            {`${collection.totalQuestions} ${collection.totalQuestions === 1 ? "questão" : "questões"}`}
+            {collection.bestScoreRate !== null &&
+              ` · melhor resultado ${Math.round(collection.bestScoreRate * 100)}%`}
+          </StudyCollectionNote>
+        </StudyCollectionCard>
+      ))}
+      {starting && (
+        <QuizStartDialog
+          collectionId={starting}
+          open
+          onOpenChange={(open) => !open && setStarting(null)}
         />
-        <StudyCollectionMetric
-          description={
-            collection.lastAttemptAt
-              ? `Última em ${formatMediumDateTime(collection.lastAttemptAt)}`
-              : "Nenhuma tentativa concluída"
-          }
-          icon={<HistoryIcon aria-hidden="true" className="size-4" />}
-          label="Tentativas"
-          value={collection.totalAttempts}
-        />
-        <StudyCollectionMetric
-          description={
-            collection.bestScoreRate === null
-              ? "Sem melhor pontuação"
-              : `Melhor: ${Math.round(collection.bestScoreRate * 100)}%`
-          }
-          icon={<BarChart3Icon aria-hidden="true" className="size-4" />}
-          label="Última pontuação"
-          value={scoreLabel(collection.lastScore)}
-        />
-      </StudyCollectionCard>
-    ))}
-  </div>
-);
+      )}
+    </div>
+  );
+};

@@ -1,34 +1,14 @@
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  CheckCircle2Icon,
-  CircleIcon,
-  PlusIcon,
-  Trash2Icon,
-} from "lucide-react";
-import { useMemo, useState, type ComponentProps } from "react";
+import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon } from "@/components/icons.tsx";
+import { useId, useMemo, useState } from "react";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
+import { ChoiceSeal } from "@/components/study-answer-choice.tsx";
+import "./quiz-alternatives-field.css";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
+import { Textarea } from "@/components/ui/textarea.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
-import { cn } from "@/lib/utils.ts";
 
 export type QuizOptionDraft = { id: string; text: string; isCorrect: boolean };
-
-const AlternativeAction = ({
-  "aria-label": label,
-  ...props
-}: ComponentProps<typeof Button> & { "aria-label": string }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <span className="inline-flex">
-        <Button aria-label={label} {...props} />
-      </span>
-    </TooltipTrigger>
-    <TooltipContent>{label}</TooltipContent>
-  </Tooltip>
-);
 
 const normalizeOptionText = (text: string) => text.trim().toLocaleLowerCase("pt-BR");
 
@@ -77,21 +57,74 @@ export const QuizAlternativesField = ({
   const hasValidOptionCount = options.length >= 2 && options.length <= 6;
   const hasEmptyOption = options.some(({ text }) => !text.trim());
   const hasSingleCorrectOption = options.filter(({ isCorrect }) => isCorrect).length === 1;
+  const headingId = useId();
 
   return (
-    <fieldset className="@container/alternatives space-y-3">
-      <legend className="mb-2 text-sm font-medium">Alternativas</legend>
+    <fieldset aria-labelledby={headingId} className="space-y-2">
+      {/* The add action lives with the heading, so it is visible before the list, however long. */}
+      <div className="flex min-h-8 items-center justify-between gap-3">
+        <span className="text-sm font-medium" id={headingId}>
+          Alternativas
+        </span>
+        {!readOnly && (
+          <Button
+            disabled={options.length >= 6}
+            onClick={() =>
+              onChange([...options, { id: crypto.randomUUID(), text: "", isCorrect: false }])
+            }
+            type="button"
+            variant="ghost"
+          >
+            <PlusIcon /> Adicionar
+          </Button>
+        )}
+      </div>
       {options.map((option, index) => {
         const duplicated = duplicateOptionIds.has(option.id);
         const errorId = `quiz-option-${option.id}-error`;
         return (
           <div
-            className="grid gap-x-2 rounded-lg bg-background/70 p-2 @min-[520px]/alternatives:grid-cols-[minmax(0,1fr)_auto]"
+            className="alternative-row"
+            data-correct={option.isCorrect || undefined}
             key={option.id}
           >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  aria-label={
+                    option.isCorrect
+                      ? `Alternativa ${index + 1}: resposta correta`
+                      : `Marcar alternativa ${index + 1} como correta`
+                  }
+                  aria-pressed={option.isCorrect}
+                  className="alternative-seal"
+                  disabled={readOnly}
+                  onClick={() =>
+                    onChange(
+                      options.map((item) => ({
+                        ...item,
+                        isCorrect: item.id === option.id,
+                      })),
+                    )
+                  }
+                  type="button"
+                >
+                  <ChoiceSeal
+                    filled={false}
+                    index={index}
+                    outcome={option.isCorrect ? "correct" : undefined}
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {option.isCorrect ? "Resposta correta" : "Marcar como correta"}
+              </TooltipContent>
+            </Tooltip>
             <div className="min-w-0">
-              <Input
-                className="border-input/55"
+              <Textarea
+                data-quiz-alternative
+                className="min-h-0 resize-none border-transparent bg-transparent px-2 py-1 text-sm leading-6 shadow-none [field-sizing:content] hover:border-input focus-visible:bg-card"
+                rows={1}
                 aria-describedby={duplicated ? errorId : undefined}
                 aria-invalid={duplicated}
                 aria-label={`Alternativa ${index + 1}`}
@@ -107,89 +140,65 @@ export const QuizAlternativesField = ({
                 readOnly={readOnly}
                 value={option.text}
               />
-              <div
-                aria-hidden={!duplicated}
-                aria-live="polite"
-                className={cn(
-                  "grid transition-[grid-template-rows,opacity] duration-150 ease-out",
-                  duplicated ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-                )}
-              >
-                <p className="min-h-0 overflow-hidden pt-1 text-xs text-destructive" id={errorId}>
+              {duplicated && (
+                <p role="alert" className="pt-1 text-xs text-destructive" id={errorId}>
                   Esta alternativa está repetida.
                 </p>
-              </div>
+              )}
             </div>
-            <div className="flex h-9 items-center justify-end gap-1">
+            {/* One row of equal controls aligned to the first line of the answer. */}
+            <div className="flex items-center gap-0.5 pt-0.5">
+              {([-1, 1] as const).map((direction) => {
+                const impossible = direction === -1 ? index === 0 : index === options.length - 1;
+                const label = `Mover alternativa ${index + 1} para ${direction === -1 ? "cima" : "baixo"}`;
+                const Icon = direction === -1 ? ArrowUpIcon : ArrowDownIcon;
+                return (
+                  <Tooltip key={direction}>
+                    <TooltipTrigger asChild>
+                      <span className={impossible ? "invisible inline-flex" : "inline-flex"}>
+                        <Button
+                          aria-hidden={impossible || undefined}
+                          aria-label={label}
+                          size="icon-sm"
+                          tabIndex={impossible ? -1 : undefined}
+                          type="button"
+                          variant="ghost"
+                          disabled={readOnly || impossible}
+                          onClick={() => {
+                            const next = [...options];
+                            [next[index], next[index + direction]] = [
+                              next[index + direction]!,
+                              next[index]!,
+                            ];
+                            onChange(next);
+                          }}
+                        >
+                          <Icon />
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{label}</TooltipContent>
+                  </Tooltip>
+                );
+              })}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    aria-label={
-                      option.isCorrect ? "Resposta correta" : "Marcar como resposta correta"
-                    }
-                    aria-pressed={option.isCorrect}
-                    className={cn(
-                      option.isCorrect &&
-                        "border-success/60 bg-success/5 text-success hover:border-success/70 hover:bg-success/15 hover:text-success",
-                    )}
-                    disabled={readOnly}
-                    onClick={() =>
-                      onChange(
-                        options.map((item) => ({
-                          ...item,
-                          isCorrect: item.id === option.id,
-                        })),
-                      )
-                    }
-                    size="icon-sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    {option.isCorrect ? <CheckCircle2Icon /> : <CircleIcon />}
-                  </Button>
+                  <span className="inline-flex">
+                    <Button
+                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      size="icon-sm"
+                      variant="ghost"
+                      type="button"
+                      disabled={readOnly || options.length <= 2}
+                      aria-label={`Remover alternativa ${index + 1}`}
+                      onClick={() => setPendingRemoval(option.id)}
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  </span>
                 </TooltipTrigger>
-                <TooltipContent>
-                  {option.isCorrect ? "Resposta correta" : "Marcar como correta"}
-                </TooltipContent>
+                <TooltipContent>Remover alternativa {index + 1}</TooltipContent>
               </Tooltip>
-              <AlternativeAction
-                aria-label={`Mover alternativa ${index + 1} para cima`}
-                disabled={readOnly || index === 0}
-                onClick={() => {
-                  const next = [...options];
-                  [next[index - 1], next[index]] = [next[index]!, next[index - 1]!];
-                  onChange(next);
-                }}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <ArrowUpIcon />
-              </AlternativeAction>
-              <AlternativeAction
-                aria-label={`Mover alternativa ${index + 1} para baixo`}
-                disabled={readOnly || index === options.length - 1}
-                onClick={() => {
-                  const next = [...options];
-                  [next[index], next[index + 1]] = [next[index + 1]!, next[index]!];
-                  onChange(next);
-                }}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <ArrowDownIcon />
-              </AlternativeAction>
-              <AlternativeAction
-                aria-label={`Remover alternativa ${index + 1}`}
-                disabled={readOnly || options.length <= 2}
-                onClick={() => setPendingRemoval(option.id)}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <Trash2Icon />
-              </AlternativeAction>
             </div>
           </div>
         );
@@ -199,19 +208,7 @@ export const QuizAlternativesField = ({
           Preencha de duas a seis alternativas e marque uma única resposta correta.
         </p>
       )}
-      {!readOnly && (
-        <Button
-          className="h-11 w-full border-dashed hover:border-primary hover:bg-primary/5 hover:text-primary"
-          disabled={options.length >= 6}
-          onClick={() =>
-            onChange([...options, { id: crypto.randomUUID(), text: "", isCorrect: false }])
-          }
-          type="button"
-          variant="outline"
-        >
-          <PlusIcon /> Adicionar alternativa
-        </Button>
-      )}
+
       <ConfirmationDialog
         actionLabel="Remover alternativa"
         destructive

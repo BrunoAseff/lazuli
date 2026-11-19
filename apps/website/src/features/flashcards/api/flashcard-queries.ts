@@ -7,6 +7,7 @@ import type {
   UpdateFlashcardInput,
 } from "@lazuli/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import { flashcardCollectionKeys } from "./flashcard-collection-queries.ts";
@@ -95,6 +96,28 @@ export const useAbandonPracticeSession = (collectionId: string, sessionId: strin
       ]);
     },
   });
+};
+
+/**
+ * Due times pass while the page is open: refresh the collection (list, availability, summary)
+ * when the next review comes due, so "Revisar agora" and the Praticar button agree.
+ */
+export const useRefreshWhenDue = (
+  collectionId: string,
+  nextPracticeAt: string | null | undefined,
+) => {
+  const client = useQueryClient();
+  useEffect(() => {
+    if (!nextPracticeAt) return;
+    const delay = new Date(nextPracticeAt).getTime() - Date.now();
+    // Past due is already reflected; beyond the timer limit a reload will happen first.
+    if (delay <= 0 || delay > 2_147_483_647) return;
+    const timer = window.setTimeout(() => {
+      void client.invalidateQueries({ queryKey: flashcardKeys.collection(collectionId) });
+      void client.invalidateQueries({ queryKey: flashcardCollectionKeys.all });
+    }, delay + 1_000);
+    return () => window.clearTimeout(timer);
+  }, [client, collectionId, nextPracticeAt]);
 };
 
 export const useFlashcardCollection = (collectionId: string) =>

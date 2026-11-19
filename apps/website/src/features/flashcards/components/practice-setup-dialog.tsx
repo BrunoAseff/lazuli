@@ -1,9 +1,11 @@
-import { LoaderCircleIcon } from "lucide-react";
+import { LoaderCircleIcon } from "@/components/icons.tsx";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
+import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
+import { QuantitySelector } from "@/components/quantity-selector.tsx";
 import {
   Dialog,
   DialogCancelButton,
@@ -13,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
-import { cn } from "@/lib/utils.ts";
 import { useCreatePracticeSession, usePracticeAvailability } from "../api/flashcard-queries.ts";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 
@@ -38,7 +39,9 @@ export const PracticeSetupDialog = ({
   const availability = usePracticeAvailability(collectionId, open);
   const create = useCreatePracticeSession(collectionId);
   const [size, setSize] = useState<SessionSize>(20);
+  const [confirmRestart, setConfirmRestart] = useState(false);
   const active = availability.data?.activeSession;
+  const count = Math.min(size, availability.data?.totalAvailable ?? 0);
 
   const start = async (abandonActive = false) => {
     try {
@@ -48,6 +51,7 @@ export const PracticeSetupDialog = ({
         abandonActive,
       });
       onOpenChange(false);
+      setConfirmRestart(false);
       void navigate(`/flashcards/${collectionId}/practice/${session.id}`);
     } catch (error) {
       toast.error(getFlashcardCollectionErrorMessage(error, "Não foi possível iniciar a prática."));
@@ -55,101 +59,125 @@ export const PracticeSetupDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Preparar prática</DialogTitle>
-          <DialogDescription>
-            A sessão fica salva. Você pode sair e continuar depois sem perder as respostas enviadas.
-          </DialogDescription>
-        </DialogHeader>
-        {availability.isPending ? (
-          <div className="flex min-h-36 items-center justify-center">
-            <LoaderCircleIcon className="size-5 animate-spin" />
-          </div>
-        ) : availability.isError ? (
-          <div className="border border-dashed p-6 text-center text-sm">
-            <p>Não foi possível preparar a prática.</p>
-            <Button className="mt-3" onClick={() => void availability.refetch()} variant="outline">
-              Tentar novamente
-            </Button>
-          </div>
-        ) : active ? (
-          <div className="space-y-5">
-            <div className="rounded-xl border bg-muted/35 p-4">
-              <p className="font-medium">Há uma prática em andamento</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {active.reviewedCards} de {active.totalCards} flashcards revisados.
-              </p>
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) setConfirmRestart(false);
+          onOpenChange(next);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Preparar prática</DialogTitle>
+            <DialogDescription>
+              A sessão fica salva. Você pode sair e continuar depois sem perder as respostas
+              enviadas.
+            </DialogDescription>
+          </DialogHeader>
+          {availability.isPending ? (
+            <div className="flex min-h-36 items-center justify-center">
+              <LoaderCircleIcon className="size-5 animate-spin" />
             </div>
-            <DialogFooter>
+          ) : availability.isError ? (
+            <div className="border border-dashed p-6 text-center text-sm">
+              <p>Não foi possível preparar a prática.</p>
               <Button
-                onClick={() => {
-                  onOpenChange(false);
-                  void navigate(`/flashcards/${collectionId}/practice/${active.id}`);
-                }}
+                className="mt-3"
+                onClick={() => void availability.refetch()}
                 variant="outline"
               >
-                Continuar prática
+                Tentar novamente
               </Button>
-              <Button disabled={create.isPending} onClick={() => void start(true)}>
-                Abandonar e iniciar nova
-              </Button>
-            </DialogFooter>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-3 gap-2">
-              <PracticeCount
-                label={{ singular: "Novo", plural: "Novos" }}
-                value={availability.data?.newCards ?? 0}
-              />
-              <PracticeCount
-                label={{ singular: "Vencido", plural: "Vencidos" }}
-                value={availability.data?.dueCards ?? 0}
-              />
-              <PracticeCount
-                label={{ singular: "Disponível", plural: "Disponíveis" }}
-                value={availability.data?.totalAvailable ?? 0}
-              />
             </div>
-            <fieldset>
-              <legend className="mb-2 text-sm font-medium">Tamanho da sessão</legend>
-              <div className="grid grid-cols-4 gap-2">
-                {sizes.map((option) => (
-                  <button
-                    aria-pressed={size === option.value}
-                    className={cn(
-                      "rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-muted",
-                      size === option.value && "border-foreground bg-muted font-medium",
-                    )}
-                    key={option.label}
-                    onClick={() => setSize(option.value)}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
+          ) : active ? (
+            <div className="space-y-5">
+              <div className="rounded-xl border bg-muted/35 p-4">
+                <p className="font-medium">Há uma prática em andamento</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {active.reviewedCards} de {active.totalCards} flashcards revisados.
+                </p>
               </div>
-            </fieldset>
-            <DialogFooter>
-              <DialogCancelButton onClick={() => onOpenChange(false)}>Cancelar</DialogCancelButton>
-              <Button
-                disabled={
-                  availability.data?.archived ||
-                  !availability.data?.totalAvailable ||
-                  create.isPending
-                }
-                onClick={() => void start()}
-              >
-                {create.isPending && <LoaderCircleIcon className="animate-spin" />}
-                Iniciar prática
-              </Button>
-            </DialogFooter>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  disabled={create.isPending}
+                  onClick={() => setConfirmRestart(true)}
+                >
+                  Iniciar outra
+                </Button>
+                <Button
+                  onClick={() => {
+                    onOpenChange(false);
+                    void navigate(`/flashcards/${collectionId}/practice/${active.id}`);
+                  }}
+                >
+                  Continuar prática
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-3 gap-2">
+                <PracticeCount
+                  label={{ singular: "Novo", plural: "Novos" }}
+                  value={availability.data?.newCards ?? 0}
+                />
+                <PracticeCount
+                  label={{ singular: "Para revisar", plural: "Para revisar" }}
+                  value={availability.data?.dueCards ?? 0}
+                />
+                <PracticeCount
+                  label={{ singular: "Disponível", plural: "Disponíveis" }}
+                  value={availability.data?.totalAvailable ?? 0}
+                />
+              </div>
+              {/* A limit only matters when there is more to study than the smallest session holds. */}
+              {(availability.data?.totalAvailable ?? 0) >
+                Math.min(...sizes.map(({ value }) => value)) && (
+                <fieldset>
+                  <legend className="mb-2 text-sm font-medium">Até quantos flashcards?</legend>
+                  <QuantitySelector
+                    label="Limite de flashcards"
+                    value={size}
+                    options={sizes.map((option) => option.value)}
+                    onChange={(value) => setSize(value as SessionSize)}
+                  />
+                </fieldset>
+              )}
+              <DialogFooter>
+                <DialogCancelButton onClick={() => onOpenChange(false)}>
+                  Cancelar
+                </DialogCancelButton>
+                <Button
+                  pending={create.isPending}
+                  disabled={
+                    availability.data?.archived ||
+                    !availability.data?.totalAvailable ||
+                    create.isPending
+                  }
+                  onClick={() => void start()}
+                >
+                  {count > 0
+                    ? `Estudar ${count} ${count === 1 ? "flashcard" : "flashcards"}`
+                    : "Iniciar prática"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <ConfirmationDialog
+        open={confirmRestart && open}
+        onOpenChange={setConfirmRestart}
+        title="Iniciar outra prática?"
+        description="A prática atual será encerrada e não poderá ser retomada. As revisões já enviadas continuam no seu histórico."
+        actionLabel={create.isPending ? "Preparando…" : "Encerrar e iniciar outra"}
+        disabled={create.isPending}
+        destructive
+        onConfirm={() => start(true)}
+      />
+    </>
   );
 };
 
@@ -160,7 +188,7 @@ const PracticeCount = ({
   label: { singular: string; plural: string };
   value: number;
 }) => (
-  <div className="grid min-w-0 place-items-center gap-1 rounded-xl border bg-card px-2 py-3 text-center">
+  <div className="grid min-w-0 place-items-center gap-1 px-2 py-2 text-center">
     <p className="whitespace-nowrap text-xs text-muted-foreground">
       {value === 1 ? label.singular : label.plural}
     </p>

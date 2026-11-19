@@ -1,11 +1,42 @@
 import type { StudyCollectionStatus } from "@lazuli/shared";
-import { ArchiveIcon, ArchiveRestoreIcon, MoveRightIcon, Trash2Icon } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArchiveIcon, ArchiveRestoreIcon, MoveRightIcon, Trash2Icon } from "@/components/icons.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 
-export const StudyItemSummaryBar = ({
+const BatchAction = ({
   children,
+  label,
+  onClick,
+  destructive = false,
+}: {
+  children: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  destructive?: boolean;
+}) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button
+        aria-label={label}
+        className={
+          destructive
+            ? "text-destructive hover:bg-destructive/10 hover:text-destructive"
+            : undefined
+        }
+        onClick={onClick}
+        size="icon-sm"
+        variant="ghost"
+      >
+        {children}
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>{label}</TooltipContent>
+  </Tooltip>
+);
+
+/** Contents of the selection row; StudyIndexTools owns its place and transition. */
+export const StudyItemSummaryBar = ({
   count,
   itemLabel,
   onClear,
@@ -14,7 +45,6 @@ export const StudyItemSummaryBar = ({
   onToggleArchive,
   status,
 }: {
-  children: ReactNode;
   count: number;
   itemLabel: { plural: string; singular: string };
   onClear: () => void;
@@ -23,44 +53,27 @@ export const StudyItemSummaryBar = ({
   onToggleArchive: () => void;
   status: StudyCollectionStatus;
 }) => (
-  <div
-    className={`flex min-h-14 shrink-0 items-center border-y border-border/45 bg-card/35 py-2 text-xs text-muted-foreground ${count ? "px-3" : "px-4"}`}
-  >
-    {count ? (
-      <div className="flex w-full min-w-0 items-center gap-1">
-        <span className="mr-auto truncate text-foreground">
-          {count} {count === 1 ? itemLabel.singular : itemLabel.plural}
-        </span>
-        <Button onClick={onClear} size="xs" variant="ghost">
-          Desmarcar
-        </Button>
-        {onMove && (
-          <Button aria-label="Mover selecionados" onClick={onMove} size="icon-sm" variant="outline">
-            <MoveRightIcon />
-          </Button>
-        )}
-        <Button
-          aria-label={status === "active" ? "Arquivar selecionados" : "Restaurar selecionados"}
-          onClick={onToggleArchive}
-          size="icon-sm"
-          variant="outline"
-        >
-          {status === "active" ? <ArchiveIcon /> : <ArchiveRestoreIcon />}
-        </Button>
-        <Button
-          aria-label="Excluir selecionados"
-          className="text-destructive hover:text-destructive"
-          onClick={onDelete}
-          size="icon-sm"
-          variant="outline"
-        >
-          <Trash2Icon />
-        </Button>
-      </div>
-    ) : (
-      <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-start gap-x-2 gap-y-1.5">
-        {children}
-      </div>
+  <>
+    <span className="min-w-0 truncate">
+      <span className="tabular-nums">{count}</span>{" "}
+      {count === 1 ? itemLabel.singular : itemLabel.plural}
+    </span>
+    <Button className="mr-auto text-muted-foreground" onClick={onClear} size="xs" variant="ghost">
+      Desmarcar
+    </Button>
+    {onMove && (
+      <BatchAction label="Mover selecionados" onClick={onMove}>
+        <MoveRightIcon />
+      </BatchAction>
     )}
-  </div>
+    <BatchAction
+      label={status === "active" ? "Arquivar selecionados" : "Restaurar selecionados"}
+      onClick={onToggleArchive}
+    >
+      {status === "active" ? <ArchiveIcon /> : <ArchiveRestoreIcon />}
+    </BatchAction>
+    <BatchAction destructive label="Excluir selecionados" onClick={onDelete}>
+      <Trash2Icon />
+    </BatchAction>
+  </>
 );

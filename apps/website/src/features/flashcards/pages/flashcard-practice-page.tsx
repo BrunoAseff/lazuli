@@ -1,13 +1,22 @@
+import { isNotFound, ResourceUnavailable } from "@/components/not-found-page.tsx";
 import { useCreateBlockNote } from "@blocknote/react";
+import { BackLink } from "@/components/nav-link.tsx";
 import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
 import type { FlashcardPracticeSession, FlashcardRating } from "@lazuli/shared";
-import { ArrowLeftIcon, LoaderCircleIcon } from "lucide-react";
+import { LoaderCircleIcon } from "@/components/icons.tsx";
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { toast } from "sonner";
 
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { Button } from "@/components/ui/button.tsx";
-import { Progress } from "@/components/ui/progress.tsx";
+import { Kbd } from "@/components/ui/kbd.tsx";
+import "@/components/study-practice.css";
+import { StudyReveal } from "@/components/study-reveal.tsx";
+import { goldBurst } from "@/components/motion/gold-burst.ts";
+import { ResultDistribution } from "@/components/result-distribution.tsx";
+import { StudySessionProgress } from "@/components/study-session-progress.tsx";
 import {
   Tooltip,
   TooltipContent,
@@ -20,8 +29,7 @@ import {
   documentSchema,
   type LazuliDocumentBlock,
 } from "@/features/documents/editor/document-schema.tsx";
-import { cn } from "@/lib/utils.ts";
-import { formatMediumDateTime } from "@/lib/date-format.ts";
+import { formatUpcoming } from "@/lib/date-format.ts";
 import { MaterialReferencesButton } from "@/features/references/components/material-references-dialog.tsx";
 import {
   usePracticeAvailability,
@@ -58,28 +66,48 @@ const formatInterval = (seconds: number) => {
   return `${years} ano${years === 1 ? "" : "s"}`;
 };
 
+/**
+ * Where the card goes once rated: "Repetir" slides back the way it came (it will return),
+ * the others move on, and "Fácil" lifts away, set aside as known.
+ */
+const cardExit = (rating: FlashcardRating | null) =>
+  rating === "again"
+    ? { opacity: 0, x: 24 }
+    : rating === "easy"
+      ? { opacity: 0, y: -14, scale: 0.98 }
+      : { opacity: 0, x: -20 };
+
 const isEditableTarget = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
   (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
 export default function FlashcardPracticePage() {
   const { collectionId = "", sessionId = "" } = useParams();
-  const navigate = useNavigate();
   const practice = usePracticeSession(sessionId);
   const submit = useSubmitPracticeReview(sessionId, collectionId);
   const [revealed, setRevealed] = useState(false);
+  const [animateReveal, setAnimateReveal] = useState(false);
   const [failedRating, setFailedRating] = useState<FlashcardRating | null>(null);
+  // The rating in flight (kept lit), the key just pressed (shown as a press), and the last rating
+  // recorded, which decides where the card leaves to.
+  const [chosen, setChosen] = useState<FlashcardRating | null>(null);
+  const [pressed, setPressed] = useState<FlashcardRating | null>(null);
+  const lastRating = useRef<FlashcardRating | null>(null);
+  const questionRegion = useRef<HTMLElement>(null);
   const reviewAttempt = useRef<{
     itemId: string;
     rating: FlashcardRating;
     reviewId: string;
   } | null>(null);
   const itemId = practice.data?.currentItem?.id;
+  const reduced = useReducedMotion();
 
   useEffect(() => {
     setRevealed(false);
     setFailedRating(null);
+    setChosen(null);
     reviewAttempt.current = null;
+    questionRegion.current?.focus({ preventScroll: true });
   }, [itemId]);
   useEffect(() => () => releaseResolvedAssetUrls(), []);
   useEffect(() => {
@@ -87,13 +115,18 @@ export default function FlashcardPracticePage() {
       if (isEditableTarget(event.target) || submit.isPending || !practice.data?.currentItem) return;
       if (event.code === "Space" && !revealed) {
         event.preventDefault();
+        setAnimateReveal(false);
         setRevealed(true);
         return;
       }
       if (revealed && ["1", "2", "3", "4"].includes(event.key)) {
         event.preventDefault();
         const rating = ratings[Number(event.key) - 1];
-        if (rating && (!failedRating || failedRating === rating.value)) void review(rating.value);
+        if (rating && (!failedRating || failedRating === rating.value)) {
+          setPressed(rating.value);
+          window.setTimeout(() => setPressed(null), 140);
+          void review(rating.value);
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -107,16 +140,25 @@ export default function FlashcardPracticePage() {
         ? reviewAttempt.current
         : { itemId, rating, reviewId: crypto.randomUUID() };
     reviewAttempt.current = attempt;
+    setChosen(attempt.rating);
     try {
       await submit.mutateAsync({
         id: attempt.reviewId,
         itemId: attempt.itemId,
         rating: attempt.rating,
       });
+      // Remembered "easily": a few pyrite flecks rise from the choice before the card leaves.
+      if (attempt.rating === "easy") {
+        const origin = document.querySelector('.practice-rating[data-rating="easy"]');
+        if (origin) goldBurst(origin);
+      }
+      lastRating.current = attempt.rating;
       reviewAttempt.current = null;
       setFailedRating(null);
+      setChosen(null);
       setRevealed(false);
     } catch (error) {
+      setChosen(null);
       setFailedRating(attempt.rating);
       toast.error(
         getFlashcardCollectionErrorMessage(error, "Não foi possível registrar sua resposta."),
@@ -132,112 +174,123 @@ export default function FlashcardPracticePage() {
     );
   if (practice.isError || !practice.data)
     return (
-      <main className="mx-auto w-full max-w-3xl px-5 py-12 text-center">
-        <h1 className="font-heading text-3xl">Prática não encontrada</h1>
-        <Button asChild className="mt-5" variant="outline">
-          <Link to={`/flashcards/${collectionId}`}>Voltar à coleção</Link>
-        </Button>
-      </main>
+      <ResourceUnavailable
+        backLabel="Voltar à coleção"
+        backTo={`/flashcards/${collectionId}`}
+        notFound={isNotFound(practice.error) || !practice.isError}
+        onRetry={() => void practice.refetch()}
+        title="Prática não encontrada"
+      />
     );
 
   const session = practice.data;
   if (session.status !== "active" || !session.currentItem)
     return <PracticeSummary collectionId={collectionId} session={session} />;
-  const progress = session.totalCards
-    ? Math.round((session.reviewedCards / session.totalCards) * 100)
-    : 0;
 
+  const item = session.currentItem;
   return (
-    <main className="flex min-h-[calc(100vh-2px)] flex-1 flex-col px-5 py-7 sm:px-8 lg:px-12">
-      <div className="mx-auto flex w-full max-w-4xl items-center gap-4">
-        <Button
-          aria-label="Sair da prática"
-          onClick={() => navigate(`/flashcards/${collectionId}`)}
-          size="icon-sm"
-          variant="ghost"
-        >
-          <ArrowLeftIcon />
-        </Button>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{session.collectionTitle}</p>
-          <p className="text-xs text-muted-foreground">
-            {session.reviewedCards} de {session.totalCards} revisados
-          </p>
-        </div>
-        <span className="text-xs text-muted-foreground">
-          Espaço para revelar · 1–4 para avaliar
-        </span>
-      </div>
-      <Progress
-        aria-label={`${session.reviewedCards} de ${session.totalCards} flashcards revisados`}
-        className="mx-auto mt-4 h-1 w-full max-w-4xl"
-        value={progress}
+    <main className="practice">
+      <header className="practice-head">
+        <BackLink to={`/flashcards/${collectionId}`}>{session.collectionTitle}</BackLink>
+        <p className="practice-count">
+          <span className="text-foreground">{session.reviewedCards}</span> de {session.totalCards}
+        </p>
+      </header>
+      <StudySessionProgress
+        label={`${session.reviewedCards} de ${session.totalCards} flashcards revisados`}
+        className="practice-progress"
+        completed={session.reviewedCards}
+        total={session.totalCards}
       />
-      <div className="mx-auto mt-10 flex w-full max-w-3xl flex-col py-8 sm:mt-14 sm:py-10">
-        <section className="text-center" aria-labelledby="question-title">
-          <p
-            className="mb-5 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase"
-            id="question-title"
+      <AnimatePresence custom={lastRating.current} initial={false} mode="wait">
+        <motion.article
+          animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+          className="practice-stage practice-sheet"
+          custom={lastRating.current}
+          exit={reduced ? { opacity: 0 } : "leave"}
+          variants={{ leave: cardExit }}
+          initial={reduced ? { opacity: 0 } : { opacity: 0, x: 20 }}
+          key={item.id}
+          transition={{ duration: 0.18, ease: motionTokens.ease.standard }}
+        >
+          <section
+            ref={questionRegion}
+            tabIndex={-1}
+            className="outline-none"
+            aria-labelledby="question-title"
           >
-            Pergunta
-          </p>
-          <RichContent content={session.currentItem.card.question as LazuliDocumentBlock} />
-        </section>
-        {!revealed ? (
-          <Button className="mt-10 self-center" onClick={() => setRevealed(true)} size="lg">
-            Mostrar resposta
-          </Button>
-        ) : (
-          <>
-            <div className="my-9 h-px bg-border/45" />
-            <section className="text-center" aria-labelledby="answer-title">
-              <p
-                className="mb-5 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase"
-                id="answer-title"
+            <p className="practice-kicker" id="question-title">
+              Pergunta
+            </p>
+            <div className="practice-question">
+              <RichContent content={item.card.question as LazuliDocumentBlock} />
+            </div>
+          </section>
+          {!revealed ? (
+            <div className="practice-reveal">
+              <Button
+                onClick={(event) => {
+                  setAnimateReveal(event.detail > 0);
+                  setRevealed(true);
+                }}
+                size="lg"
               >
-                Resposta
-              </p>
-              <RichContent content={session.currentItem.card.answer as LazuliDocumentBlock} />
-            </section>
-            <TooltipProvider delayDuration={300}>
-              <div className="mt-10 grid gap-2 sm:grid-cols-4">
-                {ratings.map((rating) => {
-                  const preview = session.currentItem!.intervals.find(
-                    ({ rating: value }) => value === rating.value,
-                  );
-                  return (
-                    <Tooltip key={rating.value}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          className={cn(
-                            "h-auto flex-col gap-0.5 py-3",
-                            rating.value === "again" && "text-destructive",
-                          )}
-                          disabled={
-                            submit.isPending ||
-                            (failedRating !== null && failedRating !== rating.value)
-                          }
-                          onClick={() => void review(rating.value)}
-                          variant="outline"
-                        >
-                          <span>
-                            {rating.key} ·{" "}
-                            {failedRating === rating.value ? "Tentar novamente" : rating.label}
-                          </span>
-                          <span className="text-xs font-normal text-muted-foreground">
-                            {preview ? formatInterval(preview.intervalSeconds) : "—"}
-                          </span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent sideOffset={6}>{rating.help}</TooltipContent>
-                    </Tooltip>
-                  );
-                })}
+                Mostrar resposta
+                <Kbd>Espaço</Kbd>
+              </Button>
+            </div>
+          ) : (
+            <StudyReveal animated={animateReveal} label="Resposta do flashcard">
+              <section className="practice-answer" aria-labelledby="answer-title">
+                <p className="practice-kicker" id="answer-title">
+                  Resposta
+                </p>
+                <RichContent content={item.card.answer as LazuliDocumentBlock} />
+              </section>
+              <div className="practice-scale-label">
+                <span id="rating-title">Como foi lembrar?</span>
+                <span>Próxima revisão</span>
               </div>
-            </TooltipProvider>
-          </>
-        )}
-      </div>
+              <TooltipProvider delayDuration={400}>
+                <div aria-labelledby="rating-title" className="practice-scale" role="group">
+                  {ratings.map((rating) => {
+                    const preview = item.intervals.find(
+                      ({ rating: value }) => value === rating.value,
+                    );
+                    return (
+                      <Tooltip key={rating.value}>
+                        <TooltipTrigger asChild>
+                          <button
+                            className="practice-rating"
+                            data-chosen={chosen === rating.value || undefined}
+                            data-pressed={pressed === rating.value || undefined}
+                            data-rating={rating.value}
+                            disabled={
+                              submit.isPending ||
+                              (failedRating !== null && failedRating !== rating.value)
+                            }
+                            onClick={() => void review(rating.value)}
+                            type="button"
+                          >
+                            <span className="practice-rating-label">
+                              {failedRating === rating.value ? "Tentar novamente" : rating.label}
+                              <Kbd>{rating.key}</Kbd>
+                            </span>
+                            <span className="practice-rating-interval">
+                              {preview ? formatInterval(preview.intervalSeconds) : "—"}
+                            </span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent sideOffset={6}>{rating.help}</TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </TooltipProvider>
+            </StudyReveal>
+          )}
+        </motion.article>
+      </AnimatePresence>
     </main>
   );
 }
@@ -247,6 +300,7 @@ const RichContent = ({ content }: { content: LazuliDocumentBlock }) => {
     {
       schema: documentSchema,
       initialContent: content,
+      domAttributes: { editor: { role: "document" } },
       dictionary: lazuliBlockNoteDictionary,
       resolveFileUrl: resolveAssetUrl,
     },
@@ -274,62 +328,69 @@ const PracticeSummary = ({
   const correct = session.ratings.hard + session.ratings.good + session.ratings.easy;
   const completed = session.status === "completed";
   return (
-    <main className="mx-auto flex min-h-[75vh] w-full max-w-3xl flex-col justify-center px-5 py-12 text-center">
-      <p className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
-        {completed ? "Sessão concluída" : "Sessão encerrada"}
-      </p>
-      <h1 className="mt-3 font-heading text-4xl sm:text-5xl">
-        {completed ? "Prática finalizada" : "Prática encerrada"}
-      </h1>
-      <p className="mt-3 text-muted-foreground">
-        Você revisou {session.reviewedCards} flashcards. {correct} foram lembrados corretamente.
-      </p>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {collection.data?.dueCards
-          ? `${collection.data.dueCards} flashcards ainda estão disponíveis.`
-          : collection.data?.nextPracticeAt
-            ? `Próxima revisão em ${formatMediumDateTime(collection.data.nextPracticeAt)}.`
-            : "Nenhuma outra revisão está agendada."}
-      </p>
-      <div className="mt-8 flex flex-wrap justify-center gap-2">
-        {ratings.map((rating) => (
-          <div
-            className="grid min-w-28 grid-cols-[1fr_2ch] items-baseline gap-3 rounded-xl border border-border/45 bg-card px-4 py-3 text-left"
-            key={rating.value}
-          >
-            <p className="text-sm text-muted-foreground">{rating.label}</p>
-            <p className="text-right font-heading text-xl tabular-nums">
-              {session.ratings[rating.value]}
+    <main className="practice">
+      <header className="practice-head">
+        <BackLink to={`/flashcards/${collectionId}`}>{session.collectionTitle}</BackLink>
+      </header>
+      <section
+        className="practice-stage practice-sheet result-summary"
+        aria-labelledby="practice-summary-title"
+      >
+        <div className="result-head">
+          <div>
+            <p className="practice-kicker">{completed ? "Sessão concluída" : "Sessão encerrada"}</p>
+            <h1 className="page-title" id="practice-summary-title">
+              {session.reviewedCards}{" "}
+              {session.reviewedCards === 1 ? "flashcard revisado" : "flashcards revisados"}
+            </h1>
+            <p className="result-subtitle">
+              {correct} {correct === 1 ? "lembrado" : "lembrados"} ·{" "}
+              {collection.data?.dueCards
+                ? `${collection.data.dueCards} ainda ${collection.data.dueCards === 1 ? "disponível" : "disponíveis"}`
+                : collection.data?.nextPracticeAt
+                  ? `próxima revisão ${formatUpcoming(collection.data.nextPracticeAt)}`
+                  : "nenhuma revisão agendada"}
             </p>
           </div>
-        ))}
-      </div>
-      <div className="mt-8 flex flex-wrap justify-center gap-2">
-        <Button asChild variant="outline">
-          <Link to={`/flashcards/${collectionId}`}>Voltar à coleção</Link>
-        </Button>
-        <Button disabled={!availability.data?.totalAvailable} onClick={() => setSetupOpen(true)}>
-          {availability.data?.totalAvailable ? "Praticar mais" : "Nada pendente agora"}
-        </Button>
-      </div>
+          <div className="practice-actions">
+            {/* With nothing waiting, going back is the way forward, not a disabled button. */}
+            <Button asChild variant={availability.data?.totalAvailable ? "outline" : "default"}>
+              <Link to={`/flashcards/${collectionId}`}>Voltar à coleção</Link>
+            </Button>
+            {availability.data?.totalAvailable ? (
+              <Button onClick={() => setSetupOpen(true)}>Praticar mais</Button>
+            ) : null}
+          </div>
+        </div>
+        <ResultDistribution
+          label="Como foi lembrar"
+          parts={ratings.map((rating) => ({
+            count: session.ratings[rating.value],
+            label: rating.label,
+            tone: rating.value,
+          }))}
+        />
+      </section>
       {session.reviewedMaterials.some(({ referenceCount }) => referenceCount > 0) && (
-        <section className="mt-10 border-t border-border/45 pt-7 text-left">
-          <h2 className="font-heading text-2xl">Fontes dos flashcards revisados</h2>
-          <div className="mt-4 divide-y divide-border/45 border-y border-border/45">
+        <section className="practice-stage practice-sheet" aria-labelledby="practice-sources-title">
+          <header className="practice-section-head">
+            <h2 id="practice-sources-title">Fontes dos flashcards revisados</h2>
+          </header>
+          <ul className="mt-3 grid gap-1">
             {session.reviewedMaterials
               .filter(({ referenceCount }) => referenceCount > 0)
               .map((card) => (
-                <div className="flex min-w-0 items-center gap-4 py-3" key={card.id}>
-                  <p className="min-w-0 flex-1 truncate text-sm font-medium">
+                <li className="flex min-w-0 items-center gap-4 py-2" key={card.id}>
+                  <p className="min-w-0 flex-1 truncate text-sm">
                     {card.questionText || "Flashcard com imagem"}
                   </p>
                   <MaterialReferencesButton
                     count={card.referenceCount}
                     target={{ id: card.id, type: "flashcard" }}
                   />
-                </div>
+                </li>
               ))}
-          </div>
+          </ul>
         </section>
       )}
       <PracticeSetupDialog

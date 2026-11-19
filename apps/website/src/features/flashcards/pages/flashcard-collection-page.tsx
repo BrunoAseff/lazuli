@@ -1,3 +1,4 @@
+import { isNotFound, ResourceUnavailable } from "@/components/not-found-page.tsx";
 import {
   FLASHCARD_PAGE_SIZE,
   flashcardListQuerySchema,
@@ -9,30 +10,33 @@ import {
   ArrowLeftIcon,
   CalendarClockIcon,
   CalendarPlusIcon,
-  BookOpenCheckIcon,
-  ClockAlertIcon,
   FilterIcon,
   HistoryIcon,
   Layers3Icon,
   ListFilterIcon,
   PlusIcon,
-  RotateCcwIcon,
   Trash2Icon,
   UploadIcon,
-} from "lucide-react";
-import { useEffect, useState, type Ref } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+} from "@/components/icons.tsx";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { FilterSelect } from "@/components/filter-select.tsx";
 import { FilterCount } from "@/components/filter-count.tsx";
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { PaginationControls } from "@/components/pagination-controls.tsx";
-import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { SearchInput } from "@/components/search-input.tsx";
 import { StudyItemSummaryBar } from "@/components/study-item-summary-bar.tsx";
+import { StudyWorkspaceSkeleton } from "@/components/study-workspace-skeleton.tsx";
 import { StudyItemListState } from "@/components/study-item-list-state.tsx";
-import { StudySummaryMetric } from "@/components/study-summary-metric.tsx";
+import {
+  StudyIndexHeader,
+  StudyIndexScroll,
+  StudyIndexSkeleton,
+  StudyIndexTools,
+} from "@/components/study-index.tsx";
+import { resultCount } from "@/lib/text.ts";
 import { AiCollectionGenerationAction } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import {
   AlertDialog,
@@ -68,10 +72,16 @@ import {
   useDeleteFlashcard,
   useFlashcard,
   useFlashcardCollection,
+  useRefreshWhenDue,
   useFlashcards,
 } from "../api/flashcard-queries.ts";
 import { CollectionPicker, FlashcardEditorPanel } from "../components/flashcard-editor-sheet.tsx";
-import { FlashcardIndex } from "../components/flashcard-items.tsx";
+import {
+  DueMemoryMark,
+  FlashcardIndex,
+  NewMemoryMark,
+  ScheduledMemoryMark,
+} from "../components/flashcard-items.tsx";
 import { FlashcardImportDialog } from "../components/flashcard-import-dialog.tsx";
 import { FlashcardPracticeButton } from "../components/flashcard-practice-button.tsx";
 import { PracticeSetupDialog } from "../components/practice-setup-dialog.tsx";
@@ -127,6 +137,7 @@ export const FlashcardCollectionPage = () => {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const collection = useFlashcardCollection(collectionId);
+  useRefreshWhenDue(collectionId, collection.data?.nextPracticeAt);
   const cards = useFlashcards(collectionId, input);
   const detail = useFlashcard(collectionId, editor?.type === "edit" ? editor.id : null);
   const batch = useBatchFlashcards(collectionId);
@@ -270,15 +281,17 @@ export const FlashcardCollectionPage = () => {
     }
   };
 
-  if (collection.isPending) return <CollectionSkeleton />;
+  if (collection.isPending)
+    return <StudyWorkspaceSkeleton editorOpen={Boolean(params.get("card"))} />;
   if (collection.isError)
     return (
-      <main className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8">
-        <h1 className="page-title">Coleção não encontrada</h1>
-        <Button asChild className="mt-4" variant="outline">
-          <Link to="/flashcards">Voltar</Link>
-        </Button>
-      </main>
+      <ResourceUnavailable
+        backLabel="Voltar aos flashcards"
+        backTo="/flashcards"
+        notFound={isNotFound(collection.error)}
+        onRetry={() => void collection.refetch()}
+        title="Coleção não encontrada"
+      />
     );
 
   const summary = collection.data;
@@ -287,55 +300,72 @@ export const FlashcardCollectionPage = () => {
     Number(input.filter !== "all") +
     Number(input.sort !== "updated") +
     Number(input.status !== "active");
+  const narrowed = Boolean(query) || input.filter !== "all" || input.status !== "active";
   return (
-    <main className="h-[calc(100dvh-3.5rem)] min-h-0 max-h-[calc(100dvh-3.5rem)] flex-none overflow-hidden md:h-[calc(100dvh-1rem)] md:max-h-[calc(100dvh-1rem)]">
-      <section className="grid h-full min-h-0 w-full md:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)]">
+    <main className="study-workspace">
+      <section className="study-workspace-columns">
         <aside className={cn("min-h-0 flex-col bg-background md:flex", editor ? "hidden" : "flex")}>
-          <header className="px-4 pt-4 pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <Link
-                className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
-                to="/flashcards"
-              >
-                <ArrowLeftIcon className="size-3.5" /> Coleções
-              </Link>
-            </div>
-            <div className="mt-3 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <OverflowTooltip text={summary.title}>
-                  {(ref) => (
-                    <h1
-                      className="line-clamp-2 font-heading text-lg leading-snug font-medium [overflow-wrap:anywhere]"
-                      ref={ref as Ref<HTMLHeadingElement>}
-                    >
-                      {summary.title}
-                    </h1>
-                  )}
-                </OverflowTooltip>
-              </div>
-              <FlashcardPracticeButton
-                archived={Boolean(summary.archivedAt)}
-                className="shrink-0"
-                dueCards={summary.dueCards}
-                fullWidthOnMobile={false}
-                onClick={() => setPracticeOpen(true)}
-                size="lg"
-                title={summary.title}
-                totalCards={summary.totalCards}
+          <StudyIndexHeader
+            actions={
+              <>
+                <FlashcardPracticeButton
+                  archived={Boolean(summary.archivedAt)}
+                  dueCards={summary.dueCards}
+                  fullWidthOnMobile={false}
+                  onClick={() => setPracticeOpen(true)}
+                  size="default"
+                  title={summary.title}
+                  totalCards={summary.totalCards}
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button disabled={Boolean(summary.archivedAt)} variant="outline">
+                      <PlusIcon /> Adicionar
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onSelect={createCard}>
+                      <PlusIcon /> Novo flashcard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setImportOpen(true)}>
+                      <UploadIcon /> Importar arquivo
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <AiCollectionGenerationAction
+                  collectionId={collectionId}
+                  defaultProjectId={summary.project?.id}
+                  disabled={Boolean(summary.archivedAt)}
+                  iconOnly
+                  kind="flashcard"
+                />
+              </>
+            }
+            backTo="/flashcards"
+            meta={`${summary.totalCards} ${summary.totalCards === 1 ? "flashcard" : "flashcards"}`}
+            project={summary.project}
+            title={summary.title}
+          />
+          <StudyIndexTools
+            selecting={selected.size > 0}
+            selection={
+              <SelectionBar
+                count={selected.size}
+                onClear={() => setSelected(new Set())}
+                onDelete={() => setBatchDeleteOpen(true)}
+                onMove={() => {
+                  setMoveTarget(collectionId);
+                  setMoveCard(null);
+                  setMoveOpen(true);
+                }}
+                onToggleArchive={() => {
+                  if (input.status === "active") setBatchArchiveOpen(true);
+                  else void performBatch("restore");
+                }}
+                status={input.status}
               />
-            </div>
-            <OverflowTooltip text={summary.project?.title ?? "Sem projeto"}>
-              {(ref) => (
-                <p
-                  ref={ref as Ref<HTMLParagraphElement>}
-                  className="mt-1 line-clamp-2 text-xs text-muted-foreground [overflow-wrap:anywhere]"
-                >
-                  {summary.project?.title ?? "Sem projeto"}
-                </p>
-              )}
-            </OverflowTooltip>
-          </header>
-          <div className="flex items-center gap-2 px-5 py-3">
+            }
+          >
             <SearchInput
               aria-label="Pesquisar flashcards"
               containerClassName="flex-1"
@@ -346,7 +376,7 @@ export const FlashcardCollectionPage = () => {
                 updateParams({ query: undefined });
               }}
               onValueChange={setSearch}
-              placeholder="Buscar"
+              placeholder="Buscar flashcards"
               value={search}
             />
             <Popover>
@@ -357,11 +387,13 @@ export const FlashcardCollectionPage = () => {
                       ? `Filtrar e ordenar (${appliedFilters} ${appliedFilters === 1 ? "ativo" : "ativos"})`
                       : "Filtrar e ordenar"
                   }
-                  className="h-9 shrink-0 px-2.5"
+                  className="relative h-9 shrink-0 px-0"
                   variant="outline"
                 >
                   <FilterIcon />
-                  <FilterCount count={appliedFilters} />
+                  <span className="absolute -top-1.5 -right-1.5">
+                    <FilterCount count={appliedFilters} />
+                  </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] gap-4 p-4">
@@ -371,9 +403,9 @@ export const FlashcardCollectionPage = () => {
                   onChange={(value) => updateParams({ filter: value })}
                   options={[
                     ["all", "Todos", ListFilterIcon],
-                    ["new", "Novos", PlusIcon],
-                    ["due", "Para revisar", ClockAlertIcon],
-                    ["scheduled", "Agendados", CalendarClockIcon],
+                    ["new", "Novos", NewMemoryMark],
+                    ["due", "Para revisar", DueMemoryMark],
+                    ["scheduled", "Agendados", ScheduledMemoryMark],
                   ]}
                   separatorBefore={1}
                 />
@@ -413,53 +445,20 @@ export const FlashcardCollectionPage = () => {
                 )}
               </PopoverContent>
             </Popover>
-            <AiCollectionGenerationAction
-              collectionId={collectionId}
-              disabled={Boolean(summary.archivedAt)}
-              iconOnly
-              kind="flashcard"
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  aria-label="Adicionar flashcards"
-                  disabled={Boolean(summary.archivedAt)}
-                  size="icon"
-                >
-                  <PlusIcon />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={createCard}>
-                  <PlusIcon /> Novo flashcard
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setImportOpen(true)}>
-                  <UploadIcon /> Importar arquivo
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <SelectionBar
-            count={selected.size}
-            due={summary.dueCards}
-            onClear={() => setSelected(new Set())}
-            onDelete={() => setBatchDeleteOpen(true)}
-            onMove={() => {
-              setMoveTarget(collectionId);
-              setMoveCard(null);
-              setMoveOpen(true);
-            }}
-            onToggleArchive={() => {
-              if (input.status === "active") setBatchArchiveOpen(true);
-              else void performBatch("restore");
-            }}
-            status={input.status}
-            studied={summary.studiedCards}
-            total={cards.data?.pagination.totalItems ?? 0}
-            totalCards={summary.totalCards}
-            reviews={summary.reviewsLastSevenDays}
-          />
-          <div className="min-h-0 flex-1 overflow-y-auto p-2 lazuli-thin-scrollbar">
+          </StudyIndexTools>
+          {narrowed && cards.data && (
+            /* With no match the empty state says it; the count stays for screen readers only. */
+            <p
+              aria-live="polite"
+              className={cn(
+                "study-index-results",
+                cards.data.pagination.totalItems === 0 && "sr-only",
+              )}
+            >
+              {resultCount(cards.data.pagination.totalItems, "flashcard", "flashcards")}
+            </p>
+          )}
+          <StudyIndexScroll>
             <StudyItemListState
               createLabel="Criar flashcard"
               emptyIcon={Layers3Icon}
@@ -469,7 +468,7 @@ export const FlashcardCollectionPage = () => {
               onCreate={input.status === "active" ? createCard : undefined}
               onRetry={() => void cards.refetch()}
               query={query}
-              skeleton={<FlashcardIndexSkeleton />}
+              skeleton={<StudyIndexSkeleton label="Carregando flashcards" />}
               totalItems={cards.data?.pagination.totalItems}
             >
               <FlashcardIndex
@@ -488,11 +487,11 @@ export const FlashcardCollectionPage = () => {
                 selected={selected}
               />
             </StudyItemListState>
-          </div>
+          </StudyIndexScroll>
           {cards.data && cards.data.pagination.totalPages > 1 && (
-            <div className="border-t px-2">
+            <div className="border-t border-[var(--line-subtle)] px-2">
               <PaginationControls
-                className="mt-0 h-16"
+                className="mt-0 h-14"
                 label="Paginação de flashcards"
                 onPageChange={(page) =>
                   updateParams({ page: page > 1 ? String(page) : undefined }, false)
@@ -687,28 +686,18 @@ export const FlashcardCollectionPage = () => {
 
 const SelectionBar = ({
   count,
-  due,
   onClear,
   onDelete,
   onMove,
   onToggleArchive,
   status,
-  studied,
-  total,
-  totalCards,
-  reviews,
 }: {
   count: number;
-  due: number;
   onClear: () => void;
   onDelete: () => void;
   onMove: () => void;
   onToggleArchive: () => void;
   status: string;
-  studied: number;
-  total: number;
-  totalCards: number;
-  reviews: number;
 }) => (
   <StudyItemSummaryBar
     count={count}
@@ -718,20 +707,7 @@ const SelectionBar = ({
     onMove={onMove}
     onToggleArchive={onToggleArchive}
     status={status === "archived" ? "archived" : "active"}
-  >
-    <StudySummaryMetric icon={Layers3Icon} strong>
-      {total} {total === 1 ? "flashcard" : "flashcards"}
-    </StudySummaryMetric>
-    <StudySummaryMetric icon={BookOpenCheckIcon}>
-      {studied} de {totalCards} estudados
-    </StudySummaryMetric>
-    <StudySummaryMetric icon={CalendarClockIcon}>{due} disponíveis</StudySummaryMetric>
-    <StudySummaryMetric icon={RotateCcwIcon}>
-      {reviews === 0
-        ? "Sem revisões nos últimos 7 dias"
-        : `${reviews} ${reviews === 1 ? "revisão" : "revisões"} nos últimos 7 dias`}
-    </StudySummaryMetric>
-  </StudyItemSummaryBar>
+  />
 );
 
 const ArchiveConfirmation = ({
@@ -804,36 +780,6 @@ const DeleteDialogs = ({
       title={`Excluir ${selectedCount} flashcards?`}
     />
   </>
-);
-
-const CollectionSkeleton = () => (
-  <main className="grid h-[calc(100dvh-3.5rem)] min-h-0 md:h-dvh md:grid-cols-[19rem_minmax(0,1fr)] xl:grid-cols-[22rem_minmax(0,1fr)]">
-    <aside className="border-r px-5 py-5">
-      <Skeleton className="h-4 w-20" />
-      <Skeleton className="mt-5 h-7 w-40" />
-      <Skeleton className="mt-2 h-3 w-24" />
-      <Skeleton className="mt-7 h-9 w-full" />
-      <div className="mt-8">
-        <FlashcardIndexSkeleton />
-      </div>
-    </aside>
-    <FlashcardEditorSkeleton className="hidden md:flex" />
-  </main>
-);
-
-const FlashcardIndexSkeleton = () => (
-  <div aria-label="Carregando flashcards" className="space-y-1" role="status">
-    {Array.from({ length: 7 }, (_, index) => (
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 px-2 py-2.5" key={index}>
-        <Skeleton className="mt-0.5 size-4" />
-        <div className="min-w-0 space-y-2">
-          <Skeleton className="h-4" style={{ width: `${72 + (index % 3) * 8}%` }} />
-          <Skeleton className="h-3 w-32 max-w-[65%]" />
-        </div>
-      </div>
-    ))}
-    <span className="sr-only">Carregando flashcards...</span>
-  </div>
 );
 
 const FlashcardEditorSkeleton = ({ className }: { className?: string }) => (

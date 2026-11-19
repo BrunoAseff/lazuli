@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 
-import { cn } from "@/lib/utils.ts";
+import "./study-collection-card.css";
 
+/**
+ * A collection is one object: who it is and what can be done with it on the first line,
+ * where it stands in memory on the second. No second frame, no metric columns.
+ */
 export const StudyCollectionCard = ({
   actions,
   children,
@@ -13,50 +17,75 @@ export const StudyCollectionCard = ({
   identity: ReactNode;
   favorite?: ReactNode;
 }) => (
-  <article className="grid min-w-0 gap-4 rounded-xl border border-border/50 bg-card px-4 py-4 sm:px-5">
-    <div className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-      <div className="flex min-w-0 items-start gap-2">
-        <div className="min-w-0 flex-1">{identity}</div>
-        {favorite && <div className="shrink-0 sm:hidden">{favorite}</div>}
-      </div>
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:justify-self-end">
-        {favorite && <div className="hidden sm:block">{favorite}</div>}
-        {actions}
-      </div>
+  <article className="collection-card">
+    <div className="collection-card-identity">{identity}</div>
+    <div className="collection-card-actions">
+      {favorite}
+      {actions}
     </div>
-    <div className="grid min-w-0 gap-4 rounded-lg bg-background/65 p-3 sm:grid-cols-3 sm:gap-0">
-      {children}
-    </div>
+    <div className="collection-card-state">{children}</div>
   </article>
 );
 
-export const StudyCollectionMetric = ({
-  children,
-  className,
-  description,
-  icon,
-  label,
-  value,
-}: {
-  children?: ReactNode;
-  className?: string;
-  description?: ReactNode;
-  icon: ReactNode;
+export type StudyStripSegment = {
+  count: number;
   label: string;
-  value: ReactNode;
-}) => (
-  <div
-    className={cn(
-      "grid min-w-0 grid-cols-[auto_minmax(0,1fr)] content-start gap-x-2 gap-y-0.5 sm:px-3 first:pl-0 last:pr-0",
-      className,
-    )}
-  >
-    <span className="row-span-3 mt-0.5 text-muted-foreground">{icon}</span>
-    <p className="text-xs text-muted-foreground">{label}</p>
-    <div className="min-w-0 text-sm font-medium leading-snug">{value}</div>
-    {description ? (
-      <p className="col-start-2 text-xs leading-snug text-muted-foreground">{description}</p>
-    ) : null}
-    {children ? <div className="col-start-2 mt-1.5">{children}</div> : null}
-  </div>
+  tone: "rest" | "due" | "new" | "correct" | "incorrect";
+};
+
+/**
+ * Proportional strip of real counts. The same tones as the index glyphs:
+ * consolidated ink, lapis for what is due, an outline for what was never studied.
+ */
+export const StudyStrip = ({
+  emptyLabel,
+  label,
+  noun,
+  segments,
+}: {
+  emptyLabel: string;
+  label: string;
+  /** Names what is counted on the first figure, so "7 em dia" reads "7 flashcards em dia". */
+  noun: { singular: string; plural: string };
+  segments: StudyStripSegment[];
+}) => {
+  const visible = segments.filter(({ count }) => count > 0);
+  const total = visible.reduce((sum, { count }) => sum + count, 0);
+  return (
+    <div className="collection-strip-wrap">
+      <span
+        aria-label={label}
+        className="collection-strip"
+        data-empty={total === 0 || undefined}
+        role="img"
+      >
+        {visible.map((segment) => (
+          <span
+            className="collection-strip-segment"
+            data-tone={segment.tone}
+            key={segment.tone}
+            style={{ flexGrow: segment.count }}
+          />
+        ))}
+      </span>
+      <span className="collection-strip-legend">
+        {total === 0
+          ? emptyLabel
+          : visible.map((segment, index) => (
+              <span className="collection-strip-key" data-tone={segment.tone} key={segment.tone}>
+                <span aria-hidden="true" className="collection-strip-swatch" />
+                <span>
+                  <span className="tabular-nums text-foreground">{segment.count}</span>{" "}
+                  {index === 0 && `${segment.count === 1 ? noun.singular : noun.plural} `}
+                  {segment.label}
+                </span>
+              </span>
+            ))}
+      </span>
+    </div>
+  );
+};
+
+export const StudyCollectionNote = ({ children }: { children: ReactNode }) => (
+  <p className="collection-card-note">{children}</p>
 );

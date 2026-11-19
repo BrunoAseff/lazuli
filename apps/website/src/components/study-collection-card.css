@@ -1,0 +1,186 @@
+.collection-card {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.875rem 1.5rem;
+  padding: 1.125rem 1.25rem 1.125rem 1.125rem;
+  border-radius: var(--radius-panel);
+  background: var(--card);
+
+  @media (min-width: 40rem) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}
+
+.collection-card-identity {
+  min-width: 0;
+}
+
+.collection-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+
+  @media (max-width: 39.99rem) {
+    & > :not(:first-child):not(:last-child) {
+      flex: 1;
+    }
+  }
+}
+
+/* The state line starts under the title, not under the icon. */
+.collection-card-state {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+
+  @media (min-width: 40rem) {
+    grid-column: 1 / -1;
+    padding-left: 3rem;
+  }
+}
+
+.collection-strip-wrap {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 22rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.collection-strip {
+  display: flex;
+  width: clamp(7rem, 30%, 13rem);
+  height: 0.375rem;
+  flex: none;
+  gap: 2px;
+
+  &[data-empty] {
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--input);
+  }
+}
+
+/* Segments grow in from the left when the card appears, staggered, and follow later changes. */
+@keyframes strip-grow {
+  from {
+    scale: 0 1;
+  }
+}
+.collection-strip-segment {
+  min-width: 0.375rem;
+  flex-basis: 0;
+  border-radius: 999px;
+  transform-origin: left center;
+  transition: flex-grow var(--spring-settle-duration) var(--spring-settle);
+  animation: strip-grow var(--spring-settle-duration) var(--spring-settle) both;
+
+  &:nth-child(2) {
+    animation-delay: 70ms;
+  }
+  &:nth-child(3) {
+    animation-delay: 140ms;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    animation: none;
+  }
+
+  &[data-tone="rest"] {
+    background: var(--chart-3);
+  }
+  &[data-tone="due"] {
+    background: var(--primary);
+  }
+  &[data-tone="new"] {
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+  }
+  &[data-tone="correct"] {
+    background: var(--success);
+  }
+  &[data-tone="incorrect"] {
+    background: color-mix(in oklab, var(--destructive) 75%, transparent);
+  }
+}
+
+/* The legend names each segment with its own swatch: the bar and the words read as one key. */
+.collection-strip-legend {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+.collection-strip-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+.collection-strip-swatch {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: none;
+  border-radius: 2px;
+
+  [data-tone="rest"] > & {
+    background: var(--chart-3);
+  }
+  [data-tone="due"] > & {
+    background: var(--primary);
+  }
+  [data-tone="new"] > & {
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+  }
+  [data-tone="correct"] > & {
+    background: var(--success);
+  }
+  [data-tone="incorrect"] > & {
+    background: color-mix(in oklab, var(--destructive) 75%, transparent);
+  }
+}
+
+.collection-card-note {
+  @media (min-width: 40rem) {
+    margin-left: auto;
+  }
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Result tones: forgetting in cinnabar, effort in neutral ink, recall in lapis, ease in pyrite
+   (gold marks mastery across Lazúli). Same strip and key as the collection cards. */
+.collection-strip-segment,
+.collection-strip-swatch {
+  &[data-tone="again"],
+  [data-tone="again"] > & {
+    background: color-mix(in oklab, var(--destructive) 75%, transparent);
+  }
+  &[data-tone="hard"],
+  [data-tone="hard"] > & {
+    background: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+  }
+  &[data-tone="good"],
+  [data-tone="good"] > & {
+    background: var(--primary);
+  }
+  &[data-tone="easy"],
+  [data-tone="easy"] > & {
+    background: var(--gold);
+  }
+}
+
+.result-distribution {
+  display: grid;
+  gap: 0.625rem;
+}
+.result-strip {
+  width: 100%;
+  height: 0.5rem;
+}

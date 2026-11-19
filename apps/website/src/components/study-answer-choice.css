@@ -1,0 +1,168 @@
+/* Choices are controls: each has an edge, the seal carries the decision. */
+.choices {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.choice {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  /* The seal centers on the whole text block (answer and its note), not on the first line. */
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  padding: 0.8125rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  text-align: left;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+  outline: none;
+
+  &:not([data-static]) {
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        border-color: color-mix(in oklab, var(--foreground) 22%, transparent);
+        background: var(--row-hover);
+      }
+    }
+    &:focus-visible {
+      box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 45%, transparent);
+    }
+    &:disabled {
+      cursor: wait;
+    }
+  }
+  &[data-selected] {
+    border-color: var(--primary);
+    background: color-mix(in oklab, var(--primary) 7%, var(--card));
+  }
+  /* Outcome: a light wash and a soft edge, so the result reads without a hard frame. */
+  &[data-outcome="correct"] {
+    border-color: color-mix(in oklab, var(--success) 30%, transparent);
+    background: color-mix(in oklab, var(--success) 8%, var(--card));
+  }
+  &[data-outcome="incorrect"] {
+    border-color: color-mix(in oklab, var(--destructive) 28%, transparent);
+    background: color-mix(in oklab, var(--destructive) 7%, var(--card));
+  }
+}
+
+.choice-seal {
+  position: relative;
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  box-shadow: inset 0 0 0 1px var(--input);
+
+  & > * {
+    grid-area: 1 / 1;
+  }
+  [data-selected] > & {
+    color: var(--action-foreground);
+  }
+  &[data-outcome] {
+    color: var(--background);
+  }
+}
+
+.choice-seal-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--action);
+
+  [data-outcome="correct"] > & {
+    background: var(--success);
+  }
+  [data-outcome="incorrect"] > & {
+    background: var(--destructive);
+  }
+}
+
+.choice-seal-glyph {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.choice-text {
+  display: grid;
+  gap: 0.125rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.choice-note {
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  [data-outcome="correct"] & {
+    color: var(--success);
+  }
+  [data-outcome="incorrect"] & {
+    color: var(--destructive);
+  }
+}
+
+/* Revealed outcome, once, as the question opens: light passes over the right answer; a wrong pick
+   gives a short, small shake. Both are on the surface only, never on the text position. */
+@keyframes choice-glint {
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -30% 0;
+  }
+}
+@keyframes choice-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(1px);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .choice[data-reveal][data-outcome="correct"] {
+    position: relative;
+    overflow: hidden;
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(
+          105deg,
+          transparent 35%,
+          color-mix(in oklab, var(--gold) 45%, transparent) 50%,
+          transparent 65%
+        )
+        no-repeat;
+      background-size: 220% 100%;
+      animation: choice-glint 1000ms var(--ease-move) 120ms both;
+    }
+  }
+  .choice[data-reveal][data-outcome="incorrect"] {
+    animation: choice-shake 380ms var(--ease-out) 80ms both;
+  }
+}

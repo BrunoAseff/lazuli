@@ -3,14 +3,13 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   FileSpreadsheetIcon,
-  LoaderCircleIcon,
-  UploadIcon,
   XIcon,
-} from "lucide-react";
-import { useRef, useState, type DragEvent } from "react";
+} from "@/components/icons.tsx";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
+import { FileDropzone } from "@/components/file-dropzone.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import {
   Dialog,
@@ -36,8 +35,6 @@ export const FlashcardImportDialog = ({
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<FlashcardImportPreview | null>(null);
   const [previewPage, setPreviewPage] = useState(1);
@@ -86,13 +83,6 @@ export const FlashcardImportDialog = ({
     }
   };
 
-  const drop = (event: DragEvent) => {
-    event.preventDefault();
-    setDragging(false);
-    const next = event.dataTransfer.files[0];
-    if (next) void choose(next);
-  };
-
   const updateRow = (index: number, field: "answer" | "question", value: string) =>
     setPreview((current) =>
       current
@@ -104,6 +94,17 @@ export const FlashcardImportDialog = ({
           }
         : current,
     );
+
+  // A pair the file recognized wrongly can be left out instead of being edited into shape.
+  const removeRow = (index: number) =>
+    setPreview((current) => {
+      if (!current) return current;
+      const rows = current.rows.filter((_, rowIndex) => rowIndex !== index);
+      setPreviewPage((page) =>
+        Math.min(page, Math.max(1, Math.ceil(rows.length / PREVIEW_PAGE_SIZE))),
+      );
+      return { ...current, rows };
+    });
 
   const invalidRows =
     preview?.rows.reduce(
@@ -119,45 +120,24 @@ export const FlashcardImportDialog = ({
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent className="max-h-[calc(100vh-2rem)] gap-0 overflow-hidden p-0 sm:max-w-3xl">
         <DialogHeader className="border-b px-6 py-5">
-          <DialogTitle className="text-xl">Importar flashcards</DialogTitle>
+          <DialogTitle>Importar flashcards</DialogTitle>
           <DialogDescription>
             Revise os pares reconhecidos antes de adicioná-los à coleção.
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
           {!preview ? (
-            <button
-              className="file-drop-target grid min-h-52 w-full place-items-center rounded-xl border border-dashed p-6 text-center"
+            <FileDropzone
+              accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
               disabled={previewImport.isPending}
-              data-dragging={dragging && !previewImport.isPending}
-              onClick={() => inputRef.current?.click()}
-              onDragEnter={(event) => {
-                event.preventDefault();
-                setDragging(true);
+              busy={previewImport.isPending}
+              buttonLabel="Escolher arquivo"
+              onFiles={(files) => {
+                if (files[0]) void choose(files[0]);
               }}
-              onDragLeave={() => setDragging(false)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={drop}
-              type="button"
-            >
-              <span>
-                {previewImport.isPending ? (
-                  <LoaderCircleIcon className="mx-auto mb-3 size-7 animate-spin" />
-                ) : (
-                  <UploadIcon className="mx-auto mb-3 size-7 text-muted-foreground" />
-                )}
-                <strong className="block font-medium">
-                  {previewImport.isPending ? "Lendo arquivo…" : "Arraste um arquivo ou clique aqui"}
-                </strong>
-                <span className="mt-2 block text-sm text-muted-foreground">
-                  CSV e TSV: duas colunas, pergunta e resposta. TXT: pares separados por tabulação
-                  ou blocos separados por uma linha vazia.
-                </span>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  UTF-8 · até 2 MB · máximo de 1.000 cards
-                </span>
-              </span>
-            </button>
+              description="CSV e TSV: duas colunas, pergunta e resposta. TXT: pares separados por tabulação ou blocos separados por uma linha vazia."
+              hint="UTF-8 · até 2 MB · máximo de 1.000 cards"
+            />
           ) : (
             <div>
               <div className="mb-5 flex items-center gap-3 rounded-lg border p-3">
@@ -189,42 +169,61 @@ export const FlashcardImportDialog = ({
                 </p>
                 {preview.skippedRows > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {preview.skippedRows} linhas incompletas ignoradas
+                    {preview.skippedRows === 1
+                      ? "1 linha incompleta ignorada"
+                      : `${preview.skippedRows} linhas incompletas ignoradas`}
                   </p>
                 )}
               </div>
-              <div className="max-h-80 overflow-y-auto rounded-lg border lazuli-thin-scrollbar">
-                <div className="sticky top-0 grid grid-cols-2 border-b bg-muted px-3 py-2 text-xs font-medium tracking-wide uppercase">
-                  <span>Pergunta</span>
-                  <span>Resposta</span>
+              {preview.rows.length === 0 ? (
+                <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+                  Nenhum flashcard para importar. Escolha outro arquivo ou cancele.
+                </p>
+              ) : (
+                <div className="max-h-80 overflow-y-auto rounded-lg border lazuli-thin-scrollbar">
+                  <div className="sticky top-0 z-10 hidden grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2rem] gap-3 border-b border-border/50 bg-card px-3 py-3 text-xs font-medium text-muted-foreground sm:grid">
+                    <span>Pergunta</span>
+                    <span>Resposta</span>
+                    <span className="sr-only">Remover</span>
+                  </div>
+                  {visibleRows.map((row, index) => {
+                    const rowIndex = (previewPage - 1) * PREVIEW_PAGE_SIZE + index;
+                    return (
+                      <div
+                        className="grid grid-cols-[minmax(0,1fr)_2rem] gap-3 border-b px-3 py-3 text-sm last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2rem]"
+                        key={rowIndex}
+                      >
+                        <Textarea
+                          aria-label={`Pergunta do flashcard ${rowIndex + 1}`}
+                          aria-invalid={!row.question.trim()}
+                          className="min-h-20"
+                          maxLength={FLASHCARD_IMPORT_TEXT_MAX_LENGTH}
+                          onChange={(event) => updateRow(rowIndex, "question", event.target.value)}
+                          value={row.question}
+                        />
+                        <Textarea
+                          aria-label={`Resposta do flashcard ${rowIndex + 1}`}
+                          aria-invalid={!row.answer.trim()}
+                          className="col-start-1 min-h-20 sm:col-start-2"
+                          maxLength={FLASHCARD_IMPORT_TEXT_MAX_LENGTH}
+                          onChange={(event) => updateRow(rowIndex, "answer", event.target.value)}
+                          value={row.answer}
+                        />
+                        <Button
+                          aria-label={`Remover o flashcard ${rowIndex + 1} da importação`}
+                          className="col-start-2 row-start-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:col-start-3"
+                          onClick={() => removeRow(rowIndex)}
+                          size="icon-sm"
+                          type="button"
+                          variant="ghost"
+                        >
+                          <XIcon />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
-                {visibleRows.map((row, index) => {
-                  const rowIndex = (previewPage - 1) * PREVIEW_PAGE_SIZE + index;
-                  return (
-                    <div
-                      className="grid grid-cols-1 gap-3 border-b px-3 py-3 text-sm last:border-b-0 sm:grid-cols-2"
-                      key={rowIndex}
-                    >
-                      <Textarea
-                        aria-label={`Pergunta do flashcard ${rowIndex + 1}`}
-                        aria-invalid={!row.question.trim()}
-                        className="min-h-20 resize-y"
-                        maxLength={FLASHCARD_IMPORT_TEXT_MAX_LENGTH}
-                        onChange={(event) => updateRow(rowIndex, "question", event.target.value)}
-                        value={row.question}
-                      />
-                      <Textarea
-                        aria-label={`Resposta do flashcard ${rowIndex + 1}`}
-                        aria-invalid={!row.answer.trim()}
-                        className="min-h-20 resize-y"
-                        maxLength={FLASHCARD_IMPORT_TEXT_MAX_LENGTH}
-                        onChange={(event) => updateRow(rowIndex, "answer", event.target.value)}
-                        value={row.answer}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+              )}
               <div className="mt-3 flex min-h-8 items-center justify-between gap-4">
                 <p className="text-xs text-muted-foreground">
                   {invalidRows > 0
@@ -259,17 +258,6 @@ export const FlashcardImportDialog = ({
               </div>
             </div>
           )}
-          <input
-            accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
-            className="sr-only"
-            onChange={(event) => {
-              const next = event.target.files?.[0];
-              if (next) void choose(next);
-              event.target.value = "";
-            }}
-            ref={inputRef}
-            type="file"
-          />
         </div>
         <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
           <DialogCancelButton
@@ -279,12 +267,14 @@ export const FlashcardImportDialog = ({
             Cancelar
           </DialogCancelButton>
           <Button
-            disabled={!preview || invalidRows > 0 || importCards.isPending}
+            pending={importCards.isPending}
+            disabled={!preview?.rows.length || invalidRows > 0 || importCards.isPending}
             onClick={() => void submit()}
           >
-            {importCards.isPending && <LoaderCircleIcon className="animate-spin" />}
             {preview
-              ? `Importar ${preview.rows.length} ${preview.rows.length === 1 ? "flashcard" : "flashcards"}`
+              ? preview.rows.length
+                ? `Importar ${preview.rows.length} ${preview.rows.length === 1 ? "flashcard" : "flashcards"}`
+                : "Importar"
               : "Importar"}
           </Button>
         </DialogFooter>

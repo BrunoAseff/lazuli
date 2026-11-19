@@ -1,4 +1,4 @@
-import { PlayIcon } from "lucide-react";
+import { PlayIcon } from "@/components/icons.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
@@ -10,7 +10,7 @@ type FlashcardPracticeButtonProps = {
   dueCards: number;
   onClick: () => void;
   fullWidthOnMobile?: boolean;
-  size?: "sm" | "lg";
+  size?: "default" | "sm" | "lg";
   title: string;
   totalCards: number;
 };
@@ -55,7 +55,10 @@ export const FlashcardPracticeButton = ({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className={cn("inline-flex", fullWidthOnMobile && "w-full sm:w-auto")} tabIndex={0}>
+        <span
+          className={cn("inline-flex", fullWidthOnMobile && "w-full sm:w-auto", className)}
+          tabIndex={0}
+        >
           {button}
         </span>
       </TooltipTrigger>

@@ -1,20 +1,17 @@
 import { useCreateBlockNote } from "@blocknote/react";
-import {
-  QUIZ_COLLECTION_MAX_PAGE_SIZE,
-  quizQuestionContentSchema,
-  type QuizQuestionDetail,
-} from "@lazuli/shared";
-import { CopyIcon, LoaderCircleIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
-import { MagicWandIcon } from "@phosphor-icons/react/MagicWand";
+import { quizQuestionContentSchema, type QuizQuestionDetail } from "@lazuli/shared";
+import { MagicWandIcon } from "@/components/icons.tsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
-import { StudyCollectionPicker } from "@/components/study-collection-picker.tsx";
+import { StudyCollectionDestination } from "@/components/study-collection-destination.tsx";
 import {
   DiscardStudyItemChangesDialog,
   StudyItemActionsPanel,
   StudyItemDetails,
+  StudyRefineAction,
+  StudyDetailsButton,
 } from "@/components/study-item-editor-controls.tsx";
 import {
   Dialog,
@@ -35,13 +32,13 @@ import {
 import { RichContentField } from "@/components/rich-content-field.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
+import { MaterialSourcesAction } from "@/features/references/components/material-sources-action.tsx";
+import { CreationWorkspace } from "@/features/ai/components/creation-workspace.tsx";
 import { AiMaterialImprovementDialog } from "@/features/ai/components/ai-material-improvement-dialog.tsx";
 import type { StudyItemAction } from "@/lib/study-actions.ts";
 import type { StudyEditorPresentation } from "@/lib/study-editor.ts";
-import { useQuizCollections } from "../api/quiz-collection-queries.ts";
 import { uploadQuizImage } from "../api/quiz-api.ts";
 import { useCreateQuizQuestion, useUpdateQuizQuestion } from "../api/quiz-queries.ts";
-import { QuizCollectionDialog } from "./quiz-collection-dialogs.tsx";
 import {
   QuizAlternativesField,
   quizOptionsAreValid,
@@ -183,7 +180,7 @@ const QuizQuestionEditor = ({
         onSaved?.(questionId, targetCollectionId);
         const followUpSucceeded = await onCreated?.(questionId);
         if (followUpSucceeded === false)
-          toast.warning("Questão criada, mas a referência não pôde ser adicionada.");
+          toast.warning("Questão criada, mas a fonte não pôde ser conectada.");
       }
       committed.current = true;
       createdUrls.current.clear();
@@ -206,11 +203,13 @@ const QuizQuestionEditor = ({
   const isPending = create.isPending || update.isPending;
   const collectionPicker = (
     <QuizCollectionPicker
+      // A new material starts in the first collection, like the AI dialogs; that default is not an edit.
+      autoSelect={!question}
       disabled={readOnly}
       value={targetCollectionId}
       onChange={(value) => {
+        if (targetCollectionId) setDirty(true);
         setTargetCollectionId(value);
-        setDirty(true);
       }}
     />
   );
@@ -227,7 +226,7 @@ const QuizQuestionEditor = ({
   );
   const fields = (
     <>
-      {sourcePreview && <ReferenceSourcePreview text={sourcePreview} />}
+      {sourcePreview && presentation === "panel" && <ReferenceSourcePreview text={sourcePreview} />}
       <RichContentField
         appearance={presentation === "panel" ? "workbench" : "boxed"}
         editable={!readOnly}
@@ -245,6 +244,7 @@ const QuizQuestionEditor = ({
   );
   const saveButton = (
     <Button
+      pending={isPending}
       disabled={
         readOnly ||
         isPending ||
@@ -255,7 +255,7 @@ const QuizQuestionEditor = ({
       }
       onClick={() => void save()}
     >
-      {isPending && <LoaderCircleIcon className="animate-spin" />} Salvar
+      Salvar
     </Button>
   );
   const improveButton = question && !readOnly && (
@@ -264,7 +264,7 @@ const QuizQuestionEditor = ({
       onClick={() => setImprovementOpen(true)}
       variant="outline"
     >
-      <MagicWandIcon aria-hidden="true" /> Melhorar com IA
+      <MagicWandIcon aria-hidden="true" /> Refinar com IA
     </Button>
   );
   const details = (
@@ -281,7 +281,11 @@ const QuizQuestionEditor = ({
       )}
       {readOnly && <p className="mt-5 text-xs text-muted-foreground">Questão arquivada.</p>}
       {question && onAction && (
-        <StudyItemActionsPanel archived={Boolean(question.archivedAt)} onAction={onAction} />
+        <StudyItemActionsPanel
+          archived={Boolean(question.archivedAt)}
+          canDuplicate
+          onAction={onAction}
+        />
       )}
     </>
   );
@@ -289,25 +293,40 @@ const QuizQuestionEditor = ({
     <>
       {presentation === "dialog" ? (
         <Dialog open={open} onOpenChange={(next) => !next && requestClose()}>
-          <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-3xl">
+          <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
             <DialogHeader className="border-b px-6 py-5">
-              <DialogTitle className="pr-8 text-xl">
+              <DialogTitle className="pr-8">
                 {question ? "Editar questão" : "Nova questão"}
               </DialogTitle>
               <DialogDescription>
                 Crie a pergunta e marque uma única resposta correta.
               </DialogDescription>
             </DialogHeader>
-            <div className="min-h-0 space-y-6 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
-              {collectionPicker}
-              {fields}
-              {question && (
-                <ReferenceManager
-                  disabled={dirty}
-                  returnTo={`/quizzes/${question.collectionId}?question=${question.id}`}
-                  target={{ type: "quizQuestion", id: question.id }}
-                />
-              )}
+            <div className="min-h-0 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
+              {/* With an excerpt, the left pane is the source alone and the collection joins the material;
+                  without one, the left pane holds where the question goes. */}
+              <CreationWorkspace
+                sourceControls={!sourcePreview}
+                composing
+                sourceLabel={sourcePreview ? "Trecho de origem" : "Destino"}
+                source={
+                  sourcePreview ? (
+                    <blockquote>{sourcePreview}</blockquote>
+                  ) : (
+                    <div className="font-sans text-sm">{collectionPicker}</div>
+                  )
+                }
+              >
+                {sourcePreview && <div className="font-sans text-sm">{collectionPicker}</div>}
+                <div className="grid gap-6">{fields}</div>
+                {question && (
+                  <ReferenceManager
+                    disabled={dirty}
+                    returnTo={`/quizzes/${question.collectionId}?question=${question.id}`}
+                    target={{ type: "quizQuestion", id: question.id }}
+                  />
+                )}
+              </CreationWorkspace>
             </div>
             <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
               <DialogCancelButton disabled={isPending} onClick={requestClose}>
@@ -328,39 +347,31 @@ const QuizQuestionEditor = ({
           </DialogContent>
         </Dialog>
       ) : (
-        <div className="grid min-h-0 flex-1 bg-background @min-[960px]/study-workspace:grid-cols-[minmax(0,1fr)_16rem]">
+        <div className="grid min-h-0 min-w-0 flex-1 bg-background @min-[960px]/study-workspace:grid-cols-[minmax(0,1fr)_16rem]">
           <section className="@container/editor m-2 flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-xl bg-card px-5 py-4 ring-1 ring-border/45 lazuli-thin-scrollbar sm:px-6 lg:px-8">
-            <header className="mx-auto flex min-h-10 w-full max-w-3xl items-center justify-end">
-              <Button
-                className="@min-[960px]/study-workspace:hidden"
-                onClick={() => setDetailsSheetOpen(true)}
-                size="sm"
-                variant="outline"
-              >
-                <SlidersHorizontalIcon /> Detalhes
-              </Button>
+            <header className="sticky top-0 z-10 mx-auto flex min-h-10 w-full max-w-3xl flex-wrap items-center justify-end gap-1.5 bg-card/95 py-2 backdrop-blur-sm sm:gap-2">
+              {question && (
+                <MaterialSourcesAction target={{ type: "quizQuestion", id: question.id }} />
+              )}
+              <StudyDetailsButton onClick={() => setDetailsSheetOpen(true)} />
+              {!readOnly && (
+                <>
+                  {question && (
+                    <StudyRefineAction
+                      disabled={dirty || isPending}
+                      onImprove={() => setImprovementOpen(true)}
+                    />
+                  )}
+                  {saveButton}
+                </>
+              )}
             </header>
             <div className="mx-auto w-full max-w-3xl space-y-6 pt-[clamp(1.5rem,4vh,2.5rem)] pb-8">
               {fields}
-              {!readOnly && (
-                <div className="flex flex-wrap justify-end gap-2">
-                  {improveButton}
-                  {question && onAction && (
-                    <Button
-                      disabled={dirty}
-                      onClick={() => onAction("duplicate")}
-                      variant="outline"
-                    >
-                      <CopyIcon /> Duplicar
-                    </Button>
-                  )}
-                  {saveButton}
-                </div>
-              )}
             </div>
           </section>
           <StudyItemDetails
-            description="Organização e referências desta questão."
+            description="Coleção e fontes desta questão."
             onOpenChange={setDetailsSheetOpen}
             open={detailsSheetOpen}
           >
@@ -402,68 +413,22 @@ export const QuizQuestionPanel = (props: Omit<QuizQuestionEditorProps, "presenta
 
 const QuizCollectionPicker = ({
   disabled = false,
+  autoSelect = false,
   onChange,
   value,
 }: {
+  autoSelect?: boolean;
   disabled?: boolean;
   onChange: (value: string) => void;
   value: string;
 }) => {
-  const [open, setOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const input = useMemo(
-    () => ({
-      page: 1,
-      pageSize: QUIZ_COLLECTION_MAX_PAGE_SIZE,
-      project: undefined,
-      query,
-      status: "active" as const,
-    }),
-    [query],
-  );
-  const collections = useQuizCollections(input);
-  const selected = collections.data?.items.find(({ id }) => id === value);
   return (
-    <div>
-      <StudyCollectionPicker
-        disabled={disabled}
-        empty="Nenhuma coleção encontrada."
-        footer={
-          <div className="mt-1 border-t pt-1">
-            <Button
-              className="w-full justify-start"
-              onClick={() => {
-                setOpen(false);
-                setCreateOpen(true);
-              }}
-              variant="ghost"
-            >
-              <PlusIcon /> Criar nova coleção
-            </Button>
-          </div>
-        }
-        items={collections.data?.items ?? []}
-        loading={collections.isPending}
-        onChange={(collectionId) => {
-          onChange(collectionId);
-          setOpen(false);
-        }}
-        onOpenChange={setOpen}
-        onQueryChange={setQuery}
-        open={open}
-        query={query}
-        selectedTitle={selected?.title}
-        value={value}
-      />
-      <QuizCollectionDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onCreated={(collection) => {
-          onChange(collection.id);
-          setCreateOpen(false);
-        }}
-      />
-    </div>
+    <StudyCollectionDestination
+      autoSelect={autoSelect}
+      kind="quizQuestion"
+      disabled={disabled}
+      onChange={onChange}
+      value={value}
+    />
   );
 };

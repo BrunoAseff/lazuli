@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, ArchiveIcon } from "lucide-react";
+import { AlertTriangleIcon, ArchiveIcon } from "@/components/icons.tsx";
 import type { ReactNode } from "react";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";

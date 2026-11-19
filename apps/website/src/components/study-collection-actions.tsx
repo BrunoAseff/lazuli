@@ -4,7 +4,7 @@ import {
   EllipsisIcon,
   PencilIcon,
   Trash2Icon,
-} from "lucide-react";
+} from "@/components/icons.tsx";
 import type { FavoriteTarget } from "@lazuli/shared";
 import { FavoriteMenuItem } from "@/features/favorites/favorite-menu-item.tsx";
 

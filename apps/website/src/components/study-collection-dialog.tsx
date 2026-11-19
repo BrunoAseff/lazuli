@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 
 const formSchema = z.object({
   title: studyCollectionTitleSchema,
@@ -95,7 +94,7 @@ export const StudyCollectionDialog = ({
         </DialogHeader>
         <form className="grid gap-5" onSubmit={submit}>
           <div className="grid gap-2">
-            <Label htmlFor="study-collection-title">Título</Label>
+            <Label htmlFor="study-collection-title">Nome da coleção</Label>
             <Input
               {...form.register("title")}
               aria-describedby="study-collection-title-error"
@@ -112,7 +111,9 @@ export const StudyCollectionDialog = ({
             />
           </div>
           <div className="grid gap-2">
-            <Label>Projeto</Label>
+            <Label>
+              Projeto <span className="font-normal text-muted-foreground">Opcional</span>
+            </Label>
             <ProjectFilter
               allowAll={false}
               disabled={pending}
@@ -126,16 +127,16 @@ export const StudyCollectionDialog = ({
               }
               value={watchedProjectId ?? "none"}
             />
-            <p className="text-xs text-muted-foreground">
-              Opcional. Ajuda a filtrar suas coleções.
-            </p>
           </div>
           <DialogFooter>
             <DialogCancelButton disabled={pending} onClick={close}>
               Cancelar
             </DialogCancelButton>
-            <Button disabled={!form.formState.isValid || !changed || pending} type="submit">
-              {pending && <Spinner />}
+            <Button
+              pending={pending}
+              disabled={!form.formState.isValid || !changed || pending}
+              type="submit"
+            >
               {pending ? "Salvando..." : collection ? "Salvar" : "Criar coleção"}
             </Button>
           </DialogFooter>

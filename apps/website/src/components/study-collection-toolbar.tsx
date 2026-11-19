@@ -1,5 +1,5 @@
 import type { StudyCollectionStatus } from "@lazuli/shared";
-import { ArchiveIcon, FilterIcon, Layers3Icon } from "lucide-react";
+import { ArchiveIcon, FilterIcon, Layers3Icon } from "@/components/icons.tsx";
 import { useSearchParams } from "react-router";
 
 import { ProjectFilter, type ProjectFilterValue } from "@/components/project-filter.tsx";
