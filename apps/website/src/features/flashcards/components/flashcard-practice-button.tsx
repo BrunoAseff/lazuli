@@ -11,6 +11,8 @@ type FlashcardPracticeButtonProps = {
   onClick: () => void;
   fullWidthOnMobile?: boolean;
   size?: "default" | "sm" | "lg";
+  /** Filled where it is the panel's main action; outline beside another filled one. */
+  variant?: "default" | "outline";
   title: string;
   totalCards: number;
 };
@@ -35,6 +37,7 @@ export const FlashcardPracticeButton = ({
   size = "sm",
   title,
   totalCards,
+  variant = "default",
 }: FlashcardPracticeButtonProps) => {
   const disabledReason = getDisabledReason({ archived, dueCards, totalCards });
   const button = (
@@ -44,6 +47,7 @@ export const FlashcardPracticeButton = ({
       disabled={Boolean(disabledReason)}
       onClick={onClick}
       size={size}
+      variant={variant}
     >
       <PlayIcon aria-hidden="true" className="-translate-y-px" />
       Praticar

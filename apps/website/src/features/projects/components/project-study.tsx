@@ -13,7 +13,7 @@ import {
   QuizDomainIcon,
 } from "@/components/domain-icons.ts";
 import { FlashcardCollectionMark } from "@/components/flashcard-collection-mark.tsx";
-import { PlusIcon } from "@/components/icons.tsx";
+import { PlayIcon, PlusIcon } from "@/components/icons.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { QuizCollectionMark } from "@/components/quiz-collection-mark.tsx";
 import { StudyStrip } from "@/components/study-collection-card.tsx";
@@ -36,6 +36,7 @@ import {
   memoryLabel,
   memorySegments,
 } from "@/features/flashcards/components/flashcard-collection-list.tsx";
+import { FlashcardPracticeButton } from "@/features/flashcards/components/flashcard-practice-button.tsx";
 import { PracticeSetupDialog } from "@/features/flashcards/components/practice-setup-dialog.tsx";
 import { useQuizCollections } from "@/features/quizzes/api/quiz-collection-queries.ts";
 import { QuizCollectionDialog } from "@/features/quizzes/components/quiz-collection-dialogs.tsx";
@@ -88,57 +89,65 @@ export const useProjectCollectionCount = (projectId: string) =>
 /* What to study now -------------------------------------------------------------------------- */
 
 const StudySummary = ({
+  collections,
   projectId,
-  hasFlashcardCollections,
 }: {
+  collections: ReturnType<typeof useProjectCollections>;
   projectId: string;
-  hasFlashcardCollections: boolean;
 }) => {
   const navigate = useNavigate();
   const [setupOpen, setSetupOpen] = useState(false);
   const target = { type: "project" as const, id: projectId };
-  const availability = usePracticeAvailability(target, hasFlashcardCollections);
+  const hasFlashcards = collections.flashcardCount > 0;
+  const availability = usePracticeAvailability(target, hasFlashcards);
   const data = availability.data;
   const active = data?.activeSession;
   const reviews = data?.dueCards ?? 0;
   const fresh = data?.newCards ?? 0;
-  const summary = !hasFlashcardCollections
-    ? "Nenhuma coleção de flashcards neste projeto"
-    : availability.isPending
-      ? null
-      : active
-        ? `Revisão em andamento: ${active.reviewedCards} de ${count(active.totalCards, "flashcard", "flashcards")}`
-        : reviews && fresh
-          ? `${count(reviews, "flashcard", "flashcards")} para revisar e ${count(fresh, "novo", "novos")}`
-          : reviews
-            ? `${count(reviews, "flashcard", "flashcards")} para revisar`
-            : fresh
-              ? count(fresh, "flashcard novo", "flashcards novos")
-              : "Tudo revisado";
-  const action = active ? (
-    <Button onClick={() => void navigate(practicePaths(target).session(active.id))} size="sm">
-      Continuar revisão
-    </Button>
-  ) : data?.totalAvailable ? (
-    <Button onClick={() => setSetupOpen(true)} size="sm">
-      Revisar flashcards
-    </Button>
-  ) : null;
-  const text = (
-    <div className="min-w-0">
-      <h2 className="text-sm leading-snug font-semibold">Estudo deste projeto</h2>
-      {summary ? (
-        <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">{summary}</p>
-      ) : (
-        <Skeleton className="mt-1.5 h-3.5 w-48" />
-      )}
-    </div>
-  );
+  const empty = !collections.pending && collections.total === 0;
+  const summary = collections.pending
+    ? null
+    : empty
+      ? "Ainda não há flashcards nem questões neste projeto."
+      : !hasFlashcards
+        ? "Nenhum flashcard neste projeto ainda."
+        : availability.isPending
+          ? null
+          : active
+            ? `Prática em andamento: ${active.reviewedCards} de ${count(active.totalCards, "flashcard", "flashcards")}`
+            : reviews && fresh
+              ? `${count(reviews, "flashcard", "flashcards")} para revisar e ${count(fresh, "novo", "novos")}`
+              : reviews
+                ? `${count(reviews, "flashcard", "flashcards")} para revisar`
+                : fresh
+                  ? count(fresh, "flashcard novo", "flashcards novos")
+                  : "Todos os flashcards em dia.";
   return (
     <>
-      <div className="flex items-center justify-between gap-6">
-        {text}
-        {action}
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <h2 className="text-sm leading-snug font-semibold">Estudo deste projeto</h2>
+          {summary ? (
+            <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">{summary}</p>
+          ) : (
+            <Skeleton className="mt-1.5 h-3.5 w-48" />
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <NewCollection projectId={projectId} />
+          {active ? (
+            <Button
+              onClick={() => void navigate(practicePaths(target).session(active.id))}
+              size="sm"
+            >
+              <PlayIcon aria-hidden="true" /> Continuar prática
+            </Button>
+          ) : data?.totalAvailable ? (
+            <Button onClick={() => setSetupOpen(true)} size="sm">
+              <PlayIcon aria-hidden="true" /> Praticar flashcards
+            </Button>
+          ) : null}
+        </div>
       </div>
       {setupOpen && (
         <PracticeSetupDialog
@@ -188,7 +197,7 @@ const CollectionStrip = ({ collection }: { collection: Collection }) =>
     <QuizCollectionStrip collection={collection.item} />
   );
 
-/** The collection's own action: review what is due, answer the quiz, or open it. */
+/** The collection's own action, named as in the collection lists: Praticar or Iniciar. */
 const CollectionAction = ({
   collection,
   onPractice,
@@ -197,25 +206,26 @@ const CollectionAction = ({
   collection: Collection;
   onPractice: (id: string) => void;
   onStartQuiz: (id: string) => void;
-}) => {
-  if (collection.kind === "flashcard" && collection.item.dueCards > 0)
-    return (
-      <Button onClick={() => onPractice(collection.item.id)} size="sm" variant="outline">
-        Revisar
-      </Button>
-    );
-  if (collection.kind === "quiz" && collection.item.totalQuestions > 0)
-    return (
-      <Button onClick={() => onStartQuiz(collection.item.id)} size="sm" variant="outline">
-        Responder
-      </Button>
-    );
-  return (
-    <Button asChild size="sm" variant="outline">
-      <Link to={collectionHref(collection)}>Abrir</Link>
+}) =>
+  collection.kind === "flashcard" ? (
+    <FlashcardPracticeButton
+      dueCards={collection.item.dueCards}
+      fullWidthOnMobile={false}
+      onClick={() => onPractice(collection.item.id)}
+      title={collection.item.title}
+      totalCards={collection.item.totalCards}
+      variant="outline"
+    />
+  ) : (
+    <Button
+      disabled={collection.item.totalQuestions === 0}
+      onClick={() => onStartQuiz(collection.item.id)}
+      size="sm"
+      variant="outline"
+    >
+      <PlayIcon aria-hidden="true" /> Iniciar
     </Button>
   );
-};
 
 const collectionMeta = (collection: Collection) =>
   collection.kind === "flashcard"
@@ -228,15 +238,11 @@ const NewCollection = ({ projectId }: { projectId: string }) => {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            className="h-auto w-fit px-0 py-0.5 text-muted-foreground hover:bg-transparent hover:text-foreground aria-expanded:bg-transparent"
-            size="xs"
-            variant="ghost"
-          >
+          <Button size="sm" variant="outline">
             <PlusIcon aria-hidden="true" /> Nova coleção
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
+        <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setCreating("flashcard")}>
             <FlashcardDomainIcon /> Flashcards
           </DropdownMenuItem>
@@ -261,10 +267,8 @@ const NewCollection = ({ projectId }: { projectId: string }) => {
 
 const CollectionsBody = ({
   collections,
-  projectId,
 }: {
   collections: ReturnType<typeof useProjectCollections>;
-  projectId: string;
 }) => {
   const [practicing, setPracticing] = useState<string | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
@@ -272,10 +276,6 @@ const CollectionsBody = ({
     <div className="grid gap-5 border-t pt-5">
       {collections.pending ? (
         <Skeleton className="h-12 w-full" />
-      ) : collections.items.length === 0 ? (
-        <p className="text-[0.8125rem] text-muted-foreground">
-          Este projeto ainda não tem coleções.
-        </p>
       ) : (
         collections.items.map((collection) => (
           <div
@@ -301,7 +301,6 @@ const CollectionsBody = ({
           </div>
         ))
       )}
-      <NewCollection projectId={projectId} />
       {practicing && (
         <PracticeSetupDialog
           collectionId={practicing}
@@ -368,7 +367,7 @@ const DocumentsTable = ({
   projectId: string;
 }) => {
   const materialsOf = useMaterialsByDocument(projectId);
-  const columns = "grid grid-cols-[minmax(0,1fr)_9.5rem_6.5rem] gap-4";
+  const columns = "grid grid-cols-[minmax(0,1fr)_12rem_6rem] gap-4";
   return (
     <section aria-label="Documentos recentes" className="surface-panel mt-4 overflow-hidden">
       <div className={`${columns} border-b px-6 py-3 text-xs text-muted-foreground`}>
@@ -418,11 +417,10 @@ export const ProjectStudy = ({
   return (
     <>
       <section aria-label="Estudo deste projeto" className="surface-panel grid gap-6 p-6">
-        <StudySummary
-          hasFlashcardCollections={collections.flashcardCount > 0}
-          projectId={projectId}
-        />
-        <CollectionsBody collections={collections} projectId={projectId} />
+        <StudySummary collections={collections} projectId={projectId} />
+        {(collections.pending || collections.total > 0) && (
+          <CollectionsBody collections={collections} />
+        )}
       </section>
       {documents.length ? (
         <DocumentsTable documents={documents} projectId={projectId} />

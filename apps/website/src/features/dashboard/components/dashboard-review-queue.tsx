@@ -23,7 +23,8 @@ const collectionStatus = (collection: ReviewCollection) => {
 };
 
 const collectionAction = (collection: ReviewCollection) =>
-  collection.activeSession ? "Continuar" : collection.dueReviews > 0 ? "Revisar" : "Começar";
+  // Named as everywhere else: a collection is practiced; a session in progress is continued.
+  collection.activeSession ? "Continuar" : "Praticar";
 
 /**
  * What to study now. A section of the home's "today" panel (the panel draws the surface): a 14px
