@@ -56,13 +56,6 @@ const Option = ({
   </div>
 );
 
-/** The gray page the mock sits on, so surfaces read as they do in the app. */
-const Page = ({ children }: { children: ReactNode }) => (
-  <div className="overflow-hidden rounded-[var(--radius-panel)] border bg-background p-8">
-    {children}
-  </div>
-);
-
 /* Project page -------------------------------------------------------------------------------- */
 
 const project = {
@@ -113,7 +106,9 @@ const ProjectHeader = () => (
   </header>
 );
 
-const studySummary = "2 flashcards para revisar e 1 questão errada para refazer";
+/* The flashcards due across the project's collections, reviewed in one session. Quizzes keep their
+   own action on their row: answering is not reviewing. */
+const studySummary = "2 flashcards para revisar, de 1 coleção";
 
 const CollectionRow = ({ item }: { item: (typeof collections)[number] }) => (
   <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5">
@@ -160,17 +155,16 @@ const materialsOf = (doc: (typeof project.documents)[number]) =>
         .filter(Boolean)
         .join(" · ");
 
-/** A: study on top (what to do now and the project's collections), documents below. */
+/** Narrow: study on top (what to do now and the collections), documents below. */
 const HubStacked = () => (
-  <Page>
-    <ProjectHeader />
+  <>
     <div className="surface-panel grid gap-6 p-6">
       <div className="flex items-center justify-between gap-6">
         <div className="min-w-0">
           <p className="text-sm font-semibold">Estudo deste projeto</p>
           <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">{studySummary}</p>
         </div>
-        <Button size="sm">Estudar este projeto</Button>
+        <Button size="sm">Revisar flashcards</Button>
       </div>
       <div className="grid gap-5 border-t pt-5">
         {collections.map((item) => (
@@ -180,14 +174,14 @@ const HubStacked = () => (
       </div>
     </div>
     <div className="surface-panel mt-4 overflow-hidden">
-      <div className="grid grid-cols-[minmax(0,1fr)_10rem_7rem] border-b px-6 py-3 text-xs text-muted-foreground">
+      <div className="grid grid-cols-[minmax(0,1fr)_9.5rem_6rem] border-b px-6 py-3 text-xs text-muted-foreground">
         <span>Documento</span>
         <span>Materiais</span>
         <span className="text-right">Atualizado em</span>
       </div>
       {project.documents.map((doc) => (
         <div
-          className="grid grid-cols-[minmax(0,1fr)_10rem_7rem] items-center border-b px-6 py-3 last:border-b-0"
+          className="grid grid-cols-[minmax(0,1fr)_9.5rem_6rem] items-center border-b px-6 py-3 last:border-b-0"
           key={doc.title}
         >
           <span className="flex min-w-0 items-center gap-2.5">
@@ -199,66 +193,110 @@ const HubStacked = () => (
         </div>
       ))}
     </div>
-  </Page>
+  </>
 );
 
-/** B: documents and study side by side; each document says what came out of it. */
+/** Wide: documents and study side by side; each document says what came out of it. */
 const HubColumns = () => (
-  <Page>
-    <ProjectHeader />
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,22rem)] items-start gap-4">
-      <div className="surface-panel p-6">
-        <p className="text-sm font-semibold">Documentos</p>
-        <div className="mt-4 grid gap-4">
-          {project.documents.map((doc) => (
-            <div className="flex min-w-0 items-start gap-3" key={doc.title}>
-              <DocumentDomainIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <p className="truncate text-[0.9375rem] leading-snug font-medium underline-offset-4 hover:underline">
-                  {doc.title}
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {materialsOf(doc)} · atualizado {doc.updated}
-                </p>
-              </div>
+  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,20rem)] items-start gap-4">
+    <div className="surface-panel p-6">
+      <p className="text-sm font-semibold">Documentos</p>
+      <div className="mt-4 grid gap-4">
+        {project.documents.map((doc) => (
+          <div className="flex min-w-0 items-start gap-3" key={doc.title}>
+            <DocumentDomainIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="truncate text-[0.9375rem] leading-snug font-medium underline-offset-4 hover:underline">
+                {doc.title}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {materialsOf(doc)} · atualizado {doc.updated}
+              </p>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
-      <div className="surface-panel grid gap-5 p-6">
-        <div>
-          <p className="text-sm font-semibold">Estudo deste projeto</p>
-          <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">{studySummary}</p>
-          <Button className="mt-3 w-full" size="sm">
-            Estudar este projeto
-          </Button>
-        </div>
-        <div className="grid gap-5 border-t pt-5">
-          {collections.map((item) => (
-            <div className="grid gap-2" key={item.kind}>
-              <div className="flex min-w-0 items-center gap-2.5">
-                {item.kind === "flashcard" ? (
-                  <FlashcardDomainIcon className="size-4 shrink-0 text-muted-foreground" />
-                ) : (
-                  <QuizDomainIcon className="size-4 shrink-0 text-muted-foreground" />
-                )}
-                <p className="truncate text-sm font-medium underline-offset-4 hover:underline">
-                  {item.title}
-                </p>
-              </div>
-              <StudyStrip
-                emptyLabel="Nada estudado ainda"
-                label={item.title}
-                noun={item.noun}
-                segments={item.segments}
-              />
+    </div>
+    <div className="surface-panel grid gap-5 p-6">
+      <div>
+        <p className="text-sm font-semibold">Estudo deste projeto</p>
+        <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">{studySummary}</p>
+        <Button className="mt-3 w-full" size="sm">
+          Revisar flashcards
+        </Button>
+      </div>
+      <div className="grid gap-5 border-t pt-5">
+        {collections.map((item) => (
+          <div className="grid gap-2" key={item.kind}>
+            <div className="flex min-w-0 items-center gap-2.5">
+              {item.kind === "flashcard" ? (
+                <FlashcardDomainIcon className="size-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <QuizDomainIcon className="size-4 shrink-0 text-muted-foreground" />
+              )}
+              <p className="min-w-0 flex-1 truncate text-sm font-medium underline-offset-4 hover:underline">
+                {item.title}
+              </p>
+              <Button className="shrink-0" size="xs" variant="outline">
+                {item.action}
+              </Button>
             </div>
-          ))}
-          <NewCollection />
+            <StudyStrip
+              emptyLabel="Nada estudado ainda"
+              label={item.title}
+              noun={item.noun}
+              segments={item.segments}
+            />
+          </div>
+        ))}
+        <NewCollection />
+      </div>
+    </div>
+  </div>
+);
+
+/** The project column as it is today, so the mock sits where "Início" opens. */
+const ProjectColumn = () => (
+  <div className="m-2 mr-0 grid w-[18rem] shrink-0 content-start gap-3 rounded-[var(--radius-panel)] bg-card p-3 text-sm">
+    <p className="px-1 text-xs text-muted-foreground">‹ Projetos</p>
+    <p className="truncate px-1 font-medium">{project.title}</p>
+    <div className="flex h-8 items-center rounded-[var(--radius)] border px-2.5 text-[0.8125rem]">
+      <PlusIcon className="mr-1.5 size-3.5" /> Novo documento
+    </div>
+    <div className="grid gap-0.5">
+      <span className="relative rounded-md bg-muted px-2.5 py-1.5 font-medium">
+        <span className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-primary" />
+        Início
+      </span>
+      {project.documents.map((doc) => (
+        <span className="flex min-w-0 items-center gap-2 px-2.5 py-1.5" key={doc.title}>
+          <DocumentDomainIcon className="size-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">{doc.title}</span>
+        </span>
+      ))}
+    </div>
+  </div>
+);
+
+/** One page: side by side when the content area holds both (48rem), stacked when it does not. */
+const ProjectHub = ({ width }: { width: string }) => (
+  <div
+    className="flex overflow-hidden rounded-[var(--radius-panel)] border bg-background"
+    style={{ maxWidth: width }}
+  >
+    <ProjectColumn />
+    <div className="min-w-0 flex-1 p-8">
+      <ProjectHeader />
+      <div className="@container">
+        <div className="hidden @[48rem]:block">
+          <HubColumns />
+        </div>
+        <div className="@[48rem]:hidden">
+          <HubStacked />
         </div>
       </div>
     </div>
-  </Page>
+  </div>
 );
 
 /* Creation dialog ----------------------------------------------------------------------------- */
@@ -371,7 +409,7 @@ const CreateDialog = ({ sources }: { sources: Source[] }) => {
         <QuantitySelector
           label="Quantidade"
           onChange={setQuantity}
-          options={[3, 5, 8, 10]}
+          options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
           value={quantity}
         />
         <p className="text-xs text-muted-foreground">
@@ -501,21 +539,18 @@ export default function ProposalsPage() {
       </p>
 
       <Section
-        note="A página inicial de cada projeto passa a ser onde se estuda o projeto: o que revisar agora, as coleções dele com o progresso e os documentos, cada um dizendo quantos materiais saíram dele. As telas Flashcards e Quizzes continuam como visão de todos os projetos. No menu, “Documentos” passa a se chamar “Projetos”. A árvore de arquivos à esquerda continua como está."
+        note="Entra no lugar do “Início” de cada projeto, com a árvore de arquivos ao lado como hoje. Quando a área de conteúdo tem espaço (48rem, cerca de uma tela de 1440px com a árvore aberta), documentos e estudo ficam lado a lado; quando não tem, a mesma página empilha: estudo em cima, documentos embaixo. “Revisar flashcards” abre uma sessão só com os flashcards pendentes de todas as coleções do projeto, misturados; as questões continuam no “Responder” de cada quiz. Sem nada pendente, o resumo diz “Tudo revisado” e o botão sai."
         title="Página do projeto"
       >
         <div className="grid gap-12">
-          <Option
-            label="A · Estudo em cima, documentos embaixo"
-            note="Um painel com o estudo do projeto (resumo, uma ação preenchida e as coleções com a faixa de progresso) e, abaixo, a tabela de documentos com a coluna Materiais. Lê de cima para baixo: o que fazer agora, depois de onde veio."
-          >
-            <HubStacked />
+          <Option label="Com espaço: lado a lado" note="Área de conteúdo a partir de 48rem.">
+            <ProjectHub width="100%" />
           </Option>
           <Option
-            label="B · Documentos e estudo lado a lado"
-            note="Documentos à esquerda, cada um com o que saiu dele; à direita, uma coluna estreita com o estudo e as coleções. Mostra a hierarquia de uma vez, mas aperta as coleções e, em telas estreitas, vira uma coluna só."
+            label="Sem espaço: empilhada"
+            note="Área de conteúdo abaixo de 48rem (por exemplo, telas de 1280px)."
           >
-            <HubColumns />
+            <ProjectHub width="58rem" />
           </Option>
         </div>
       </Section>
@@ -539,7 +574,7 @@ export default function ProposalsPage() {
           <div className="grid items-start gap-8 md:grid-cols-2">
             <Option
               label="Um documento, como abre do cabeçalho"
-              note="Igual ao de hoje, com três mudanças: “Salvar em” vem por último e sugere a coleção do projeto (ou uma nova com o nome do documento), a quantidade vem sugerida pelo tamanho da fonte, e o limite é 10, o mesmo em todos os caminhos."
+              note="Igual ao de hoje, com três mudanças: “Salvar em” vem por último e sugere a coleção do projeto (ou uma nova com o nome do documento), a quantidade vem sugerida pelo tamanho da fonte, e dá para escolher de 1 a 10, o mesmo em todos os caminhos (no trecho selecionado, de 1 a 5)."
             >
               <CreateDialog sources={oneSource} />
             </Option>
