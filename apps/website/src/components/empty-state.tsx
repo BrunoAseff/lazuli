@@ -11,6 +11,7 @@ export const EmptyState = ({
   title,
   compact = false,
   className,
+  surface = "panel",
 }: {
   action?: ReactNode;
   description?: ReactNode;
@@ -20,32 +21,25 @@ export const EmptyState = ({
   title: string;
   compact?: boolean;
   className?: string;
+  surface?: "panel" | "inline";
 }) => (
   <section
     className={cn(
-      "grid place-items-center rounded-xl border border-dashed bg-card/40 px-5 py-7 text-center",
+      "grid place-items-center rounded-[var(--radius-panel)] px-5 py-7 text-center",
+      surface === "panel" ? "border border-border/50 bg-card" : "bg-transparent",
       minHeight === "lg" ? "sm:min-h-72" : minHeight === "sm" ? "sm:min-h-44" : "sm:min-h-64",
       className,
     )}
   >
-    <div className="max-w-sm">
+    <div className="empty-state max-w-sm">
+      {/* A plain glyph, no tile: the title carries the message. */}
       <span
         aria-hidden="true"
-        className={cn(
-          "mx-auto mb-4 flex size-11 items-center justify-center rounded-[var(--radius)] border border-primary/25 bg-primary/5 text-primary",
-          iconClassName,
-        )}
+        className={cn("mb-3 flex justify-center text-muted-foreground", iconClassName)}
       >
-        <Icon className="size-5" />
+        <Icon className="size-6" />
       </span>
-      <h2
-        className={cn(
-          "font-heading font-medium",
-          compact ? "text-lg sm:text-xl" : "text-xl sm:text-2xl",
-        )}
-      >
-        {title}
-      </h2>
+      <h2 className={cn("font-reading font-normal", compact ? "text-lg" : "text-xl")}>{title}</h2>
       {description && (
         <div className="mt-2 text-sm leading-6 text-muted-foreground">{description}</div>
       )}

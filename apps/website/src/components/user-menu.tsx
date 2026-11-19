@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronsUpDownIcon, LogOutIcon, SettingsIcon } from "lucide-react";
+import { ChevronsUpDownIcon, LogOutIcon, SettingsIcon } from "@/components/icons.tsx";
 import { useLocation, useNavigate } from "react-router";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.tsx";

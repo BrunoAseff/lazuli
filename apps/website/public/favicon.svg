@@ -1,9 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <rect width="256" height="256" rx="48" fill="#f2edee"/>
-  <g fill="#d4e8f0" stroke="#007bb8" stroke-width="13" stroke-linejoin="round">
-    <path d="m128 27 37 37-37 37-37-37Z"/>
-    <path d="m128 155 37 37-37 37-37-37Z"/>
-    <path d="m64 91 37 37-37 37-37-37Z"/>
-    <path d="m192 91 37 37-37 37-37-37Z"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <style>
+    .f1{fill:#5b72dc}.f2{fill:#2a40b4}.f3{fill:#1b2a78}.f4{fill:#22359a}.t{fill:#7084e2}.g{fill:#c9a14a}
+    @media (prefers-color-scheme: dark){.f1{fill:#dbe2ff}.f2{fill:#a9b8f5}.f3{fill:#5065c8}.f4{fill:#7387e0}.t{fill:#c3cdfa}.g{fill:#e0bd6a}}
+  </style>
+  <path class="f1" d="M1.5 12 12 1.5 12 7.2 7.2 12Z"/>
+  <path class="f2" d="M12 1.5 22.5 12 16.8 12 12 7.2Z"/>
+  <path class="f3" d="M22.5 12 12 22.5 12 16.8 16.8 12Z"/>
+  <path class="f4" d="M12 22.5 1.5 12 7.2 12 12 16.8Z"/>
+  <path class="t" d="M12 7.2 16.8 12 12 16.8 7.2 12Z"/>
+  <path class="g" d="M14.6 8.6 15.9 9.9 14.6 11.2 13.3 9.9Z"/>
 </svg>

@@ -61,6 +61,12 @@ it("shows the same count for favorites in projects and collections, and clears i
         .find((button) => button.textContent === "Limpar")!
         .click(),
     );
+    await vi.waitFor(async () => {
+      await act(async () => {});
+      expect(
+        host.querySelector('button[aria-label="Filtrar coleções"] span[aria-hidden=true]'),
+      ).toBeNull();
+    });
     for (const name of ["Filtrar projetos", "Filtrar coleções"]) {
       const button = host.querySelector(`button[aria-label="${name}"]`)!;
       expect(button).not.toBeNull();

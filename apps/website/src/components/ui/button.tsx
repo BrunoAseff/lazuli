@@ -4,17 +4,19 @@ import { Slot } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 import { buttonTransition } from "@/components/ui/ui-styles.ts";
+import { LoaderCircleIcon } from "@/components/icons.tsx";
 
 const buttonVariants = cva(
   `group/button inline-flex shrink-0 items-center justify-center rounded-[var(--radius)] border border-transparent bg-clip-padding text-sm font-normal whitespace-nowrap outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${buttonTransition}`,
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-[var(--primary-hover)]",
+        default: "bg-action text-action-foreground hover:bg-[var(--action-hover)]",
+        // Hover keeps the card surface and strengthens the edge: a muted fill would match the page.
         outline:
-          "border-border bg-card hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "border-border bg-card hover:border-[color-mix(in_oklab,var(--foreground)_26%,transparent)] hover:text-foreground aria-expanded:border-[color-mix(in_oklab,var(--foreground)_26%,transparent)] aria-expanded:text-foreground",
         secondary:
-          "border-border bg-secondary text-secondary-foreground hover:bg-muted aria-expanded:bg-muted aria-expanded:text-secondary-foreground",
+          "border-border bg-secondary text-secondary-foreground hover:border-[color-mix(in_oklab,var(--foreground)_26%,transparent)] aria-expanded:border-[color-mix(in_oklab,var(--foreground)_26%,transparent)] aria-expanded:text-secondary-foreground",
         ghost:
           "text-muted-foreground hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         destructive:
@@ -23,10 +25,10 @@ const buttonVariants = cva(
       },
       size: {
         default:
-          "h-9 gap-1.5 px-3 active:not-aria-[haspopup]:translate-y-px has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5",
-        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs active:not-aria-[haspopup]:translate-y-px in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] leading-none active:not-aria-[haspopup]:translate-y-px in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg]:block [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-10 gap-2 px-4 active:not-aria-[haspopup]:translate-y-px has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
+          "h-9 gap-1.5 px-3 active:not-aria-[haspopup]:scale-[0.97] has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs active:not-aria-[haspopup]:scale-[0.97] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] leading-none active:not-aria-[haspopup]:scale-[0.97] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg]:block [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-10 gap-2 px-4 active:not-aria-[haspopup]:scale-[0.97] has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",
         icon: "size-9",
         "icon-xs":
           "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
@@ -47,21 +49,47 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  pending = false,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
+    /** Shows a spinner over the label without changing the button's width. */
+    pending?: boolean;
   }) {
   const Comp = asChild ? Slot.Root : "button";
 
+  if (asChild)
+    return (
+      <Comp
+        data-slot="button"
+        data-variant={variant}
+        data-size={size}
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      >
+        {children}
+      </Comp>
+    );
+
   return (
     <Comp
+      aria-busy={pending || undefined}
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size, className }), pending && "relative")}
       {...props}
-    />
+    >
+      {/* display: contents keeps the original layout; hidden content still reserves its width. */}
+      <span style={{ display: "contents", visibility: pending ? "hidden" : undefined }}>
+        {children}
+      </span>
+      {pending && (
+        <LoaderCircleIcon aria-hidden="true" className="absolute inset-0 m-auto animate-spin" />
+      )}
+    </Comp>
   );
 }
 

@@ -1,5 +1,5 @@
 import type { Pagination } from "@lazuli/shared";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";

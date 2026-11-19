@@ -1,15 +1,9 @@
 import { NavLink, useLocation } from "react-router";
-import { HouseIcon } from "@phosphor-icons/react/House";
-import { ChartBarIcon } from "@phosphor-icons/react/ChartBar";
+import { motion, useReducedMotion } from "motion/react";
+import { primaryNavigation } from "@/components/primary-navigation.ts";
 
-import { BrandMark } from "@/components/brand-mark.tsx";
-import {
-  DocumentDomainIcon,
-  FlashcardDomainIcon,
-  ProjectClosedIcon,
-  ProjectOpenIcon,
-  QuizDomainIcon,
-} from "@/components/domain-icons.ts";
+import { LazuliWordmark } from "@/components/brand-mark.tsx";
+import { ProjectClosedIcon, ProjectOpenIcon } from "@/components/domain-icons.ts";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { UserMenu } from "@/components/user-menu.tsx";
 import {
@@ -26,25 +20,19 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
+import { spring } from "@/lib/motion.ts";
 import { AiCreditBalance } from "@/features/ai/components/ai-credit-balance.tsx";
 import { BillingStatusNotice } from "@/features/billing/components/billing-status-notice.tsx";
 import { useRecentProjects } from "@/features/projects/use-recent-projects.ts";
 import { FavoriteSidebar } from "@/features/favorites/favorite-sidebar.tsx";
 import { GlobalSearchButton } from "@/features/search/global-search-button.tsx";
 
-const primaryNavigation = [
-  { label: "Início", path: "/dashboard", Icon: HouseIcon },
-  { label: "Documentos", path: "/documents", Icon: DocumentDomainIcon },
-  { label: "Flashcards", path: "/flashcards", Icon: FlashcardDomainIcon },
-  { label: "Quizzes", path: "/quizzes", Icon: QuizDomainIcon },
-  { label: "Estatísticas", path: "/statistics", Icon: ChartBarIcon },
-] as const;
-
 export const AppSidebar = () => {
   const { data: session } = authClient.useSession();
   const { isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
   const recentProjects = useRecentProjects(session?.user.id ?? "anonymous");
+  const reduced = useReducedMotion();
 
   if (!session) return null;
 
@@ -54,41 +42,51 @@ export const AppSidebar = () => {
 
   return (
     <Sidebar className="p-0" variant="inset" collapsible="offcanvas">
-      <SidebarHeader className="px-2 pt-3 pb-0">
+      <SidebarHeader className="px-3 pt-3 pb-0">
         <NavLink
           aria-label="Ir para o início"
           className="flex h-8 items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           onClick={closeMobileNavigation}
           to="/dashboard"
         >
-          <BrandMark className="size-6" />
-          <span className="font-heading text-lg font-medium tracking-tight">Lazúli</span>
+          <LazuliWordmark />
         </NavLink>
       </SidebarHeader>
 
-      <SidebarContent className="gap-0 px-2 pt-3">
+      <SidebarContent className="gap-0 px-3 pt-3">
         <GlobalSearchButton />
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
             <SidebarMenu className="gap-0.5">
-              {primaryNavigation.map(({ Icon, label, path }) => (
-                <SidebarMenuItem key={path}>
-                  <SidebarMenuButton
-                    asChild
-                    className="app-nav-item"
-                    isActive={
-                      path === "/dashboard"
-                        ? location.pathname === path
-                        : location.pathname.startsWith(path)
-                    }
-                  >
-                    <NavLink onClick={closeMobileNavigation} to={path}>
-                      <Icon aria-hidden="true" weight="duotone" />
-                      <span>{label}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {primaryNavigation.map(({ Icon, label, path }) => {
+                const active =
+                  path === "/dashboard"
+                    ? location.pathname === path
+                    : location.pathname.startsWith(path);
+                return (
+                  <SidebarMenuItem key={path}>
+                    {/* One highlight travels between destinations, carrying the facet with it. */}
+                    {active && (
+                      <motion.span
+                        aria-hidden="true"
+                        className="app-nav-highlight"
+                        layoutId="app-nav-highlight"
+                        transition={reduced ? { duration: 0 } : spring.morph}
+                      />
+                    )}
+                    <SidebarMenuButton
+                      asChild
+                      className="app-nav-item app-nav-primary"
+                      isActive={active}
+                    >
+                      <NavLink onClick={closeMobileNavigation} to={path}>
+                        <Icon aria-hidden="true" />
+                        <span>{label}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -110,7 +108,7 @@ export const AppSidebar = () => {
                     <SidebarMenuItem key={project.id}>
                       <SidebarMenuButton asChild className="app-nav-item" isActive={active}>
                         <NavLink onClick={closeMobileNavigation} to={projectPath}>
-                          <ProjectIcon aria-hidden="true" weight="duotone" />
+                          <ProjectIcon aria-hidden="true" />
                           <OverflowTooltip side="right" text={project.title}>
                             {(ref) => (
                               <span ref={ref} className="min-w-0 flex-1 truncate">
@@ -129,7 +127,7 @@ export const AppSidebar = () => {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="gap-2 p-2">
+      <SidebarFooter className="gap-2 px-3 py-2">
         <BillingStatusNotice />
         <AiCreditBalance />
         <UserMenu mobile={isMobile} user={session.user} />

@@ -1,12 +1,15 @@
 "use client";
 
+import { preserveLocalEscape } from "./preserve-local-escape.ts";
+import { useOverlayFocusReturn } from "./use-overlay-focus-return.ts";
+
 import * as React from "react";
 import { Dialog as SheetPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { overlaySurface } from "./ui-styles.ts";
-import { XIcon } from "lucide-react";
+import { XIcon } from "@/components/icons.tsx";
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -45,17 +48,26 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  onEscapeKeyDown,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
   showCloseButton?: boolean;
 }) {
+  const focusReturn = useOverlayFocusReturn({ onOpenAutoFocus, onCloseAutoFocus });
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
         data-side={side}
+        {...focusReturn}
+        onEscapeKeyDown={(event) => {
+          onEscapeKeyDown?.(event);
+          preserveLocalEscape(event);
+        }}
         className={cn(
           `fixed z-50 flex flex-col gap-4 bg-clip-padding text-sm transition duration-180 ease-out data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:rounded-b-none data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:rounded-l-none data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:rounded-r-none data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:rounded-t-none data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-[side=bottom]:data-open:slide-in-from-bottom-10 data-[side=left]:data-open:slide-in-from-left-10 data-[side=right]:data-open:slide-in-from-right-10 data-[side=top]:data-open:slide-in-from-top-10 data-closed:animate-out data-closed:fade-out-0 data-[side=bottom]:data-closed:slide-out-to-bottom-10 data-[side=left]:data-closed:slide-out-to-left-10 data-[side=right]:data-closed:slide-out-to-right-10 data-[side=top]:data-closed:slide-out-to-top-10 ${overlaySurface}`,
           className,
@@ -67,7 +79,7 @@ function SheetContent({
           <SheetPrimitive.Close data-slot="sheet-close" asChild>
             <Button variant="ghost" className="absolute top-3 right-3" size="icon-sm">
               <XIcon />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">Fechar</span>
             </Button>
           </SheetPrimitive.Close>
         )}
@@ -100,7 +112,7 @@ function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPr
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn("font-heading text-xl font-normal text-foreground", className)}
+      className={cn("font-heading text-lg leading-snug font-semibold text-foreground", className)}
       {...props}
     />
   );

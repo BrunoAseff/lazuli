@@ -1,5 +1,7 @@
-export { ArticleIcon as DocumentDomainIcon } from "@phosphor-icons/react/Article";
-export { CardsThreeIcon as FlashcardDomainIcon } from "@phosphor-icons/react/CardsThree";
-export { ExamIcon as QuizDomainIcon } from "@phosphor-icons/react/Exam";
-export { FolderIcon as ProjectClosedIcon } from "@phosphor-icons/react/Folder";
-export { FolderOpenIcon as ProjectOpenIcon } from "@phosphor-icons/react/FolderOpen";
+export {
+  ArticleIcon as DocumentDomainIcon,
+  CardsThreeIcon as FlashcardDomainIcon,
+  ExamIcon as QuizDomainIcon,
+  FolderIcon as ProjectClosedIcon,
+  FolderOpenIcon as ProjectOpenIcon,
+} from "./icons.tsx";

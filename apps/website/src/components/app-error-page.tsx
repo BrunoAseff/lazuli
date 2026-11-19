@@ -1,4 +1,4 @@
-import { AlertTriangleIcon } from "lucide-react";
+import { AlertTriangleIcon } from "@/components/icons.tsx";
 import { isRouteErrorResponse, Link, useRouteError } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -9,14 +9,12 @@ export const AppErrorPage = () => {
 
   return (
     <main className="grid min-h-screen place-items-center px-5 py-12">
-      <div className="max-w-md border border-dashed p-8 text-center">
+      <div className="surface-panel max-w-md p-8 text-center">
         <AlertTriangleIcon
           aria-hidden="true"
           className="mx-auto mb-4 size-7 text-muted-foreground"
         />
-        <h1 className="font-heading text-3xl font-medium">
-          {notFound ? "Página não encontrada" : "Algo deu errado"}
-        </h1>
+        <h1 className="page-title">{notFound ? "Página não encontrada" : "Algo deu errado"}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {notFound
             ? "O endereço acessado não existe ou não está mais disponível."
