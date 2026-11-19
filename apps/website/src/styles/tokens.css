@@ -80,6 +80,8 @@
   --search-match: color-mix(in oklab, var(--primary) 16%, transparent);
   --search-current: color-mix(in oklab, var(--primary) 30%, transparent);
   --shadow-overlay: 0 16px 48px rgb(20 26 46 / 12%), 0 2px 8px rgb(20 26 46 / 6%);
+  /* Small floating surfaces (menus, popovers, selects): a short shadow; the big one is for dialogs. */
+  --shadow-float: 0 4px 14px rgb(20 26 46 / 8%), 0 1px 3px rgb(20 26 46 / 6%);
   --sidebar: #eceef2;
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -137,6 +139,7 @@
   --gold-ink: var(--pyrite-bright); /* 9.2:1 on cards */
   --chart-3: #8ac6c2;
   --shadow-overlay: 0 16px 48px rgb(0 0 0 / 34%), 0 2px 8px rgb(0 0 0 / 18%);
+  --shadow-float: 0 4px 14px rgb(0 0 0 / 28%), 0 1px 3px rgb(0 0 0 / 18%);
   --sidebar: #0f111a;
   --sidebar-accent: #232737;
   --gem-rough: #6f789c;

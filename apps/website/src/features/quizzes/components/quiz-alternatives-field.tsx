@@ -1,3 +1,4 @@
+import { FormFieldError } from "@/components/form-field-error.tsx";
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon } from "@/components/icons.tsx";
 import { useId, useMemo, useState } from "react";
 
@@ -140,11 +141,11 @@ export const QuizAlternativesField = ({
                 readOnly={readOnly}
                 value={option.text}
               />
-              {duplicated && (
-                <p role="alert" className="pt-1 text-xs text-destructive" id={errorId}>
-                  Esta alternativa está repetida.
-                </p>
-              )}
+              <FormFieldError
+                id={errorId}
+                inGrid={false}
+                message={duplicated ? "Esta alternativa está repetida." : undefined}
+              />
             </div>
             {/* One row of equal controls aligned to the first line of the answer. */}
             <div className="flex items-center gap-0.5 pt-0.5">

@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -37,6 +38,11 @@ export const SettingsSurface = ({
   </section>
 );
 
+/**
+ * A labelled field with an optional action column. The column opens and closes with an animation
+ * and the actions fade in and out, so editing a value never makes buttons pop in or the input
+ * jump narrower in one frame.
+ */
 export const SettingsField = ({
   action,
   children,
@@ -51,10 +57,8 @@ export const SettingsField = ({
   message?: ReactNode;
 }) => (
   <div
-    className={cn(
-      "grid gap-x-3 gap-y-1.5 py-2 sm:items-start",
-      action ? "sm:grid-cols-[4rem_minmax(0,1fr)_10rem]" : "sm:grid-cols-[4rem_minmax(0,1fr)]",
-    )}
+    className="settings-field grid gap-y-1.5 py-2 sm:items-start"
+    data-action={action ? "" : undefined}
   >
     {htmlFor ? (
       <label className="pt-2 text-sm text-muted-foreground" htmlFor={htmlFor}>
@@ -64,14 +68,23 @@ export const SettingsField = ({
       <p className="pt-2 text-sm text-muted-foreground">{label}</p>
     )}
     <div className="min-w-0">{children}</div>
-    {action && <div className="flex items-center gap-1.5 sm:min-h-9 sm:justify-end">{action}</div>}
-    {message && (
-      <div
-        className={cn(
-          "text-xs text-muted-foreground sm:col-start-2 sm:min-h-4",
-          action && "sm:col-span-2",
+    <div className="min-w-0 overflow-hidden">
+      <AnimatePresence initial={false}>
+        {action && (
+          <motion.div
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-1.5 pt-1.5 sm:min-h-9 sm:justify-end sm:pt-0 sm:pl-3"
+            exit={{ opacity: 0, x: 6 }}
+            initial={{ opacity: 0, x: 6 }}
+            transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+          >
+            {action}
+          </motion.div>
         )}
-      >
+      </AnimatePresence>
+    </div>
+    {message && (
+      <div className="text-xs text-muted-foreground sm:col-span-2 sm:col-start-2 sm:min-h-4">
         {message}
       </div>
     )}
@@ -130,7 +143,7 @@ export const InlineFeedback = ({
 }) => (
   <p
     className={cn(
-      "text-sm",
+      "message-in text-sm",
       kind === "error" && "text-destructive",
       kind === "success" && "text-success",
       kind === "neutral" && "text-muted-foreground",

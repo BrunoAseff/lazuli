@@ -80,7 +80,7 @@ export const DocumentImportTray = ({
     setCompletedDismissedAt(dismissedAt);
   };
   return (
-    <section className="fixed right-4 bottom-4 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[var(--radius-overlay)] border bg-popover shadow-[var(--shadow-overlay)]">
+    <section className="fixed right-4 bottom-4 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[var(--radius-overlay)] border bg-popover shadow-[var(--shadow-float)]">
       <header className="flex h-12 items-center gap-2 border-b px-4">
         <p className="min-w-0 flex-1 font-medium">
           {active

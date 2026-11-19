@@ -288,7 +288,7 @@
   gap: 1rem;
 
   & h2 {
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 600;
   }
   & span {
@@ -346,13 +346,17 @@
 }
 
 /* Result review: questions as readable rows; the open one shows its alternatives in place. */
+/* Separated by space, never by rules: the open question takes a little more room. */
 .result-list {
   display: grid;
-  margin-top: 1rem;
-  border-top: 1px solid var(--line-subtle);
+  gap: 0.25rem;
+  margin-top: 0.75rem;
 }
-.result-item {
-  border-bottom: 1px solid var(--line-subtle);
+.result-item[data-open] {
+  margin-block: 0.5rem;
+}
+.result-item[data-open]:first-child {
+  margin-top: 0;
 }
 .result-row {
   display: grid;

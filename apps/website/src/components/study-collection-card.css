@@ -59,9 +59,10 @@
   flex: none;
   gap: 2px;
 
+  /* Nothing yet: a quiet filled track, never an outlined empty bar. */
   &[data-empty] {
     border-radius: 999px;
-    box-shadow: inset 0 0 0 1px var(--input);
+    background: var(--muted);
   }
 }
 
@@ -97,7 +98,7 @@
     background: var(--primary);
   }
   &[data-tone="new"] {
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+    background: color-mix(in oklab, var(--muted-foreground) 32%, transparent);
   }
   &[data-tone="correct"] {
     background: var(--success);
@@ -135,7 +136,7 @@
     background: var(--primary);
   }
   [data-tone="new"] > & {
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+    background: color-mix(in oklab, var(--muted-foreground) 32%, transparent);
   }
   [data-tone="correct"] > & {
     background: var(--success);

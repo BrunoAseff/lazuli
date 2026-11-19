@@ -4,7 +4,7 @@ import * as React from "react";
 import { HoverCard as HoverCardPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils.ts";
-import { overlayMotion, overlaySurface } from "./ui-styles.ts";
+import { overlayMotion, floatSurface } from "./ui-styles.ts";
 
 const HoverCard = HoverCardPrimitive.Root;
 const HoverCardTrigger = HoverCardPrimitive.Trigger;
@@ -20,7 +20,7 @@ function HoverCardContent({
       <HoverCardPrimitive.Content
         align={align}
         className={cn(
-          `z-50 w-72 p-4 text-sm outline-none ${overlaySurface} ${overlayMotion}`,
+          `z-50 w-72 p-4 text-sm outline-none ${floatSurface} ${overlayMotion}`,
           className,
         )}
         sideOffset={sideOffset}

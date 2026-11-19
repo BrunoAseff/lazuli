@@ -24,7 +24,8 @@
 
   &:not([data-static]) {
     @media (hover: hover) and (pointer: fine) {
-      &:hover:not(:disabled) {
+      /* The chosen answer keeps its look under the pointer; only the others answer to hover. */
+      &:hover:not(:disabled, [data-selected]) {
         border-color: color-mix(in oklab, var(--foreground) 22%, transparent);
         background: var(--row-hover);
       }

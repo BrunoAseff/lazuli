@@ -97,12 +97,13 @@ export const ReferenceManager = ({
       {disabled ? (
         <p className="text-xs text-muted-foreground">Salve para conectar documentos.</p>
       ) : (
+        // A bordered small button, like "Ver no documento": clearly an action, never loose text.
         <Button
-          className="h-auto w-fit px-0 py-0.5 text-muted-foreground hover:bg-transparent hover:text-foreground aria-expanded:bg-transparent"
+          className="w-fit"
           onClick={() => (count ? setManagerOpen(true) : setPickerOpen(true))}
           size="xs"
           type="button"
-          variant="ghost"
+          variant="outline"
         >
           {count ? (
             <>

@@ -806,7 +806,7 @@ export const DocumentEditor = ({
         !pendingTarget &&
         !pendingAiReference &&
         !adjustingAnchorId && (
-          <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-[var(--radius-overlay)] border bg-popover px-4 py-3 shadow-[var(--shadow-overlay)]">
+          <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-[var(--radius-overlay)] border bg-popover px-4 py-3 shadow-[var(--shadow-float)]">
             <p className="min-w-0 flex-1 text-sm">
               {aiAction && !aiDialogOpen
                 ? contextualReturnTo
@@ -827,7 +827,7 @@ export const DocumentEditor = ({
           </div>
         )}
       {(pendingTarget || pendingAiReference || adjustingAnchorId) && (
-        <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-[var(--radius-overlay)] border bg-popover px-4 py-3 shadow-[var(--shadow-overlay)]">
+        <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-[var(--radius-overlay)] border bg-popover px-4 py-3 shadow-[var(--shadow-float)]">
           <p className="min-w-0 flex-1 text-sm">
             {adjustingAnchorId
               ? "Selecione o novo trecho desta fonte."

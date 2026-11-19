@@ -35,7 +35,7 @@ export type StudyStripSegment = {
 
 /**
  * Proportional strip of real counts. The same tones as the index glyphs:
- * consolidated ink, lapis for what is due, an outline for what was never studied.
+ * consolidated ink, lapis for what is due, a light gray for what was never studied.
  */
 export const StudyStrip = ({
   emptyLabel,

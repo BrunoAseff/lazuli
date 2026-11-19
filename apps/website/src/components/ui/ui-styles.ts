@@ -7,6 +7,9 @@ export const buttonTransition =
 export const overlaySurface =
   "rounded-[var(--radius-overlay)] bg-popover text-popover-foreground shadow-[var(--shadow-overlay)] ring-1 ring-border";
 
+/** Menus, popovers, selects and hover cards: the overlay surface with a short shadow. */
+export const floatSurface =
+  "rounded-[var(--radius-overlay)] bg-popover text-popover-foreground shadow-[var(--shadow-float)] ring-1 ring-border";
 export const overlayMotion =
   "duration-150 ease-[var(--ease-out)] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95";
 
