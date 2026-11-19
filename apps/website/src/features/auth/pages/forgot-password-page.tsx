@@ -1,10 +1,9 @@
+import { BackLink } from "@/components/nav-link.tsx";
 import { useEffect, useState } from "react";
 import { PASSWORD_RESET_EMAIL_COOLDOWN_SECONDS } from "@lazuli/shared";
-import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
-import { EnvelopeSimpleIcon } from "@phosphor-icons/react/EnvelopeSimple";
+import { EnvelopeSimpleIcon } from "@/components/icons.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router";
 
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
@@ -53,8 +52,9 @@ export const ForgotPasswordPage = () => {
 
   return (
     <AuthLayout>
-      <div className="mb-5 flex size-11 items-center justify-center rounded-[var(--radius)] border border-primary/25 bg-primary/5 text-primary">
-        <EnvelopeSimpleIcon aria-hidden="true" className="size-6" weight="duotone" />
+      {/* A plain glyph, like the empty states: no tile around it. */}
+      <div className="mb-4 text-muted-foreground">
+        <EnvelopeSimpleIcon aria-hidden="true" className="size-6" />
       </div>
       <AuthFormHeader
         description="Informe seu e-mail para receber um link seguro de redefinição."
@@ -84,13 +84,9 @@ export const ForgotPasswordPage = () => {
         </AuthSubmitButton>
       </form>
 
-      <Link
-        className="mt-5 inline-flex w-fit items-center gap-1.5 text-sm font-normal text-muted-foreground transition-colors hover:text-foreground"
-        to="/login"
-      >
-        <ArrowLeftIcon aria-hidden="true" className="size-3.5" />
+      <BackLink className="mt-5" to="/login">
         Voltar para entrar
-      </Link>
+      </BackLink>
     </AuthLayout>
   );
 };
