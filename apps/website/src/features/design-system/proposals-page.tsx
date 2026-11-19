@@ -1,34 +1,16 @@
 import { useState, type ReactNode } from "react";
 
-import { CutGem, gemStage, type RoughStyle } from "@/components/brand/cut-gem.tsx";
-import { CheckIcon, InfoIcon, XIcon } from "@/components/icons.tsx";
+import { CheckIcon, XIcon } from "@/components/icons.tsx";
 import { ContentPage } from "@/components/content-page.tsx";
 import { StudyAnswerChoice, StudyAnswerOutcome } from "@/components/study-answer-choice.tsx";
-import { Button } from "@/components/ui/button.tsx";
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group.tsx";
 import "@/components/study-answer-choice.css";
 import "./proposals-page.css";
 
 /*
- * Internal study (development only): options for the rough stone, the toast and the chosen,
- * correct and wrong states, each beside what exists today, to be chosen by looking at them.
+ * Internal study (development only): options for the chosen, correct and wrong states, each beside
+ * what exists today, to be chosen by looking at (and clicking) them.
  */
-
-const Section = ({
-  children,
-  note,
-  title,
-}: {
-  children: ReactNode;
-  note: string;
-  title: string;
-}) => (
-  <section className="mt-12 first:mt-0">
-    <h2 className="text-sm font-semibold">{title}</h2>
-    <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{note}</p>
-    <div className="mt-5">{children}</div>
-  </section>
-);
 
 const Option = ({
   children,
@@ -48,213 +30,114 @@ const Option = ({
   </div>
 );
 
-/* Stone ------------------------------------------------------------------------------------- */
+const answers = ["Mitocôndria", "Ribossomo", "Lisossomo"];
 
-const stones: { style: RoughStyle; label: string; note: string }[] = [
-  { style: "classic", label: "Atual", note: "Um corpo liso com um brilho e uma sombra." },
-  {
-    style: "angular",
-    label: "A · Angular",
-    note: "Faces planas e irregulares, cada uma sombreada pela luz de cima à esquerda.",
-  },
-  {
-    style: "mineral",
-    label: "B · Mineral",
-    note: "A forma angular com pequenas inclusões de calcita, como o lápis bruto real.",
-  },
-];
-
-const StoneOptions = () => (
-  <div className="grid gap-4 md:grid-cols-3">
-    {stones.map(({ label, note, style }) => (
-      <Option key={style} label={label} note={note}>
-        <div className="flex items-end gap-4">
-          {[0, 0.25, 0.5].map((cut) => (
-            <div className="grid justify-items-center gap-1.5" key={cut}>
-              <CutGem cut={cut} rough={style} size={72} />
-              <span className="text-xs text-muted-foreground">{gemStage(cut)}</span>
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <CutGem cut={0} rough={style} size={28} /> No guia da pedra (28px)
-        </div>
-      </Option>
-    ))}
-  </div>
+const Caption = ({ children }: { children: ReactNode }) => (
+  <p className="mb-2 text-xs text-muted-foreground">{children}</p>
 );
 
-/* Toast ------------------------------------------------------------------------------------- */
-
-type Tone = "success" | "error" | "info";
-type ToastStyle = "current" | "glyph" | "facet" | "timed";
-
-const toastExamples: { tone: Tone; title: string; description?: string }[] = [
-  { tone: "success", title: "Projeto criado." },
-  {
-    tone: "error",
-    title: "Não foi possível salvar.",
-    description: "Verifique sua conexão e tente de novo.",
-  },
-  { tone: "info", title: "Trecho da fonte ajustado." },
-];
-
-const toneIcon = { success: CheckIcon, error: XIcon, info: InfoIcon };
-
-const ToastMock = ({
-  description,
-  style,
-  title,
-  tone,
-}: {
-  description?: string;
-  style: ToastStyle;
-  title: string;
-  tone: Tone;
-}) => {
-  const Icon = toneIcon[tone];
+/** Options built on the app's real answer and option components, restyled per variant. */
+const RealOption = ({ style }: { style: "current" | "gem" | "margin" }) => {
+  const [picked, setPicked] = useState(1);
   return (
-    <div className="mock-toast" data-style={style} data-tone={tone}>
-      {style === "current" ? (
-        <span className="mock-toast-seal">
-          <Icon />
-        </span>
-      ) : style === "glyph" ? (
-        <Icon className="mock-toast-glyph" />
-      ) : (
-        <span className="mock-toast-facet" />
-      )}
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">{title}</span>
-        {description && (
-          <span className="block text-[0.8125rem] text-muted-foreground">{description}</span>
-        )}
-      </span>
-      <XIcon className="mock-toast-close" />
-      {style === "timed" && <span className="mock-toast-time" />}
+    <div className="proposal-states grid gap-5" data-states={style}>
+      <div>
+        <Caption>Respondendo (clique para escolher)</Caption>
+        <div className="choices !mt-0">
+          {answers.map((text, index) => (
+            <StudyAnswerChoice
+              index={index}
+              key={text}
+              onSelect={() => setPicked(index)}
+              selected={picked === index}
+              text={text}
+            />
+          ))}
+        </div>
+      </div>
+      <div>
+        <Caption>Correção</Caption>
+        <div className="choices !mt-0">
+          <StudyAnswerOutcome correct={false} index={0} reveal={false} selected text="Ribossomo" />
+          <StudyAnswerOutcome
+            correct
+            index={1}
+            reveal={false}
+            selected={false}
+            text="Mitocôndria"
+          />
+        </div>
+      </div>
+      <div>
+        <Caption>Opção em formulário</Caption>
+        <RadioGroup className="grid grid-cols-2 gap-2" defaultValue="claro">
+          <RadioCard title="Claro" value="claro" />
+          <RadioCard title="Escuro" value="escuro" />
+        </RadioGroup>
+      </div>
     </div>
   );
 };
 
-const toastOptions: { style: ToastStyle; label: string; note: string }[] = [
-  { style: "current", label: "Atual", note: "Selo redondo de 28px preenchido com a cor." },
-  {
-    style: "glyph",
-    label: "A · Glifo",
-    note: "Só o ícone, pequeno e na cor do tipo. Mais compacto, sem selo.",
-  },
-  {
-    style: "facet",
-    label: "B · Faceta",
-    note: "A faceta da marca na cor do tipo; ao entrar, ela gira e assenta, como uma gema no lugar.",
-  },
-  {
-    style: "timed",
-    label: "C · Faceta com tempo",
-    note: "A faceta e, na base, o tempo restante; passar o mouse pausa a contagem.",
-  },
-];
-
-const ToastOptions = () => {
-  const [run, setRun] = useState(0);
-  return (
-    <>
-      <Button className="mb-4" onClick={() => setRun(run + 1)} size="sm" variant="outline">
-        Repetir entrada
-      </Button>
-      <div className="grid gap-4 md:grid-cols-2">
-        {toastOptions.map(({ label, note, style }) => (
-          <Option key={style} label={label} note={note}>
-            <div className="grid gap-2" key={run}>
-              {toastExamples.map((example, index) => (
-                <div
-                  key={example.title}
-                  style={{ animationDelay: `${index * 90}ms` }}
-                  className="mock-toast-enter"
-                >
-                  <ToastMock {...example} style={style} />
-                </div>
-              ))}
-            </div>
-          </Option>
-        ))}
-      </div>
-    </>
-  );
-};
-
-/* States ------------------------------------------------------------------------------------ */
-
-type StateStyle = "current" | "seal" | "lift";
-
-const stateOptions: { style: StateStyle; label: string; note: string }[] = [
-  {
-    style: "current",
-    label: "Atual",
-    note: "Borda colorida e fundo da mesma cor com pouca opacidade.",
-  },
-  {
-    style: "seal",
-    label: "A · O selo conduz",
-    note: "O cartão fica branco e neutro; só o selo e a frase de status levam a cor.",
-  },
-  {
-    style: "lift",
-    label: "B · Elevação",
-    note: "O escolhido se eleva com uma sombra curta e borda de tinta; a cor fica no selo.",
-  },
-];
-
-const StateOptions = () => {
+/** Pigment: drawn here as a mock, since it changes the text itself. */
+const PigmentOption = () => {
   const [picked, setPicked] = useState(1);
+  const [theme, setTheme] = useState("claro");
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      {stateOptions.map(({ label, note, style }) => (
-        <Option key={style} label={label} note={note}>
-          <div className="proposal-states grid gap-5" data-states={style}>
-            <div>
-              <p className="mb-2 text-xs text-muted-foreground">Respondendo</p>
-              <div className="choices !mt-0">
-                {["Mitocôndria", "Ribossomo", "Lisossomo"].map((text, index) => (
-                  <StudyAnswerChoice
-                    index={index}
-                    key={text}
-                    onSelect={() => setPicked(index)}
-                    selected={picked === index}
-                    text={text}
-                  />
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-xs text-muted-foreground">Correção</p>
-              <div className="choices !mt-0">
-                <StudyAnswerOutcome
-                  correct={false}
-                  index={0}
-                  reveal={false}
-                  selected
-                  text="Ribossomo"
-                />
-                <StudyAnswerOutcome
-                  correct
-                  index={1}
-                  reveal={false}
-                  selected={false}
-                  text="Mitocôndria"
-                />
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-xs text-muted-foreground">Opção em formulário</p>
-              <RadioGroup className="grid grid-cols-2 gap-2" defaultValue="claro">
-                <RadioCard title="Claro" value="claro" />
-                <RadioCard title="Escuro" value="escuro" />
-              </RadioGroup>
-            </div>
+    <div className="grid gap-5">
+      <div>
+        <Caption>Respondendo (clique para escolher)</Caption>
+        <div className="grid gap-2">
+          {answers.map((text, index) => (
+            <button
+              className="pigment-choice"
+              data-selected={picked === index || undefined}
+              key={text}
+              onClick={() => setPicked(index)}
+              type="button"
+            >
+              <span className="pigment-letter">{String.fromCharCode(65 + index)}</span>
+              <span className="pigment-text">{text}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <Caption>Correção</Caption>
+        <div className="grid gap-2">
+          <div className="pigment-choice" data-outcome="incorrect">
+            <XIcon className="pigment-mark" />
+            <span className="grid">
+              <span className="pigment-text">Ribossomo</span>
+              <span className="pigment-note">Sua resposta</span>
+            </span>
           </div>
-        </Option>
-      ))}
+          <div className="pigment-choice" data-outcome="correct">
+            <CheckIcon className="pigment-mark" />
+            <span className="grid">
+              <span className="pigment-text">Mitocôndria</span>
+              <span className="pigment-note">Resposta correta</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <Caption>Opção em formulário</Caption>
+        <div className="grid grid-cols-2 gap-2">
+          {["Claro", "Escuro"].map((value) => (
+            <button
+              className="pigment-choice py-2.5"
+              data-selected={theme === value || undefined}
+              key={value}
+              onClick={() => setTheme(value)}
+              type="button"
+            >
+              <span className="pigment-radio" />
+              <span className="pigment-text">{value}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
@@ -263,27 +146,34 @@ export default function ProposalsPage() {
   return (
     <ContentPage maxWidth="6xl">
       <h1 className="page-title">Propostas</h1>
-      <p className="mt-1 mb-10 text-sm text-muted-foreground">
-        Página interna de estudo. Nada aqui está aplicado no app.
+      <p className="mt-1 mb-8 max-w-2xl text-sm text-muted-foreground">
+        Selecionado, correto e errado. Hoje a cor se repete na borda, no fundo e no selo; cada opção
+        abaixo leva o estado num só lugar, com a linguagem do Lazúli. Nada aqui está aplicado no
+        app.
       </p>
-      <Section
-        note="Hoje a pedra bruta é um contorno liso com um brilho e uma sombra, e lê como um desenho, não como pedra. As opções trocam isso por faces planas iluminadas por uma luz só."
-        title="Pedra bruta"
-      >
-        <StoneOptions />
-      </Section>
-      <Section
-        note="O selo de 28px pesa mais que a mensagem. As opções levam o tipo num sinal pequeno e deixam a graça no movimento, como fazem os toasts mais cuidados."
-        title="Toast"
-      >
-        <ToastOptions />
-      </Section>
-      <Section
-        note="Selecionado, correto e errado hoje repetem a cor três vezes (borda, fundo e selo). As opções deixam a cor só onde ela informa."
-        title="Selecionado, correto e errado"
-      >
-        <StateOptions />
-      </Section>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Option label="Atual" note="Borda e fundo coloridos, mais o selo.">
+          <RealOption style="current" />
+        </Option>
+        <Option
+          label="C · Gema"
+          note="Ao escolher, o selo redondo é lapidado em losango, como a gema da marca. O cartão fica branco; a correção usa a mesma gema em verde ou vermelho."
+        >
+          <RealOption style="gem" />
+        </Option>
+        <Option
+          label="D · Margem"
+          note="A faceta lápis da navegação marca a escolha na borda esquerda; na correção, ela fica verde ou vermelha. O selo continua neutro."
+        >
+          <RealOption style="margin" />
+        </Option>
+        <Option
+          label="E · Pigmento"
+          note="Leitura editorial: a escolha ganha um traço de pigmento ultramar atrás do texto; na correção, verde para a certa e um risco vermelho na errada."
+        >
+          <PigmentOption />
+        </Option>
+      </div>
     </ContentPage>
   );
 }
