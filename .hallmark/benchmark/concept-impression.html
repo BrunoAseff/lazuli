@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Lazúli: estudo Impressão</title>
+    <meta
+      name="description"
+      content="Estudo visual independente: um trecho de documento vira pergunta, prática e retorno à fonte."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Hallmark: v2.0.0 · theme: custom · idea: uma inscrição muda de leitura para pergunta e conserva a origem · signature: impressão que revela conteúdo · scope: visual prototype, three frames. */
+      /* Critique: a impressão é uma hipótese visual, não uma prova de memorização; o estudo ainda não constitui uma landing. */
+      /* waive 79: finite study frames preserve navigation at the bottom; the space separates the source from the frame selector, not a missing landing section. */
+      /* Waiver: one deliberate display face and full-stage pigment are concept material; no UI mockups, screenshots or success metrics. */
+      :root {
+        --blue: #1725df;
+        --paper: #f4f6ec;
+        --ink: #181b19;
+        --signal: #dcff57;
+        --muted: #63685f;
+        --white: #fff;
+        --line: #b8c0b4;
+        --shadow: #060b80;
+        --edge: #5c73f5;
+        --edge-deep: #091590;
+        --cast: #080d7455;
+        --plate: #dce4ef;
+        --transparent: transparent;
+        --font-display: "Bricolage Grotesque", "Arial", sans-serif;
+        --font-body: "Bricolage Grotesque", "Arial", sans-serif;
+        --duration: 580ms;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        overflow-x: clip;
+      }
+      body {
+        font: 16px/1.4 var(--font-body);
+        background: var(--blue);
+        color: var(--paper);
+      }
+      button,
+      a {
+        -webkit-tap-highlight-color: var(--transparent);
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      button:focus-visible,
+      a:focus-visible {
+        outline: 3px solid var(--signal);
+        outline-offset: 6px;
+      }
+      a {
+        color: inherit;
+        text-underline-offset: 4px;
+      }
+      button {
+        border: 0;
+      }
+      button:disabled {
+        cursor: default;
+      }
+      button:active {
+        transform: translateY(2px);
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .shell {
+        max-width: 1800px;
+        margin: auto;
+        min-height: 100svh;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        padding: 24px 4.7vw 20px;
+      }
+      header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 32px;
+        position: relative;
+        z-index: 4;
+      }
+      .wordmark {
+        font-size: 36px;
+        font-weight: 700;
+        letter-spacing: -2px;
+        line-height: 1;
+        text-decoration: none;
+      }
+      .purpose {
+        max-width: 330px;
+        font-size: 18px;
+        line-height: 1.35;
+        margin: 0;
+      }
+      .study-link {
+        font-size: 14px;
+        line-height: 1.3;
+        align-self: center;
+      }
+      .frame {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 630px;
+        position: relative;
+        padding: 52px 0 32px;
+      }
+      .copy {
+        position: relative;
+        z-index: 2;
+        max-width: 1100px;
+        min-width: 0;
+      }
+      .display {
+        text-wrap: balance;
+        font: 600 clamp(60px, 7.8vw, 118px)/0.99 var(--font-display);
+        letter-spacing: -0.066em;
+        overflow-wrap: break-word;
+        min-width: 0;
+        margin: 0;
+      }
+      .source-lines {
+        display: block;
+      }
+      .source-lines:first-child {
+        margin-left: 7.5%;
+      }
+      .source-lines:nth-child(2) {
+        margin-left: 18%;
+      }
+      .source-lines:last-child {
+        margin-left: 0;
+      }
+      .marked {
+        color: var(--blue);
+        background: var(--paper);
+        padding: 0 0.075em 0.055em;
+        box-decoration-break: clone;
+        -webkit-box-decoration-break: clone;
+        display: inline-block;
+        transform: rotate(-2deg);
+        line-height: 0.96;
+        position: relative;
+      }
+      .source-brief {
+        max-width: 650px;
+        margin: 32px 0 0 7.5%;
+        font-size: 21px;
+        line-height: 1.35;
+        letter-spacing: -0.015em;
+      }
+      .source-brief strong {
+        font-weight: 500;
+      }
+      .action-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 32px;
+        margin: 44px 0 0 7.5%;
+        max-width: 1000px;
+      }
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        min-height: 58px;
+        padding: 16px 24px;
+        background: var(--signal);
+        color: var(--ink);
+        font-size: 18px;
+        font-weight: 600;
+        border-radius: 0;
+        transition: transform 180ms;
+      }
+      .button:hover {
+        transform: translateY(-3px);
+      }
+      .button svg {
+        width: 22px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+      }
+      .caption {
+        font-size: 15px;
+        max-width: 230px;
+        margin: 0;
+      }
+      .bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 28px;
+        position: relative;
+        z-index: 4;
+        padding-top: 20px;
+      }
+      nav {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+      }
+      nav button {
+        background: var(--transparent);
+        color: inherit;
+        font-size: 16px;
+        padding: 8px 0;
+        position: relative;
+        border-bottom: 2px solid var(--transparent);
+      }
+      nav button[aria-current="step"] {
+        border-bottom-color: currentColor;
+      }
+      nav button:hover {
+        border-bottom-color: currentColor;
+      }
+      .index {
+        font-size: 14px;
+        margin: 0;
+      }
+      .reading {
+        background: var(--blue);
+        color: var(--paper);
+      }
+      .practice {
+        background: var(--paper);
+        color: var(--blue);
+      }
+      .origin {
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .practice button:focus-visible,
+      .practice a:focus-visible {
+        outline-color: var(--blue);
+      }
+      .question {
+        max-width: 1150px;
+      }
+      .question .display {
+        font-size: clamp(74px, 10.6vw, 160px);
+        font-weight: 600;
+        max-width: 1000px;
+        line-height: 0.91;
+      }
+      .question .question-line {
+        display: block;
+        margin-left: 14%;
+      }
+      .question .marked {
+        view-transition-name: printed-idea;
+        background: var(--blue);
+        color: var(--paper);
+        transform: rotate(-3deg);
+        padding: 0 0.08em 0.08em;
+        margin: 0 0.03em 0 0;
+      }
+      .question .action-row {
+        margin-left: 14%;
+        margin-top: 48px;
+      }
+      .question-helper {
+        font-size: 17px;
+        max-width: 240px;
+      }
+      .answer-layout {
+        max-width: 1200px;
+        margin-left: 7.5%;
+      }
+      .answer-question {
+        font-size: 22px;
+        letter-spacing: -0.03em;
+        margin: 0 0 28px;
+      }
+      .answer {
+        font-size: clamp(44px, 5.25vw, 77px);
+        line-height: 1.04;
+        font-weight: 500;
+        letter-spacing: -0.05em;
+        max-width: 1100px;
+        margin: 0;
+      }
+      .answer b {
+        font-weight: 600;
+        text-decoration: underline;
+        text-underline-offset: 10px;
+        text-decoration-thickness: 4px;
+      }
+      .ratings {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 40px;
+      }
+      .ratings button {
+        background: var(--transparent);
+        color: var(--blue);
+        padding: 12px 24px;
+        border: 1px solid var(--blue);
+        font-size: 17px;
+        transition: transform 180ms;
+      }
+      .ratings button:hover {
+        background: var(--blue);
+        color: var(--paper);
+        transform: translateY(-3px);
+      }
+      .rating-label {
+        font-size: 17px;
+        margin: 32px 0 -24px;
+      }
+      .feedback {
+        font-size: 16px;
+        margin: 0 0 24px;
+        color: var(--blue);
+        max-width: 500px;
+      }
+      .origin-copy {
+        max-width: 1170px;
+        margin-left: 7.5%;
+      }
+      .origin h1 {
+        max-width: 1050px;
+        font-size: clamp(58px, 7vw, 104px);
+        line-height: 1;
+        letter-spacing: -0.065em;
+        margin: 0 0 40px;
+        font-weight: 500;
+        overflow-wrap: break-word;
+      }
+      .origin mark {
+        view-transition-name: printed-idea;
+        color: var(--signal);
+        background: var(--transparent);
+        text-decoration: underline;
+        text-decoration-thickness: 4px;
+        text-underline-offset: 10px;
+      }
+      .source-detail {
+        display: flex;
+        justify-content: space-between;
+        gap: 36px;
+        align-items: end;
+        max-width: 1040px;
+      }
+      .source-detail p {
+        font-size: 18px;
+        max-width: 440px;
+        margin: 0;
+      }
+      .source-detail a {
+        font-size: 16px;
+      }
+      .origin .action-row {
+        margin: 32px 0 0;
+        justify-content: start;
+        gap: 28px;
+      }
+      .quiet-button {
+        background: var(--transparent);
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 5px;
+        padding: 12px 0;
+        font-size: 16px;
+      }
+      .wash {
+        position: fixed;
+        inset: 0;
+        z-index: 8;
+        pointer-events: none;
+        background: var(--signal);
+        transform: scaleY(0);
+        transform-origin: bottom;
+        will-change: transform;
+      }
+      .wash::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--blue);
+        transform: translateY(-100%);
+      }
+      .print-in {
+        animation: print-in 600ms cubic-bezier(0.19, 1, 0.22, 1);
+      }
+      @keyframes print-in {
+        0% {
+          opacity: 0;
+          transform: translateY(26px) skewX(-3deg);
+        }
+        35% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(0) skewX(0);
+        }
+      }
+      .toast {
+        min-height: 24px;
+        font-size: 16px;
+        margin: 0 0 20px;
+      }
+      .no-script {
+        padding: 20px;
+        border: 1px solid currentColor;
+      }
+      .concept-note {
+        max-width: 960px;
+        font-size: 16px;
+        margin: 60px auto 20px;
+        padding: 0 32px;
+        color: var(--paper);
+      }
+      .source-display {
+        font-size: clamp(38px, 4.7vw, 70px);
+        line-height: 1.04;
+        position: relative;
+      }
+      .source-display .source-lines:first-child {
+        margin-left: 7.5%;
+      }
+      .source-display .pigment-line {
+        margin: 8px 0 16px 17%;
+        line-height: 0.8;
+      }
+      .source-display .source-lines:last-child {
+        margin-left: 7.5%;
+        max-width: 100%;
+        letter-spacing: -0.065em;
+      }
+      .pigment {
+        font-size: clamp(170px, 24vw, 355px);
+        font-weight: 700;
+        letter-spacing: -0.085em;
+        line-height: 0.79;
+        padding: 0 0.16em 0.12em 0.11em;
+        transform: rotate(-4deg);
+        border-radius: 18% 10% 13% 6% / 11% 15% 12% 18%;
+        isolation: isolate;
+      }
+      .pigment:before {
+        content: "";
+        position: absolute;
+        inset: 8px 8px -7px -10px;
+        border: 2px solid var(--paper);
+        border-radius: inherit;
+        z-index: -1;
+        transform: rotate(2deg);
+      }
+      .source-display + .action-row {
+        margin-top: 40px;
+      }
+      .reading .frame {
+        padding-top: 32px;
+        padding-bottom: 24px;
+      }
+      .reading .copy {
+        max-width: 1200px;
+      }
+      @media (min-width: 1600px) {
+        .shell {
+          padding-right: 80px;
+          padding-left: 80px;
+        }
+        .frame {
+          min-height: 720px;
+        }
+      }
+      @media (max-width: 760px) {
+        .shell {
+          padding: 24px 24px 16px;
+        }
+        .wordmark {
+          font-size: 30px;
+        }
+        .purpose {
+          font-size: 15px;
+          max-width: 210px;
+        }
+        .study-link {
+          display: none;
+        }
+        header {
+          gap: 24px;
+        }
+        .frame {
+          min-height: calc(100svh - 180px);
+          padding: 48px 0 28px;
+        }
+        .display {
+          font-size: clamp(45px, 10.6vw, 80px);
+          letter-spacing: -0.06em;
+          line-height: 1.04;
+        }
+        .source-lines:first-child {
+          margin-left: 0;
+        }
+        .source-lines:nth-child(2) {
+          margin-left: 10%;
+        }
+        .source-lines:last-child {
+          margin-left: 0;
+        }
+        .source-brief {
+          font-size: 18px;
+          margin: 24px 0 0;
+          max-width: 340px;
+        }
+        .action-row {
+          margin: 32px 0 0;
+          align-items: start;
+          gap: 20px;
+          flex-direction: column;
+        }
+        .button {
+          font-size: 17px;
+          min-height: 54px;
+          padding: 16px 16px;
+          gap: 16px;
+        }
+        .caption {
+          max-width: 300px;
+          font-size: 14px;
+        }
+        .bottom {
+          gap: 12px;
+          align-items: end;
+        }
+        nav {
+          gap: 24px;
+        }
+        nav button {
+          font-size: 14px;
+        }
+        .index {
+          font-size: 12px;
+          max-width: 60px;
+          text-align: right;
+        }
+        .question .display {
+          font-size: clamp(65px, 16.5vw, 115px);
+          line-height: 0.97;
+        }
+        .question .question-line {
+          margin-left: 0;
+        }
+        .question .action-row {
+          margin: 32px 0 0;
+        }
+        .question-helper {
+          font-size: 16px;
+          max-width: 280px;
+        }
+        .answer-layout {
+          margin: 0;
+        }
+        .answer-question {
+          font-size: 18px;
+          margin-bottom: 24px;
+        }
+        .answer {
+          font-size: clamp(37px, 9.3vw, 62px);
+          line-height: 1.09;
+        }
+        .answer b {
+          text-underline-offset: 6px;
+          text-decoration-thickness: 2px;
+        }
+        .ratings {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          width: 100%;
+          gap: 8px;
+          margin-top: 36px;
+        }
+        .ratings button {
+          font-size: 16px;
+          padding: 12px 16px;
+        }
+        .rating-label {
+          font-size: 16px;
+          margin-top: 28px;
+        }
+        .origin-copy {
+          margin: 0;
+        }
+        .origin h1 {
+          font-size: clamp(44px, 10.8vw, 70px);
+          margin-bottom: 32px;
+          line-height: 1.05;
+        }
+        .origin mark {
+          text-underline-offset: 5px;
+          text-decoration-thickness: 2px;
+        }
+        .source-detail {
+          display: block;
+        }
+        .source-detail p {
+          font-size: 16px;
+          margin-bottom: 16px;
+        }
+        .origin .action-row {
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 28px;
+        }
+        .toast {
+          font-size: 14px;
+          margin-bottom: 16px;
+        }
+        .concept-note {
+          padding: 0 24px;
+          margin-top: 36px;
+          font-size: 14px;
+        }
+      }
+      @media (max-width: 760px) {
+        .source-display {
+          font-size: clamp(33px, 8.1vw, 57px);
+        }
+        .source-display .source-lines:first-child {
+          margin-left: 0;
+        }
+        .source-display .pigment-line {
+          margin: 24px 0 32px 8%;
+        }
+        .source-display .source-lines:last-child {
+          margin-left: 0;
+          max-width: 95%;
+        }
+        .pigment {
+          font-size: clamp(130px, 33vw, 240px);
+          padding-left: 0.09em;
+          padding-right: 0.16em;
+        }
+        .source-display + .action-row {
+          margin-top: 32px;
+        }
+      }
+
+      /* A matriz é a ação: pressionar o relevo transfere a ideia para a pergunta. */
+      .source-display .pigment-line {
+        perspective: 1000px;
+        margin: 8px 0 24px 15%;
+        position: relative;
+        z-index: 2;
+      }
+      .pigment {
+        background: var(--transparent);
+        border-radius: 0;
+        display: block;
+        position: relative;
+        width: min(720px, 75vw);
+        height: 290px;
+        line-height: 1;
+        transform: rotateX(12deg) rotateY(-9deg) rotateZ(-7deg);
+        transform-style: preserve-3d;
+        padding: 0;
+        color: var(--paper);
+        transition: transform 480ms cubic-bezier(0.2, 0.7, 0.2, 1);
+        filter: drop-shadow(25px 35px 12px var(--cast));
+      }
+      .pigment:before {
+        inset: 45px 0 16px;
+        background: var(--edge-deep);
+        border: 0;
+        border-radius: 32% 13% 23% 18% / 15% 24% 18% 22%;
+        transform: translate3d(15px, 25px, -25px);
+        z-index: -2;
+      }
+      .block-face {
+        position: absolute;
+        inset: 45px 0 16px;
+        background: var(--paper);
+        border-radius: 32% 13% 23% 18% / 15% 24% 18% 22%;
+        z-index: -1;
+        box-shadow: inset -8px -10px 0 var(--plate);
+      }
+      .letter-volume {
+        view-transition-name: printed-idea;
+        display: block;
+        position: absolute;
+        inset: -15px 0 auto;
+        font-size: 292px;
+        font-weight: 700;
+        letter-spacing: -0.07em;
+        color: var(--blue);
+        text-shadow:
+          1px 2px var(--edge),
+          2px 4px var(--edge),
+          3px 6px var(--edge),
+          4px 8px var(--edge),
+          5px 10px var(--edge),
+          6px 12px var(--edge-deep),
+          7px 14px var(--edge-deep),
+          8px 16px var(--edge-deep),
+          9px 18px var(--edge-deep),
+          10px 20px var(--edge-deep),
+          15px 28px 5px var(--cast);
+        transform: translate3d(-9px, -9px, 35px);
+        pointer-events: none;
+      }
+      .block-label {
+        position: absolute;
+        right: 45px;
+        bottom: 27px;
+        font-size: 17px;
+        font-weight: 500;
+        letter-spacing: 0;
+        line-height: 1.3;
+        color: var(--blue);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transform: translateZ(5px);
+      }
+      .block-label svg {
+        width: 23px;
+        height: 23px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.6;
+      }
+      .pigment:hover {
+        transform: rotateX(5deg) rotateY(-4deg) rotateZ(-5deg) translateY(-8px);
+      }
+      .pigment:active {
+        transform: rotateX(12deg) rotateY(-9deg) rotateZ(-7deg) translateY(8px) scale(0.98);
+      }
+      .source-display .source-lines:first-child {
+        letter-spacing: -0.025em;
+      }
+      .source-display .source-lines:last-child {
+        letter-spacing: -0.045em;
+      }
+      .source-location {
+        margin: 32px 0 0 7.5%;
+        font-size: 16px;
+        letter-spacing: 0;
+      }
+      .reading .frame {
+        padding-top: 40px;
+      }
+      .reading .display {
+        font-weight: 500;
+      }
+      @media (max-width: 760px) {
+        .source-display .pigment-line {
+          margin: 12px 0 24px 0;
+          perspective: 700px;
+        }
+        .pigment {
+          width: min(100%, 520px);
+          height: 230px;
+          transform: rotateX(15deg) rotateY(-6deg) rotateZ(-6deg);
+          filter: drop-shadow(14px 21px 8px var(--cast));
+        }
+        .letter-volume {
+          font-size: clamp(145px, 44vw, 235px);
+          inset: 12px 0 auto;
+          letter-spacing: -0.08em;
+          transform: translate3d(-4px, -5px, 24px);
+        }
+        .block-face {
+          inset: 40px 0 8px;
+          box-shadow: inset -4px -6px 0 var(--plate);
+        }
+        .pigment:before {
+          inset: 40px 0 8px;
+          transform: translate3d(9px, 16px, -16px);
+        }
+        .block-label {
+          font-size: 14px;
+          bottom: 12px;
+          right: 25px;
+          gap: 8px;
+        }
+        .block-label svg {
+          width: 18px;
+          height: 18px;
+        }
+        .source-location {
+          margin: 28px 0 0;
+          font-size: 14px;
+        }
+        .source-display .source-lines:last-child {
+          font-size: clamp(34px, 8.5vw, 55px);
+          max-width: 95%;
+        }
+        .reading .frame {
+          padding-top: 36px;
+          padding-bottom: 28px;
+        }
+      }
+
+      ::view-transition-group(printed-idea) {
+        animation-duration: 700ms;
+        animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      ::view-transition-old(printed-idea),
+      ::view-transition-new(printed-idea) {
+        height: 100%;
+        mix-blend-mode: normal;
+      }
+      ::view-transition-group(root) {
+        animation-duration: 440ms;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+          scroll-behavior: auto !important;
+        }
+        .wash {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="reading">
+    <div class="shell">
+      <header>
+        <a class="wordmark" href="index.html" aria-label="Lazúli, voltar ao benchmark">Lazúli</a>
+        <p class="purpose">Seus documentos viram<br />flashcards, quizzes e revisão.</p>
+        <a class="study-link" href="index.html">Voltar ao estudo</a>
+      </header>
+      <main id="main" class="frame" aria-live="polite">
+        <section id="reading" class="copy" aria-label="Trecho do documento">
+          <h1 class="display source-display" aria-label="A luz azul se espalha mais no céu.">
+            <span class="source-lines">A luz</span
+            ><span class="source-lines pigment-line"
+              ><button
+                class="marked pigment"
+                id="ink-block"
+                aria-label="Criar um flashcard a partir deste trecho"
+              >
+                <span class="letter-volume" aria-hidden="true">azul</span
+                ><span class="block-face" aria-hidden="true"></span
+                ><span class="block-label"
+                  >Criar flashcard<svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M4 12h15m-6-6 6 6-6 6" /></svg
+                ></span></button></span
+            ><span class="source-lines">se espalha mais no céu.</span>
+          </h1>
+          <p class="source-location">Trecho do documento “Por que o céu é azul?”</p>
+        </section>
+        <section id="practice" class="question" hidden aria-label="Flashcard de exemplo">
+          <div id="question">
+            <p id="repeat-note" class="feedback" hidden>
+              O cartão voltou à fila. Tente recuperar a ideia outra vez.
+            </p>
+            <h1 class="display">
+              Por que o céu<span class="question-line">é <span class="marked">azul</span>?</span>
+            </h1>
+            <div class="action-row">
+              <button class="button" id="reveal">
+                Revelar resposta<svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M4 12h15m-6-6 6 6-6 6" />
+                </svg>
+              </button>
+              <p class="question-helper">Tente lembrar antes de revelar.</p>
+            </div>
+          </div>
+          <div id="answer" class="answer-layout" hidden>
+            <p class="answer-question">Por que o céu é azul?</p>
+            <h1 class="answer">
+              Porque a atmosfera espalha mais a <b>luz azul</b> do que a luz vermelha.
+            </h1>
+            <p class="rating-label">Como foi lembrar?</p>
+            <div class="ratings" aria-label="Avaliar lembrança">
+              <button data-grade="again">Repetir</button><button data-grade="hard">Difícil</button
+              ><button data-grade="good">Bom</button><button data-grade="easy">Fácil</button>
+            </div>
+          </div>
+        </section>
+        <section id="origin" class="origin-copy" hidden aria-label="Retorno à fonte">
+          <p id="completion" class="toast">A pergunta continua ligada ao seu material.</p>
+          <h1>
+            Na atmosfera, a <mark>luz azul</mark> é espalhada mais intensamente que a vermelha.
+          </h1>
+          <div class="source-detail">
+            <p>Você encontra o trecho que deu origem ao cartão quando termina a prática.</p>
+            <a href="https://spaceplace.nasa.gov/blue-sky/en/" target="_blank" rel="noreferrer"
+              >Ler a explicação da NASA</a
+            >
+          </div>
+          <div class="action-row">
+            <button class="button" id="restart">
+              Praticar outra vez<svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M4 12h15m-6-6 6 6-6 6" />
+              </svg></button
+            ><button class="quiet-button" id="back">Voltar ao documento</button>
+          </div>
+        </section>
+        <noscript
+          ><p class="no-script">
+            Este estudo interativo precisa de JavaScript para revelar e avaliar o flashcard. A
+            proposta: transformar o trecho acima em uma pergunta e retornar à fonte depois da
+            prática.
+          </p></noscript
+        >
+      </main>
+      <div class="bottom">
+        <nav aria-label="Quadros do estudo">
+          <button data-frame="reading" aria-current="step">Documento</button
+          ><button data-frame="practice">Prática</button><button data-frame="origin">Fonte</button>
+        </nav>
+        <p class="index">Estudo<br />Impressão</p>
+      </div>
+    </div>
+    <div class="wash" aria-hidden="true"></div>
+    <script>
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+      const frames = ["reading", "practice", "origin"];
+      const byId = (id) => document.getElementById(id);
+      let current = "reading",
+        busy = false,
+        completed = false;
+      const wash = document.querySelector(".wash");
+      function resetCard(repeated = false) {
+        byId("question").hidden = false;
+        byId("answer").hidden = true;
+        byId("repeat-note").hidden = !repeated;
+      }
+      function render(frame) {
+        current = frame;
+        document.body.className = frame;
+        for (const name of frames) byId(name).hidden = name !== frame;
+        document
+          .querySelectorAll("[data-frame]")
+          .forEach((b) =>
+            b.setAttribute("aria-current", b.dataset.frame === frame ? "step" : "false"),
+          );
+        if (frame === "origin")
+          byId("completion").textContent = completed
+            ? "1 flashcard concluído. A origem continua aqui."
+            : "A pergunta continua ligada ao seu material.";
+      }
+      async function show(frame, { reset = false, focus = false } = {}) {
+        if (busy) return;
+        busy = true;
+        if (reset) resetCard();
+        if (!reduced.matches && document.startViewTransition) {
+          await document.startViewTransition(() => render(frame)).finished;
+        } else {
+          render(frame);
+        }
+        busy = false;
+        if (focus) {
+          const target =
+            frame === "practice"
+              ? byId("reveal")
+              : frame === "origin"
+                ? byId("restart")
+                : byId("ink-block");
+          target.focus({ preventScroll: true });
+        }
+      }
+      byId("ink-block").onclick = () => show("practice", { reset: true, focus: true });
+      byId("reveal").onclick = () => {
+        byId("question").hidden = true;
+        byId("answer").hidden = false;
+        if (!reduced.matches) {
+          byId("answer").classList.remove("print-in");
+          void byId("answer").offsetWidth;
+          byId("answer").classList.add("print-in");
+        }
+        document.querySelector("[data-grade]").focus({ preventScroll: true });
+      };
+      document.querySelectorAll("[data-grade]").forEach(
+        (button) =>
+          (button.onclick = () => {
+            if (button.dataset.grade === "again") {
+              completed = false;
+              resetCard(true);
+              byId("reveal").focus({ preventScroll: true });
+            } else {
+              completed = true;
+              show("origin", { focus: true });
+            }
+          }),
+      );
+      byId("restart").onclick = () => {
+        completed = false;
+        show("practice", { reset: true, focus: true });
+      };
+      byId("back").onclick = () => show("reading", { focus: true });
+      document
+        .querySelectorAll("[data-frame]")
+        .forEach(
+          (button) =>
+            (button.onclick = () =>
+              show(button.dataset.frame, { reset: button.dataset.frame === "practice" })),
+        );
+    </script>
+  </body>
+</html>

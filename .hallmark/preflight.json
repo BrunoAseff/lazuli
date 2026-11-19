@@ -1,0 +1,20 @@
+{
+  "scanned": "2026-10-28",
+  "findings": {
+    "fonts": "Source Serif 4 + Source Sans 3, apps/website/src/style.css:48",
+    "palette": "paper #f2edee, ink #362233, primary #007bb8, style.css:57; dark theme :105",
+    "motion": "Anime.js 4.5.0, existing repeated parent+child transforms rejected",
+    "framework": "React 19 / Vite+ / Tailwind",
+    "product": "real editor, two onboarding cards, quizzes, source references, FSRS, dashboard; authenticated capture unavailable without a session",
+    "spacing": "10px controls, 16px panels; public composition custom"
+  },
+  "preserve": ["brand", "auth routes", "theme preference", "product semantics"],
+  "introduce": [
+    "public ultramarine and paper palette",
+    "continuous procedural paper surface",
+    "pigment transfer to a functional question",
+    "local flashcard and quiz sessions"
+  ],
+  "authorization": "User explicitly requests full replacement of previous uncommitted landing; source copied under .hallmark/source-before, no stash/commit required.",
+  "research": ".hallmark/benchmark/research.md"
+}

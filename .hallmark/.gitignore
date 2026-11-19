@@ -1,0 +1,13 @@
+shots/
+before/
+before.json
+before.txt
+compare.html
+source-before/
+product/
+rejected-v2/
+research-v3/
+rejected-v3/
+folio/
+benchmark/*.png
+benchmark/.hallmark/

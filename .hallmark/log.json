@@ -1,0 +1,103 @@
+[
+  {
+    "date": "2026-10-28",
+    "mode": "full redesign",
+    "theme": "custom",
+    "shape": "continuous study sheet",
+    "idea": "A source inscription becomes a question and remains recoverable after practice",
+    "hero": "large type and curved paper in a field of ultramarine",
+    "nav": "wordmark and login, no central menu",
+    "footer": "Organize, pratique e revise com Lazúli; account creation and product links",
+    "signature": "source ink travels into the question; finite paper geometry and FLIP",
+    "entry": "apps/website/src/features/landing/landing-page.tsx",
+    "benchmark": ".hallmark/benchmark/research.md",
+    "imagery": "native canvas surface; no borrowed reference assets",
+    "photos": [],
+    "waived": ["47c"],
+    "heroReview": "independent fix: surface and decorative wings resolved; familiar arrival composition remains a limitation",
+    "finishReview": "in-thread; independent reviewer failed due usage limit",
+    "verification": "vp check, compatible-runtime 433 tests, build, browser flow and responsive render; Hallmark 0 FAIL / 0 REFLEX / 0 WARN",
+    "status": "implemented locally; owner visual approval not inferred",
+    "communication_revision": {
+      "date": "2026-10-29",
+      "reason": "Owner accepted visual direction broadly and requested concrete product communication, recognizable documents, anchored arrow, animated underlines, and semantic quiz feedback.",
+      "headline": "Organize seus estudos. Aprenda praticando.",
+      "sequence": [
+        "documents",
+        "flashcards with reviewed AI suggestions",
+        "quiz",
+        "scheduled reviews",
+        "FAQ",
+        "signup"
+      ],
+      "changes": [
+        "structured document with subject/folder tree",
+        "separate quiz entry",
+        "red/green answer feedback with icons and labels",
+        "connected source-to-question arrow",
+        "hover and keyboard underline animation",
+        "removed onboarding and abstract copy"
+      ],
+      "validation": {
+        "vp_check": "pass",
+        "build": "pass",
+        "vp_test": "432 passed; preexisting Node localStorage analytics failure",
+        "compatible_tests": "433 passed / 98 files",
+        "sloplint": "0 FAIL, 0 REFLEX, 0 WARN",
+        "browser": "desktop and 390px flows; focus restoration; FAQ exclusivity; no observed Chrome runtime errors"
+      },
+      "review": "self-review; independent agents unavailable due usage limit",
+      "owner_approval": "new copy not yet reviewed"
+    },
+    "quality_revision": {
+      "date": "2026-10-29",
+      "changes": [
+        "continuous rounded paper silhouette and shading",
+        "aligned rounded extraction arrow",
+        "six coherent FAQ answers",
+        "two-line footer down to 320px",
+        "cancel entrance and ink on interrupted transitions",
+        "focus and reveal answer within mobile viewport",
+        "matching social preview"
+      ],
+      "validation": {
+        "vp_check": "pass",
+        "build": "pass",
+        "vp_test": "preexisting Node localStorage analytics failure; compatible runtime passes 433 tests in 98 files",
+        "sloplint": "0 FAIL, 0 WARN, 0 REFLEX",
+        "browser": "desktop and 390/320px; live interruption, focus and FAQ checks; no observed Chrome console errors; reduced-motion captures"
+      },
+      "review": "independent geometry and motion reviews completed; findings resolved",
+      "owner_approval": "previous copy considered better; this finish awaits review"
+    }
+  },
+  {
+    "mode": "redesign",
+    "depth": "full",
+    "shape": "mineral imprint",
+    "theme": "brand",
+    "axes": ["light", "roman-serif", "cool"],
+    "hero": "full-width typographic imprint",
+    "nav": "reading index after hero",
+    "footer": "example project invitation and colophon",
+    "imagery": "generated macro pigment; faithful functional product examples",
+    "photos": [],
+    "entry": "apps/website/src/features/landing/landing-page.tsx",
+    "fingerprint": "monumental-type/material-plate/document-margin/practice/continuity/disclosures/colophon",
+    "sections": [
+      "imprint hero",
+      "document and linked card",
+      "practice",
+      "continuity",
+      "FAQ",
+      "example project invitation"
+    ],
+    "signature": "the same source passage becomes a practiced question",
+    "waived": [],
+    "prompt": "Reconstrução integral e autoral da landing do Lazúli com materialidade de pigmento, papel e conhecimento; interações fiéis ao produto, movimento intencional, identidade existente preservada.",
+    "heroReview": "1 finding resolved",
+    "finishReview": "2 findings resolved",
+    "verification": "0 FAIL, 0 REFLEX; 435 tests; browser checks; responsive and reduced motion",
+    "date": "2026-10-27"
+  }
+]
