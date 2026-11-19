@@ -1,6 +1,5 @@
 import type { DashboardResponse, DashboardOnboardingStepId } from "@lazuli/shared";
-import { ListChecksIcon } from "@phosphor-icons/react/ListChecks";
-import { CheckIcon, ChevronRightIcon, XIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, XIcon } from "@/components/icons.tsx";
 import { Link } from "react-router";
 import { toast } from "sonner";
 
@@ -56,7 +55,7 @@ export const DashboardOnboarding = ({
   return (
     <section
       aria-labelledby="dashboard-onboarding-title"
-      className="flex h-full min-h-80 flex-col rounded-xl bg-muted/45 p-5 sm:p-6"
+      className="surface-panel flex flex-col p-6"
     >
       <DashboardSectionTitle
         action={
@@ -70,7 +69,6 @@ export const DashboardOnboarding = ({
             <XIcon aria-hidden="true" />
           </Button>
         }
-        icon={<ListChecksIcon aria-hidden="true" className="size-6" weight="duotone" />}
         id="dashboard-onboarding-title"
         title="Primeiros passos"
       />
@@ -83,9 +81,9 @@ export const DashboardOnboarding = ({
             <li aria-current={current ? "step" : undefined} className="flex gap-3" key={step.id}>
               <span
                 className={cn(
-                  "grid size-7 shrink-0 place-items-center rounded-full bg-background/70 text-xs font-semibold text-muted-foreground",
-                  step.completed && "bg-success text-success-foreground",
-                  current && "bg-primary text-primary-foreground",
+                  "grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold text-muted-foreground shadow-[inset_0_0_0_1px_var(--input)]",
+                  step.completed && "bg-success text-success-foreground shadow-none",
+                  current && "bg-action text-action-foreground shadow-none",
                 )}
               >
                 {step.completed ? <CheckIcon aria-hidden="true" className="size-4" /> : index + 1}

@@ -1,20 +1,14 @@
+import { formatUpcoming } from "@/lib/date-format.ts";
+import { ForwardLink } from "@/components/nav-link.tsx";
 import type { DashboardResponse } from "@lazuli/shared";
-import { CheckCircleIcon } from "@phosphor-icons/react/CheckCircle";
-import { StackIcon } from "@phosphor-icons/react/Stack";
-import { ArrowRightIcon } from "lucide-react";
+import type { Ref } from "react";
+import { CheckCircleIcon } from "@/components/icons.tsx";
 import { Link } from "react-router";
 
-import { FlashcardDomainIcon } from "@/components/domain-icons.ts";
-import { DashboardSectionTitle } from "./dashboard-section-title.tsx";
+import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
+import { Button } from "@/components/ui/button.tsx";
 
 type ReviewCollection = DashboardResponse["reviewQueue"]["collections"][number];
-
-const nextReviewFormatter = new Intl.DateTimeFormat("pt-BR", {
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  month: "short",
-});
 
 const flashcardCount = (count: number) => `${count} ${count === 1 ? "flashcard" : "flashcards"}`;
 
@@ -31,6 +25,11 @@ const collectionStatus = (collection: ReviewCollection) => {
 const collectionAction = (collection: ReviewCollection) =>
   collection.activeSession ? "Continuar" : collection.dueReviews > 0 ? "Revisar" : "Começar";
 
+/**
+ * What to study now. A section of the home's "today" panel (the panel draws the surface): a 14px
+ * heading, then one row per collection with its name at 15px and one small action. Only the first
+ * action is filled, so the next step is never in doubt.
+ */
 export const DashboardReviewQueue = ({
   onStartPractice,
   queue,
@@ -38,143 +37,100 @@ export const DashboardReviewQueue = ({
   onStartPractice: (collectionId: string) => void;
   queue: DashboardResponse["reviewQueue"];
 }) => {
-  const activeSession = queue.collections.find(({ activeSession }) => activeSession)?.activeSession;
-
+  const summary =
+    queue.totalDueReviews > 0
+      ? `${flashcardCount(queue.totalDueReviews)} para revisar hoje`
+      : queue.totalNewCards > 0
+        ? `${flashcardCount(queue.totalNewCards)} para conhecer`
+        : null;
   return (
-    <section
-      aria-labelledby="dashboard-reviews-title"
-      className="h-full overflow-hidden rounded-xl bg-muted/45"
-    >
-      <div className="grid h-full xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <div className="min-w-0 p-5 sm:p-6">
-          <DashboardSectionTitle
-            icon={<FlashcardDomainIcon aria-hidden="true" className="size-6" weight="duotone" />}
-            id="dashboard-reviews-title"
-            title="Revisões"
-          />
+    <section aria-labelledby="dashboard-reviews-title" className="min-w-0 p-6">
+      <header className="flex items-baseline justify-between gap-4">
+        <h2 className="text-sm leading-snug font-semibold" id="dashboard-reviews-title">
+          {queue.collections.some(({ activeSession }) => activeSession)
+            ? "Continue sua prática"
+            : "Seu próximo estudo"}
+        </h2>
+        <ForwardLink className="shrink-0" to="/flashcards">
+          Ver coleções
+        </ForwardLink>
+      </header>
+      {/* The total only adds information over two or more rows; with one, the row says it. */}
+      {summary && queue.collections.length > 1 && (
+        <p className="mt-1 text-[0.8125rem] text-muted-foreground">{summary}</p>
+      )}
 
-          {activeSession ? (
-            <div className="mt-8">
-              <p className="font-heading text-5xl leading-none tabular-nums sm:text-6xl">
-                {activeSession.reviewedCards}
-                <span className="text-2xl text-muted-foreground sm:text-3xl">
-                  /{activeSession.totalCards}
-                </span>
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                flashcards revisados nesta prática
-              </p>
-            </div>
-          ) : queue.totalDueReviews > 0 ? (
-            <div className="mt-8">
-              <p className="font-heading text-6xl leading-none tabular-nums sm:text-7xl">
-                {queue.totalDueReviews}
-              </p>
-              <p className="mt-2 text-base text-muted-foreground">
-                {queue.totalDueReviews === 1
-                  ? "flashcard para revisar hoje"
-                  : "flashcards para revisar hoje"}
-              </p>
-            </div>
-          ) : queue.totalNewCards > 0 ? (
-            <div className="mt-8">
-              <p className="font-heading text-6xl leading-none tabular-nums sm:text-7xl">
-                {queue.totalNewCards}
-              </p>
-              <p className="mt-2 text-base text-muted-foreground">
-                {queue.totalNewCards === 1
-                  ? "flashcard novo para estudar"
-                  : "flashcards novos para estudar"}
-              </p>
-            </div>
-          ) : (
-            <div className="mt-10">
-              <p className="font-heading text-4xl leading-tight">Tudo revisado</p>
-              {queue.nextReviewAt && (
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Próxima revisão em {nextReviewFormatter.format(new Date(queue.nextReviewAt))}.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="m-3 flex flex-col rounded-xl bg-background/60 p-5 sm:m-4 sm:p-6">
-          <div className="flex items-baseline justify-between gap-4">
-            <h3 className="font-heading text-xl font-medium">Coleções</h3>
-            <Link
-              className="inline-flex shrink-0 items-center gap-1 text-sm text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-              to="/flashcards"
-            >
-              Ver todas
-              <ArrowRightIcon aria-hidden="true" className="size-4" />
-            </Link>
-          </div>
-
-          {queue.collections.length ? (
-            <div className="mt-5 space-y-1">
-              {queue.collections.map((collection) => {
-                const session = collection.activeSession;
-                const content = (
-                  <>
-                    <StackIcon
-                      aria-hidden="true"
-                      className="size-5 shrink-0 text-primary"
-                      weight="duotone"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">
+      {queue.collections.length ? (
+        <ul className="mt-3 grid gap-1">
+          {queue.collections.map((collection, index) => {
+            const session = collection.activeSession;
+            const variant = index === 0 ? "default" : "outline";
+            const label = collectionAction(collection);
+            return (
+              // The name reads as text; the action is a real button, with every button's hover,
+              // press and focus.
+              <li key={collection.collectionId} className="flex min-w-0 items-center gap-4 py-2">
+                <span className="min-w-0 flex-1">
+                  <OverflowTooltip text={collection.collectionTitle}>
+                    {(ref) => (
+                      <span
+                        className="block truncate text-[0.9375rem] font-medium"
+                        ref={ref as Ref<HTMLSpanElement>}
+                      >
                         {collection.collectionTitle}
                       </span>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {collectionStatus(collection)}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-sm font-normal text-primary">
-                      {collectionAction(collection)}
-                    </span>
-                  </>
-                );
-                return session ? (
-                  <Link
-                    className="flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
-                    key={collection.collectionId}
-                    to={`/flashcards/${collection.collectionId}/practice/${session.sessionId}`}
-                  >
-                    {content}
-                  </Link>
+                    )}
+                  </OverflowTooltip>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {collectionStatus(collection)}
+                  </span>
+                </span>
+                {session ? (
+                  <Button asChild size="sm" variant={variant}>
+                    <Link
+                      aria-label={`${label}: ${collection.collectionTitle}`}
+                      to={`/flashcards/${collection.collectionId}/practice/${session.sessionId}`}
+                    >
+                      {label}
+                    </Link>
+                  </Button>
                 ) : (
-                  <button
-                    className="flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-3 text-left outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
-                    key={collection.collectionId}
+                  <Button
+                    aria-label={`${label}: ${collection.collectionTitle}`}
                     onClick={() => onStartPractice(collection.collectionId)}
-                    type="button"
+                    size="sm"
+                    variant={variant}
                   >
-                    {content}
-                  </button>
-                );
-              })}
-              {queue.hiddenCollectionCount > 0 && (
-                <p className="px-3 pt-3 text-sm text-muted-foreground">
-                  {queue.hiddenCollectionCount === 1
-                    ? "Mais 1 coleção disponível"
-                    : `Mais ${queue.hiddenCollectionCount} coleções disponíveis`}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center">
-              <span className="grid size-11 place-items-center rounded-full bg-muted/60 text-primary">
-                <CheckCircleIcon aria-hidden="true" className="size-6" weight="duotone" />
-              </span>
-              <p className="mt-3 font-heading text-xl">Nada para revisar agora</p>
-              <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-                Suas coleções aparecerão aqui quando houver flashcards disponíveis.
-              </p>
-            </div>
+                    {label}
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+          {queue.hiddenCollectionCount > 0 && (
+            <li className="pt-1 text-[0.8125rem] text-muted-foreground">
+              {queue.hiddenCollectionCount === 1
+                ? "Mais 1 coleção disponível"
+                : `Mais ${queue.hiddenCollectionCount} coleções disponíveis`}
+            </li>
           )}
+        </ul>
+      ) : (
+        <div className="mt-4 flex items-start gap-3">
+          <CheckCircleIcon
+            aria-hidden="true"
+            className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+          />
+          <div>
+            <p className="text-[0.9375rem] font-medium">Tudo revisado por aqui</p>
+            <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">
+              {queue.nextReviewAt
+                ? `Próxima revisão: ${formatUpcoming(queue.nextReviewAt)}.`
+                : "Suas coleções aparecerão aqui quando houver flashcards disponíveis."}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 };
