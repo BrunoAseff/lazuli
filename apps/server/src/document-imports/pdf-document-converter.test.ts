@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   convertPdfTextLines,
   extractStructuredPdfTables,
+  isSoftMaskLayer,
+  normalizePdfText,
   resolvePdfImageObject,
 } from "./pdf-document-converter.ts";
 
@@ -15,6 +17,100 @@ const textItem = (str: string, x: number, y: number, height = 11, fontName = "re
 });
 
 describe("PDF document converter", () => {
+  it("keeps bold sentences and bold list entries out of headings", () => {
+    const elements = convertPdfTextLines([
+      textItem(
+        "Corpo do texto para definir a fonte normal do documento, que é a mais usada.",
+        72,
+        790,
+      ),
+      textItem(
+        "Mais uma linha de corpo para que o texto regular predomine sobre o negrito.",
+        72,
+        776,
+      ),
+      textItem(
+        "Terceira linha de corpo, como num documento de verdade com parágrafos longos.",
+        72,
+        762,
+      ),
+      textItem("Despesas com aquisição", 72, 720, 11, "bold"),
+      textItem("• Existem dois tipos de despesas;", 72, 690, 11, "bold"),
+      textItem("Uma frase inteira em negrito que termina com ponto.", 72, 660, 11, "bold"),
+    ]);
+    expect(elements.map(({ block }) => block.type)).toEqual([
+      "paragraph",
+      "heading",
+      "bulletListItem",
+      "paragraph",
+    ]);
+  });
+
+  it("reads two side-by-side columns one after the other", () => {
+    const elements = convertPdfTextLines([
+      textItem("Cenário 1", 54, 320, 11, "bold"),
+      textItem("Esquerda primeira", 54, 300),
+      textItem("Esquerda segunda", 54, 286),
+      textItem("Cenário 2", 315, 320, 11, "bold"),
+      textItem("Direita primeira", 315, 300),
+      textItem("Direita segunda", 315, 286),
+      textItem("Texto em largura total depois das colunas, atravessando a página.", 54, 240),
+    ]);
+    const texts = elements.map(({ block }) =>
+      (block.content as Array<{ text: string }>).map(({ text }) => text).join(""),
+    );
+    expect(texts).toEqual([
+      "Cenário 1",
+      "Esquerda primeira Esquerda segunda",
+      "Cenário 2",
+      "Direita primeira Direita segunda",
+      "Texto em largura total depois das colunas, atravessando a página.",
+    ]);
+  });
+
+  it("recognizes grayscale shadow masks and keeps real images", () => {
+    const image = (paint: (x: number, y: number) => [number, number, number]) => {
+      const width = 20,
+        height = 12,
+        data = new Uint8Array(width * height * 3);
+      for (let y = 0; y < height; y++)
+        for (let x = 0; x < width; x++) data.set(paint(x, y), (y * width + x) * 3);
+      return { data, height, kind: 2, width };
+    };
+    const inside = (x: number, y: number) => x > 2 && x < 17 && y > 2 && y < 9;
+    expect(isSoftMaskLayer(image((x, y) => (inside(x, y) ? [255, 255, 255] : [0, 0, 0])))).toBe(
+      true,
+    );
+    // A photo-like image with color is content.
+    expect(isSoftMaskLayer(image((x, y) => (inside(x, y) ? [250, 240, 200] : [0, 0, 0])))).toBe(
+      false,
+    );
+    // A white-background diagram is content too.
+    expect(isSoftMaskLayer(image(() => [255, 255, 255]))).toBe(false);
+  });
+
+  it("restores tracked titles and drops unmapped symbol glyphs", () => {
+    expect(normalizePdfText("U N I V E R S I D A D E")).toBe("UNIVERSIDADE");
+    expect(normalizePdfText("\uE08B")).toBe("");
+    // Ordinary prose with short words keeps its spaces.
+    expect(normalizePdfText("a e o")).toBe("a e o");
+    expect(normalizePdfText("Avaliação Prática M2")).toBe("Avaliação Prática M2");
+
+    const elements = convertPdfTextLines([
+      textItem("U N I V E R S I D A D E", 72, 760),
+      textItem(" ", 160, 760),
+      textItem("D O", 168, 760),
+      textItem("SisCOAP ", 72, 720),
+      textItem("\uE08B", 125, 720),
+      textItem(" Sistema", 135, 720),
+    ]);
+    const texts = elements.map(({ block }) =>
+      (block.content as Array<{ text: string }>).map(({ text }) => text).join(""),
+    );
+    expect(texts[0]).toBe("UNIVERSIDADE DO");
+    expect(texts[1]).toBe("SisCOAP Sistema");
+  });
+
   it("resolves shared PDF images from the global object pool", async () => {
     const image = { width: 10, height: 10, data: new Uint8Array(300) };
     const localGet = vi.fn();
