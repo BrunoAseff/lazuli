@@ -15,7 +15,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
-import { useCreatePracticeSession, usePracticeAvailability } from "../api/flashcard-queries.ts";
+import {
+  practicePaths,
+  useCreatePracticeSession,
+  usePracticeAvailability,
+  type PracticeTarget,
+} from "../api/flashcard-queries.ts";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 
 type SessionSize = 10 | 20 | 50 | 200;
@@ -28,16 +33,23 @@ const sizes: Array<{ value: SessionSize; label: string }> = [
 
 export const PracticeSetupDialog = ({
   collectionId,
+  projectId,
   onOpenChange,
   open,
 }: {
-  collectionId: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
-}) => {
+} & ( // One collection, or the flashcards of every collection in a project.
+  | { collectionId: string; projectId?: never }
+  | { collectionId?: never; projectId: string }
+)) => {
   const navigate = useNavigate();
-  const availability = usePracticeAvailability(collectionId, open);
-  const create = useCreatePracticeSession(collectionId);
+  const target: PracticeTarget = projectId
+    ? { type: "project", id: projectId }
+    : { type: "collection", id: collectionId ?? "" };
+  const paths = practicePaths(target);
+  const availability = usePracticeAvailability(target, open);
+  const create = useCreatePracticeSession(target);
   const [size, setSize] = useState<SessionSize>(20);
   const [confirmRestart, setConfirmRestart] = useState(false);
   const active = availability.data?.activeSession;
@@ -52,7 +64,7 @@ export const PracticeSetupDialog = ({
       });
       onOpenChange(false);
       setConfirmRestart(false);
-      void navigate(`/flashcards/${collectionId}/practice/${session.id}`);
+      void navigate(paths.session(session.id));
     } catch (error) {
       toast.error(getFlashcardCollectionErrorMessage(error, "Não foi possível iniciar a prática."));
     }
@@ -109,7 +121,7 @@ export const PracticeSetupDialog = ({
                 <Button
                   onClick={() => {
                     onOpenChange(false);
-                    void navigate(`/flashcards/${collectionId}/practice/${active.id}`);
+                    void navigate(paths.session(active.id));
                   }}
                 >
                   Continuar prática

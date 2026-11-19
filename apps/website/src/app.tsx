@@ -119,6 +119,10 @@ export const App = () => (
             element={<FlashcardPracticePage />}
             path="flashcards/:collectionId/practice/:sessionId"
           />
+          <Route
+            element={<FlashcardPracticePage />}
+            path="documents/:projectId/practice/:sessionId"
+          />
           <Route element={<ProjectWorkspaceLayout />} path="documents/:projectId">
             <Route element={<ProjectDetailPage />} index />
             <Route element={<DocumentEditorPage />} path="document/:documentId" />

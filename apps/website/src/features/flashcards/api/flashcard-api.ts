@@ -119,19 +119,27 @@ export const uploadFlashcardImage = async (file: File): Promise<AssetResponse> =
   });
 };
 
+/** What a practice runs over: one collection, or the flashcards of every collection in a project. */
+export type PracticeTarget = { type: "collection" | "project"; id: string };
+
+const practiceBase = (target: PracticeTarget) =>
+  target.type === "collection"
+    ? collectionPath(target.id)
+    : `/api/projects/${encodeURIComponent(target.id)}`;
+
 export const fetchPracticeAvailability = (
-  collectionId: string,
+  target: PracticeTarget,
   signal?: AbortSignal,
 ): Promise<FlashcardPracticeAvailability> =>
-  apiRequest(`${collectionPath(collectionId)}/practice`, flashcardPracticeAvailabilitySchema, {
+  apiRequest(`${practiceBase(target)}/practice`, flashcardPracticeAvailabilitySchema, {
     signal,
   });
 
 export const postPracticeSession = (
-  collectionId: string,
+  target: PracticeTarget,
   input: CreateFlashcardPracticeSessionInput,
 ): Promise<FlashcardPracticeSession> =>
-  apiRequest(`${collectionPath(collectionId)}/practice-sessions`, flashcardPracticeSessionSchema, {
+  apiRequest(`${practiceBase(target)}/practice-sessions`, flashcardPracticeSessionSchema, {
     method: "POST",
     body: JSON.stringify(input),
   });

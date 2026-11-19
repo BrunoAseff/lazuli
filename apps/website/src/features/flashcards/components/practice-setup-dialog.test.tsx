@@ -18,6 +18,10 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("react-router", () => ({ useNavigate: () => state.navigate }));
 vi.mock("../api/flashcard-queries.ts", () => ({
+  practicePaths: (target: { id: string }) => ({
+    home: `/flashcards/${target.id}`,
+    session: (sessionId: string) => `/flashcards/${target.id}/practice/${sessionId}`,
+  }),
   usePracticeAvailability: () => ({ data: state.availability, isPending: false, isError: false }),
   useCreatePracticeSession: () => ({ mutateAsync: state.mutate, isPending: false }),
 }));

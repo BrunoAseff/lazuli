@@ -25,6 +25,7 @@ import {
   postPracticeSession,
   previewFlashcardImport,
   removeFlashcard,
+  type PracticeTarget,
 } from "./flashcard-api.ts";
 import { fetchFlashcardCollection } from "./flashcard-collection-api.ts";
 
@@ -38,14 +39,32 @@ export const flashcardKeys = {
     [...flashcardKeys.collection(collectionId), "detail", cardId] as const,
   availability: (collectionId: string) =>
     [...flashcardKeys.collection(collectionId), "practice-availability"] as const,
+  practiceAvailability: (target: PracticeTarget) =>
+    target.type === "collection"
+      ? flashcardKeys.availability(target.id)
+      : ([...flashcardKeys.all, "project", target.id, "practice-availability"] as const),
   practiceSession: (sessionId: string) => [...flashcardKeys.all, "practice", sessionId] as const,
 };
 
-export const usePracticeAvailability = (collectionId: string, enabled = true) =>
+export type { PracticeTarget };
+
+/** Where a practice opens, and where it returns to. */
+export const practicePaths = (target: PracticeTarget) =>
+  target.type === "collection"
+    ? {
+        home: `/flashcards/${target.id}`,
+        session: (sessionId: string) => `/flashcards/${target.id}/practice/${sessionId}`,
+      }
+    : {
+        home: `/documents/${target.id}`,
+        session: (sessionId: string) => `/documents/${target.id}/practice/${sessionId}`,
+      };
+
+export const usePracticeAvailability = (target: PracticeTarget, enabled = true) =>
   useQuery({
     enabled,
-    queryKey: flashcardKeys.availability(collectionId),
-    queryFn: ({ signal }) => fetchPracticeAvailability(collectionId, signal),
+    queryKey: flashcardKeys.practiceAvailability(target),
+    queryFn: ({ signal }) => fetchPracticeAvailability(target, signal),
   });
 
 export const usePracticeSession = (sessionId: string) =>
@@ -54,46 +73,47 @@ export const usePracticeSession = (sessionId: string) =>
     queryFn: ({ signal }) => fetchPracticeSession(sessionId, signal),
   });
 
-export const useCreatePracticeSession = (collectionId: string) => {
+/** After a session ends, what it touched: its collection, or every collection of its project. */
+const refreshAfterPractice = (client: ReturnType<typeof useQueryClient>, target: PracticeTarget) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: flashcardKeys.practiceAvailability(target) }),
+    client.invalidateQueries({
+      queryKey:
+        target.type === "collection" ? flashcardKeys.collection(target.id) : flashcardKeys.all,
+    }),
+    client.invalidateQueries({ queryKey: flashcardCollectionKeys.lists() }),
+  ]);
+
+export const useCreatePracticeSession = (target: PracticeTarget) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreateFlashcardPracticeSessionInput) =>
-      postPracticeSession(collectionId, input),
+    mutationFn: (input: CreateFlashcardPracticeSessionInput) => postPracticeSession(target, input),
     onSuccess: (session) => {
       client.setQueryData(flashcardKeys.practiceSession(session.id), session);
-      return client.invalidateQueries({ queryKey: flashcardKeys.availability(collectionId) });
+      return client.invalidateQueries({ queryKey: flashcardKeys.practiceAvailability(target) });
     },
   });
 };
 
-export const useSubmitPracticeReview = (sessionId: string, collectionId: string) => {
+export const useSubmitPracticeReview = (sessionId: string, target: PracticeTarget) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: SubmitFlashcardReviewInput) => postPracticeReview(sessionId, input),
     onSuccess: async (session) => {
       void client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.studyMetrics });
       client.setQueryData(flashcardKeys.practiceSession(sessionId), session);
-      if (session.status === "completed")
-        await Promise.all([
-          client.invalidateQueries({ queryKey: flashcardKeys.collection(collectionId) }),
-          client.invalidateQueries({ queryKey: flashcardKeys.availability(collectionId) }),
-          client.invalidateQueries({ queryKey: flashcardCollectionKeys.lists() }),
-        ]);
+      if (session.status === "completed") await refreshAfterPractice(client, target);
     },
   });
 };
 
-export const useAbandonPracticeSession = (collectionId: string, sessionId: string) => {
+export const useAbandonPracticeSession = (target: PracticeTarget, sessionId: string) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => postAbandonPracticeSession(sessionId),
     onSuccess: async () => {
       client.removeQueries({ queryKey: flashcardKeys.practiceSession(sessionId) });
-      await Promise.all([
-        client.invalidateQueries({ queryKey: flashcardKeys.availability(collectionId) }),
-        client.invalidateQueries({ queryKey: flashcardKeys.collection(collectionId) }),
-        client.invalidateQueries({ queryKey: flashcardCollectionKeys.lists() }),
-      ]);
+      await refreshAfterPractice(client, target);
     },
   });
 };
@@ -120,8 +140,9 @@ export const useRefreshWhenDue = (
   }, [client, collectionId, nextPracticeAt]);
 };
 
-export const useFlashcardCollection = (collectionId: string) =>
+export const useFlashcardCollection = (collectionId: string, enabled = true) =>
   useQuery({
+    enabled,
     queryKey: flashcardKeys.collection(collectionId),
     queryFn: ({ signal }) => fetchFlashcardCollection(collectionId, signal),
   });

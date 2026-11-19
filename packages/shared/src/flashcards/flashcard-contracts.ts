@@ -180,7 +180,10 @@ export const flashcardPracticeItemSchema = z.object({
 
 export const flashcardPracticeSessionSchema = z.object({
   id: z.uuid(),
-  collectionId: flashcardCollectionIdSchema,
+  /** One of the two is set: the collection practiced, or the project whose flashcards are. */
+  collectionId: flashcardCollectionIdSchema.nullable(),
+  projectId: z.uuid().nullable(),
+  /** The title of what is practiced: the collection's, or the project's. */
   collectionTitle: z.string(),
   status: flashcardPracticeStatusSchema,
   totalCards: z.number().int().nonnegative(),

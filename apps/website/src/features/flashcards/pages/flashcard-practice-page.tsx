@@ -32,7 +32,9 @@ import {
 import { formatUpcoming } from "@/lib/date-format.ts";
 import { MaterialReferencesButton } from "@/features/references/components/material-references-dialog.tsx";
 import {
+  practicePaths,
   usePracticeAvailability,
+  type PracticeTarget,
   useFlashcardCollection,
   usePracticeSession,
   useSubmitPracticeReview,
@@ -82,9 +84,15 @@ const isEditableTarget = (target: EventTarget | null) =>
   (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
 export default function FlashcardPracticePage() {
-  const { collectionId = "", sessionId = "" } = useParams();
+  const { collectionId = "", projectId, sessionId = "" } = useParams();
+  // The same practice runs over one collection or over a whole project's flashcards.
+  const target: PracticeTarget = projectId
+    ? { type: "project", id: projectId }
+    : { type: "collection", id: collectionId };
+  const home = practicePaths(target).home;
+  const homeLabel = target.type === "project" ? "Voltar ao projeto" : "Voltar à coleção";
   const practice = usePracticeSession(sessionId);
-  const submit = useSubmitPracticeReview(sessionId, collectionId);
+  const submit = useSubmitPracticeReview(sessionId, target);
   const [revealed, setRevealed] = useState(false);
   const [animateReveal, setAnimateReveal] = useState(false);
   const [failedRating, setFailedRating] = useState<FlashcardRating | null>(null);
@@ -175,8 +183,8 @@ export default function FlashcardPracticePage() {
   if (practice.isError || !practice.data)
     return (
       <ResourceUnavailable
-        backLabel="Voltar à coleção"
-        backTo={`/flashcards/${collectionId}`}
+        backLabel={homeLabel}
+        backTo={home}
         notFound={isNotFound(practice.error) || !practice.isError}
         onRetry={() => void practice.refetch()}
         title="Prática não encontrada"
@@ -185,13 +193,13 @@ export default function FlashcardPracticePage() {
 
   const session = practice.data;
   if (session.status !== "active" || !session.currentItem)
-    return <PracticeSummary collectionId={collectionId} session={session} />;
+    return <PracticeSummary session={session} target={target} />;
 
   const item = session.currentItem;
   return (
     <main className="practice">
       <header className="practice-head">
-        <BackLink to={`/flashcards/${collectionId}`}>{session.collectionTitle}</BackLink>
+        <BackLink to={home}>{session.collectionTitle}</BackLink>
         <p className="practice-count">
           <span className="text-foreground">{session.reviewedCards}</span> de {session.totalCards}
         </p>
@@ -316,21 +324,24 @@ const RichContent = ({ content }: { content: LazuliDocumentBlock }) => {
 };
 
 const PracticeSummary = ({
-  collectionId,
   session,
+  target,
 }: {
-  collectionId: string;
   session: FlashcardPracticeSession;
+  target: PracticeTarget;
 }) => {
-  const availability = usePracticeAvailability(collectionId);
-  const collection = useFlashcardCollection(collectionId);
+  const availability = usePracticeAvailability(target);
+  const isCollection = target.type === "collection";
+  const collection = useFlashcardCollection(target.id, isCollection);
+  const home = practicePaths(target).home;
+  const left = availability.data?.totalAvailable ?? 0;
   const [setupOpen, setSetupOpen] = useState(false);
   const correct = session.ratings.hard + session.ratings.good + session.ratings.easy;
   const completed = session.status === "completed";
   return (
     <main className="practice">
       <header className="practice-head">
-        <BackLink to={`/flashcards/${collectionId}`}>{session.collectionTitle}</BackLink>
+        <BackLink to={home}>{session.collectionTitle}</BackLink>
       </header>
       <section
         className="practice-stage practice-sheet result-summary"
@@ -345,17 +356,21 @@ const PracticeSummary = ({
             </h1>
             <p className="result-subtitle">
               {correct} {correct === 1 ? "lembrado" : "lembrados"} ·{" "}
-              {collection.data?.dueCards
-                ? `${collection.data.dueCards} ainda ${collection.data.dueCards === 1 ? "disponível" : "disponíveis"}`
-                : collection.data?.nextPracticeAt
-                  ? `próxima revisão ${formatUpcoming(collection.data.nextPracticeAt)}`
-                  : "nenhuma revisão agendada"}
+              {!isCollection
+                ? left
+                  ? `${left} ainda ${left === 1 ? "disponível" : "disponíveis"} no projeto`
+                  : "nada pendente no projeto"
+                : collection.data?.dueCards
+                  ? `${collection.data.dueCards} ainda ${collection.data.dueCards === 1 ? "disponível" : "disponíveis"}`
+                  : collection.data?.nextPracticeAt
+                    ? `próxima revisão ${formatUpcoming(collection.data.nextPracticeAt)}`
+                    : "nenhuma revisão agendada"}
             </p>
           </div>
           <div className="practice-actions">
             {/* With nothing waiting, going back is the way forward, not a disabled button. */}
             <Button asChild variant={availability.data?.totalAvailable ? "outline" : "default"}>
-              <Link to={`/flashcards/${collectionId}`}>Voltar à coleção</Link>
+              <Link to={home}>{isCollection ? "Voltar à coleção" : "Voltar ao projeto"}</Link>
             </Button>
             {availability.data?.totalAvailable ? (
               <Button onClick={() => setSetupOpen(true)}>Praticar mais</Button>
@@ -393,11 +408,15 @@ const PracticeSummary = ({
           </ul>
         </section>
       )}
-      <PracticeSetupDialog
-        collectionId={collectionId}
-        onOpenChange={setSetupOpen}
-        open={setupOpen}
-      />
+      {isCollection ? (
+        <PracticeSetupDialog
+          collectionId={target.id}
+          onOpenChange={setSetupOpen}
+          open={setupOpen}
+        />
+      ) : (
+        <PracticeSetupDialog onOpenChange={setSetupOpen} open={setupOpen} projectId={target.id} />
+      )}
     </main>
   );
 };
