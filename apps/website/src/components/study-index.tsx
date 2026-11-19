@@ -111,9 +111,10 @@ const useListSelection = () => {
       value: boolean;
       moved: boolean;
     } | null = null;
-    const ordered = () => [
-      ...(listRef.current?.querySelectorAll<HTMLLIElement>(":scope > .study-index-row") ?? []),
-    ];
+    const ordered = () =>
+      Array.from(
+        listRef.current?.querySelectorAll<HTMLLIElement>(":scope > .study-index-row") ?? [],
+      );
     /** Sets every row from one to the other, inclusive, whichever comes first. */
     const paint = (from: HTMLLIElement, to: HTMLLIElement, value: boolean) => {
       const list = ordered();
