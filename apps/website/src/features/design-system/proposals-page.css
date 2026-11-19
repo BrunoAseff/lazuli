@@ -1,106 +1,149 @@
-/* Internal proposals page: state variants (nothing here reaches the app). */
+/* Internal proposals page (nothing here reaches the app). */
 
-/* Shared by the new options: cards stay white and neutral; the state lives in one mark. */
-[data-states="gem"],
-[data-states="margin"] {
+/* Toast mocks: today's toast and the adjusted C, drawn with the same values each would use. */
+.mock-toast {
+  position: relative;
+  display: flex;
+  width: min(100%, 22.25rem);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 2.75rem 0.75rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--shadow-overlay);
+  --tone: var(--primary);
+
+  &[data-tone="success"] {
+    --tone: var(--success);
+  }
+  &[data-tone="error"] {
+    --tone: var(--destructive);
+  }
+  &[data-adjusted] {
+    width: min(100%, 20rem);
+    gap: 0.625rem;
+    padding: 0.625rem 2.25rem 0.625rem 0.875rem;
+    box-shadow: 0 2px 10px rgb(20 26 46 / 7%);
+  }
+}
+.dark .mock-toast[data-adjusted] {
+  box-shadow: 0 2px 10px rgb(0 0 0 / 28%);
+}
+.mock-toast-seal {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--tone);
+  color: #fff;
+
+  & svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+.mock-toast-facet {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: none;
+  margin-inline: 0.125rem;
+  border-radius: 1.5px;
+  background: var(--tone);
+  transform: rotate(45deg);
+}
+.mock-toast-close {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--muted-foreground);
+  translate: 0 -50%;
+}
+/* Inset from the rounded corners, so nothing needs clipping. */
+.mock-toast-time {
+  position: absolute;
+  right: 0.875rem;
+  bottom: 0;
+  left: 0.875rem;
+  height: 2px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--tone) 45%, transparent);
+  transform-origin: left;
+  animation: mock-toast-time 4s linear both;
+
+  .mock-toast:hover & {
+    animation-play-state: paused;
+  }
+}
+@keyframes mock-toast-time {
+  to {
+    transform: scaleX(0);
+  }
+}
+.mock-toast-enter {
+  animation: mock-toast-in 420ms var(--spring-settle) both;
+}
+@keyframes mock-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+.mock-toast-enter .mock-toast-facet {
+  animation: mock-facet-in 520ms var(--spring-settle) 120ms both;
+}
+@keyframes mock-facet-in {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mock-toast-enter,
+  .mock-toast-enter .mock-toast-facet,
+  .mock-toast-time {
+    animation: none;
+  }
+}
+
+/* Pigment, adjusted: the seal fills as today; the card stays white and the chosen text takes a
+   stroke of ultramarine pigment that sweeps in behind it. */
+[data-states="pigment"] {
+  --pigment: linear-gradient(
+    100deg,
+    transparent 0 2%,
+    color-mix(in oklab, var(--primary) 22%, transparent) 4% 96%,
+    transparent 98%
+  );
+
   & .choice[data-selected],
-  & .choice[data-outcome] {
-    border-color: var(--border);
-    background: var(--card);
-  }
-  & .choice[data-selected] {
-    border-color: color-mix(in oklab, var(--foreground) 32%, transparent);
-  }
   & .radio-card:has([data-state="checked"]) {
     border-color: color-mix(in oklab, var(--foreground) 32%, transparent);
     background: var(--card);
   }
-}
-
-/* C · Gem: choosing cuts the seal into the brand's diamond. Only the fill turns; the letter and
-   the glyph stay upright. */
-[data-states="gem"] {
-  & .choice-seal-fill {
-    transition:
-      border-radius 260ms var(--spring-settle),
-      rotate 420ms var(--spring-settle),
-      scale 420ms var(--spring-settle),
-      background-color 160ms var(--ease-out);
+  & .choice-text,
+  & .radio-card-title {
+    justify-self: start;
+    width: fit-content;
+    padding-inline: 0.125rem;
+    background-image: var(--pigment);
+    background-repeat: no-repeat;
+    background-position: 0 70%;
+    background-size: 0% 62%;
+    transition: background-size 420ms var(--ease-out);
   }
-  & .choice[data-selected] .choice-seal,
-  & .choice-seal[data-outcome] {
-    box-shadow: none;
-
-    & .choice-seal-fill {
-      border-radius: 3px;
-      /* Separate properties: they combine with the fill's own transform (its press motion). */
-      rotate: 45deg;
-      scale: 0.78;
-    }
-  }
-  /* The wrong pick is cut too, but hollow: a red outline, never a filled alarm. */
-  & .choice-seal[data-outcome="incorrect"] {
-    color: var(--destructive);
-
-    & .choice-seal-fill {
-      background: transparent;
-      box-shadow: inset 0 0 0 1.5px var(--destructive);
-    }
+  & .choice[data-selected] .choice-text,
+  & .radio-card:has([data-state="checked"]) .radio-card-title {
+    background-size: 100% 62%;
   }
 }
 
-/* D · Margin: the navigation's lapis notch on the card's left edge carries the state. */
-[data-states="margin"] {
-  & .choice {
-    position: relative;
-  }
-  & .choice[data-selected]::before,
-  & .choice[data-outcome]::before,
-  & .radio-card:has([data-state="checked"])::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: -0.25rem;
-    width: 0.5rem;
-    height: 0.5rem;
-    margin-top: -0.25rem;
-    border-radius: 1.5px;
-    background: var(--primary);
-    transform: rotate(45deg);
-    animation: margin-notch-in 360ms var(--spring-settle) both;
-  }
-  & .choice[data-outcome="correct"]::before {
-    background: var(--success);
-  }
-  & .choice[data-outcome="incorrect"]::before {
-    background: var(--destructive);
-  }
-  /* The seal stays neutral: letter in ink, no fill. */
-  & .choice[data-selected] .choice-seal {
-    color: var(--foreground);
-    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--foreground) 40%, transparent);
-
-    & .choice-seal-fill {
-      opacity: 0;
-    }
-  }
-  & .choice-seal[data-outcome] {
-    color: var(--foreground);
-    box-shadow: inset 0 0 0 1px var(--input);
-
-    & .choice-seal-fill {
-      opacity: 0;
-    }
-  }
-}
-@keyframes margin-notch-in {
-  from {
-    opacity: 0;
-    transform: rotate(-45deg) scale(0.4);
-  }
-}
-
-/* E · Pigment: a mock of answers marked like annotated text. */
+/* Pigment correction: the outcome is marked on the text itself. */
 .pigment-choice {
   display: flex;
   align-items: center;
@@ -112,50 +155,28 @@
   background: var(--card);
   text-align: left;
   font-size: 0.9375rem;
-  transition: border-color var(--transition-fast);
-
-  &:is(button):hover {
-    border-color: color-mix(in oklab, var(--foreground) 22%, transparent);
-  }
-}
-.pigment-letter {
-  display: grid;
-  width: 1.75rem;
-  height: 1.75rem;
-  flex: none;
-  place-items: center;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--muted-foreground);
-  box-shadow: inset 0 0 0 1px var(--input);
 }
 .pigment-text {
   width: fit-content;
   padding-inline: 0.125rem;
-  background-image: linear-gradient(
-    100deg,
-    transparent 0 2%,
-    color-mix(in oklab, var(--tone, var(--primary)) 22%, transparent) 4% 96%,
-    transparent 98%
-  );
-  background-repeat: no-repeat;
-  background-position: 0 70%;
-  background-size: 0% 62%;
-  transition: background-size 420ms var(--ease-out);
-}
-.pigment-choice[data-selected] .pigment-text,
-.pigment-choice[data-outcome="correct"] .pigment-text {
-  background-size: 100% 62%;
-}
-.pigment-choice[data-outcome="correct"] {
-  --tone: var(--success);
-}
-.pigment-choice[data-outcome="incorrect"] .pigment-text {
-  text-decoration: line-through;
-  text-decoration-color: var(--destructive);
-  text-decoration-thickness: 1.5px;
-  color: var(--muted-foreground);
+
+  [data-outcome="correct"] & {
+    background-image: linear-gradient(
+      100deg,
+      transparent 0 2%,
+      color-mix(in oklab, var(--success) 22%, transparent) 4% 96%,
+      transparent 98%
+    );
+    background-repeat: no-repeat;
+    background-position: 0 70%;
+    background-size: 100% 62%;
+  }
+  [data-outcome="incorrect"] & {
+    color: var(--muted-foreground);
+    text-decoration: line-through;
+    text-decoration-color: var(--destructive);
+    text-decoration-thickness: 1.5px;
+  }
 }
 .pigment-mark {
   width: 1rem;
@@ -179,17 +200,5 @@
   }
   [data-outcome="incorrect"] & {
     color: var(--destructive);
-  }
-}
-.pigment-radio {
-  width: 1rem;
-  height: 1rem;
-  flex: none;
-  border-radius: 999px;
-  box-shadow: inset 0 0 0 1px var(--input);
-  transition: box-shadow var(--transition-fast);
-
-  [data-selected] > & {
-    box-shadow: inset 0 0 0 4.5px var(--primary);
   }
 }
