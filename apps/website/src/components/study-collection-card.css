@@ -106,6 +106,10 @@
   &[data-tone="incorrect"] {
     background: color-mix(in oklab, var(--destructive) 75%, transparent);
   }
+  /* Gold is kept for what is mastered: never a decoration. */
+  &[data-tone="mastered"] {
+    background: var(--gold);
+  }
 }
 
 /* The legend names each segment with its own swatch: the bar and the words read as one key. */
@@ -143,6 +147,9 @@
   }
   [data-tone="incorrect"] > & {
     background: color-mix(in oklab, var(--destructive) 75%, transparent);
+  }
+  [data-tone="mastered"] > & {
+    background: var(--gold);
   }
 }
 

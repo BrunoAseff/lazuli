@@ -30,7 +30,7 @@ export const StudyCollectionCard = ({
 export type StudyStripSegment = {
   count: number;
   label: string;
-  tone: "rest" | "due" | "new" | "correct" | "incorrect";
+  tone: "rest" | "due" | "new" | "correct" | "incorrect" | "mastered";
 };
 
 /**

@@ -83,14 +83,25 @@ const faceTone = (a: Point, b: Point, apex: Point) => {
         : "var(--gem-rough-dark)";
 };
 
+/** Where further pyrite shows on a polished stone, one fleck per mastery level past "Polida". */
+const extraFlecks: Point[] = [
+  [24, 38],
+  [44, 40],
+  [22, 26],
+  [33, 48],
+];
+
 export const CutGem = ({
   cut,
   dull = 0,
+  flecks = 0,
   size = 72,
   className,
 }: {
   cut: number;
   dull?: number;
+  /** Extra pyrite flecks on a polished stone (0–4). */
+  flecks?: number;
   size?: number;
   className?: string;
 }) => {
@@ -154,6 +165,14 @@ export const CutGem = ({
         <g opacity={polish}>
           <path d="M8 32 L32 8 L35 11 L11 35Z" fill="white" opacity={0.35} />
           <path className="cut-gem-fleck" d="M39 21 43 25 39 29 35 25Z" fill="var(--gold)" />
+          {extraFlecks.slice(0, Math.max(0, Math.min(4, flecks))).map(([x, y]) => (
+            <path
+              className="cut-gem-fleck"
+              d={`M${x} ${y - 2.5} ${x + 2.5} ${y} ${x} ${y + 2.5} ${x - 2.5} ${y}Z`}
+              fill="var(--gold)"
+              key={`${x}:${y}`}
+            />
+          ))}
         </g>
       )}
     </svg>
