@@ -1224,11 +1224,19 @@ export const CreateMaterialsButton = ({
     writePending(projectId, operationId);
     setPending(operationId);
   };
-  const text = busy ? "Gerando…" : ready ? "Revisar propostas" : label;
+  // The label stays; a generation still here shows as a dot on the corner (spinning while it is
+  // generated), as on the collections' AI action.
   return (
     <>
       <Button
-        className={className}
+        aria-label={
+          busy
+            ? `${label}: gerando propostas`
+            : ready
+              ? `${label}: propostas esperando revisão`
+              : undefined
+        }
+        className={cn("relative", className)}
         onClick={async () => {
           if (onBeforeOpen && !(await onBeforeOpen())) return;
           setOpen(true);
@@ -1237,13 +1245,19 @@ export const CreateMaterialsButton = ({
         variant="outline"
       >
         {busy ? <CircleNotchIcon className="animate-spin" /> : <MagicWandIcon aria-hidden="true" />}
-        {compactLabel && !busy && !ready ? (
+        {compactLabel ? (
           <>
             <span className="sm:hidden">{compactLabel}</span>
-            <span className="hidden sm:inline">{text}</span>
+            <span className="hidden sm:inline">{label}</span>
           </>
         ) : (
-          <MorphText text={text} />
+          label
+        )}
+        {ready && (
+          <span
+            aria-hidden="true"
+            className="absolute -top-1 -right-1 size-2.5 rounded-full bg-primary ring-2 ring-background"
+          />
         )}
       </Button>
       <AiCollectionGenerationDialog

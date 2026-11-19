@@ -106,10 +106,17 @@
 .proposal-index .study-index-list {
   padding: 0;
 }
-/* Under the list: the way to add to it, a full-width button on the list's own edges. */
+/* Under the list: the way to add to it. It holds the foot of the column while a long list scrolls
+   behind it, so it is never scrolled out of reach. */
 .proposal-index-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: grid;
-  padding: 0.75rem 0.25rem 0;
+  margin-top: 0.5rem;
+  padding: 0.75rem 0.25rem 0.25rem;
+  border-top: 1px solid var(--border);
+  background: var(--popover);
 }
 
 /* On mobile the collapsible pane is already named by the count; its head would repeat it. */
