@@ -7,7 +7,7 @@ import {
   TextQuoteIcon,
   Trash2Icon,
 } from "@/components/icons.tsx";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
 
@@ -63,6 +63,7 @@ export type AiReviewQuiz = AiEditableQuizProposal & {
 
 export const AiProposalReviewList = ({
   className,
+  indexFooter,
   flashcards,
   onFlashcardChange,
   onNavigateReference,
@@ -74,6 +75,8 @@ export const AiProposalReviewList = ({
   source,
 }: {
   className?: string;
+  /** Shown under the proposal index, e.g. the way to ask for more proposals. */
+  indexFooter?: ReactNode;
   flashcards: AiReviewFlashcard[];
   onFlashcardChange: (id: string, change: Partial<AiReviewFlashcard>) => void;
   onNavigateReference?: () => void;
@@ -113,6 +116,7 @@ export const AiProposalReviewList = ({
       <div className={cn("grid gap-4", className)}>
         <ProposalIndex
           activeIndex={activeIndex}
+          footer={indexFooter}
           itemLabel={flashcards.length ? "Flashcard" : "Questão"}
           onSelect={(index) => setActiveProposal(proposals[index]!.value)}
           proposals={proposals}
@@ -221,11 +225,14 @@ export const AiProposalReviewList = ({
  */
 const ProposalIndex = ({
   activeIndex,
+  footer,
   itemLabel,
   onSelect,
   proposals,
 }: {
   activeIndex: number;
+  /** Below the list: what adds to it ("Gerar mais"). */
+  footer?: ReactNode;
   itemLabel: string;
   onSelect: (index: number) => void;
   proposals: { value: string; selected: boolean; title: string; attention: boolean }[];
@@ -278,6 +285,7 @@ const ProposalIndex = ({
           />
         ))}
       </StudyIndexList>
+      {footer && <div className="proposal-index-foot">{footer}</div>}
     </nav>
   );
   // Inside a workspace the index lives only in its pane; when that pane is collapsed, nothing renders.
@@ -399,9 +407,9 @@ const ProposalSource = ({
           {!references.length
             ? "Sem fonte"
             : linkedDocuments.length > 1
-              ? `Liga ${linkedDocuments.length} documentos`
+              ? `${linkedDocuments.length} documentos`
               : titleOf(linkedDocuments[0]!)}
-          {references.length > 0 && linkedDocuments.length === 1 && (
+          {references.length > 0 && (
             <span>
               {showsExcerpt
                 ? excerpts.length === 1
@@ -472,14 +480,13 @@ const ProposalSource = ({
       {/* A pointer to the source, not the source itself: two lines at most, same height for every proposal. */}
       {/* The clamp lives on the text, not on the padded block, so the cut ends in "…". */}
       {linkedDocuments.length > 1 ? (
-        // Linking documents: one passage from each, under the document it comes from.
-        <div className="grid gap-2.5">
+        // From more than one document: each passage under its document's name, nothing repeated.
+        <div className="mt-1 grid gap-3">
           {excerpts.map((excerpt, index) => (
-            <div className="grid gap-1" key={`${documentOf(excerpt)}:${index}`}>
-              <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                <FileTextIcon aria-hidden="true" className="size-3.5 shrink-0" />
-                <span className="truncate">{titleOf(documentOf(excerpt))}</span>
-              </span>
+            <div className="grid gap-1.5" key={`${documentOf(excerpt)}:${index}`}>
+              <p className="truncate text-xs text-muted-foreground">
+                {titleOf(documentOf(excerpt))}
+              </p>
               <div className="source-excerpt">
                 <p className="proposal-source-quote">{excerpt.quote}</p>
               </div>

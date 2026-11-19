@@ -28,7 +28,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
-import { MagicWandIcon } from "@/components/icons.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import {
@@ -39,7 +38,7 @@ import {
 import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
 import { ApiError } from "@/lib/api-client.ts";
 import type { AiSelectionAction } from "@/features/ai/ai-selection-types.ts";
-import { AiCollectionGenerationDialog } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
+import { CreateMaterialsButton } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import { AiSelectionGenerationDialog } from "@/features/ai/components/ai-selection-generation-dialog.tsx";
 import { updateAiReviewReference } from "@/features/ai/ai-review-session.ts";
 import { DocumentMaterialFlow } from "@/features/references/components/document-material-flow.tsx";
@@ -105,8 +104,6 @@ export const DocumentEditor = ({
   const [title, setTitle] = useState(data.item.title);
   const [materialAction, setMaterialAction] = useState<DocumentMaterialAction | null>(null);
   const [aiAction, setAiAction] = useState<AiSelectionAction | null>(null);
-  /** The whole document as the source of the shared creation dialog (more documents can join). */
-  const [createMaterialsOpen, setCreateMaterialsOpen] = useState(false);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [linkAction, setLinkAction] = useState<Omit<DocumentMaterialAction, "kind"> | null>(null);
   const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
@@ -711,27 +708,26 @@ export const DocumentEditor = ({
                 showTrigger={false}
                 initialQuery={initialSearchQuery}
               />
-              <Button
-                onClick={async () => {
+              <CreateMaterialsButton
+                compactLabel="Criar materiais"
+                defaultDocumentIds={[documentId]}
+                label="Criar materiais de estudo"
+                onApproved={() => void adoptSavedDocument()}
+                onBeforeOpen={async () => {
                   const blocks = collectDocumentTextBlocks(editor.document as DocumentBlock[]);
                   if (!blocks.length) {
                     toast.error("Adicione conteúdo ao documento antes de gerar materiais.");
-                    return;
+                    return false;
                   }
                   // The generation reads the saved document, so pending edits are saved first.
                   if (dirty && !(await saveRef.current(true))) {
                     toast.error("Salve as alterações do documento antes de gerar materiais.");
-                    return;
+                    return false;
                   }
-                  setCreateMaterialsOpen(true);
+                  return true;
                 }}
-                size="sm"
-                variant="outline"
-              >
-                <MagicWandIcon aria-hidden="true" />
-                <span className="sm:hidden">Criar materiais</span>
-                <span className="hidden sm:inline">Criar materiais de estudo</span>
-              </Button>
+                projectId={projectId}
+              />
             </div>
           </div>
         </header>
@@ -914,13 +910,6 @@ export const DocumentEditor = ({
         onCancel={() => closeMaterialFlow(true)}
         onComplete={() => closeMaterialFlow(false)}
         persistDocument={() => saveRef.current(true)}
-      />
-      <AiCollectionGenerationDialog
-        defaultDocumentIds={[documentId]}
-        defaultProjectId={projectId}
-        onApproved={() => void adoptSavedDocument()}
-        onOpenChange={setCreateMaterialsOpen}
-        open={createMaterialsOpen}
       />
       <AiSelectionGenerationDialog
         action={aiAction}

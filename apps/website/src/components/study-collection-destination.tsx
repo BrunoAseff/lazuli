@@ -111,13 +111,12 @@ export function StudyCollectionDestination({
           ) : undefined
         }
       />
-      {/* A secondary add action: text on the field's edge, no fill (a hover pill would spill past
-          the column). Neutral, never a blue text link. */}
+      {/* A secondary add action, drawn as a button so it reads as one (as text it went unseen). */}
       <Button
-        className="h-auto w-fit px-0 py-0.5 text-muted-foreground hover:bg-transparent hover:text-foreground aria-expanded:bg-transparent"
+        className="mt-1 w-fit"
         size="xs"
         disabled={disabled}
-        variant="ghost"
+        variant="outline"
         onClick={() => setCreating(true)}
       >
         <PlusIcon aria-hidden="true" /> Nova coleção
