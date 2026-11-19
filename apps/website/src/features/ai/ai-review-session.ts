@@ -5,6 +5,8 @@ export type AiReviewSource = {
   documentTitle: string;
   projectId: string;
   projectTitle: string;
+  /** The other documents of a generation over several. */
+  documents?: Array<{ documentId: string; documentTitle: string }>;
 };
 
 export type AiReviewSession = {
@@ -36,6 +38,7 @@ export const clearAiReviewSession = (operationId: string) => {
 
 export const updateAiReviewReference = ({
   blockId,
+  documentId,
   kind,
   operationId,
   proposalId,
@@ -43,6 +46,8 @@ export const updateAiReviewReference = ({
   referenceIndex,
 }: {
   blockId: string;
+  /** The document the passage was picked in. */
+  documentId: string;
   kind: "flashcard" | "quizQuestion";
   operationId: string;
   proposalId: string;
@@ -54,7 +59,13 @@ export const updateAiReviewReference = ({
   const collection = kind === "flashcard" ? review.flashcards : review.quizQuestions;
   const proposal = collection.find(({ id }) => id === proposalId);
   if (!proposal || referenceIndex > proposal.references.length) return false;
-  const reference = { scope: "selection" as const, blockId, quote };
+  // A passage from another document of the generation keeps naming that document.
+  const reference = {
+    scope: "selection" as const,
+    documentId: documentId === review.source.documentId ? null : documentId,
+    blockId,
+    quote,
+  };
   if (referenceIndex === proposal.references.length) proposal.references.push(reference);
   else proposal.references[referenceIndex] = reference;
   writeAiReviewSession(operationId, review);

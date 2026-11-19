@@ -35,6 +35,8 @@ import { AiQuizProposalEditor, type AiEditableQuizProposal } from "./ai-quiz-pro
 
 export type AiDraftReference = {
   scope: "selection" | "document";
+  /** Another document of a generation over several; absent or null is the review's own. */
+  documentId: string | null;
   blockId: string | null;
   quote: string;
 };
@@ -355,16 +357,24 @@ const ProposalSource = ({
   const [removing, setRemoving] = useState<number | null>(null);
   const excerpts = references.filter(({ scope, quote }) => scope === "selection" && quote);
   const showsExcerpt = excerpts.length > 0;
+  const documentOf = (reference?: AiDraftReference) => reference?.documentId || source.documentId;
+  const titleOf = (documentId: string) =>
+    documentId === source.documentId
+      ? source.documentTitle
+      : (source.documents?.find((item) => item.documentId === documentId)?.documentTitle ??
+        "Documento");
+  // A proposal that draws on more than one document says so: it links ideas across them.
+  const linkedDocuments = [...new Set(references.map((reference) => documentOf(reference)))];
   const documentHref = (reference: AiDraftReference) =>
     documentLocation({
       blockId: reference.scope === "selection" ? reference.blockId : null,
-      documentId: source.documentId,
+      documentId: documentOf(reference),
       projectId: source.projectId,
       returnTo,
     });
   const selectExcerptHref = (referenceIndex: number) =>
     documentLocation({
-      documentId: source.documentId,
+      documentId: documentOf(references[referenceIndex]),
       projectId: source.projectId,
       returnTo,
       params: {
@@ -386,8 +396,12 @@ const ProposalSource = ({
       <header className="proposal-source-head">
         <FileTextIcon aria-hidden="true" className="proposal-source-icon" />
         <p className="proposal-source-title">
-          {references.length ? source.documentTitle : "Sem fonte"}
-          {references.length > 0 && (
+          {!references.length
+            ? "Sem fonte"
+            : linkedDocuments.length > 1
+              ? `Liga ${linkedDocuments.length} documentos`
+              : titleOf(linkedDocuments[0]!)}
+          {references.length > 0 && linkedDocuments.length === 1 && (
             <span>
               {showsExcerpt
                 ? excerpts.length === 1
@@ -430,7 +444,9 @@ const ProposalSource = ({
             )}
             {!references.some(({ scope: referenceScope }) => referenceScope === "document") && (
               <DropdownMenuItem
-                onSelect={() => onChange([{ scope: "document", blockId: null, quote: "" }])}
+                onSelect={() =>
+                  onChange([{ scope: "document", documentId: null, blockId: null, quote: "" }])
+                }
               >
                 <FileTextIcon /> Usar o documento inteiro
               </DropdownMenuItem>
@@ -455,15 +471,32 @@ const ProposalSource = ({
       </header>
       {/* A pointer to the source, not the source itself: two lines at most, same height for every proposal. */}
       {/* The clamp lives on the text, not on the padded block, so the cut ends in "…". */}
-      <div className="source-excerpt">
-        <p className="proposal-source-quote" data-empty={!firstExcerpt || undefined}>
-          {firstExcerpt
-            ? firstExcerpt.quote
-            : references.length
-              ? "A proposta foi gerada a partir do documento todo."
-              : "Esta proposta será salva sem ligação com a fonte."}
-        </p>
-      </div>
+      {linkedDocuments.length > 1 ? (
+        // Linking documents: one passage from each, under the document it comes from.
+        <div className="grid gap-2.5">
+          {excerpts.map((excerpt, index) => (
+            <div className="grid gap-1" key={`${documentOf(excerpt)}:${index}`}>
+              <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                <FileTextIcon aria-hidden="true" className="size-3.5 shrink-0" />
+                <span className="truncate">{titleOf(documentOf(excerpt))}</span>
+              </span>
+              <div className="source-excerpt">
+                <p className="proposal-source-quote">{excerpt.quote}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="source-excerpt">
+          <p className="proposal-source-quote" data-empty={!firstExcerpt || undefined}>
+            {firstExcerpt
+              ? firstExcerpt.quote
+              : references.length
+                ? "A proposta foi gerada a partir do documento todo."
+                : "Esta proposta será salva sem ligação com a fonte."}
+          </p>
+        </div>
+      )}
       {warning && (
         <p className="mt-2 flex gap-2 font-sans text-xs text-warning">
           <WarningCircleIcon className="size-4 shrink-0" /> {warning}

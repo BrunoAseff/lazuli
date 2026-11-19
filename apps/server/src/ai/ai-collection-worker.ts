@@ -93,15 +93,18 @@ export const createAiCollectionWorker = (
       if (!job) throw new AiGenerationError("AI_REQUEST_FAILED");
       if (claimed.cancelRequestedAt) throw new AiGenerationError("AI_REQUEST_FAILED");
       const prepared = await prepareAiCollectionGeneration(db, claimed.userId, {
-        ...job,
-        expectedRevision: job.documentRevision,
-        idempotencyKey: claimed.idempotencyKey,
+        additionalSources: job.additionalSources ?? [],
+        collectionId: job.collectionId,
+        documentId: job.documentId,
+        kind: job.kind,
+        sourceBlockIds: job.sourceBlockIds,
       });
       if (prepared.kind === "source-too-large") throw new AiGenerationError("AI_INPUT_TOO_LARGE");
       if (prepared.kind !== "ok") throw new AiGenerationError("AI_REQUEST_FAILED");
       generationStarted = true;
       await service.processCollectionDraft({
         blocks: prepared.blocks,
+        sources: prepared.sources,
         job,
         operationId: claimed.id,
         userId: claimed.userId,

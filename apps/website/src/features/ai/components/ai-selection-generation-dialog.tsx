@@ -642,14 +642,6 @@ export const AiSelectionGenerationDialog = ({
                     />
                   </div>
 
-                  <StudyCollectionDestination
-                    key={kind}
-                    kind={kind}
-                    autoSelect
-                    value={collectionId}
-                    onChange={setCollectionId}
-                  />
-
                   <div className="grid gap-2">
                     <Label>{kind === "flashcard" ? "Quantos?" : "Quantas?"}</Label>
                     <QuantitySelector
@@ -662,6 +654,15 @@ export const AiSelectionGenerationDialog = ({
                       onChange={setQuantity}
                     />
                   </div>
+
+                  <StudyCollectionDestination
+                    key={kind}
+                    kind={kind}
+                    autoSelect
+                    label="Salvar em"
+                    value={collectionId}
+                    onChange={setCollectionId}
+                  />
 
                   {/* Optional guidance stays out of the way until wanted. */}
                   {guidanceOpen || guidance ? (

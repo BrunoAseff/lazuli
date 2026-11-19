@@ -23,12 +23,15 @@ export function StudyCollectionDestination({
   onChange,
   disabled = false,
   autoSelect = false,
+  label = "Coleção",
 }: {
   kind: AiMaterialKind;
   value: string;
   onChange: (id: string) => void;
   disabled?: boolean;
   autoSelect?: boolean;
+  /** The field's name, e.g. "Salvar em" where the question is where the new items go. */
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -79,7 +82,7 @@ export function StudyCollectionDestination({
       <StudyCollectionPicker
         triggerRef={trigger}
         disabled={disabled}
-        label="Coleção"
+        label={label}
         empty={
           result.isError ? "Não foi possível carregar as coleções." : "Nenhuma coleção encontrada."
         }

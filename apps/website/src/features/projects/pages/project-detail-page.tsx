@@ -1,11 +1,12 @@
 import { ResourceUnavailable } from "@/components/not-found-page.tsx";
 import { BackLink } from "@/components/nav-link.tsx";
-import { FilePlus2Icon, UploadIcon } from "@/components/icons.tsx";
+import { FilePlus2Icon, MagicWandIcon, UploadIcon } from "@/components/icons.tsx";
 import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button.tsx";
+import { AiCollectionGenerationDialog } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import { DocumentDomainIcon } from "@/components/domain-icons.ts";
 import { EmptyState } from "@/components/empty-state.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -36,6 +37,8 @@ export const ProjectDetailPage = () => {
   const { openImportDialog } = useDocumentImports();
   const createItem = useCreateProjectItem(projectId);
   const [action, setAction] = useState<ProjectAction | null>(null);
+  /** Materials made from any of the project's documents, chosen in the dialog. */
+  const [createMaterialsOpen, setCreateMaterialsOpen] = useState(false);
   const project = useProject(projectId);
   const documents = useProjectDocuments(projectId, 1, 8);
   const collectionCount = useProjectCollectionCount(projectId);
@@ -107,11 +110,16 @@ export const ProjectDetailPage = () => {
               {projectStudyMeta(currentProject.documentCount, collectionCount)}
             </p>
           </div>
-          <ProjectActionsMenu
-            onChangeCover={() => setAction("cover")}
-            onDelete={() => setAction("delete")}
-            onRename={() => setAction("rename")}
-          />
+          <div className="flex shrink-0 items-center gap-2">
+            <Button onClick={() => setCreateMaterialsOpen(true)} size="sm" variant="outline">
+              <MagicWandIcon aria-hidden="true" /> Criar materiais
+            </Button>
+            <ProjectActionsMenu
+              onChangeCover={() => setAction("cover")}
+              onDelete={() => setAction("delete")}
+              onRename={() => setAction("rename")}
+            />
+          </div>
         </div>
 
         <div className="mt-7 sm:mt-8">
@@ -165,6 +173,11 @@ export const ProjectDetailPage = () => {
         </div>
       </div>
 
+      <AiCollectionGenerationDialog
+        defaultProjectId={projectId}
+        onOpenChange={setCreateMaterialsOpen}
+        open={createMaterialsOpen}
+      />
       {action === "rename" && (
         <RenameProjectDialog
           onOpenChange={(open) => !open && setAction(null)}

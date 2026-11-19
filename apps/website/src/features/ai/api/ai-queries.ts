@@ -146,6 +146,9 @@ export const useApproveAiGeneration = (operationId: string) => {
         client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcardCollections }),
         client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.quizCollections }),
         client.invalidateQueries({ queryKey: [...QUERY_KEY_ROOTS.ai, "collection-generation"] }),
+        // Saving links the new materials to their passages, in one or more documents.
+        client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.references }),
+        client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.documents }),
       ]);
     },
   });

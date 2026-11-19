@@ -42,6 +42,7 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
       []) as Array<{
       id: string;
       text: string;
+      document?: string;
     }>;
     const context = readTag(request.prompt, "SOURCE_CONTEXT") as {
       documentTitle?: string;
@@ -61,8 +62,22 @@ export const createDevelopmentAiProvider = (): AiProvider => ({
       : source.length > 220
         ? `${source.slice(0, 217)}…`
         : source;
+    // With several documents, the fixture links them: a passage from the first and from the last.
+    const lastDocumentBlock = [...blocks]
+      .reverse()
+      .find((block) => block.document && block.document !== blocks[0]?.document);
     const references = blocks[0]
-      ? [{ blockId: blocks[0].id, quote: shortLiteralExcerpt(blocks[0].text) }]
+      ? [
+          { blockId: blocks[0].id, quote: shortLiteralExcerpt(blocks[0].text) },
+          ...(lastDocumentBlock
+            ? [
+                {
+                  blockId: lastDocumentBlock.id,
+                  quote: shortLiteralExcerpt(lastDocumentBlock.text),
+                },
+              ]
+            : []),
+        ]
       : [];
     if (generation?.action === "materialImprovement") {
       const warning = blocks.length ? null : "Melhoria de redação feita sem uma fonte vinculada.";

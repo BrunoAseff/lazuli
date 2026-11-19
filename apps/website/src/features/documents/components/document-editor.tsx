@@ -2,8 +2,6 @@ import {
   normalizeProjectItemTitle,
   referenceTargetSchema,
   removeSourceAnchors,
-  AI_DOCUMENT_MAX_BLOCKS,
-  AI_DOCUMENT_MAX_TEXT_LENGTH,
   collectDocumentTextBlocks,
   type DocumentBlock,
 } from "@lazuli/shared";
@@ -41,6 +39,7 @@ import {
 import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
 import { ApiError } from "@/lib/api-client.ts";
 import type { AiSelectionAction } from "@/features/ai/ai-selection-types.ts";
+import { AiCollectionGenerationDialog } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import { AiSelectionGenerationDialog } from "@/features/ai/components/ai-selection-generation-dialog.tsx";
 import { updateAiReviewReference } from "@/features/ai/ai-review-session.ts";
 import { DocumentMaterialFlow } from "@/features/references/components/document-material-flow.tsx";
@@ -106,6 +105,8 @@ export const DocumentEditor = ({
   const [title, setTitle] = useState(data.item.title);
   const [materialAction, setMaterialAction] = useState<DocumentMaterialAction | null>(null);
   const [aiAction, setAiAction] = useState<AiSelectionAction | null>(null);
+  /** The whole document as the source of the shared creation dialog (more documents can join). */
+  const [createMaterialsOpen, setCreateMaterialsOpen] = useState(false);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [linkAction, setLinkAction] = useState<Omit<DocumentMaterialAction, "kind"> | null>(null);
   const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
@@ -292,6 +293,30 @@ export const DocumentEditor = ({
       toast.error("Não foi possível vincular o trecho.");
     }
   };
+  /**
+   * After AI materials are saved, the server has anchored their passages in this document: take
+   * its version, so the editor and autosave continue from it instead of a stale copy.
+   */
+  const adoptSavedDocument = async () => {
+    let remote: Awaited<ReturnType<typeof fetchDocument>>;
+    try {
+      remote = await fetchDocument(projectId, documentId);
+    } catch {
+      // Approval has already committed the generated materials and source anchors.
+      // Reload instead of leaving stale local content that autosave could overwrite.
+      window.location.reload();
+      return false;
+    }
+    const nextContent = remote.content as LazuliDocumentBlock;
+    editor.replaceBlocks(editor.document, nextContent);
+    setRevision(remote.revision);
+    revisionRef.current = remote.revision;
+    cleanSnapshot.current = JSON.stringify(nextContent);
+    cleanAssetUrls.current = collectAssetUrls(nextContent);
+    setDirty(false);
+    setSaveState(titleDirty ? "pending" : "saved");
+    return true;
+  };
   const selectPendingAiReference = () => {
     if (!pendingAiReference) return;
     const selection = getDocumentReferenceSelection(editor);
@@ -305,6 +330,7 @@ export const DocumentEditor = ({
     }
     const updated = updateAiReviewReference({
       blockId: selection.sourceBlockIds[0]!,
+      documentId,
       kind: pendingAiReference.kind,
       operationId: pendingAiReference.operationId,
       proposalId: pendingAiReference.proposalId,
@@ -688,31 +714,16 @@ export const DocumentEditor = ({
               <Button
                 onClick={async () => {
                   const blocks = collectDocumentTextBlocks(editor.document as DocumentBlock[]);
-                  const selectedText = blocks.map(({ text }) => text).join(" ");
-                  if (!selectedText) {
+                  if (!blocks.length) {
                     toast.error("Adicione conteúdo ao documento antes de gerar materiais.");
                     return;
                   }
-                  if (
-                    blocks.length > AI_DOCUMENT_MAX_BLOCKS ||
-                    selectedText.length > AI_DOCUMENT_MAX_TEXT_LENGTH
-                  ) {
-                    toast.error(
-                      "Este documento é grande demais para uma única geração. Selecione um trecho.",
-                    );
-                    return;
-                  }
+                  // The generation reads the saved document, so pending edits are saved first.
                   if (dirty && !(await saveRef.current(true))) {
                     toast.error("Salve as alterações do documento antes de gerar materiais.");
                     return;
                   }
-                  void openAiFlow({
-                    anchorId: null,
-                    anchorCreated: false,
-                    selectedText,
-                    sourceBlockIds: [],
-                    sourceScope: "document",
-                  });
+                  setCreateMaterialsOpen(true);
                 }}
                 size="sm"
                 variant="outline"
@@ -904,6 +915,13 @@ export const DocumentEditor = ({
         onComplete={() => closeMaterialFlow(false)}
         persistDocument={() => saveRef.current(true)}
       />
+      <AiCollectionGenerationDialog
+        defaultDocumentIds={[documentId]}
+        defaultProjectId={projectId}
+        onApproved={() => void adoptSavedDocument()}
+        onOpenChange={setCreateMaterialsOpen}
+        open={createMaterialsOpen}
+      />
       <AiSelectionGenerationDialog
         action={aiAction}
         documentId={documentId}
@@ -912,25 +930,7 @@ export const DocumentEditor = ({
         getDocumentContent={() => editor.document as DocumentBlock[]}
         open={aiDialogOpen}
         onApproved={async () => {
-          let remote: Awaited<ReturnType<typeof fetchDocument>>;
-          try {
-            remote = await fetchDocument(projectId, documentId);
-          } catch {
-            // Approval has already committed the generated materials and source anchors.
-            // Reload instead of leaving stale local content that autosave could overwrite.
-            window.location.reload();
-            return;
-          }
-          const nextContent = remote.content as LazuliDocumentBlock;
-          editor.replaceBlocks(editor.document, nextContent);
-          const snapshot = JSON.stringify(nextContent);
-          setRevision(remote.revision);
-          revisionRef.current = remote.revision;
-          cleanSnapshot.current = snapshot;
-          cleanAssetUrls.current = collectAssetUrls(nextContent);
-          setDirty(false);
-          setSaveState(titleDirty ? "pending" : "saved");
-          void closeAiFlow(false);
+          if (await adoptSavedDocument()) void closeAiFlow(false);
         }}
         onCancel={() => void closeAiFlow(true)}
         onMinimize={() => setAiDialogOpen(false)}
