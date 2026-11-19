@@ -61,7 +61,9 @@ export function RadioCard({
       {layout === "tile" && icon && <span className="radio-card-icon">{icon}</span>}
       <RadioGroupItem className="radio-card-control" disabled={disabled} value={value} />
       <span className="radio-card-text">
-        <span className="radio-card-title">{title}</span>
+        <span className="radio-card-title">
+          <span className="radio-card-ink">{title}</span>
+        </span>
         {description && <span className="radio-card-description">{description}</span>}
       </span>
     </label>

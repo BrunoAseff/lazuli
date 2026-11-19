@@ -49,7 +49,8 @@ export const ChoiceSeal = ({
   );
 };
 
-/** A quiz choice keeps its text anchored; only its seal and surface respond to the choice. */
+/** A quiz choice keeps its text anchored: the seal fills and a stroke of pigment sweeps in behind
+ * the chosen text; the card itself stays plain. */
 export function StudyAnswerChoice({
   text,
   index,
@@ -73,12 +74,15 @@ export function StudyAnswerChoice({
       onClick={onSelect}
     >
       <ChoiceSeal filled={selected} index={index} />
-      <span className="choice-text">{text}</span>
+      <span className="choice-text">
+        <span className="choice-ink">{text}</span>
+      </span>
     </button>
   );
 }
 
-/** The same anatomy after the attempt: the correct answer and a wrong pick are marked, not boxed. */
+/** The same anatomy after the attempt, marked on the text itself: the right answer takes a green
+ * stroke of pigment, a wrong pick is struck through in red, each with its glyph in the seal's place. */
 export function StudyAnswerOutcome({
   text,
   index,
@@ -90,7 +94,7 @@ export function StudyAnswerOutcome({
   index: number;
   correct: boolean;
   selected: boolean;
-  /** Play the one-time outcome motion (glint on the right answer, shake on a wrong pick). */
+  /** Play the one-time outcome motion (the pigment sweeps in on the right answer, a wrong pick shakes). */
   reveal?: boolean;
 }) {
   const outcome: Outcome | undefined = correct ? "correct" : selected ? "incorrect" : undefined;
@@ -101,9 +105,15 @@ export function StudyAnswerOutcome({
       data-reveal={(reveal && outcome) || undefined}
       data-static=""
     >
-      <ChoiceSeal filled={false} index={index} outcome={outcome} />
+      {outcome ? (
+        <span aria-hidden="true" className="choice-mark">
+          {outcome === "correct" ? <CheckIcon /> : <XIcon />}
+        </span>
+      ) : (
+        <ChoiceSeal filled={false} index={index} />
+      )}
       <span className="choice-text">
-        {text}
+        <span className="choice-ink">{text}</span>
         {(correct || selected) && (
           <span className="choice-note">
             {selected && correct
