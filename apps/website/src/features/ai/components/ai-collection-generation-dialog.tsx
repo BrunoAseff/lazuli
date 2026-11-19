@@ -450,13 +450,24 @@ export const AiCollectionGenerationDialog = ({
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor={`${fieldsId}-document`}>Documento</Label>
-                    <Select disabled={!projectId} value={documentId} onValueChange={setDocumentId}>
+                    {/* A project with no documents says so instead of opening an empty list. */}
+                    <Select
+                      disabled={!projectId || (tree.isSuccess && documents.length === 0)}
+                      value={documentId}
+                      onValueChange={setDocumentId}
+                    >
                       <SelectTrigger
                         id={`${fieldsId}-document`}
                         className="w-full"
                         title={documents.find((item) => item.id === documentId)?.title}
                       >
-                        <SelectValue placeholder="Selecione um documento" />
+                        <SelectValue
+                          placeholder={
+                            tree.isSuccess && documents.length === 0
+                              ? "Este projeto ainda não tem documentos"
+                              : "Selecione um documento"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent className={fieldListClass}>
                         {documents.map((item) => (
@@ -653,6 +664,8 @@ export const AiCollectionGenerationAction = ({
           : `Gerar ${material} com IA`
       }
       className={cn("relative", className)}
+      // Other surfaces (an empty collection's guide) open the same dialog through this button.
+      data-ai-generation-trigger
       disabled={disabled}
       onClick={() => setOpen(true)}
       size={iconOnly ? "icon" : "sm"}

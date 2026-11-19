@@ -16,6 +16,7 @@ export const StudyItemListState = ({
   query,
   skeleton,
   totalItems,
+  guidedElsewhere = false,
 }: {
   children: ReactNode;
   createLabel?: string;
@@ -28,6 +29,8 @@ export const StudyItemListState = ({
   query: string;
   skeleton: ReactNode;
   totalItems?: number;
+  /** The empty collection is guided in the work area: the index stays quiet instead of repeating it. */
+  guidedElsewhere?: boolean;
 }) => {
   if (loading) return skeleton;
   if (error)
@@ -46,6 +49,7 @@ export const StudyItemListState = ({
         title="Não foi possível carregar"
       />
     );
+  if (totalItems === 0 && guidedElsewhere && !query) return null;
   if (totalItems === 0) {
     const Icon = query ? SearchXIcon : EmptyIcon;
     return (

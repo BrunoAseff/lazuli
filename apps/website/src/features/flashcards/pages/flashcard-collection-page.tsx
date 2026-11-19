@@ -48,6 +48,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { StudyCollectionStart } from "@/components/study-collection-start.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -463,6 +464,7 @@ export const FlashcardCollectionPage = () => {
               createLabel="Criar flashcard"
               emptyIcon={Layers3Icon}
               emptyTitle="Nenhum flashcard ainda"
+              guidedElsewhere={input.status === "active"}
               error={cards.isError}
               loading={cards.isPending}
               onCreate={input.status === "active" ? createCard : undefined}
@@ -559,14 +561,23 @@ export const FlashcardCollectionPage = () => {
               />
             )}
             {editor?.type === "edit" && detail.isPending && <FlashcardEditorSkeleton />}
-            {!editor && !cards.isPending && (
-              <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                <div>
-                  <Layers3Icon className="mx-auto mb-3 size-7" />
-                  <p>Selecione um flashcard ou crie um novo.</p>
+            {!editor &&
+              !cards.isPending &&
+              (input.status === "active" && !query && cards.data?.pagination.totalItems === 0 ? (
+                <StudyCollectionStart
+                  createLabel="Criar flashcard"
+                  icon={Layers3Icon}
+                  noun="os primeiros flashcards"
+                  onCreate={createCard}
+                />
+              ) : (
+                <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                  <div>
+                    <Layers3Icon className="mx-auto mb-3 size-7" />
+                    <p>Selecione um flashcard ou crie um novo.</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              ))}
           </div>
         </div>
       </section>

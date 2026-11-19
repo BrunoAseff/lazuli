@@ -41,6 +41,7 @@ import {
 import { resultCount } from "@/lib/text.ts";
 import { AiCollectionGenerationAction } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { StudyCollectionStart } from "@/components/study-collection-start.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
@@ -355,6 +356,7 @@ export const QuizCollectionPage = () => {
             <StudyItemListState
               createLabel="Criar questão"
               emptyIcon={SquareCheckBig}
+              guidedElsewhere={input.status === "active"}
               emptyTitle={
                 input.status === "archived" ? "Nenhuma questão arquivada" : "Nenhuma questão ainda"
               }
@@ -471,14 +473,25 @@ export const QuizCollectionPage = () => {
                 <Skeleton className="h-full w-full" />
               </div>
             )}
-            {!editor && !questions.isPending && (
-              <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                <div>
-                  <SquareCheckBig className="mx-auto mb-3 size-7" />
-                  <p>Selecione uma questão ou crie uma nova.</p>
+            {!editor &&
+              !questions.isPending &&
+              (input.status === "active" &&
+              !query &&
+              questions.data?.pagination.totalItems === 0 ? (
+                <StudyCollectionStart
+                  createLabel="Criar questão"
+                  icon={SquareCheckBig}
+                  noun="as primeiras questões"
+                  onCreate={() => changeEditor({ type: "create" })}
+                />
+              ) : (
+                <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                  <div>
+                    <SquareCheckBig className="mx-auto mb-3 size-7" />
+                    <p>Selecione uma questão ou crie uma nova.</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              ))}
           </div>
         </div>
       </section>
