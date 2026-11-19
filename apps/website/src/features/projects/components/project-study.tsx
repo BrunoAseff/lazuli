@@ -4,7 +4,7 @@ import {
   type FlashcardCollectionSummary,
   type QuizCollectionSummary,
 } from "@lazuli/shared";
-import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
+import { useState, type ReactNode, type Ref } from "react";
 import { Link, useNavigate } from "react-router";
 
 import {
@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { formatRecent, formatUpdated } from "@/lib/date-format.ts";
+import { formatRecent } from "@/lib/date-format.ts";
 import { useFlashcardCollections } from "@/features/flashcards/api/flashcard-collection-queries.ts";
 import {
   practicePaths,
@@ -44,11 +44,9 @@ import { QuizStartDialog } from "@/features/quizzes/components/quiz-start-dialog
 import { useProjectDocumentMaterials } from "@/features/references/api/reference-queries.ts";
 
 /*
- * The project's home: what to study now, the project's collections and its documents, each saying
- * what came out of it. Side by side when the content area holds both (48rem), stacked otherwise.
+ * The project's home: what to study now and the project's collections on top, then its documents,
+ * each saying what came out of it.
  */
-
-const SIDE_BY_SIDE = 48 * 16;
 
 const count = (value: number, singular: string, plural: string) =>
   `${value} ${value === 1 ? singular : plural}`;
@@ -81,20 +79,6 @@ const useProjectCollections = (projectId: string) => {
   };
 };
 
-/** Width of the element, so the layout follows the content area, not the window. */
-const useWidth = <T extends HTMLElement>() => {
-  const ref = useRef<T>(null);
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    const observer = new ResizeObserver(([entry]) => setWidth(entry?.contentRect.width ?? 0));
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width] as const;
-};
-
 export const projectStudyMeta = (documentCount: number, collectionCount: number) =>
   `${count(documentCount, "documento", "documentos")} · ${count(collectionCount, "coleção", "coleções")}`;
 
@@ -106,11 +90,9 @@ export const useProjectCollectionCount = (projectId: string) =>
 const StudySummary = ({
   projectId,
   hasFlashcardCollections,
-  stacked,
 }: {
   projectId: string;
   hasFlashcardCollections: boolean;
-  stacked: boolean;
 }) => {
   const navigate = useNavigate();
   const [setupOpen, setSetupOpen] = useState(false);
@@ -134,19 +116,11 @@ const StudySummary = ({
               ? count(fresh, "flashcard novo", "flashcards novos")
               : "Tudo revisado";
   const action = active ? (
-    <Button
-      className={stacked ? undefined : "mt-3 w-full"}
-      onClick={() => void navigate(practicePaths(target).session(active.id))}
-      size="sm"
-    >
+    <Button onClick={() => void navigate(practicePaths(target).session(active.id))} size="sm">
       Continuar revisão
     </Button>
   ) : data?.totalAvailable ? (
-    <Button
-      className={stacked ? undefined : "mt-3 w-full"}
-      onClick={() => setSetupOpen(true)}
-      size="sm"
-    >
+    <Button onClick={() => setSetupOpen(true)} size="sm">
       Revisar flashcards
     </Button>
   ) : null;
@@ -162,17 +136,10 @@ const StudySummary = ({
   );
   return (
     <>
-      {stacked ? (
-        <div className="flex items-center justify-between gap-6">
-          {text}
-          {action}
-        </div>
-      ) : (
-        <div>
-          {text}
-          {action}
-        </div>
-      )}
+      <div className="flex items-center justify-between gap-6">
+        {text}
+        {action}
+      </div>
       {setupOpen && (
         <PracticeSetupDialog
           onOpenChange={(open) => !open && setSetupOpen(false)}
@@ -226,27 +193,25 @@ const CollectionAction = ({
   collection,
   onPractice,
   onStartQuiz,
-  size,
 }: {
   collection: Collection;
   onPractice: (id: string) => void;
   onStartQuiz: (id: string) => void;
-  size: "sm" | "xs";
 }) => {
   if (collection.kind === "flashcard" && collection.item.dueCards > 0)
     return (
-      <Button onClick={() => onPractice(collection.item.id)} size={size} variant="outline">
+      <Button onClick={() => onPractice(collection.item.id)} size="sm" variant="outline">
         Revisar
       </Button>
     );
   if (collection.kind === "quiz" && collection.item.totalQuestions > 0)
     return (
-      <Button onClick={() => onStartQuiz(collection.item.id)} size={size} variant="outline">
+      <Button onClick={() => onStartQuiz(collection.item.id)} size="sm" variant="outline">
         Responder
       </Button>
     );
   return (
-    <Button asChild size={size} variant="outline">
+    <Button asChild size="sm" variant="outline">
       <Link to={collectionHref(collection)}>Abrir</Link>
     </Button>
   );
@@ -297,11 +262,9 @@ const NewCollection = ({ projectId }: { projectId: string }) => {
 const CollectionsBody = ({
   collections,
   projectId,
-  stacked,
 }: {
   collections: ReturnType<typeof useProjectCollections>;
   projectId: string;
-  stacked: boolean;
 }) => {
   const [practicing, setPracticing] = useState<string | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
@@ -314,56 +277,29 @@ const CollectionsBody = ({
           Este projeto ainda não tem coleções.
         </p>
       ) : (
-        collections.items.map((collection) =>
-          stacked ? (
-            <div
-              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5"
-              key={collection.item.id}
-            >
-              {collection.kind === "flashcard" ? (
-                <FlashcardCollectionMark />
-              ) : (
-                <QuizCollectionMark />
-              )}
-              <div className="min-w-0">
-                <CollectionTitle
-                  className="text-[0.9375rem] leading-snug font-medium"
-                  collection={collection}
-                />
-                <p className="mt-0.5 text-xs text-muted-foreground">{collectionMeta(collection)}</p>
-              </div>
-              <CollectionAction
+        collections.items.map((collection) => (
+          <div
+            className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5"
+            key={collection.item.id}
+          >
+            {collection.kind === "flashcard" ? <FlashcardCollectionMark /> : <QuizCollectionMark />}
+            <div className="min-w-0">
+              <CollectionTitle
+                className="text-[0.9375rem] leading-snug font-medium"
                 collection={collection}
-                onPractice={setPracticing}
-                onStartQuiz={setStarting}
-                size="sm"
               />
-              <div className="col-start-2 col-end-4">
-                <CollectionStrip collection={collection} />
-              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">{collectionMeta(collection)}</p>
             </div>
-          ) : (
-            <div className="grid gap-2" key={collection.item.id}>
-              <div className="flex min-w-0 items-center gap-2.5">
-                {collection.kind === "flashcard" ? (
-                  <FlashcardDomainIcon className="size-4 shrink-0 text-muted-foreground" />
-                ) : (
-                  <QuizDomainIcon className="size-4 shrink-0 text-muted-foreground" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <CollectionTitle className="text-sm font-medium" collection={collection} />
-                </div>
-                <CollectionAction
-                  collection={collection}
-                  onPractice={setPracticing}
-                  onStartQuiz={setStarting}
-                  size="xs"
-                />
-              </div>
+            <CollectionAction
+              collection={collection}
+              onPractice={setPracticing}
+              onStartQuiz={setStarting}
+            />
+            <div className="col-start-2 col-end-4">
               <CollectionStrip collection={collection} />
             </div>
-          ),
-        )
+          </div>
+        ))
       )}
       <NewCollection projectId={projectId} />
       {practicing && (
@@ -466,43 +402,6 @@ const DocumentsTable = ({
   );
 };
 
-/** Side by side: the documents as a list, each saying what came out of it. */
-const DocumentsList = ({
-  documents,
-  projectId,
-}: {
-  documents: DocumentSummary[];
-  projectId: string;
-}) => {
-  const materialsOf = useMaterialsByDocument(projectId);
-  return (
-    <section aria-labelledby="project-documents-title" className="surface-panel p-6">
-      <h2 className="text-sm leading-snug font-semibold" id="project-documents-title">
-        Documentos recentes
-      </h2>
-      <div className="mt-4 grid gap-4">
-        {documents.map((document) => (
-          <div className="flex min-w-0 items-start gap-3" key={document.id}>
-            <DocumentDomainIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <DocumentTitle
-                className="text-[0.9375rem] leading-snug font-medium"
-                document={document}
-                projectId={projectId}
-              />
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {[materialsOf(document.id), formatUpdated(document.updatedAt).toLowerCase()]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-};
-
 /* Page body ---------------------------------------------------------------------------------- */
 
 export const ProjectStudy = ({
@@ -515,43 +414,21 @@ export const ProjectStudy = ({
   emptyDocuments: ReactNode;
   projectId: string;
 }) => {
-  const [ref, width] = useWidth<HTMLDivElement>();
   const collections = useProjectCollections(projectId);
-  const sideBySide = width >= SIDE_BY_SIDE;
-  const study = (stacked: boolean) => (
-    <section
-      aria-label="Estudo deste projeto"
-      className={`surface-panel grid p-6 ${stacked ? "gap-6" : "gap-5"}`}
-    >
-      <StudySummary
-        hasFlashcardCollections={collections.flashcardCount > 0}
-        projectId={projectId}
-        stacked={stacked}
-      />
-      <CollectionsBody collections={collections} projectId={projectId} stacked={stacked} />
-    </section>
-  );
   return (
-    <div ref={ref}>
-      {width === 0 ? null : sideBySide ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,20rem)] items-start gap-4">
-          {documents.length ? (
-            <DocumentsList documents={documents} projectId={projectId} />
-          ) : (
-            emptyDocuments
-          )}
-          {study(false)}
-        </div>
+    <>
+      <section aria-label="Estudo deste projeto" className="surface-panel grid gap-6 p-6">
+        <StudySummary
+          hasFlashcardCollections={collections.flashcardCount > 0}
+          projectId={projectId}
+        />
+        <CollectionsBody collections={collections} projectId={projectId} />
+      </section>
+      {documents.length ? (
+        <DocumentsTable documents={documents} projectId={projectId} />
       ) : (
-        <>
-          {study(true)}
-          {documents.length ? (
-            <DocumentsTable documents={documents} projectId={projectId} />
-          ) : (
-            <div className="mt-4">{emptyDocuments}</div>
-          )}
-        </>
+        <div className="mt-4">{emptyDocuments}</div>
       )}
-    </div>
+    </>
   );
 };
