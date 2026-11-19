@@ -1,0 +1,193 @@
+/* Desktop: two columns that each scroll inside the dialog body, so the dialog never scrolls as a
+   whole and neither column leaves dead space below the other. */
+.creation-workspace {
+  display: grid;
+  min-width: 0;
+  align-items: start;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 40px;
+
+  @media (min-width: 768px) {
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+  }
+}
+.creation-region-label,
+.creation-stages {
+  margin-bottom: 24px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+/* The source is the same object everywhere it appears: a tinted rounded surface (see .source-excerpt). */
+.creation-origin {
+  min-width: 0;
+  padding: 16px 8px 16px 20px;
+  border-radius: var(--radius-panel);
+  background: color-mix(in oklab, var(--primary) 4%, var(--card));
+
+  @media (min-width: 768px) {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+}
+/* A navigation pane (the proposal index) only needs to name items; the editor takes the width. */
+@media (min-width: 768px) {
+  .creation-workspace:has(> [data-claimed]) {
+    grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+    gap: 32px;
+  }
+}
+/* A claimed pane (e.g. the proposal index) brings its own structure; no source rule. */
+/* Controls or a claimed pane are not source text: no reading rule. */
+.creation-origin:is([data-claimed], [data-controls]) {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+@media (max-width: 767px) {
+  .creation-workspace:has(> [data-claimed]) {
+    gap: 16px;
+  }
+}
+.creation-origin-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-reading);
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--foreground);
+}
+/* Only the source text reads in the reading voice; controls inside it stay operational. */
+.creation-origin-content :is(button, input, label, [data-slot="select-trigger"]) {
+  font-family: var(--font-sans);
+}
+.creation-origin-body {
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+
+  @media (min-width: 768px) {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+  }
+}
+.creation-origin-content [data-slot="select-trigger"] {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.creation-origin-content [data-slot="select-value"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.creation-origin-content h3 {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.creation-origin-content [data-source-label] {
+  font: 500 12px var(--font-sans);
+  color: var(--muted-foreground);
+  margin-bottom: 12px;
+}
+/* A scrolling column clips anything drawn outside its box; the inset leaves room for focus rings
+   (drawn 2–3px outside a field) and the negative margin keeps the column edges where they were. */
+.creation-destination {
+  min-width: 0;
+
+  @media (min-width: 768px) {
+    min-height: 0;
+    margin: -4px -4px -4px -4px;
+    padding: 4px 12px 4px 4px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+.creation-stages {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+}
+.creation-stages [aria-current="step"] {
+  color: var(--foreground);
+}
+/* An explicit shrinkable column: without it the implicit column grows to its widest content
+   (a long title, a search row) and pushes the whole pane past the dialog edge. */
+.creation-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  min-width: 0;
+}
+/* Fields grow with their text (field-sizing), like every other field: no resize grip. */
+.creation-fields textarea:not([data-quiz-alternative]) {
+  min-height: 96px;
+  resize: none;
+}
+.creation-fields [data-slot="label"] {
+  font-size: 13px;
+}
+@media (max-width: 767px) {
+  .creation-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+  .creation-origin {
+    position: static;
+  }
+  .creation-origin-body {
+    max-height: none;
+  }
+  .creation-origin-content {
+    font-size: 16px;
+  }
+  .creation-region-label,
+  .creation-stages {
+    margin-bottom: 16px;
+  }
+  .creation-origin[data-state="closed"] .creation-region-label {
+    margin-bottom: 0;
+  }
+  .creation-origin-body[data-state="open"] {
+    animation: creation-source-open 180ms var(--ease-out);
+  }
+  .creation-origin-body[data-state="closed"] {
+    animation: creation-source-close 140ms var(--ease-out);
+  }
+  .creation-origin-body[data-immediate="true"] {
+    animation: none;
+  }
+}
+@keyframes creation-source-open {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+@keyframes creation-source-close {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .creation-origin-body {
+    animation: none !important;
+  }
+}

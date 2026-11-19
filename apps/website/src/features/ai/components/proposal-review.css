@@ -1,0 +1,139 @@
+/* The source travels with the proposal as a pointer: which document, the excerpt in two lines,
+   and the way to open it. Same height for every proposal, so moving between them never shifts. */
+.proposal-source {
+  display: grid;
+  gap: 0.5rem;
+}
+.proposal-source-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+.proposal-source-icon {
+  width: 0.9375rem;
+  height: 0.9375rem;
+  flex: none;
+  color: var(--muted-foreground);
+}
+.proposal-source-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  & span {
+    font-weight: 400;
+    color: var(--muted-foreground);
+  }
+}
+.proposal-source-open {
+  flex: none;
+}
+/* A proposal sits directly in the review column: header, then its fields. */
+.proposal {
+  display: grid;
+  gap: 1.5rem;
+}
+.proposal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+
+  & h3 {
+    margin-right: auto;
+    white-space: nowrap;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  & h3 span {
+    font-weight: 400;
+    color: var(--muted-foreground);
+  }
+}
+.proposal-include {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.proposal-source-quote {
+  display: -webkit-box;
+  overflow: hidden;
+  padding-right: 0.5rem;
+  font-family: var(--font-reading);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: color-mix(in oklab, var(--foreground) 85%, transparent);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+
+  &[data-empty] {
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+  }
+}
+
+/* Proposal index in the workspace's left pane. */
+.proposal-index {
+  display: grid;
+  align-content: start;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.proposal-index-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  font: 600 12px/1.4 var(--font-sans);
+  color: var(--muted-foreground);
+
+  & span:last-child {
+    font-weight: 400;
+  }
+}
+.proposal-index .study-index-list {
+  padding: 0;
+}
+
+/* On mobile the collapsible pane is already named by the count; its head would repeat it. */
+@media (max-width: 767px) {
+  .proposal-index-head span:first-child {
+    display: none;
+  }
+}
+
+/* Narrow: title and discard share the first line; inclusion takes its own line, never split. */
+@media (max-width: 30rem) {
+  .proposal-head > button {
+    order: 1;
+  }
+  .proposal-include {
+    order: 2;
+    flex-basis: 100%;
+  }
+}
+
+/* Switching proposals settles the new one in place. */
+/* Opacity only: a vertical offset would briefly overflow the pane and flash a scrollbar. */
+@keyframes proposal-arrive {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .proposal {
+    animation: proposal-arrive 240ms var(--ease-out) both;
+  }
+}
