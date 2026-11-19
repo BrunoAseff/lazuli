@@ -1,5 +1,5 @@
 import { PROJECT_PAGE_SIZE, type ProjectSummary } from "@lazuli/shared";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon } from "@/components/icons.tsx";
 import { useCallback, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
 

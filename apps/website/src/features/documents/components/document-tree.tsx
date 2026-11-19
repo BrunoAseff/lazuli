@@ -1,5 +1,13 @@
 import { normalizeProjectItemTitle, type ProjectTreeItem } from "@lazuli/shared";
-import { ChevronDownIcon, ChevronRightIcon, HomeIcon, MoreHorizontalIcon } from "lucide-react";
+import { BackLink } from "@/components/nav-link.tsx";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  HomeIcon,
+  MoreHorizontalIcon,
+  PanelLeftCloseIcon,
+  XIcon,
+} from "@/components/icons.tsx";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -24,7 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { cn } from "@/lib/utils.ts";
-import { useDocumentImports } from "@/features/document-imports/document-import-provider.tsx";
+import { useDocumentImports } from "@/features/document-imports/document-import-context.ts";
 import { foldSearchText } from "@/lib/text.ts";
 import {
   useCreateProjectItem,
@@ -38,7 +46,7 @@ import { DOCUMENT_MESSAGES } from "../document-messages.ts";
 import { documentLocation, safeReturnTo } from "../document-navigation.ts";
 import { DocumentTreeActions } from "./document-tree-actions.tsx";
 import { ProjectItemDeleteDialog } from "./project-item-delete-dialog.tsx";
-import { DocumentTreeToolbar } from "./document-tree-toolbar.tsx";
+import { DocumentTreeAction, DocumentTreeToolbar } from "./document-tree-toolbar.tsx";
 import type { DocumentTreeCloseIcon, DocumentTreeCreateType } from "../document-tree-types.ts";
 
 type Props = {
@@ -85,7 +93,6 @@ export const DocumentTree = ({
   const [creationTitle, setCreationTitle] = useState("");
   const creationCancelled = useRef(false);
   const [deleting, setDeleting] = useState<ProjectTreeItem | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null | undefined>(undefined);
@@ -247,15 +254,11 @@ export const DocumentTree = ({
       >
         <span className="size-5 shrink-0" />
         {creating.type === "folder" ? (
-          <ProjectClosedIcon
-            className="size-[1.125rem] shrink-0 text-muted-foreground"
-            weight="duotone"
-          />
+          <ProjectClosedIcon className="size-[1.125rem] shrink-0 text-muted-foreground" />
         ) : (
           <DocumentDomainIcon
             className="size-[1.125rem] shrink-0 text-muted-foreground"
             data-tree-icon
-            weight="duotone"
           />
         )}
         <Input
@@ -368,9 +371,9 @@ export const DocumentTree = ({
               <ContextMenuTrigger asChild>
                 <div
                   aria-grabbed={draggedId === item.id}
+                  data-active={isActive || undefined}
                   className={cn(
-                    "group relative flex h-8 cursor-pointer items-center gap-1.5 rounded-md pr-3 text-[0.875rem] transition-colors duration-150",
-                    isActive ? "bg-accent text-foreground" : "hover:bg-accent",
+                    "tree-row group relative flex h-8 cursor-pointer items-center gap-1.5 rounded-md pr-3 text-[0.875rem]",
                     isDropTarget &&
                       "bg-primary-soft/35 outline-1 outline-offset-[-2px] outline-dashed outline-primary/70",
                     draggedId === item.id && "opacity-45",
@@ -420,7 +423,14 @@ export const DocumentTree = ({
                       void move(itemId, item.id);
                     }
                   }}
-                  style={{ paddingLeft: `${treeItemPadding(depth)}px` }}
+                  style={
+                    {
+                      paddingLeft: `${treeItemPadding(depth)}px`,
+                      // Where the item visibly starts: its icon sits after the indentation and
+                      // the 20px chevron slot; the selection begins 8px before it.
+                      "--tree-start": `${treeItemPadding(depth) + 18}px`,
+                    } as React.CSSProperties
+                  }
                 >
                   {isFolder ? (
                     <button
@@ -446,20 +456,17 @@ export const DocumentTree = ({
                       <ProjectOpenIcon
                         className="size-[1.125rem] shrink-0 text-muted-foreground"
                         data-tree-icon
-                        weight="duotone"
                       />
                     ) : (
                       <ProjectClosedIcon
                         className="size-[1.125rem] shrink-0 text-muted-foreground"
                         data-tree-icon
-                        weight="duotone"
                       />
                     )
                   ) : (
                     <DocumentDomainIcon
                       className="size-[1.125rem] shrink-0 text-muted-foreground"
                       data-tree-icon
-                      weight="duotone"
                     />
                   )}
                   {label}
@@ -548,20 +555,24 @@ export const DocumentTree = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-transparent">
-      <div className="px-3 pt-3 pb-1">
-        {showProjectLink && (
-          <Link
-            className="inline-flex h-7 items-center text-xs text-muted-foreground hover:text-foreground"
-            to="/documents"
-          >
-            ← Projetos
-          </Link>
-        )}
+      <header className="study-index-header pb-3">
+        <div className="flex w-full items-center justify-between gap-2">
+          {showProjectLink ? <BackLink to="/documents">Projetos</BackLink> : <span />}
+          {onClose && (
+            <DocumentTreeAction
+              label="Ocultar arquivos"
+              onClick={onClose}
+              className="-my-1 -mr-1.5"
+            >
+              {closeIcon === "x" ? <XIcon /> : <PanelLeftCloseIcon />}
+            </DocumentTreeAction>
+          )}
+        </div>
         {projectTitle && (
           <OverflowTooltip side="right" text={projectTitle}>
             {(ref) => (
               <p
-                className={cn("truncate font-heading text-lg leading-6", showProjectLink && "mt-1")}
+                className={cn("study-index-title", !showProjectLink && "mt-0")}
                 ref={ref as React.RefObject<HTMLParagraphElement>}
               >
                 {projectTitle}
@@ -569,22 +580,17 @@ export const DocumentTree = ({
             )}
           </OverflowTooltip>
         )}
-      </div>
+      </header>
       <DocumentTreeToolbar
-        closeIcon={closeIcon}
-        hasItems={items.length > 0}
-        onClose={onClose}
         onCreate={(type) => afterFocusMoves(() => beginCreate(type))}
         onImport={() => requestImport(null)}
         onSearchChange={setSearch}
-        onSearchOpenChange={setSearchOpen}
         search={search}
-        searchOpen={searchOpen}
       />
       <div
         aria-label="Arquivos do projeto"
         className={cn(
-          "min-h-0 flex-1 overflow-auto rounded-lg px-1 py-1 transition-colors",
+          "min-h-0 flex-1 overflow-auto px-2 py-2 transition-colors",
           dropTargetId === null &&
             "bg-primary-soft/25 outline-1 outline-offset-[-3px] outline-dashed outline-primary/65",
         )}
@@ -601,10 +607,8 @@ export const DocumentTree = ({
         role="tree"
       >
         <div
-          className={cn(
-            "mb-1 flex h-8 items-center gap-2 rounded-md px-3 text-[0.875rem] transition-colors duration-150",
-            !activeDocumentId ? "bg-accent text-foreground" : "hover:bg-accent",
-          )}
+          className="tree-row relative mb-1 flex h-8 items-center gap-2 rounded-md px-3 text-[0.875rem]"
+          data-active={!activeDocumentId || undefined}
         >
           <HomeIcon className="size-4 shrink-0 text-muted-foreground" />
           <Link

@@ -5,16 +5,7 @@ import {
   DOCUMENT_IMPORT_MARKDOWN_MAX_BYTES,
   DOCUMENT_IMPORT_MAX_ACTIVE,
 } from "@lazuli/shared";
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { documentKeys } from "@/features/documents/api/document-queries.ts";
@@ -31,6 +22,7 @@ import { captureAnalyticsEvent } from "@/features/analytics/analytics-client.ts"
 import { collectNewlyCompletedImports } from "./document-import-completion-tracker.ts";
 import { DocumentImportTray } from "./document-import-tray.tsx";
 import { DocumentImportDialog, type PreparedImportFile } from "./document-import-dialog.tsx";
+import { DocumentImportContext } from "./document-import-context.ts";
 import { isDocumentImportActive } from "./document-import-visibility.ts";
 import { ApiError } from "@/lib/api-client.ts";
 import { billingKeys, useBillingSummary } from "@/features/billing/api/billing-queries.ts";
@@ -41,11 +33,6 @@ export const importKeys = {
   list: ["document-imports"] as const,
   storage: ["storage-usage"] as const,
 };
-
-type ImportContextValue = {
-  openImportDialog: (projectId: string, parentId: string | null) => void;
-};
-const ImportContext = createContext<ImportContextValue | null>(null);
 
 export const DocumentImportProvider = ({
   children,
@@ -214,7 +201,7 @@ export const DocumentImportProvider = ({
     [billing.data, openLimit],
   );
   return (
-    <ImportContext.Provider value={value}>
+    <DocumentImportContext.Provider value={value}>
       {children}
       <DocumentImportDialog
         onOpenChange={(open) => !open && setDialogTarget(null)}
@@ -231,12 +218,6 @@ export const DocumentImportProvider = ({
         uploadProgress={uploadProgress}
         userId={userId}
       />
-    </ImportContext.Provider>
+    </DocumentImportContext.Provider>
   );
-};
-
-export const useDocumentImports = () => {
-  const context = useContext(ImportContext);
-  if (!context) throw new Error("useDocumentImports must be used inside DocumentImportProvider");
-  return context;
 };

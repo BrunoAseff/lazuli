@@ -1,4 +1,5 @@
-import { SearchIcon } from "lucide-react";
+import { SearchIcon } from "@/components/icons.tsx";
+import { Kbd } from "@/components/ui/kbd.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useGlobalSearch } from "./global-search-provider.tsx";
 import { cn } from "@/lib/utils.ts";
@@ -28,9 +29,7 @@ export const GlobalSearchButton = ({
       {!compact && (
         <>
           <span className="flex-1 text-left">Pesquisar</span>
-          <kbd className="rounded-sm bg-muted/60 px-1 text-[0.6875rem] text-muted-foreground">
-            Ctrl K
-          </kbd>
+          <Kbd className="text-muted-foreground opacity-100">Ctrl K</Kbd>
         </>
       )}
     </Button>

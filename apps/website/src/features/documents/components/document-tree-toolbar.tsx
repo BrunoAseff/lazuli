@@ -1,26 +1,22 @@
-import {
-  FilePlus2Icon,
-  FolderPlusIcon,
-  PanelLeftCloseIcon,
-  SearchIcon,
-  UploadIcon,
-  XIcon,
-} from "lucide-react";
+import { FilePlus2Icon, FolderPlusIcon, UploadIcon } from "@/components/icons.tsx";
 import type { ComponentProps } from "react";
 
 import { SearchInput } from "@/components/search-input.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
-import type { DocumentTreeCloseIcon, DocumentTreeCreateType } from "../document-tree-types.ts";
+import type { DocumentTreeCreateType } from "../document-tree-types.ts";
+import "@/components/study-index.css";
 
-const ToolbarAction = ({
+export const DocumentTreeAction = ({
   label,
   children,
+  variant = "ghost",
+  size = "icon-sm",
   ...props
 }: ComponentProps<typeof Button> & { label: string }) => (
   <Tooltip>
     <TooltipTrigger asChild>
-      <Button aria-label={label} size="icon-sm" variant="ghost" {...props}>
+      <Button aria-label={label} size={size} variant={variant} {...props}>
         {children}
       </Button>
     </TooltipTrigger>
@@ -30,70 +26,49 @@ const ToolbarAction = ({
   </Tooltip>
 );
 
+/** Creation acts on the project; search acts on the list below. Each keeps its own row. */
 export const DocumentTreeToolbar = ({
-  closeIcon,
-  hasItems,
-  onClose,
   onCreate,
   onImport,
   onSearchChange,
-  onSearchOpenChange,
   search,
-  searchOpen,
 }: {
-  closeIcon: DocumentTreeCloseIcon;
-  hasItems: boolean;
-  onClose?: () => void;
   onCreate: (type: DocumentTreeCreateType) => void;
   onImport: () => void;
   onSearchChange: (value: string) => void;
-  onSearchOpenChange: (open: boolean) => void;
   search: string;
-  searchOpen: boolean;
-}) => {
-  return (
-    <div className="flex h-11 shrink-0 items-center gap-1 px-2">
-      {searchOpen ? (
-        <SearchInput
-          alwaysShowClear
-          clearLabel="Fechar pesquisa"
-          autoFocus
-          className="h-8"
-          containerClassName="flex-1"
-          onClear={() => {
-            onSearchOpenChange(false);
-            onSearchChange("");
-          }}
-          onValueChange={onSearchChange}
-          placeholder="Pesquisar arquivos"
-          value={search}
-        />
-      ) : (
-        <>
-          <span className="min-w-0 flex-1" />
-          <ToolbarAction
-            disabled={!hasItems}
-            label="Pesquisar documentos"
-            onClick={() => onSearchOpenChange(true)}
-          >
-            <SearchIcon />
-          </ToolbarAction>
-          <ToolbarAction label="Importar documentos" onClick={onImport}>
-            <UploadIcon />
-          </ToolbarAction>
-          <ToolbarAction label="Nova pasta" onClick={() => onCreate("folder")}>
-            <FolderPlusIcon />
-          </ToolbarAction>
-          <ToolbarAction label="Novo documento" onClick={() => onCreate("document")}>
-            <FilePlus2Icon />
-          </ToolbarAction>
-          {onClose && (
-            <ToolbarAction label="Ocultar arquivos" onClick={onClose}>
-              {closeIcon === "x" ? <XIcon /> : <PanelLeftCloseIcon />}
-            </ToolbarAction>
-          )}
-        </>
-      )}
+}) => (
+  <div className="shrink-0 px-4 pb-2.5">
+    <div className="study-index-actions mb-2" data-layout="one-labeled">
+      <Button onClick={() => onCreate("document")} variant="outline">
+        <FilePlus2Icon /> Novo documento
+      </Button>
+      <DocumentTreeAction
+        label="Nova pasta"
+        onClick={() => onCreate("folder")}
+        size="icon"
+        variant="outline"
+      >
+        <FolderPlusIcon />
+      </DocumentTreeAction>
+      <DocumentTreeAction
+        label="Importar documentos"
+        onClick={onImport}
+        size="icon"
+        variant="outline"
+      >
+        <UploadIcon />
+      </DocumentTreeAction>
     </div>
-  );
-};
+    <div>
+      <SearchInput
+        clearLabel="Limpar pesquisa de arquivos"
+        containerClassName="flex-1"
+        onClear={() => onSearchChange("")}
+        onValueChange={onSearchChange}
+        placeholder="Pesquisar arquivos"
+        value={search}
+      />
+    </div>
+  </div>
+);

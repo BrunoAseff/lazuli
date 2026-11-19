@@ -1,4 +1,5 @@
-import { Trash2Icon } from "lucide-react";
+import { XIcon } from "@/components/icons.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -17,7 +18,7 @@ import { useDeleteReference } from "../api/reference-queries.ts";
 
 export const ReferenceDeleteButton = ({
   disabled,
-  label = "Remover referência",
+  label = "Desconectar fonte",
   onRemoved,
   referenceId,
 }: {
@@ -35,9 +36,9 @@ export const ReferenceDeleteButton = ({
         try {
           await remove.mutateAsync(referenceId);
           await onRemoved?.();
-          toast.success("Referência removida.");
+          toast.success("Fonte desconectada.");
         } catch {
-          toast.error("Não foi possível remover a referência.");
+          toast.error("Não foi possível desconectar a fonte.");
         }
       }}
     />
@@ -46,7 +47,7 @@ export const ReferenceDeleteButton = ({
 
 export const ConfirmReferenceRemovalButton = ({
   disabled,
-  label = "Remover referência",
+  label = "Desconectar fonte",
   onConfirm,
 }: {
   disabled?: boolean;
@@ -56,20 +57,26 @@ export const ConfirmReferenceRemovalButton = ({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button
-        aria-label={label}
-        disabled={disabled}
-        onClick={() => setOpen(true)}
-        size="icon-sm"
-        type="button"
-        variant="ghost"
-      >
-        <Trash2Icon aria-hidden="true" />
-      </Button>
+      {/* Disconnecting keeps the material, so the mark is "remove from this list", not a trash can. */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            aria-label={label}
+            disabled={disabled}
+            onClick={() => setOpen(true)}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          >
+            <XIcon aria-hidden="true" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Desconectar</TooltipContent>
+      </Tooltip>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover referência?</AlertDialogTitle>
+            <AlertDialogTitle>Desconectar fonte?</AlertDialogTitle>
             <AlertDialogDescription>
               O material continuará existindo, mas deixará de estar conectado a este documento.
             </AlertDialogDescription>
@@ -84,7 +91,7 @@ export const ConfirmReferenceRemovalButton = ({
               }}
               variant="destructive"
             >
-              Remover
+              Desconectar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -37,11 +37,19 @@ export const DocumentMaterialFlow = ({
         targets: [{ type: action.kind, id: targetId }],
       });
       completed.current = true;
-      toast.success("Material criado e conectado ao trecho.");
+      toast.success(
+        action.kind === "flashcard"
+          ? "Flashcard criado e conectado ao trecho."
+          : "Questão criada e conectada ao trecho.",
+      );
       onComplete();
       return true;
     } catch {
-      toast.error("O material não pôde ser conectado. Tente novamente.");
+      toast.error(
+        action.kind === "flashcard"
+          ? "O flashcard não pôde ser conectado. Tente novamente."
+          : "A questão não pôde ser conectada. Tente novamente.",
+      );
       onCancel();
       return false;
     }

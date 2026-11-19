@@ -1,5 +1,5 @@
 import type { FavoriteTarget } from "@lazuli/shared";
-import { HeartIcon } from "lucide-react";
+import { HeartIcon } from "@/components/icons.tsx";
 import { ContextMenuItem } from "@/components/ui/context-menu.tsx";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu.tsx";
 import { useFavorite } from "./favorite-provider.tsx";

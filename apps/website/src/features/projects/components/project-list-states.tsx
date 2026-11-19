@@ -1,4 +1,4 @@
-import { SearchXIcon, TriangleAlertIcon } from "lucide-react";
+import { SearchXIcon, TriangleAlertIcon } from "@/components/icons.tsx";
 
 import { ProjectOpenIcon } from "@/components/domain-icons.ts";
 import { EmptyState } from "@/components/empty-state.tsx";

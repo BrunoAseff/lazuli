@@ -1,6 +1,6 @@
 import { createProjectSchema, type ProjectSummary, projectTitleSchema } from "@lazuli/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangleIcon } from "lucide-react";
+import { AlertTriangleIcon } from "@/components/icons.tsx";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -143,7 +143,7 @@ export const CreateProjectDialog = ({
     >
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl">Novo projeto</DialogTitle>
+          <DialogTitle>Novo projeto</DialogTitle>
           <DialogDescription>
             Organize documentos relacionados em um único espaço.
           </DialogDescription>
@@ -180,6 +180,7 @@ export const CreateProjectDialog = ({
               {created ? "Manter capa atual" : "Cancelar"}
             </DialogCancelButton>
             <Button
+              pending={submitting}
               disabled={
                 !form.formState.isValid ||
                 submitting ||
@@ -187,7 +188,6 @@ export const CreateProjectDialog = ({
               }
               type="submit"
             >
-              {submitting && <Spinner />}
               {submitting ? "Salvando…" : created ? "Salvar capa" : "Criar projeto"}
             </Button>
           </DialogFooter>
@@ -275,10 +275,10 @@ export const RenameProjectDialog = ({
               Cancelar
             </DialogCancelButton>
             <Button
+              pending={mutation.isPending}
               disabled={!form.formState.isValid || !hasChanges || mutation.isPending}
               type="submit"
             >
-              {mutation.isPending && <Spinner />}
               {mutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>

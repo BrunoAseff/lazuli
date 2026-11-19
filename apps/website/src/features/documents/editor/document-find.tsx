@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronUpIcon, SearchIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, SearchIcon, XIcon } from "@/components/icons.tsx";
 import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { Button } from "@/components/ui/button.tsx";

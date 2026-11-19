@@ -1,4 +1,4 @@
-import { HeartIcon } from "lucide-react";
+import { HeartIcon } from "@/components/icons.tsx";
 import type { FavoriteKind } from "@lazuli/shared";
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";

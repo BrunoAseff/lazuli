@@ -1,22 +1,88 @@
 import type { ProjectCoverKey } from "@lazuli/shared";
-import { ProjectClosedIcon, ProjectOpenIcon } from "@/components/domain-icons.ts";
 import { cn } from "@/lib/utils.ts";
 import { getProjectCover } from "../project-covers.ts";
 import { useEffect, useState } from "react";
 import { API_URL } from "@/lib/api-client.ts";
 
+/** Small deterministic hash so each project keeps the same facet arrangement across sessions. */
+const seedOf = (value: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index++)
+    hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+  return hash >>> 0;
+};
+
+const FACET = "m0-7 7 7-7 7-7-7Z";
+
+/**
+ * A project without an image still has a cover: a lattice of the lapis facets from the brand mark,
+ * with a few stones set in ink. Arrangement comes from the project id, never from content.
+ */
+export const MineralCover = ({ seed, className }: { seed: string; className?: string }) => {
+  let state = seedOf(seed) || 1;
+  const next = () => {
+    state ^= state << 13;
+    state ^= state >>> 17;
+    state ^= state << 5;
+    return (state >>> 0) / 4294967296;
+  };
+  const columns = 13;
+  const rows = 8;
+  const cells: { x: number; y: number; tone: "line" | "stone" | "deep" }[] = [];
+  // Sparse field: most positions stay empty so the facets read as a few set stones, not a pattern.
+  for (let row = 0; row < rows; row++)
+    for (let column = 0; column < columns; column++) {
+      const roll = next();
+      if (roll < 0.62) continue;
+      cells.push({
+        x: column * 16 + (row % 2 ? 8 : 0),
+        y: row * 14 + 2,
+        tone: roll > 0.975 ? "deep" : roll > 0.9 ? "stone" : "line",
+      });
+    }
+  const angle = Math.round(next() * 40 - 20);
+  return (
+    <svg
+      aria-hidden="true"
+      className={cn("mineral-cover block aspect-video size-full", className)}
+      preserveAspectRatio="xMidYMid slice"
+      viewBox="0 0 192 108"
+    >
+      <defs>
+        <linearGradient
+          id={`mineral-${seed}`}
+          gradientTransform={`rotate(${angle} .5 .5)`}
+          x1="0"
+          x2="1"
+          y1="0"
+          y2="1"
+        >
+          <stop className="mineral-cover-light" offset="0" />
+          <stop className="mineral-cover-dark" offset="1" />
+        </linearGradient>
+      </defs>
+      <rect fill={`url(#mineral-${seed})`} height="108" width="192" />
+      {cells.map(({ x, y, tone }, index) => (
+        <path className="mineral-facet" d={`M${x} ${y}${FACET}`} data-tone={tone} key={index} />
+      ))}
+    </svg>
+  );
+};
+
 export const ProjectCover = ({
   coverKey,
   assetId,
   className,
-  compact = false,
   picker = false,
+  seed,
 }: {
   coverKey: ProjectCoverKey | null;
   assetId?: string | null;
   className?: string;
   compact?: boolean;
   picker?: boolean;
+  /** Project id: identifies the generated mineral cover when there is no image. */
+  seed?: string;
 }) => {
   const cover = getProjectCover(coverKey);
   const [uploaded, setUploaded] = useState<{ id: string; url: string }>();
@@ -57,26 +123,7 @@ export const ProjectCover = ({
       />
     );
 
-  if (!cover) {
-    return (
-      <div
-        className={cn(
-          "grid aspect-video w-full place-items-center bg-[radial-gradient(circle_at_20%_20%,color-mix(in_oklch,var(--primary),transparent_72%),transparent_38%),linear-gradient(145deg,var(--muted),var(--card))] text-primary",
-          className,
-        )}
-      >
-        {compact ? (
-          <ProjectClosedIcon aria-hidden="true" className="size-[1.125rem]" weight="duotone" />
-        ) : (
-          <ProjectOpenIcon
-            aria-hidden="true"
-            className={picker ? "size-5" : "size-8"}
-            weight="duotone"
-          />
-        )}
-      </div>
-    );
-  }
+  if (!cover) return <MineralCover className={className} seed={seed ?? "lazuli"} />;
 
   return (
     <img

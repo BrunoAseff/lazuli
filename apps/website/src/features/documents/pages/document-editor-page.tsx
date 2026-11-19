@@ -1,7 +1,6 @@
-import { TriangleAlertIcon } from "lucide-react";
-import { Link, useLocation, useParams } from "react-router";
+import { isNotFound, ResourceUnavailable } from "@/components/not-found-page.tsx";
+import { useLocation, useParams } from "react-router";
 
-import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useDocument } from "../api/document-queries.ts";
 import { DocumentEditor } from "../components/document-editor.tsx";
@@ -30,15 +29,13 @@ export const DocumentEditorPage = () => {
     );
   if (document.isError || !document.data)
     return (
-      <div className="grid flex-1 place-items-center p-8 text-center">
-        <div>
-          <TriangleAlertIcon className="mx-auto mb-4 size-8 text-muted-foreground" />
-          <h1 className="page-title">Documento não encontrado</h1>
-          <Button asChild className="mt-5" variant="outline">
-            <Link to={returnTo ?? `/documents/${projectId}`}>Voltar</Link>
-          </Button>
-        </div>
-      </div>
+      <ResourceUnavailable
+        backLabel={returnTo ? "Voltar" : "Voltar ao projeto"}
+        backTo={returnTo ?? `/documents/${projectId}`}
+        notFound={isNotFound(document.error) || !document.isError}
+        onRetry={() => void document.refetch()}
+        title="Documento não encontrado"
+      />
     );
   return (
     <div className="document-editor-page">

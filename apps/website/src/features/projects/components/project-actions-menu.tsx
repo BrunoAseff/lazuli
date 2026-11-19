@@ -1,4 +1,4 @@
-import { EllipsisIcon, ImageIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { EllipsisIcon, ImageIcon, PencilIcon, Trash2Icon } from "@/components/icons.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
 import {

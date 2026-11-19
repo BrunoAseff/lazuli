@@ -1,5 +1,5 @@
 import type { ProjectTreeItem } from "@lazuli/shared";
-import { FilesIcon, PanelLeftOpenIcon } from "lucide-react";
+import { FilesIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "@/components/icons.tsx";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { cn } from "@/lib/utils.ts";
 import { DocumentTree } from "./document-tree.tsx";
+import { DocumentTreeAction } from "./document-tree-toolbar.tsx";
 
 export const ProjectWorkspace = ({
   projectId,
@@ -26,42 +27,45 @@ export const ProjectWorkspace = ({
   return (
     <div className="project-workspace min-w-0 flex-1 bg-background">
       <div className="project-workspace-grid min-h-0 min-w-0" data-tree-collapsed={collapsed}>
-        <aside
-          className={cn(
-            "project-workspace-tree sticky top-0 h-svh overflow-hidden py-2 transition-[width] duration-200 ease-out",
-            collapsed ? "w-12" : "w-[15.5rem]",
-          )}
-        >
+        {/* One toggle on the column's right edge: it travels with the edge as the column folds,
+            so nothing disappears in one place and reappears in another. */}
+        <aside className="project-workspace-tree sticky top-0 h-svh overflow-hidden">
           <div
             className={cn(
-              "h-full w-[15.5rem] transition-opacity duration-150",
-              collapsed && "pointer-events-none opacity-0",
+              "h-full transition-[opacity,translate] duration-200 ease-out motion-reduce:transition-none",
+              collapsed && "pointer-events-none -translate-x-4 opacity-0",
             )}
+            inert={collapsed}
           >
             <DocumentTree
               activeDocumentId={activeDocumentId}
               items={items}
-              onClose={() => setCollapsed(true)}
               projectId={projectId}
               projectTitle={projectTitle}
             />
           </div>
-          <div
+          <DocumentTreeAction
+            // Open: on the panel's header line. Closed: centred in the gap between the app sidebar
+            // and the document (the 48px column plus the sheet's 8px margin).
             className={cn(
-              "pointer-events-none absolute top-2 right-0 flex h-11 items-center justify-end px-2 opacity-0 transition-opacity duration-150",
-              collapsed && "pointer-events-auto opacity-100 delay-100",
+              "project-tree-toggle absolute top-[1.5625rem] z-10 transition-[right] duration-200 ease-out",
+              collapsed ? "right-1.5" : "right-2.5",
             )}
+            label={collapsed ? "Mostrar arquivos" : "Ocultar arquivos"}
+            onClick={() => setCollapsed(!collapsed)}
           >
-            <Button
-              aria-label="Mostrar arquivos"
-              onClick={() => setCollapsed(false)}
-              size="icon-sm"
-              title="Mostrar arquivos"
-              variant="ghost"
-            >
-              <PanelLeftOpenIcon />
-            </Button>
-          </div>
+            <span className="relative grid size-4 place-items-center">
+              <PanelLeftCloseIcon
+                className={cn("absolute transition-opacity duration-200", collapsed && "opacity-0")}
+              />
+              <PanelLeftOpenIcon
+                className={cn(
+                  "absolute transition-opacity duration-200",
+                  !collapsed && "opacity-0",
+                )}
+              />
+            </span>
+          </DocumentTreeAction>
         </aside>
         <div
           className="project-workspace-content min-h-0 min-w-0"

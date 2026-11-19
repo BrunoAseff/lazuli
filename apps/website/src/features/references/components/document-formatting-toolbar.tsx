@@ -12,9 +12,10 @@ import {
   type DocumentBlock,
   type DocumentInlineContent,
 } from "@lazuli/shared";
-import { LinkSimpleIcon } from "@phosphor-icons/react/LinkSimple";
+import { Link2Icon } from "@/components/icons.tsx";
 import { toast } from "sonner";
 
+import { MagicWandIcon } from "@/components/icons.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { FlashcardDomainIcon, QuizDomainIcon } from "@/components/domain-icons.ts";
 import type { AiSelectionPreviewPart } from "@/features/ai/ai-selection-types.ts";
@@ -375,7 +376,7 @@ export const createDocumentFormattingToolbar = (
       const containsAnchor = range?.cloneContents().querySelector?.(".lazuli-source-anchor");
       if (startAnchor || endAnchor || containsAnchor) {
         toast.error(
-          "A seleção sobrepõe uma referência existente. Selecione somente o trecho já vinculado ou uma área sem referência.",
+          "A seleção sobrepõe um trecho já conectado. Selecione esse trecho ou uma área ainda não conectada.",
         );
         return null;
       }
@@ -430,9 +431,11 @@ export const createDocumentFormattingToolbar = (
         {getFormattingToolbarItems(props.blockTypeSelectItems)}
         {!adjustment && (
           <>
+            {/* Study actions are a group of their own, apart from text formatting. */}
+            <span aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-border" />
             <span className="contents" onMouseDown={(event) => event.preventDefault()}>
               <components.FormattingToolbar.Button
-                icon={<FlashcardDomainIcon className="size-4" weight="duotone" />}
+                icon={<FlashcardDomainIcon className="size-4" />}
                 label="Criar flashcard"
                 mainTooltip="Criar flashcard deste trecho"
                 onClick={() => create("flashcard")}
@@ -440,7 +443,7 @@ export const createDocumentFormattingToolbar = (
             </span>
             <span className="contents" onMouseDown={(event) => event.preventDefault()}>
               <components.FormattingToolbar.Button
-                icon={<QuizDomainIcon className="size-4" weight="duotone" />}
+                icon={<QuizDomainIcon className="size-4" />}
                 label="Criar questão"
                 mainTooltip="Criar questão deste trecho"
                 onClick={() => create("quizQuestion")}
@@ -448,9 +451,9 @@ export const createDocumentFormattingToolbar = (
             </span>
             <span className="contents" onMouseDown={(event) => event.preventDefault()}>
               <components.FormattingToolbar.Button
-                icon={<LinkSimpleIcon className="size-4" weight="duotone" />}
-                label="Vincular"
-                mainTooltip="Vincular a um material existente"
+                icon={<Link2Icon className="size-4" />}
+                label="Ligar a flashcard ou questão"
+                mainTooltip="Ligar este trecho a um flashcard ou questão que já existe"
                 onClick={link}
               />
             </span>
@@ -461,6 +464,7 @@ export const createDocumentFormattingToolbar = (
               size="sm"
               type="button"
             >
+              <MagicWandIcon aria-hidden="true" />
               Gerar com IA
             </Button>
           </>
