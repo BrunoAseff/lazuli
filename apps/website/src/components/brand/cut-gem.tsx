@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils.ts";
 
 /*
- * A lapis being cut. At 0 it is a rough, lumpy stone of one dull colour; as `cut` grows the outline
+ * A lapis being cut. At 0 it is a rough chunk of flat, dull faces; as `cut` grows the outline
  * straightens into the brand gem, the facets catch light, the table forms, and at the end the
  * pyrite fleck appears. `dull` (0–1) takes the shine away: neglected stones lose their polish.
  *
@@ -67,14 +67,6 @@ export const gemStage = (cut: number) =>
           ? "Desbastada"
           : "Bruta";
 
-/**
- * How the uncut stone is drawn (under study):
- * - classic: one matte body with a lit chip and a shaded side;
- * - angular: an irregular chunk of flat faces, each shaded by where the light comes from;
- * - mineral: the angular chunk with pale calcite inclusions, as raw lapis has.
- */
-export type RoughStyle = "classic" | "angular" | "mineral";
-
 // Light from the upper left: a face turned that way is lighter.
 const lightDirection: Point = [-0.6, -0.8];
 const faceTone = (a: Point, b: Point, apex: Point) => {
@@ -90,39 +82,15 @@ const faceTone = (a: Point, b: Point, apex: Point) => {
         ? "var(--gem-rough)"
         : "var(--gem-rough-dark)";
 };
-// Calcite inclusions, placed on the rock (they fade with it as the stone is cut).
-const inclusions: Point[][] = [
-  [
-    [18, 22],
-    [24, 19],
-    [27, 24],
-    [22, 28],
-    [17, 26],
-  ],
-  [
-    [37, 37],
-    [43, 35],
-    [45, 40],
-    [40, 43],
-  ],
-  [
-    [28, 45],
-    [32, 43],
-    [34, 47],
-    [30, 48],
-  ],
-];
 
 export const CutGem = ({
   cut,
   dull = 0,
-  rough = "classic",
   size = 72,
   className,
 }: {
   cut: number;
   dull?: number;
-  rough?: RoughStyle;
   size?: number;
   className?: string;
 }) => {
@@ -135,7 +103,7 @@ export const CutGem = ({
   const right = outline[3]!;
   const bottom = outline[6]!;
   const left = outline[9]!;
-  // The rock's volume (a lit chip, a shaded side) fades as the first flat cuts appear; facets
+  // The rock's faces fade as the first flat cuts appear; facets
   // take over by half way, the table forms after, and polish (shine, fleck) only at the end.
   const rock = 1 - ease(0.05, 0.55, t);
   const facets = ease(0.1, 0.5, t);
@@ -156,47 +124,23 @@ export const CutGem = ({
       viewBox="0 0 64 64"
       width={size}
     >
-      {/* Rough body: a matte rock with a lit chip and a shaded side. */}
       <path d={path(outline)} fill="var(--gem-rough)" />
-      {rough !== "classic" && (
-        <g opacity={rock}>
-          {/* Flat faces fanned from an off-centre apex: a chunk, not a blob. */}
-          {outline.map((point, index) => {
-            const next = outline[(index + 1) % outline.length]!;
-            const apex: Point = [27, 29];
-            return (
-              <path
-                d={path([apex, point, next])}
-                fill={faceTone(point, next, apex)}
-                key={index}
-                stroke={faceTone(point, next, apex)}
-                strokeWidth={0.4}
-              />
-            );
-          })}
-          {rough === "mineral" &&
-            inclusions.map((shape, index) => (
-              <path d={path(shape)} fill="#e3e7f3" key={index} opacity={0.7} />
-            ))}
-        </g>
-      )}
-      <g opacity={rough === "classic" ? rock : 0}>
-        <path
-          d={path([
-            outline[9]!,
-            outline[10]!,
-            outline[11]!,
-            outline[0]!,
-            outline[1]!,
-            [30, 24],
-            [17, 31],
-          ])}
-          fill="var(--gem-rough-light)"
-        />
-        <path
-          d={path([outline[3]!, outline[4]!, outline[5]!, outline[6]!, [36, 42], [47, 31]])}
-          fill="var(--gem-rough-dark)"
-        />
+      {/* Rough: an irregular chunk of flat faces fanned from an off-centre apex, each shaded by
+          the light from the upper left, so it reads as stone and not as a drawn blob. */}
+      <g opacity={rock}>
+        {outline.map((point, index) => {
+          const next = outline[(index + 1) % outline.length]!;
+          const apex: Point = [27, 29];
+          return (
+            <path
+              d={path([apex, point, next])}
+              fill={faceTone(point, next, apex)}
+              key={index}
+              stroke={faceTone(point, next, apex)}
+              strokeWidth={0.4}
+            />
+          );
+        })}
       </g>
       <g opacity={facets}>
         <path d={path([left, top, tTop, tLeft])} fill="var(--facet-1)" />
