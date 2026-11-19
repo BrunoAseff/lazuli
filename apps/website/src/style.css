@@ -926,64 +926,102 @@
   fill: var(--lapis-light);
 }
 
-/* Toasts: the same floating surface as menus and popovers, following the theme (light in light,
-   dark in dark). Compact; the type is carried by the tinted seal. */
+/* Toasts: a compact note on the menus' surface, following the theme. The type is a lapis-cut
+   facet in its colour, which turns into place as the toast arrives; a hairline at the base shows
+   the time left and stops while the pointer is over the stack (Sonner pauses there too). */
 [data-sonner-toaster] [data-sonner-toast].lz-toast {
   --toast-ink: var(--popover);
   --toast-paper: var(--popover-foreground);
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.5rem 0.75rem;
+  --toast-tone: var(--primary);
+  align-items: center;
+  gap: 0.625rem;
   width: var(--width);
-  padding: 0.75rem 2.75rem 0.75rem 0.75rem;
+  padding: 0.625rem 2.25rem 0.625rem 0.875rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   background: var(--toast-ink);
   color: var(--toast-paper);
-  box-shadow: var(--shadow-overlay);
+  box-shadow: 0 2px 10px rgb(20 26 46 / 7%);
   font-family: var(--font-sans);
 }
+.dark [data-sonner-toaster] [data-sonner-toast].lz-toast {
+  box-shadow: 0 2px 10px rgb(0 0 0 / 28%);
+}
+[data-sonner-toast][data-type="success"].lz-toast {
+  --toast-tone: var(--success);
+}
+[data-sonner-toast][data-type="error"].lz-toast {
+  --toast-tone: var(--destructive);
+}
+[data-sonner-toast][data-type="warning"].lz-toast {
+  --toast-tone: var(--warning);
+}
+/* The icon slot only places the facet; it is not a positioning box, so the time hairline spans
+   the whole toast. */
 [data-sonner-toast].lz-toast .lz-toast-icon {
-  display: flex;
-  width: 1.75rem;
-  height: 1.75rem;
-  flex: none;
-  align-items: center;
-  justify-content: center;
+  position: static;
+  width: auto;
+  height: auto;
   margin: 0;
-
-  & > * {
-    margin: 0 !important;
+}
+.lz-toast-facet {
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-inline: 0.125rem;
+  border-radius: 1.5px;
+  background: var(--toast-tone);
+  transform: rotate(45deg);
+  animation: toast-facet-in 520ms var(--spring-settle) 100ms both;
+}
+@keyframes toast-facet-in {
+  from {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.4);
   }
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--toast-paper) 8%, transparent);
-  color: var(--toast-paper);
+}
+/* Edge to edge along the base: an inner layer takes the toast's rounded shape and clips the line
+   to it, so the toast itself clips nothing (Sonner's hover area sits outside it and must stay). */
+.lz-toast-time-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: calc(var(--radius-panel) - 1px);
+  pointer-events: none;
+}
+.lz-toast-time {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: color-mix(in oklab, var(--toast-tone) 45%, transparent);
+  transform-origin: left;
+  animation: toast-time 4s linear both;
 
-  & svg {
-    width: 1rem;
-    height: 1rem;
+  [data-sonner-toaster]:hover & {
+    animation-play-state: paused;
   }
 }
-[data-sonner-toast][data-type="success"] .lz-toast-icon {
-  background: #3f9a6b;
-  color: #fff;
+@keyframes toast-time {
+  to {
+    transform: scaleX(0);
+  }
 }
-[data-sonner-toast][data-type="error"] .lz-toast-icon {
-  background: #d4565a;
-  color: #fff;
+@media (prefers-reduced-motion: reduce) {
+  .lz-toast-facet,
+  .lz-toast-time {
+    animation: none;
+  }
 }
-[data-sonner-toast][data-type="warning"] .lz-toast-icon {
-  background: #c8923a;
-  color: #fff;
-}
-[data-sonner-toast][data-type="info"] .lz-toast-icon {
-  background: var(--lapis-main);
-  color: #fff;
+[data-sonner-toast].lz-toast .lz-toast-icon svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted-foreground);
 }
 [data-sonner-toast].lz-toast [data-content] {
   min-width: 0;
-  flex: 1 1 calc(100% - 2.5rem);
-  align-self: center;
+  flex: 1;
   gap: 0.125rem;
 }
 [data-sonner-toast].lz-toast .lz-toast-title {
@@ -996,39 +1034,37 @@
   line-height: 1.125rem;
   color: var(--muted-foreground);
 }
-/* The action sits under the message, aligned with its text, so the message keeps its width. */
+/* An action sits at the end of the message, as a small bordered button. */
 [data-sonner-toast].lz-toast [data-button] {
   height: 1.75rem;
-  margin-left: 2.5rem;
   padding: 0 0.625rem;
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: color-mix(in oklab, var(--toast-paper) 7%, transparent);
+  background: transparent;
   color: var(--toast-paper);
   font-size: 0.8125rem;
   font-weight: 500;
-  transition: background-color var(--transition-fast);
+  transition: border-color var(--transition-fast);
 
   &:hover {
-    background: color-mix(in oklab, var(--toast-paper) 11%, transparent);
+    border-color: color-mix(in oklab, var(--foreground) 26%, transparent);
   }
 }
 [data-sonner-toaster] [data-sonner-toast] [data-close-button].lz-toast-close {
-  top: 0.75rem;
+  top: 50%;
   right: 0.5rem;
   left: auto;
-  width: 1.75rem;
-  height: 1.75rem;
-  transform: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  transform: translateY(-50%);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: color-mix(in oklab, var(--toast-paper) 60%, transparent);
-  transition:
-    background-color var(--transition-fast),
-    color var(--transition-fast);
+  color: var(--muted-foreground);
+  transition: color var(--transition-fast);
 
   &:hover {
-    background: color-mix(in oklab, var(--toast-paper) 12%, transparent);
+    background: transparent;
     color: var(--toast-paper);
   }
   & svg {
@@ -1043,6 +1079,38 @@
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--muted-foreground);
+}
+
+/* Pigment: a chosen answer or option takes a stroke of ultramarine pigment behind its text, which
+   sweeps in from the left. Inline, so each line of a long answer gets its own stroke; the padding
+   is taken back by the margin, so the text never moves. */
+.choice-ink,
+.radio-card-ink {
+  --pigment-tone: var(--primary);
+  margin-inline: -0.125rem;
+  padding-inline: 0.125rem;
+  background-image: linear-gradient(
+    100deg,
+    transparent 0 2%,
+    color-mix(in oklab, var(--pigment-tone) 22%, transparent) 4% 96%,
+    transparent 98%
+  );
+  background-repeat: no-repeat;
+  background-position: 0 80%;
+  background-size: 0% 70%;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition: background-size 420ms var(--ease-out);
+}
+.choice[data-selected] .choice-ink,
+.radio-card:has([data-state="checked"]) .radio-card-ink {
+  background-size: 100% 70%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .choice-ink,
+  .radio-card-ink {
+    transition: none;
+  }
 }
 
 /* Option cards: same border as every field, the selection tone used by lists when chosen. */
@@ -1069,10 +1137,9 @@
         border-color: color-mix(in oklab, var(--foreground) 32%, transparent);
       }
     }
-    /* One pixel like every other border; the radio itself carries the choice. */
+    /* The card stays plain when chosen: the radio fills and the title takes the pigment stroke. */
     &:has([data-state="checked"]) {
-      border-color: var(--primary);
-      background: var(--primary-soft);
+      border-color: color-mix(in oklab, var(--foreground) 32%, transparent);
     }
     &:has(:focus-visible) {
       outline: 2px solid color-mix(in oklab, var(--ring) 50%, transparent);
