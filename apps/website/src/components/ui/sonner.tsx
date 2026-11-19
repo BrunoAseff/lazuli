@@ -1,6 +1,13 @@
 import { useTheme } from "next-themes";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
-import { CheckIcon, InfoIcon, Loader2Icon, XIcon } from "@/components/icons.tsx";
+import { Loader2Icon } from "@/components/icons.tsx";
+
+const ToastMark = () => (
+  <>
+    <span aria-hidden="true" className="lz-toast-facet" />
+    <span aria-hidden="true" className="lz-toast-time" />
+  </>
+);
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
@@ -9,12 +16,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      // The type is a facet in its colour, with the time left as a hairline at the base.
       icons={{
-        // Plain glyphs: the tinted seal around them carries the type.
-        success: <CheckIcon strokeWidth={2.2} />,
-        info: <InfoIcon />,
-        warning: <span className="text-sm leading-none font-bold">!</span>,
-        error: <XIcon strokeWidth={2.2} />,
+        success: <ToastMark />,
+        info: <ToastMark />,
+        warning: <ToastMark />,
+        error: <ToastMark />,
         loading: <Loader2Icon className="animate-spin" />,
       }}
       style={
@@ -23,6 +30,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
           "--border-radius": "var(--radius)",
+          "--width": "20rem",
         } as React.CSSProperties
       }
       closeButton
