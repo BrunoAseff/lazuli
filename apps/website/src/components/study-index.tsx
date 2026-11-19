@@ -1,6 +1,17 @@
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { BackLink } from "@/components/nav-link.tsx";
-import { useId, useState, type ReactNode, type Ref } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { Link } from "react-router";
 
 import { motionTokens } from "@/components/arc/motion-tokens.ts";
@@ -59,13 +70,115 @@ export const StudyIndexList = ({
   selecting: boolean;
 }) => {
   const id = useId();
+  const selection = useListSelection();
   return (
     <LayoutGroup id={id}>
-      <ul aria-label={label} className="study-index-list" data-selecting={selecting || undefined}>
-        {children}
-      </ul>
+      <SelectionContext.Provider value={selection.api}>
+        <ul
+          aria-label={label}
+          className="study-index-list"
+          data-dragging={selection.dragging || undefined}
+          data-selecting={selecting || undefined}
+          ref={selection.listRef}
+        >
+          {children}
+        </ul>
+      </SelectionContext.Provider>
     </LayoutGroup>
   );
+};
+
+/*
+ * Selecting many at once, the way mail lists do: shift+click on a checkbox sets the whole range
+ * from the last one clicked, and pressing a checkbox and dragging over the rows below or above
+ * paints its new state on every row crossed (checking or clearing, never flipping each). Clicking
+ * a title still opens the item: both gestures start on the checkbox only.
+ */
+type RowSelect = (selected: boolean) => void;
+type SelectionApi = ReturnType<typeof useListSelection>["api"];
+const SelectionContext = createContext<SelectionApi | null>(null);
+
+const useListSelection = () => {
+  const listRef = useRef<HTMLUListElement>(null);
+  const [dragging, setDragging] = useState(false);
+  // One stable api for the list's lifetime: rows register once and the anchor survives renders.
+  const [api] = useState(() => {
+    const rows = new Map<HTMLLIElement, RowSelect>();
+    let anchor: HTMLLIElement | null = null;
+    let drag: {
+      origin: HTMLLIElement;
+      last: HTMLLIElement;
+      value: boolean;
+      moved: boolean;
+    } | null = null;
+    const ordered = () => [
+      ...(listRef.current?.querySelectorAll<HTMLLIElement>(":scope > .study-index-row") ?? []),
+    ];
+    /** Sets every row from one to the other, inclusive, whichever comes first. */
+    const paint = (from: HTMLLIElement, to: HTMLLIElement, value: boolean) => {
+      const list = ordered();
+      const [start, end] = [list.indexOf(from), list.indexOf(to)].sort((x, y) => x - y);
+      if (start < 0) return false;
+      for (const item of list.slice(start, end + 1)) rows.get(item)?.(value);
+      return true;
+    };
+    return {
+      register: (row: HTMLLIElement, select: RowSelect) => {
+        rows.set(row, select);
+        return () => {
+          rows.delete(row);
+          if (anchor === row) anchor = null;
+        };
+      },
+      /** Returns true when the click was taken by a range or a finished drag. */
+      click: (row: HTMLLIElement, value: boolean, shift: boolean) => {
+        if (drag) {
+          const moved = drag.moved;
+          drag = null;
+          if (moved) return true;
+        }
+        const from = anchor;
+        anchor = row;
+        if (!shift || !from || from === row) return false;
+        return paint(from, row, value);
+      },
+      press: (row: HTMLLIElement, value: boolean) => {
+        drag = { origin: row, last: row, value, moved: false };
+      },
+      // A fast pointer skips rows between two events, so the stroke fills from the last row it
+      // painted to the one it is over now.
+      enter: (row: HTMLLIElement) => {
+        if (!drag || row === drag.last) return;
+        if (!drag.moved) {
+          drag.moved = true;
+          setDragging(true);
+          window.getSelection()?.removeAllRanges();
+        }
+        paint(drag.last, row, drag.value);
+        drag.last = row;
+        anchor = row;
+      },
+      /** A finished drag keeps its state for the click its release may still send to the box,
+       * which it swallows; that click comes before any timer. */
+      release: () => {
+        if (!drag) return;
+        if (drag.moved) window.setTimeout(() => (drag = null));
+        else drag = null;
+        setDragging(false);
+      },
+    };
+  });
+
+  useEffect(() => {
+    window.addEventListener("pointerup", api.release);
+    window.addEventListener("pointercancel", api.release);
+    return () => {
+      window.removeEventListener("pointerup", api.release);
+      window.removeEventListener("pointercancel", api.release);
+    };
+  }, [api]);
+
+  return { api, dragging, listRef };
 };
 
 export const StudyIndexRow = ({
@@ -96,9 +209,33 @@ export const StudyIndexRow = ({
   titleText?: string;
 }) => {
   const reduced = useReducedMotion();
+  const selection = useContext(SelectionContext);
+  const rowRef = useRef<HTMLLIElement>(null);
+  const selectRef = useRef(onSelect);
+  selectRef.current = onSelect;
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row || !selection || !onSelect) return;
+    return selection.register(row, (value) => selectRef.current?.(value));
+  }, [selection, Boolean(onSelect)]);
+
+  const pressCheck = (event: PointerEvent) => {
+    if (event.button !== 0 || event.pointerType !== "mouse" || !rowRef.current) return;
+    selection?.press(rowRef.current, !selected);
+  };
+  const clickCheck = (event: MouseEvent) => {
+    if (!rowRef.current || !selection) return;
+    // Radix skips its own toggle when the click is already handled here.
+    if (selection.click(rowRef.current, !selected, event.shiftKey)) event.preventDefault();
+  };
+
   return (
     <li
       className="study-index-row"
+      onPointerEnter={
+        onSelect ? () => rowRef.current && selection?.enter(rowRef.current) : undefined
+      }
+      ref={rowRef}
       data-active={active || undefined}
       data-muted={muted || undefined}
       data-selectable={onSelect ? "" : undefined}
@@ -122,6 +259,8 @@ export const StudyIndexRow = ({
             checked={selected}
             className="study-index-check"
             onCheckedChange={(value) => onSelect(value === true)}
+            onClick={clickCheck}
+            onPointerDown={pressCheck}
           />
         )}
       </span>

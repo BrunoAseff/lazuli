@@ -339,3 +339,9 @@
   text-decoration: line-through;
   text-decoration-color: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
 }
+
+/* While a drag paints the checkboxes, the pointer selects rows, not their text. */
+.study-index-list[data-dragging] {
+  cursor: default;
+  user-select: none;
+}
