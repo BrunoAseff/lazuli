@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, gt, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, gt, not, or, sql } from "drizzle-orm";
 
 import {
   AI_FREE_REGENERATIONS,
@@ -40,6 +40,8 @@ export type BeginAiGenerationInput = Pick<
   estimatedCredits: number;
   initialResult?: unknown;
   regenerationOfId: string | null;
+  /** A follow-up batch of this unapproved collection draft ("Gerar mais"). */
+  continuationOfId?: string | null;
 };
 
 export type CompleteAiGenerationInput = {
@@ -87,6 +89,12 @@ const collectionGenerationPredicate = (collectionId: string) => sql`(
   ${aiGeneration.result} ->> 'collectionId' = ${collectionId}
   or ${aiGeneration.result} -> 'job' ->> 'collectionId' = ${collectionId}
 )`;
+
+/** A follow-up batch never counts as the collection's draft: the draft it continues does. */
+const isContinuation = sql`coalesce(
+  ${aiGeneration.result} ->> 'continuesOperationId',
+  ${aiGeneration.result} -> 'job' ->> 'continuesOperationId'
+) is not null`;
 
 const getCollectionId = (result: unknown) => {
   if (!result || typeof result !== "object" || !("job" in result)) return null;
@@ -136,6 +144,7 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
           eq(aiGeneration.type, "collection_generation"),
           eq(aiGeneration.approvedItems, 0),
           collectionGenerationPredicate(collectionId),
+          not(isContinuation),
           or(eq(aiGeneration.status, "running"), gt(aiGeneration.expiresAt, now)),
         ),
       )
@@ -190,12 +199,19 @@ export const createAiGenerationStore = (database: Database): AiGenerationStore =
               eq(aiGeneration.type, "collection_generation"),
               eq(aiGeneration.approvedItems, 0),
               collectionGenerationPredicate(collectionId),
+              not(isContinuation),
               or(eq(aiGeneration.status, "running"), gt(aiGeneration.expiresAt, now)),
             ),
           )
           .orderBy(desc(aiGeneration.createdAt))
           .limit(1);
-        if (activeCollectionGeneration)
+        // "Gerar mais" adds a batch to the draft under review instead of replacing it: allowed
+        // only when the collection's open draft is the one being continued.
+        const continuesOpenDraft =
+          Boolean(input.continuationOfId) &&
+          activeCollectionGeneration?.id === input.continuationOfId &&
+          activeCollectionGeneration.status === "succeeded";
+        if (activeCollectionGeneration && !continuesOpenDraft)
           return { kind: "existing" as const, operation: activeCollectionGeneration };
       }
 

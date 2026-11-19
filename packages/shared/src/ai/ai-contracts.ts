@@ -196,6 +196,8 @@ export const createAiCollectionGenerationSchema = z
       .default([]),
     /** What was already proposed from these sources: the new batch must cover something else. */
     avoid: z.array(z.string().trim().min(1).max(500)).max(AI_MAX_AVOIDED_ITEMS).default([]),
+    /** "Gerar mais": the draft under review that this batch continues (it stays the draft). */
+    continuesOperationId: aiGenerationIdSchema.optional(),
   })
   .strict()
   .refine(
@@ -206,6 +208,8 @@ export const createAiCollectionGenerationSchema = z
   );
 
 export const aiCollectionDraftSchema = aiSelectionDraftSchema.extend({
+  /** Set on a "Gerar mais" batch: the draft it continues. */
+  continuesOperationId: aiGenerationIdSchema.nullable().default(null),
   requestedItems: z.number().int().min(1).max(AI_COLLECTION_MAX_ITEMS),
   sourceScope: z.enum(["document", "section"]),
   /** The other documents of a generation from several, with the text the model read. */
@@ -215,6 +219,11 @@ export const aiCollectionDraftSchema = aiSelectionDraftSchema.extend({
         documentId: z.uuid(),
         documentTitle: z.string().trim().max(100),
         documentRevision: z.number().int().nonnegative(),
+        /** The section read, when not the whole document. */
+        sourceBlockIds: z
+          .array(z.string().trim().min(1).max(128))
+          .max(AI_DOCUMENT_MAX_BLOCKS)
+          .default([]),
         sourceText: z.string().max(AI_DOCUMENT_MAX_TEXT_LENGTH),
       }),
     )

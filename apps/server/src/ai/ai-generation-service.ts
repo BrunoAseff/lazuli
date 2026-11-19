@@ -105,6 +105,8 @@ export type CollectionGenerationJob = {
   additionalSources?: Array<{ documentId: string; sourceBlockIds: string[] }>;
   /** Proposals already made from these sources, to be continued instead of repeated. */
   avoid?: string[];
+  /** "Gerar mais": the draft this batch continues. */
+  continuesOperationId?: string | null;
 };
 
 /** A prepared source document: the blocks as read, and its text for the review. */
@@ -559,6 +561,7 @@ export const createAiGenerationService = ({
         sourceBlockIds: input.sourceBlockIds,
         additionalSources: input.additionalSources ?? [],
         avoid: input.avoid ?? [],
+        continuesOperationId: input.continuesOperationId ?? null,
       });
       const operationId = randomUUID();
       const admission = await store.begin({
@@ -581,6 +584,7 @@ export const createAiGenerationService = ({
             sourceScope: input.sourceBlockIds.length ? "section" : "document",
             additionalSources: input.additionalSources ?? [],
             avoid: input.avoid ?? [],
+            continuesOperationId: input.continuesOperationId ?? null,
           } satisfies CollectionGenerationJob,
         },
         origin: "collection",
@@ -588,6 +592,7 @@ export const createAiGenerationService = ({
         provider: provider.name,
         requestedItems: input.quantity,
         regenerationOfId: null,
+        continuationOfId: input.continuesOperationId ?? null,
         requestedModel: provider.model,
         sourceIds: [
           input.documentId,
@@ -694,10 +699,12 @@ export const createAiGenerationService = ({
                 sources.length > 1
                   ? (sources[0]?.sourceText ?? "")
                   : blocks.map(({ text }) => text).join(" "),
-              additionalSources: sources.slice(1).map((source) => ({
+              continuesOperationId: job.continuesOperationId ?? null,
+              additionalSources: sources.slice(1).map((source, index) => ({
                 documentId: source.documentId,
                 documentTitle: source.documentTitle,
                 documentRevision: source.documentRevision,
+                sourceBlockIds: job.additionalSources?.[index]?.sourceBlockIds ?? [],
                 sourceText: source.sourceText,
               })),
               requestedItems: job.quantity,

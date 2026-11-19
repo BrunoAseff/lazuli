@@ -135,8 +135,13 @@ export const useDiscardAiCollectionGeneration = (collectionId: string) => {
 export const useApproveAiGeneration = (operationId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: ApproveAiSelectionGenerationInput) =>
-      approveAiGeneration(operationId, input),
+    // A review may hold proposals of more than one generation ("Gerar mais"): each saves
+    // under its own operation; without one, the hook's operation is used.
+    mutationFn: ({
+      operationId: target,
+      ...input
+    }: ApproveAiSelectionGenerationInput & { operationId?: string }) =>
+      approveAiGeneration(target ?? operationId, input),
     onSuccess: async () => {
       await Promise.all([
         client.invalidateQueries({ queryKey: aiKeys.balance }),

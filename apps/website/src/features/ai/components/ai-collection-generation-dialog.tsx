@@ -4,6 +4,7 @@ import {
   AI_COLLECTION_MAX_ITEMS,
   AI_CREDITS_PER_ITEM,
   AI_MAX_ADDITIONAL_SOURCES,
+  AI_MAX_AVOIDED_ITEMS,
   collectDocumentTextBlocks,
   getDocumentBlockText,
   PROJECT_MAX_PAGE_SIZE,
@@ -70,6 +71,7 @@ import {
 } from "../ai-review-session.ts";
 import type { AiEditableQuizProposal } from "./ai-quiz-proposal-editor.tsx";
 import { AiProposalReviewList } from "./ai-proposal-review-list.tsx";
+import { createAiCollectionGeneration } from "../api/ai-api.ts";
 import {
   useAiCollectionGeneration,
   useAiCreditBalance,
@@ -79,9 +81,16 @@ import {
   useLatestAiCollectionGeneration,
 } from "../api/ai-queries.ts";
 
-type EditableFlashcard = AiCollectionDraft["flashcards"][number] & { selected: boolean };
+/** `origin` is the generation a proposal came from when it is not the draft's own ("Gerar mais"). */
+type EditableFlashcard = AiCollectionDraft["flashcards"][number] & {
+  origin?: string;
+  selected: boolean;
+};
 type EditableQuiz = AiCollectionDraft["quizQuestions"][number] &
-  AiEditableQuizProposal & { selected: boolean };
+  AiEditableQuizProposal & { origin?: string; selected: boolean };
+
+/** How many proposals "Gerar mais" asks for at a time. */
+const MORE_QUANTITY = 5;
 
 const textContent = (text: string): DocumentBlock[] => [
   {
@@ -368,6 +377,10 @@ export const AiCollectionGenerationDialog = ({
     open && Boolean(fixedCollectionId) && !operationId,
   );
   const generation = useAiCollectionGeneration(operationId);
+  // "Gerar mais": another batch from the same sources, told what was already proposed.
+  const [moreOperationId, setMoreOperationId] = useState("");
+  const more = useAiCollectionGeneration(moreOperationId);
+  const appliedMore = useRef(new Set<string>());
   const create = useCreateAiCollectionGeneration(collectionId);
   const discard = useDiscardAiCollectionGeneration(collectionId);
   const approve = useApproveAiGeneration(operationId || draft?.operationId || "");
@@ -474,6 +487,70 @@ export const AiCollectionGenerationDialog = ({
     persistReview();
   }, [draft, flashcards, quizQuestions]);
 
+  useEffect(() => {
+    if (!moreOperationId) return;
+    if (more.error) {
+      toast.error(getApiErrorMessage(more.error, "Não foi possível gerar mais propostas."));
+      setMoreOperationId("");
+      return;
+    }
+    if (more.data?.status !== "completed") return;
+    const origin = more.data.draft.operationId;
+    // A batch is added once, however many times its result is seen.
+    if (appliedMore.current.has(origin)) return;
+    appliedMore.current.add(origin);
+    const added = more.data.draft;
+    setFlashcards((items) => [
+      ...items,
+      ...added.flashcards.map((item) => ({ ...item, origin, selected: true })),
+    ]);
+    setQuizQuestions((items) => [
+      ...items,
+      ...added.quizQuestions.map((item) => ({ ...item, origin, selected: true })),
+    ]);
+    const count = added.flashcards.length + added.quizQuestions.length;
+    toast.success(
+      count
+        ? `${count} ${count === 1 ? "proposta nova" : "propostas novas"} no fim da lista.`
+        : "A fonte não tem conceitos novos para mais propostas.",
+    );
+    setMoreOperationId("");
+  }, [more.data, more.error, moreOperationId]);
+
+  const requestMore = async () => {
+    if (!draft) return;
+    const avoid = [
+      ...flashcards.map(({ question }) => question),
+      ...quizQuestions.map(({ prompt }) => prompt),
+    ]
+      .map((text) => text.trim().slice(0, 500))
+      .filter(Boolean)
+      .slice(0, AI_MAX_AVOIDED_ITEMS);
+    try {
+      // Straight to the API: this batch must not become the collection's resumable draft.
+      const response = await createAiCollectionGeneration({
+        idempotencyKey: crypto.randomUUID(),
+        documentId: draft.documentId,
+        expectedRevision: draft.documentRevision,
+        kind: draft.kind,
+        collectionId: draft.collectionId,
+        quantity: MORE_QUANTITY,
+        guidance: "",
+        sourceBlockIds: draft.sourceScope === "section" ? draft.sourceBlockIds : [],
+        additionalSources: draft.additionalSources.map(({ documentId, sourceBlockIds }) => ({
+          documentId,
+          sourceBlockIds,
+        })),
+        avoid,
+        continuesOperationId: draft.operationId,
+      });
+      if (response.status === "completed") setMoreOperationId(response.draft.operationId);
+      else if (response.status !== "none") setMoreOperationId(response.operationId);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Não foi possível gerar mais propostas."));
+    }
+  };
+
   const requestGeneration = async () => {
     const [first, ...others] = sources;
     const firstInfo = first ? infos[first] : undefined;
@@ -512,58 +589,85 @@ export const AiCollectionGenerationDialog = ({
 
   const save = async () => {
     if (!draft || !selectedCount) return;
-    try {
-      const saved = await approve.mutateAsync({
-        expectedRevision: draft.documentRevision,
-        flashcards:
-          kind === "flashcard"
-            ? flashcards
-                .filter(({ selected }) => selected)
-                .map(({ answer, id, question, references }) => ({
-                  id,
-                  question: textContent(question),
-                  answer: textContent(answer),
-                  references: references.filter(
-                    ({ quote, scope }) => scope === "document" || quote.trim(),
-                  ),
-                }))
-            : [],
-        quizQuestions:
-          kind === "quizQuestion"
-            ? quizQuestions
-                .filter(({ selected }) => selected)
-                .map(({ content, correctOptionIndex, id, options, prompt, references }) => ({
-                  id,
-                  content: content ?? textContent(prompt),
-                  options: options.map((text, index) => ({
-                    id: crypto.randomUUID(),
-                    text,
-                    isCorrect: index === correctOptionIndex,
-                  })),
-                  references: references.filter(
-                    ({ quote, scope }) => scope === "document" || quote.trim(),
-                  ),
-                }))
-            : [],
-      });
-      toast.success(
-        `${studyItemCount(kind, saved.createdIds.length)} ${studyItemAgreement(kind, saved.createdIds.length, "adicionad")} à coleção.`,
+    const references = (items: EditableFlashcard["references"]) =>
+      items.filter(({ quote, scope }) => scope === "document" || quote.trim());
+    // Proposals of each generation are saved under that generation, the draft's own first.
+    const origins = [
+      ...new Set([
+        draft.operationId,
+        ...[...flashcards, ...quizQuestions]
+          .map(({ origin }) => origin)
+          .filter((origin): origin is string => Boolean(origin)),
+      ]),
+    ];
+    let created = 0;
+    for (const origin of origins) {
+      const ownFlashcards = flashcards.filter(
+        (item) => item.selected && (item.origin ?? draft.operationId) === origin,
       );
-      clearAiReviewSession(draft.operationId);
-      appliedOperationId.current = "";
-      setDraft(null);
-      setOperationId("");
-      onOpenChange(false);
-      onApproved?.();
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, "Não foi possível salvar os materiais."));
+      const ownQuizzes = quizQuestions.filter(
+        (item) => item.selected && (item.origin ?? draft.operationId) === origin,
+      );
+      if (!ownFlashcards.length && !ownQuizzes.length) continue;
+      try {
+        const saved = await approve.mutateAsync({
+          operationId: origin,
+          expectedRevision: draft.documentRevision,
+          flashcards: ownFlashcards.map(({ answer, id, question, references: items }) => ({
+            id,
+            question: textContent(question),
+            answer: textContent(answer),
+            references: references(items),
+          })),
+          quizQuestions: ownQuizzes.map(
+            ({ content, correctOptionIndex, id, options, prompt, references: items }) => ({
+              id,
+              content: content ?? textContent(prompt),
+              options: options.map((text, index) => ({
+                id: crypto.randomUUID(),
+                text,
+                isCorrect: index === correctOptionIndex,
+              })),
+              references: references(items),
+            }),
+          ),
+        });
+        created += saved.createdIds.length;
+        // What is saved leaves the review, so a failure later never saves it twice.
+        const savedIds = new Set(saved.createdIds);
+        setFlashcards((items) => items.filter(({ id }) => !savedIds.has(id)));
+        setQuizQuestions((items) => items.filter(({ id }) => !savedIds.has(id)));
+      } catch (error) {
+        if (created)
+          toast.success(
+            `${studyItemCount(kind, created)} ${studyItemAgreement(kind, created, "adicionad")} à coleção.`,
+          );
+        toast.error(getApiErrorMessage(error, "Não foi possível salvar os materiais."));
+        return;
+      }
     }
+    toast.success(
+      `${studyItemCount(kind, created)} ${studyItemAgreement(kind, created, "adicionad")} à coleção.`,
+    );
+    clearAiReviewSession(draft.operationId);
+    appliedOperationId.current = "";
+    setDraft(null);
+    setOperationId("");
+    onOpenChange(false);
+    onApproved?.();
   };
 
   const discardDraft = async () => {
     if (!draft) return false;
     try {
       await discard.mutateAsync(draft.operationId);
+      // Batches added with "Gerar mais" go too; one already gone is no reason to stop.
+      const origins = new Set(
+        [...flashcards, ...quizQuestions]
+          .map(({ origin }) => origin)
+          .filter((origin): origin is string => Boolean(origin) && origin !== draft.operationId),
+      );
+      await Promise.allSettled([...origins].map((origin) => discard.mutateAsync(origin)));
       clearAiReviewSession(draft.operationId);
       appliedOperationId.current = "";
       setDraft(null);
@@ -857,11 +961,30 @@ export const AiCollectionGenerationDialog = ({
           )}
           {draft && (
             <Button
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               onClick={() => setDiscardOpen(true)}
               variant="ghost"
             >
               <Trash2Icon /> Descartar propostas
+            </Button>
+          )}
+          {draft && (
+            <Button
+              className="sm:mr-auto"
+              disabled={
+                Boolean(moreOperationId) ||
+                create.isPending ||
+                (balance.data?.available ?? 0) < MORE_QUANTITY * AI_CREDITS_PER_ITEM
+              }
+              onClick={() => void requestMore()}
+              variant="ghost"
+            >
+              {moreOperationId ? (
+                <CircleNotchIcon className="animate-spin" />
+              ) : (
+                <PlusIcon aria-hidden="true" />
+              )}
+              {moreOperationId ? "Gerando mais…" : `Gerar mais ${MORE_QUANTITY}`}
             </Button>
           )}
           <Button onClick={() => onOpenChange(false)} type="button" variant="outline">
