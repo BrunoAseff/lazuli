@@ -64,14 +64,21 @@
   color: var(--muted-foreground);
   translate: 0 -50%;
 }
-/* Inset from the rounded corners, so nothing needs clipping. */
+/* Edge to edge along the base: an inner layer takes the toast's rounded shape and clips the
+   line to it, so the toast itself clips nothing (its hover area outside stays intact). */
+.mock-toast-time-clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
 .mock-toast-time {
   position: absolute;
-  right: 0.875rem;
+  right: 0;
   bottom: 0;
-  left: 0.875rem;
+  left: 0;
   height: 2px;
-  border-radius: 2px;
   background: color-mix(in oklab, var(--tone) 45%, transparent);
   transform-origin: left;
   animation: mock-toast-time 4s linear both;

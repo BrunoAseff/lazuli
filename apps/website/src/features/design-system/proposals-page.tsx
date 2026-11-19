@@ -84,7 +84,11 @@ const ToastMock = ({
         )}
       </span>
       <XIcon className="mock-toast-close" />
-      {adjusted && <span className="mock-toast-time" />}
+      {adjusted && (
+        <span aria-hidden="true" className="mock-toast-time-clip">
+          <span className="mock-toast-time" />
+        </span>
+      )}
     </div>
   );
 };
