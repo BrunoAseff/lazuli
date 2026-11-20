@@ -10,14 +10,17 @@ import { spring } from "@/lib/motion.ts";
 export const MorphText = ({
   appear = false,
   className,
+  force = false,
   text,
 }: {
+  /** Morphs even with reduced motion on (for reviewing a moment). */
+  force?: boolean;
   /** Letters rise in on mount too (for a label that replaces other content). */
   appear?: boolean;
   className?: string;
   text: string;
 }) => {
-  const reduced = useReducedMotion();
+  const reduced = useReducedMotion() && !force;
   // Keyed by character and its occurrence, so a letter present before and after keeps its node.
   const seen = new Map<string, number>();
   // Grapheme-safe split, so accented letters and emoji stay whole.

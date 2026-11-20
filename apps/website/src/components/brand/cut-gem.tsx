@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { cn } from "@/lib/utils.ts";
 
 /*
@@ -86,14 +87,18 @@ const faceTone = (a: Point, b: Point, apex: Point) => {
 export const CutGem = ({
   cut,
   dull = 0,
+  glint,
   size = 72,
   className,
 }: {
   cut: number;
   dull?: number;
+  /** A band of light crossing the stone, 0 (before it) to 1 (past it); only for brand moments. */
+  glint?: number;
   size?: number;
   className?: string;
 }) => {
+  const clipId = useId();
   const t = Math.min(1, Math.max(0, cut));
   const outline = roughOutline.map(
     ([x, y], index) =>
@@ -150,6 +155,31 @@ export const CutGem = ({
         <path d={path([bottom, left, tLeft, tBottom])} fill="var(--facet-4)" />
         <path d={path(tablePoints)} fill="var(--facet-table)" opacity={tableShown} />
       </g>
+      {/* The glint: a soft band of light that crosses the stone, clipped to its outline. */}
+      {glint !== undefined && glint > 0 && glint < 1 && (
+        <>
+          <defs>
+            <clipPath id={clipId}>
+              <path d={path(outline)} />
+            </clipPath>
+            <linearGradient id={`${clipId}-band`} x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0" stopColor="white" stopOpacity="0" />
+              <stop offset="0.5" stopColor="white" stopOpacity="0.55" />
+              <stop offset="1" stopColor="white" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <g clipPath={`url(#${clipId})`}>
+            <rect
+              fill={`url(#${clipId}-band)`}
+              height="120"
+              transform={`translate(${-40 + glint * 120} -28) rotate(25)`}
+              width="22"
+              x="0"
+              y="0"
+            />
+          </g>
+        </>
+      )}
       {/* Polished: light runs along the upper-left edge and the pyrite fleck shows on the table. */}
       {polish > 0 && (
         <g opacity={polish}>
