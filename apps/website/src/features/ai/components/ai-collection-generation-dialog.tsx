@@ -1,3 +1,4 @@
+import { Spinner } from "@/components/ui/spinner.tsx";
 import {
   AI_DOCUMENT_MAX_BLOCKS,
   AI_DOCUMENT_MAX_TEXT_LENGTH,
@@ -12,7 +13,6 @@ import {
   type AiMaterialKind,
   type DocumentBlock,
 } from "@lazuli/shared";
-import { CircleNotchIcon } from "@/components/icons.tsx";
 import { AiCreditCost } from "./ai-credit-cost.tsx";
 import { CreationWorkspace } from "./creation-workspace.tsx";
 import { SourceReading } from "@/features/references/components/source-reading.tsx";
@@ -1136,7 +1136,7 @@ export const AiCollectionGenerationAction = ({
       size={iconOnly ? "icon" : "sm"}
       variant="outline"
     >
-      {busy ? <CircleNotchIcon className="animate-spin" /> : <MagicWandIcon />}
+      {busy ? <Spinner aria-hidden="true" role="presentation" /> : <MagicWandIcon />}
       {!iconOnly && <MorphText text={label} />}
       {/* Proposals waiting for review must be visible even when the action is only an icon. */}
       {ready && iconOnly && (
@@ -1251,7 +1251,11 @@ export const CreateMaterialsButton = ({
         size="sm"
         variant="outline"
       >
-        {busy ? <CircleNotchIcon className="animate-spin" /> : <MagicWandIcon aria-hidden="true" />}
+        {busy ? (
+          <Spinner aria-hidden="true" role="presentation" />
+        ) : (
+          <MagicWandIcon aria-hidden="true" />
+        )}
         {compactLabel ? (
           <>
             <span className="sm:hidden">{compactLabel}</span>

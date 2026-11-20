@@ -1,3 +1,4 @@
+import { Spinner } from "@/components/ui/spinner.tsx";
 import { useEffect, useState } from "react";
 import type { StudyMetricsQuery, StudyMetricsView } from "@lazuli/shared";
 import { ptBR } from "date-fns/locale";
@@ -8,7 +9,6 @@ import {
   CheckIcon,
   ChevronsUpDownIcon,
   SlidersHorizontalIcon,
-  LoaderCircleIcon,
 } from "@/components/icons.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Calendar } from "@/components/ui/calendar.tsx";
@@ -387,7 +387,7 @@ export function MetricsUpdating({ active }: { active: boolean }) {
       aria-label="Atualizando estatísticas"
       className="inline-flex text-muted-foreground"
     >
-      <LoaderCircleIcon className="size-4 animate-spin motion-reduce:animate-none" />
+      <Spinner aria-hidden="true" role="presentation" className="size-4" />
     </span>
   ) : null;
 }

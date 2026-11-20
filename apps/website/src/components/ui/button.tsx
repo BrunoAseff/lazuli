@@ -4,7 +4,7 @@ import { Slot } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 import { buttonTransition } from "@/components/ui/ui-styles.ts";
-import { LoaderCircleIcon } from "@/components/icons.tsx";
+import { Spinner } from "@/components/ui/spinner.tsx";
 import { MorphText } from "@/components/motion/morph-text.tsx";
 
 const buttonVariants = cva(
@@ -104,11 +104,9 @@ function Button({
     );
 
   const iconOnly = typeof size === "string" && size.startsWith("icon");
-  pendingLabel ??= pendingLabelFor(textOf(children));
-  // While pending the label becomes the running verb, its letters rising in; idle, it is the
-  // plain label (no per-letter markup on every button).
-  const label =
-    pending && pendingLabel && !iconOnly ? <MorphText appear text={pendingLabel} /> : children;
+  // While pending, the button reads as busy: dimmed, a spinner in place of its icon and the
+  // running verb ("Salvando"), letters rising in. Idle, it is the plain label.
+  const runningLabel = pendingLabel ?? pendingLabelFor(textOf(children)) ?? textOf(children);
 
   return (
     <Comp
@@ -120,10 +118,9 @@ function Button({
       data-size={size}
       className={cn(
         buttonVariants({ variant, size, className }),
-        pending && "cursor-progress",
-        pending && (iconOnly || !pendingLabel) && "relative",
+        pending && "relative cursor-progress opacity-65",
       )}
-      // While pending the button stays focusable and readable; presses are simply ignored.
+      // It stays focusable and readable while busy; presses are simply ignored.
       disabled={pending ? false : disabled}
       onClick={(event) => {
         if (pending) {
@@ -134,18 +131,19 @@ function Button({
       }}
       {...props}
     >
-      {iconOnly || !pendingLabel ? (
+      {!pending ? (
+        children
+      ) : iconOnly || !runningLabel ? (
         <>
           {/* display: contents keeps the layout; hidden content still reserves its width. */}
-          <span style={{ display: "contents", visibility: pending ? "hidden" : undefined }}>
-            {children}
-          </span>
-          {pending && (
-            <LoaderCircleIcon aria-hidden="true" className="absolute inset-0 m-auto animate-spin" />
-          )}
+          <span style={{ display: "contents", visibility: "hidden" }}>{children}</span>
+          <Spinner aria-hidden="true" className="absolute inset-0 m-auto" role="presentation" />
         </>
       ) : (
-        label
+        <>
+          <Spinner aria-hidden="true" role="presentation" />
+          <MorphText appear text={runningLabel} />
+        </>
       )}
     </Comp>
   );

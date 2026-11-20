@@ -1,5 +1,6 @@
+import { Spinner } from "@/components/ui/spinner.tsx";
 import { REFERENCE_MAX_PAGE_SIZE, type ReferenceTarget } from "@lazuli/shared";
-import { FileTextIcon, Link2Icon, LoaderCircleIcon } from "@/components/icons.tsx";
+import { FileTextIcon, Link2Icon } from "@/components/icons.tsx";
 import type { Ref } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 
@@ -69,7 +70,7 @@ export const MaterialReferencesButton = ({
           <div className="grid min-h-0 content-start gap-6 overflow-y-auto px-6 py-5 lazuli-thin-scrollbar">
             {references.isPending && (
               <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-                <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" /> Carregando…
+                <Spinner aria-hidden="true" role="presentation" className="size-4" /> Carregando…
               </p>
             )}
             {references.data?.items.map((reference) => (

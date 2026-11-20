@@ -1,3 +1,4 @@
+import { Spinner } from "@/components/ui/spinner.tsx";
 import {
   AI_CREDITS_PER_ITEM,
   AI_SELECTION_MAX_ITEMS,
@@ -6,7 +7,6 @@ import {
   type DocumentBlock,
 } from "@lazuli/shared";
 import { ArrowClockwiseIcon, Trash2Icon } from "@/components/icons.tsx";
-import { CircleNotchIcon } from "@/components/icons.tsx";
 import { AiCreditCost } from "./ai-credit-cost.tsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -698,7 +698,11 @@ export const AiSelectionGenerationDialog = ({
             {(createGeneration.isPending || generation.data?.status === "running") && (
               <div className="absolute inset-0 grid place-items-center bg-background/80 backdrop-blur-sm">
                 <div className="text-center">
-                  <CircleNotchIcon className="mx-auto mb-3 size-7 animate-spin text-muted-foreground" />
+                  <Spinner
+                    aria-hidden="true"
+                    role="presentation"
+                    className="mx-auto mb-3 size-7 text-muted-foreground"
+                  />
                   <p className="font-medium">Criando propostas…</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Você pode fechar e continuar depois.

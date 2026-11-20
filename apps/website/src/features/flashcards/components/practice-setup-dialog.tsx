@@ -1,4 +1,4 @@
-import { LoaderCircleIcon } from "@/components/icons.tsx";
+import { Spinner } from "@/components/ui/spinner.tsx";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -89,7 +89,7 @@ export const PracticeSetupDialog = ({
           </DialogHeader>
           {availability.isPending ? (
             <div className="flex min-h-36 items-center justify-center">
-              <LoaderCircleIcon className="size-5 animate-spin" />
+              <Spinner aria-hidden="true" role="presentation" className="size-5" />
             </div>
           ) : availability.isError ? (
             <div className="border border-dashed p-6 text-center text-sm">
