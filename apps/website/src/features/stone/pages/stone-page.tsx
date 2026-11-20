@@ -342,67 +342,6 @@ const ShineMeter = ({ stone }: { stone: StoneResponse }) => {
   );
 };
 
-/** Days in a row with the goal; days off and today (still open) neither count nor break. */
-const streaks = (days: StoneDay[]) => {
-  let best = 0;
-  let run = 0;
-  for (const day of days) {
-    if (studied(day)) run += 1;
-    else if (day.status === "missed") run = 0;
-    best = Math.max(best, run);
-  }
-  return { best, current: run };
-};
-
-/** The goal, today against it, and what twelve weeks of it add up to. */
-const GoalPanel = ({ onEdit, stone }: { onEdit: () => void; stone: StoneResponse }) => {
-  const counted = stone.history.filter(({ status }) => ["met", "free", "missed"].includes(status));
-  const { best, current } = streaks(stone.history);
-  const practices = stone.history.reduce((sum, day) => sum + day.practices, 0);
-  const stats = [
-    { label: "Dias estudados", value: `${counted.filter(studied).length} de ${counted.length}` },
-    { label: "Sequência atual", value: `${current} ${current === 1 ? "dia" : "dias"}` },
-    { label: "Melhor sequência", value: `${best} ${best === 1 ? "dia" : "dias"}` },
-    { label: "Práticas", value: String(practices) },
-  ];
-  return (
-    <section
-      aria-labelledby="stone-goal-title"
-      className="surface-panel flex h-full flex-col gap-6 p-6 sm:p-8"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold" id="stone-goal-title">
-            Meta diária
-          </h2>
-          <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">
-            {goalText(stone.goal)} · {goalDaysText(stone.goal)}
-          </p>
-        </div>
-        <Button className="shrink-0" onClick={onEdit} size="sm" variant="outline">
-          <PencilIcon aria-hidden="true" /> Editar meta
-        </Button>
-      </div>
-      <GoalLine stone={stone} />
-      <ShineMeter stone={stone} />
-      {/* What the goal added up to, beside the twelve weeks it was counted over. */}
-      <div className="mt-auto grid gap-3">
-        <p className="text-xs text-muted-foreground">Nas últimas 12 semanas</p>
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4">
-          {stats.map((stat) => (
-            <div key={stat.label}>
-              <dt className="text-xs whitespace-nowrap text-muted-foreground">{stat.label}</dt>
-              <dd className="mt-1.5 font-heading text-2xl leading-none tabular-nums">
-                {stat.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </section>
-  );
-};
-
 /* History -------------------------------------------------------------------------------------- */
 
 const DayMark = ({ day, size }: { day: StoneDay; size: string }) => {
@@ -422,6 +361,7 @@ const DayMark = ({ day, size }: { day: StoneDay; size: string }) => {
   );
 };
 
+/** Twelve weeks of the goal, a column per week, Monday on top; each day explains itself. */
 const History = ({ days }: { days: StoneDay[] }) => {
   const weeks: StoneDay[][] = [];
   for (let index = 0; index < days.length; index += 7) weeks.push(days.slice(index, index + 7));
@@ -437,72 +377,92 @@ const History = ({ days }: { days: StoneDay[] }) => {
     if (named) lastLabel = index;
   });
   return (
-    <section
-      aria-labelledby="stone-history-title"
-      className="surface-panel flex h-full flex-col gap-5 p-6 sm:p-8"
-    >
-      <h2 className="text-sm font-semibold" id="stone-history-title">
-        Últimas 12 semanas
-      </h2>
-      <div className="flex flex-1 flex-col gap-5 md:flex-row md:items-end md:justify-between xl:flex-col xl:items-start xl:justify-start">
-        {/* Room around the grid, so a day growing under the pointer never makes it scroll. */}
-        <div className="-m-1.5 max-w-full min-w-0 overflow-x-auto p-1.5 xl:max-w-none xl:min-w-max xl:overflow-visible">
-          <div className="flex w-max gap-1.5">
-            <div className="grid grid-rows-[0.875rem_repeat(7,1.25rem)] gap-1 pr-1 text-[0.6875rem] text-muted-foreground">
-              <span />
-              {initials.map((initial, index) => (
-                <span className="grid place-items-center" key={index}>
-                  {initial}
-                </span>
-              ))}
-            </div>
-            {weeks.map((week, index) => (
-              <div
-                className="grid grid-rows-[0.875rem_repeat(7,1.25rem)] gap-1"
-                key={week[0]!.date}
-              >
-                <span className="w-5 overflow-visible text-[0.6875rem] whitespace-nowrap text-muted-foreground">
-                  {monthLabels[index]}
-                </span>
-                {week.map((day) => {
-                  const tip = dayTip(day);
-                  return (
-                    <Tip detail={tip.detail} key={day.date} title={tip.title}>
-                      <button
-                        aria-label={`${tip.title}: ${tip.detail}`}
-                        className={cn(
-                          "grid size-5 place-items-center rounded-[0.3125rem] outline-none transition-transform duration-150 hover:scale-125 focus-visible:ring-2 focus-visible:ring-ring/50",
-                          day.date === today && "ring-1 ring-primary/40",
-                        )}
-                        type="button"
-                      >
-                        <DayMark day={day} size="0.75rem" />
-                      </button>
-                    </Tip>
-                  );
-                })}
-              </div>
+    <div className="grid min-w-0 content-start gap-3">
+      <h3 className="text-xs text-foreground">Últimas 12 semanas</h3>
+      {/* Room around the grid, so a day growing under the pointer never makes it scroll. */}
+      <div className="-m-1.5 max-w-full min-w-0 overflow-x-auto p-1.5 xl:max-w-none xl:min-w-max xl:overflow-visible">
+        <div className="flex w-max gap-1.5">
+          <div className="grid grid-rows-[0.875rem_repeat(7,1.25rem)] gap-1 pr-1 text-[0.6875rem] text-muted-foreground">
+            <span />
+            {initials.map((initial, index) => (
+              <span className="grid place-items-center" key={index}>
+                {initial}
+              </span>
             ))}
           </div>
+          {weeks.map((week, index) => (
+            <div className="grid grid-rows-[0.875rem_repeat(7,1.25rem)] gap-1" key={week[0]!.date}>
+              <span className="w-5 overflow-visible text-[0.6875rem] whitespace-nowrap text-muted-foreground">
+                {monthLabels[index]}
+              </span>
+              {week.map((day) => {
+                const tip = dayTip(day);
+                return (
+                  <Tip detail={tip.detail} key={day.date} title={tip.title}>
+                    <button
+                      aria-label={`${tip.title}: ${tip.detail}`}
+                      className={cn(
+                        "grid size-5 place-items-center rounded-[0.3125rem] outline-none transition-transform duration-150 hover:scale-125 focus-visible:ring-2 focus-visible:ring-ring/50",
+                        day.date === today && "ring-1 ring-primary/40",
+                      )}
+                      type="button"
+                    >
+                      <DayMark day={day} size="0.75rem" />
+                    </button>
+                  </Tip>
+                );
+              })}
+            </div>
+          ))}
         </div>
-        <span className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground xl:mt-auto">
-          <span className="flex items-center gap-1.5">
-            <Facet state="active" style={{ "--facet-size": "0.5rem" } as CSSProperties} />
-            Dia estudado
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Facet state="idle" style={{ "--facet-size": "0.5rem" } as CSSProperties} />
-            Sem a meta
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full border border-dashed border-muted-foreground/50" />
-            Folga
-          </span>
-        </span>
       </div>
-    </section>
+      <span className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <Facet state="active" style={{ "--facet-size": "0.5rem" } as CSSProperties} />
+          Dia estudado
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Facet state="idle" style={{ "--facet-size": "0.5rem" } as CSSProperties} />
+          Sem a meta
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="size-2 rounded-full border border-dashed border-muted-foreground/50" />
+          Folga
+        </span>
+      </span>
+    </div>
   );
 };
+
+/**
+ * The goal in one panel: what it is, today against it and the shine on one side, and the twelve
+ * weeks it was kept on the other. The weeks are the goal's own record, so they live here.
+ */
+const GoalPanel = ({ onEdit, stone }: { onEdit: () => void; stone: StoneResponse }) => (
+  <section
+    aria-labelledby="stone-goal-title"
+    className="surface-panel grid gap-x-14 gap-y-8 p-6 sm:p-8 xl:grid-cols-[minmax(0,1fr)_auto]"
+  >
+    <div className="grid min-w-0 content-start gap-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold" id="stone-goal-title">
+            Meta diária
+          </h2>
+          <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">
+            {goalText(stone.goal)} · {goalDaysText(stone.goal)}
+          </p>
+        </div>
+        <Button className="shrink-0" onClick={onEdit} size="sm" variant="outline">
+          <PencilIcon aria-hidden="true" /> Editar meta
+        </Button>
+      </div>
+      <GoalLine stone={stone} />
+      <ShineMeter stone={stone} />
+    </div>
+    <History days={stone.history} />
+  </section>
+);
 
 /* Projects ------------------------------------------------------------------------------------- */
 
@@ -560,10 +520,7 @@ export const StonePage = () => {
       {stone.isPending ? (
         <div aria-busy="true" className="mt-6 grid gap-4">
           <Skeleton className="h-44" />
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_auto]">
-            <Skeleton className="h-72" />
-            <Skeleton className="h-72" />
-          </div>
+          <Skeleton className="h-72" />
         </div>
       ) : stone.isError || !stone.data ? (
         <div className="mt-6 flex items-center gap-3 text-sm text-muted-foreground">
@@ -577,15 +534,10 @@ export const StonePage = () => {
           <Reveal index={0}>
             <LevelPanel stone={stone.data} />
           </Reveal>
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_auto]">
-            <Reveal index={1}>
-              <GoalPanel onEdit={() => setEditing(true)} stone={stone.data} />
-            </Reveal>
-            <Reveal index={2}>
-              <History days={stone.data.history} />
-            </Reveal>
-          </div>
-          <Reveal index={3}>
+          <Reveal index={1}>
+            <GoalPanel onEdit={() => setEditing(true)} stone={stone.data} />
+          </Reveal>
+          <Reveal index={2}>
             <Projects stone={stone.data} />
           </Reveal>
           <StudyGoalDialog goal={stone.data.goal} onOpenChange={setEditing} open={editing} />
