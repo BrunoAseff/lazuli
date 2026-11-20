@@ -298,33 +298,36 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
 /* Goal ----------------------------------------------------------------------------------------- */
 
 /**
- * The shine is the goal kept: one facet per study day of the last seven, lit when the goal was
- * kept. The count beside it is all the text it needs.
+ * The shine as a scale of the person's own stone, from black and white (no study day kept) to
+ * full colour (every study day kept): one stone per possible count, the ones reached shown whole
+ * and the rest faded, like the level track.
  */
 const ShineMeter = ({ stone }: { stone: StoneResponse }) => {
-  const days = stone.week.filter(
-    ({ status, studyDay }) => studyDay && ["met", "free", "missed"].includes(status),
-  );
+  const steps = stone.plannedDays;
   return (
     <div className="grid gap-2.5">
       <p className="text-xs text-foreground">Brilho da pedra</p>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        {days.length > 0 && (
-          <ol className="flex gap-1.5">
-            {days.map((day) => {
-              const tip = dayTip(day);
+        {steps > 0 && (
+          <ol className="flex items-center gap-1">
+            {Array.from({ length: steps + 1 }, (_, kept) => {
+              const here = kept === stone.keptDays;
               return (
-                <li key={day.date}>
-                  <Tip detail={tip.detail} title={tip.title}>
+                <li key={kept}>
+                  <Tip
+                    detail={here ? "como sua pedra está agora" : "como ela fica"}
+                    title={`${kept} de ${steps} ${steps === 1 ? "dia de estudo" : "dias de estudo"}`}
+                  >
                     <button
-                      aria-label={`${tip.title}: ${tip.detail}`}
-                      className="grid size-5 place-items-center rounded-[0.3125rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      aria-current={here ? "step" : undefined}
+                      aria-label={`Brilho com ${kept} de ${steps} dias de estudo${here ? ", agora" : ""}`}
+                      className={cn(
+                        "grid place-items-center rounded-[var(--radius)] p-0.5 outline-none transition-opacity duration-200 focus-visible:ring-2 focus-visible:ring-ring/50",
+                        kept > stone.keptDays && "opacity-40 hover:opacity-100",
+                      )}
                       type="button"
                     >
-                      <Facet
-                        state={studied(day) ? "active" : "idle"}
-                        style={{ "--facet-size": "0.875rem" } as CSSProperties}
-                      />
+                      <StoneGem dull={1 - kept / steps} level={stone.level} size={24} />
                     </button>
                   </Tip>
                 </li>

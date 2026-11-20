@@ -27,9 +27,6 @@ export const FillingProgress = ({ value = 0, ...props }: ComponentProps<typeof P
   return <Progress value={shown} {...props} />;
 };
 
-/** The shine never goes all the way out: a dull stone still reads as the person's stone. */
-const MAX_DULL = 0.85;
-
 export const StoneGem = ({
   dull = 0,
   level,
@@ -38,7 +35,7 @@ export const StoneGem = ({
   dull?: number;
   level: number;
   size: number;
-}) => <CutGem cut={stoneLevelByNumber(level).cut} dull={dull * MAX_DULL} size={size} />;
+}) => <CutGem cut={stoneLevelByNumber(level).cut} dull={dull} size={size} />;
 
 export const levelTitle = (level: number) => {
   const item = stoneLevelByNumber(level);

@@ -91,9 +91,10 @@
   --sidebar-border: var(--line-subtle);
   --sidebar-ring: var(--ring);
   /* The gem: four facets lit from the top left, around a flat table; matte before it is cut. */
-  --gem-rough: #5d6589;
-  --gem-rough-light: #7c84a6;
-  --gem-rough-dark: #444b6b;
+  /* Raw lapis is blue: matte and darker than the cut gem, so its shine still reads at level 1. */
+  --gem-rough: #3d4f9a;
+  --gem-rough-light: #5a6cb6;
+  --gem-rough-dark: #2a3876;
   --facet-table: #7084e2;
   --facet-1: var(--lapis-bright);
   --facet-2: var(--lapis-main);
@@ -142,9 +143,9 @@
   --shadow-float: 0 4px 14px rgb(0 0 0 / 28%), 0 1px 3px rgb(0 0 0 / 18%);
   --sidebar: #0f111a;
   --sidebar-accent: #232737;
-  --gem-rough: #6f789c;
-  --gem-rough-light: #8c94b6;
-  --gem-rough-dark: #545c80;
+  --gem-rough: #5466b0;
+  --gem-rough-light: #7486c8;
+  --gem-rough-dark: #3d4d92;
   --facet-table: #c3cdfa;
   --facet-1: #dbe2ff;
   --facet-2: var(--lapis-light);

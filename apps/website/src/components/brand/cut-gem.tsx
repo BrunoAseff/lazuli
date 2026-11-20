@@ -119,7 +119,8 @@ export const CutGem = ({
       className={cn("shrink-0 overflow-visible transition-[filter] duration-500", className)}
       height={size}
       style={{
-        filter: dull ? `saturate(${1 - 0.7 * dull}) brightness(${1 - 0.12 * dull})` : undefined,
+        // At full dullness the stone is black and white: the colour is the shine.
+        filter: dull ? `saturate(${1 - dull}) brightness(${1 - 0.08 * dull})` : undefined,
       }}
       viewBox="0 0 64 64"
       width={size}
