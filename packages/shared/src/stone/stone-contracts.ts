@@ -134,11 +134,14 @@ export const DEFAULT_STUDY_GOAL: StudyGoal = {
 };
 
 /**
- * The shine: full with STONE_SHINE_DAYS studied days, or every scheduled day when fewer. With no
- * day to judge yet (a new account), the stone is not dulled.
+ * The shine of the last seven days: the stone shines with STONE_SHINE_DAYS studied days, and each
+ * day off the person chose excuses one. Days before the account are not excused: one rule, said
+ * the same way everywhere. Today counts once it is studied.
  */
-export const stoneDullFor = (studiedDays: number, scheduledDays: number) => {
-  if (scheduledDays === 0) return 0;
-  const needed = Math.min(STONE_SHINE_DAYS, Math.max(1, scheduledDays));
-  return Math.max(0, Math.min(1, (needed - studiedDays) / needed));
+export const stoneShine = (week: Array<Pick<StoneDay, "status">>) => {
+  const studied = week.filter(({ status }) => status === "met" || status === "free").length;
+  const daysOff = week.filter(({ status }) => status === "off").length;
+  const needed = Math.max(0, Math.min(STONE_SHINE_DAYS, week.length - daysOff));
+  const dull = needed ? Math.max(0, Math.min(1, (needed - studied) / needed)) : 0;
+  return { studied, needed, excused: STONE_SHINE_DAYS - needed, dull };
 };

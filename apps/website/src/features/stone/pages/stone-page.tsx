@@ -3,6 +3,7 @@ import {
   STONE_SHINE_DAYS,
   nextStoneLevel,
   stoneLevelByNumber,
+  stoneShine,
   type StoneDay,
   type StoneResponse,
 } from "@lazuli/shared";
@@ -82,7 +83,7 @@ const Reveal = ({
   return (
     <motion.div
       animate={{ opacity: 1, y: 0 }}
-      className={className}
+      className={cn("min-w-0", className)}
       initial={reduced ? false : { opacity: 0, y: 10 }}
       transition={{ ...motionTokens.spring.smooth, delay: index * 0.06 }}
     >
@@ -187,12 +188,13 @@ const LevelTrack = ({ stone }: { stone: StoneResponse }) => {
                       <CutGem cut={item.cut} size={36} />
                     </span>
                   </span>
+                  {/* On a phone only the level in focus is named; the caption says the rest. */}
                   <span
                     className={cn(
-                      "text-xs transition-colors",
+                      "text-xs whitespace-nowrap transition-colors",
                       item.level === shown
                         ? "font-semibold text-foreground"
-                        : "text-muted-foreground",
+                        : "text-muted-foreground max-sm:sr-only",
                     )}
                   >
                     {item.name}
@@ -229,10 +231,14 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
   const short = next && stone.notMastered < next.from - stone.mastered;
   const polishedAt = stone.levels.find(({ level }) => level === 5)?.reachedAt;
   return (
-    <section aria-labelledby="stone-level-title" className="surface-panel grid h-full gap-6 p-6">
-      <div className="flex items-center gap-6">
+    <section
+      aria-labelledby="stone-level-title"
+      className="surface-panel grid items-center gap-x-12 gap-y-8 p-6 sm:p-8 xl:grid-cols-[minmax(0,7fr)_minmax(0,6fr)]"
+    >
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
         <motion.div
           animate={{ opacity: 1, scale: 1 }}
+          className="shrink-0"
           initial={reduced ? false : { opacity: 0, scale: 0.9 }}
           transition={motionTokens.spring.smooth}
         >
@@ -243,9 +249,9 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
             <h2 className="font-heading text-2xl leading-snug" id="stone-level-title">
               {levelTitle(stone.level)}
             </h2>
-            <p className="mt-1 max-w-md text-[0.8125rem] text-muted-foreground">
+            <p className="mt-1 text-[0.8125rem] text-muted-foreground">
               {next
-                ? "O corte vem do que você domina e não volta atrás. O brilho vem da sua semana."
+                ? "O corte vem do que você domina e não volta atrás. O brilho, dos dias estudados na semana."
                 : "O último corte. O contador segue, e o brilho continua pedindo a sua semana."}
             </p>
           </div>
@@ -268,8 +274,9 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
           )}
         </div>
       </div>
+      <LevelTrack stone={stone} />
       {short && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius)] bg-muted/60 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius)] bg-muted/60 px-4 py-3 xl:col-span-2">
           <p className="text-[0.8125rem] text-muted-foreground">
             {stone.notMastered
               ? `Você tem ${stone.notMastered} ${stone.notMastered === 1 ? "item ainda não dominado" : "itens ainda não dominados"}. Para chegar a ${next.name}, crie mais materiais.`
@@ -280,56 +287,121 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
           </Button>
         </div>
       )}
-      <div className="pt-2">
-        <LevelTrack stone={stone} />
-      </div>
     </section>
   );
 };
 
 /* Goal ----------------------------------------------------------------------------------------- */
 
-const shineHint = (stone: StoneResponse) => {
-  if (stone.paused) return "A meta volta a contar quando você tiver flashcards ou questões.";
-  if (!stone.dull) return "A pedra está com brilho total.";
-  const scheduled = stone.week.filter(({ status }) =>
-    ["met", "free", "missed"].includes(status),
-  ).length;
-  const missing = Math.max(1, Math.min(STONE_SHINE_DAYS, scheduled) - stone.studiedDays);
-  return `Mais ${missing} ${missing === 1 ? "dia estudado devolve" : "dias estudados devolvem"} o brilho.`;
-};
-
-const GoalPanel = ({ onEdit, stone }: { onEdit: () => void; stone: StoneResponse }) => (
-  <section
-    aria-labelledby="stone-goal-title"
-    className="surface-panel grid h-full content-start gap-6 p-6"
-  >
-    <div className="flex items-start justify-between gap-4">
-      <div className="min-w-0">
-        <h2 className="text-sm font-semibold" id="stone-goal-title">
-          Meta diária
-        </h2>
-        <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">
-          {goalText(stone.goal)} · {goalDaysText(stone.goal)}
+/**
+ * The shine, made visible: four facets, one lit per studied day of the last seven, dashed for the
+ * ones a chosen day off excuses. The rule is written under it, so the meter never needs guessing.
+ */
+const ShineMeter = ({ stone }: { stone: StoneResponse }) => {
+  const shine = stoneShine(stone.week);
+  const lit = Math.min(shine.studied, shine.needed);
+  const missing = shine.needed - lit;
+  const state = stone.paused ? "pausado" : !missing ? "total" : lit ? "parcial" : "fosco";
+  return (
+    <div className="grid gap-2.5">
+      <div className="flex items-baseline justify-between gap-3 text-xs">
+        <span className="text-foreground">Brilho da pedra</span>
+        <span className="text-muted-foreground">{state}</span>
+      </div>
+      <div className="flex items-center gap-4">
+        <ol
+          aria-label={`${lit} de ${shine.needed} dias para o brilho total`}
+          className="flex gap-1.5"
+        >
+          {Array.from({ length: STONE_SHINE_DAYS }, (_, index) => (
+            <li className="grid size-5 place-items-center" key={index}>
+              {index >= shine.needed ? (
+                <span className="size-2.5 rounded-full border border-dashed border-muted-foreground/45" />
+              ) : (
+                <Facet
+                  state={index < lit ? "active" : "idle"}
+                  style={{ "--facet-size": "0.875rem" } as CSSProperties}
+                />
+              )}
+            </li>
+          ))}
+        </ol>
+        <p className="text-xs text-muted-foreground">
+          {stone.paused
+            ? "Volta a contar quando você tiver flashcards ou questões."
+            : missing
+              ? `${missing === 1 ? "Falta 1 dia estudado" : `Faltam ${missing} dias estudados`} nos últimos 7.`
+              : "Dias estudados suficientes nos últimos 7."}
         </p>
       </div>
-      <Button className="shrink-0" onClick={onEdit} size="sm" variant="outline">
-        <PencilIcon aria-hidden="true" /> Editar meta
-      </Button>
-    </div>
-    {/* Today's goal and the week read together, right under the goal they belong to. */}
-    <div className="grid gap-4">
-      <GoalLine stone={stone} />
-      <p className="grid gap-0.5 text-xs text-muted-foreground">
-        <span className="text-foreground">
-          {stone.studiedDays} {stone.studiedDays === 1 ? "dia estudado" : "dias estudados"} nos
-          últimos 7
-        </span>
-        <span>{shineHint(stone)}</span>
+      <p className="text-xs text-muted-foreground">
+        A pedra brilha com {STONE_SHINE_DAYS} dias estudados nos últimos 7. Cada dia de folga da sua
+        meta conta como um a menos.
       </p>
     </div>
-  </section>
-);
+  );
+};
+
+/** Days in a row with the goal; days off and today (still open) neither count nor break. */
+const streaks = (days: StoneDay[]) => {
+  let best = 0;
+  let run = 0;
+  for (const day of days) {
+    if (studied(day)) run += 1;
+    else if (day.status === "missed") run = 0;
+    best = Math.max(best, run);
+  }
+  return { best, current: run };
+};
+
+/** The goal, today against it, and what twelve weeks of it add up to. */
+const GoalPanel = ({ onEdit, stone }: { onEdit: () => void; stone: StoneResponse }) => {
+  const counted = stone.history.filter(({ status }) => ["met", "free", "missed"].includes(status));
+  const { best, current } = streaks(stone.history);
+  const practices = stone.history.reduce((sum, day) => sum + day.practices, 0);
+  const stats = [
+    { label: "Dias estudados", value: `${counted.filter(studied).length} de ${counted.length}` },
+    { label: "Sequência atual", value: `${current} ${current === 1 ? "dia" : "dias"}` },
+    { label: "Melhor sequência", value: `${best} ${best === 1 ? "dia" : "dias"}` },
+    { label: "Práticas", value: String(practices) },
+  ];
+  return (
+    <section
+      aria-labelledby="stone-goal-title"
+      className="surface-panel flex h-full flex-col gap-6 p-6 sm:p-8"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold" id="stone-goal-title">
+            Meta diária
+          </h2>
+          <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">
+            {goalText(stone.goal)} · {goalDaysText(stone.goal)}
+          </p>
+        </div>
+        <Button className="shrink-0" onClick={onEdit} size="sm" variant="outline">
+          <PencilIcon aria-hidden="true" /> Editar meta
+        </Button>
+      </div>
+      <GoalLine stone={stone} />
+      <ShineMeter stone={stone} />
+      {/* What the goal added up to, beside the twelve weeks it was counted over. */}
+      <div className="mt-auto grid gap-3">
+        <p className="text-xs text-muted-foreground">Nas últimas 12 semanas</p>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4">
+          {stats.map((stat) => (
+            <div key={stat.label}>
+              <dt className="text-xs whitespace-nowrap text-muted-foreground">{stat.label}</dt>
+              <dd className="mt-1.5 font-heading text-2xl leading-none tabular-nums">
+                {stat.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+};
 
 /* History -------------------------------------------------------------------------------------- */
 
@@ -350,24 +422,9 @@ const DayMark = ({ day, size }: { day: StoneDay; size: string }) => {
   );
 };
 
-/** Days in a row with the goal, days off and today (still open) neither count nor break. */
-const streaks = (days: StoneDay[]) => {
-  let best = 0;
-  let run = 0;
-  for (const day of days) {
-    if (studied(day)) run += 1;
-    else if (day.status === "missed") run = 0;
-    best = Math.max(best, run);
-  }
-  return { best, current: run };
-};
-
 const History = ({ days }: { days: StoneDay[] }) => {
   const weeks: StoneDay[][] = [];
   for (let index = 0; index < days.length; index += 7) weeks.push(days.slice(index, index + 7));
-  const counted = days.filter(({ status }) => ["met", "free", "missed"].includes(status));
-  const { best, current } = streaks(days);
-  const practices = days.reduce((sum, day) => sum + day.practices, 0);
   const today = days.at(-1)?.date;
   // A month is named on its first week, when there is room for the name before the next one.
   const monthLabels: string[] = [];
@@ -379,19 +436,56 @@ const History = ({ days }: { days: StoneDay[] }) => {
     monthLabels.push(named ? month : "");
     if (named) lastLabel = index;
   });
-  const stats = [
-    { label: "Dias estudados", value: `${counted.filter(studied).length} de ${counted.length}` },
-    { label: "Sequência atual", value: `${current} ${current === 1 ? "dia" : "dias"}` },
-    { label: "Melhor sequência", value: `${best} ${best === 1 ? "dia" : "dias"}` },
-    { label: "Práticas", value: String(practices) },
-  ];
   return (
-    <section aria-labelledby="stone-history-title" className="surface-panel p-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-        <h2 className="text-sm font-semibold" id="stone-history-title">
-          Últimas 12 semanas
-        </h2>
-        <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+    <section
+      aria-labelledby="stone-history-title"
+      className="surface-panel flex h-full flex-col gap-5 p-6 sm:p-8"
+    >
+      <h2 className="text-sm font-semibold" id="stone-history-title">
+        Últimas 12 semanas
+      </h2>
+      <div className="flex flex-1 flex-col gap-5 md:flex-row md:items-end md:justify-between xl:flex-col xl:items-start xl:justify-start">
+        {/* Room around the grid, so a day growing under the pointer never makes it scroll. */}
+        <div className="-m-1.5 max-w-full min-w-0 overflow-x-auto p-1.5 xl:max-w-none xl:min-w-max xl:overflow-visible">
+          <div className="flex w-max gap-1.5">
+            <div className="grid grid-rows-[0.875rem_repeat(7,1.25rem)] gap-1 pr-1 text-[0.6875rem] text-muted-foreground">
+              <span />
+              {initials.map((initial, index) => (
+                <span className="grid place-items-center" key={index}>
+                  {initial}
+                </span>
+              ))}
+            </div>
+            {weeks.map((week, index) => (
+              <div
+                className="grid grid-rows-[0.875rem_repeat(7,1.25rem)] gap-1"
+                key={week[0]!.date}
+              >
+                <span className="w-5 overflow-visible text-[0.6875rem] whitespace-nowrap text-muted-foreground">
+                  {monthLabels[index]}
+                </span>
+                {week.map((day) => {
+                  const tip = dayTip(day);
+                  return (
+                    <Tip detail={tip.detail} key={day.date} title={tip.title}>
+                      <button
+                        aria-label={`${tip.title}: ${tip.detail}`}
+                        className={cn(
+                          "grid size-5 place-items-center rounded-[0.3125rem] outline-none transition-transform duration-150 hover:scale-125 focus-visible:ring-2 focus-visible:ring-ring/50",
+                          day.date === today && "ring-1 ring-primary/40",
+                        )}
+                        type="button"
+                      >
+                        <DayMark day={day} size="0.75rem" />
+                      </button>
+                    </Tip>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground xl:mt-auto">
           <span className="flex items-center gap-1.5">
             <Facet state="active" style={{ "--facet-size": "0.5rem" } as CSSProperties} />
             Dia estudado
@@ -406,59 +500,6 @@ const History = ({ days }: { days: StoneDay[] }) => {
           </span>
         </span>
       </div>
-      <div className="mt-5 flex flex-wrap items-center gap-x-12 gap-y-6">
-        {/* Room around the grid, so a day growing under the pointer never makes it scroll. */}
-        <div className="-m-1.5 max-w-full overflow-x-auto p-1.5">
-          <div className="flex w-max gap-1.5">
-            <div className="grid grid-rows-[0.875rem_repeat(7,1.25rem)] gap-1 pr-1 text-[0.6875rem] text-muted-foreground">
-              <span />
-              {initials.map((initial, index) => (
-                <span className="grid place-items-center" key={index}>
-                  {initial}
-                </span>
-              ))}
-            </div>
-            {weeks.map((week, index) => {
-              const month = monthLabels[index];
-              return (
-                <div
-                  className="grid grid-rows-[0.875rem_repeat(7,1.25rem)] gap-1"
-                  key={week[0]!.date}
-                >
-                  <span className="w-5 overflow-visible text-[0.6875rem] whitespace-nowrap text-muted-foreground">
-                    {month}
-                  </span>
-                  {week.map((day) => {
-                    const tip = dayTip(day);
-                    return (
-                      <Tip detail={tip.detail} key={day.date} title={tip.title}>
-                        <button
-                          aria-label={`${tip.title}: ${tip.detail}`}
-                          className={cn(
-                            "grid size-5 place-items-center rounded-[0.3125rem] outline-none transition-transform duration-150 hover:scale-125 focus-visible:ring-2 focus-visible:ring-ring/50",
-                            day.date === today && "ring-1 ring-primary/40",
-                          )}
-                          type="button"
-                        >
-                          <DayMark day={day} size="0.75rem" />
-                        </button>
-                      </Tip>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <dl className="grid min-w-[16rem] flex-1 grid-cols-2 gap-x-8 gap-y-5">
-          {stats.map((stat) => (
-            <div className="border-l border-[var(--line-subtle)] pl-4" key={stat.label}>
-              <dt className="text-xs text-muted-foreground">{stat.label}</dt>
-              <dd className="mt-1 font-heading text-2xl leading-none tabular-nums">{stat.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
     </section>
   );
 };
@@ -466,31 +507,26 @@ const History = ({ days }: { days: StoneDay[] }) => {
 /* Projects ------------------------------------------------------------------------------------- */
 
 const Projects = ({ stone }: { stone: StoneResponse }) => (
-  <section aria-labelledby="stone-projects-title" className="surface-panel p-6">
+  <section aria-labelledby="stone-projects-title" className="surface-panel p-6 sm:p-8">
     <h2 className="text-sm font-semibold" id="stone-projects-title">
       Domínio por projeto
     </h2>
     {stone.projects.length ? (
-      <ul className="mt-4 grid gap-x-10 gap-y-2 md:grid-cols-2">
+      <ul className="mt-3 grid">
         {stone.projects.map((project) => (
           <li key={project.projectId}>
             <Link
-              className="group -mx-2 grid gap-2 rounded-[var(--radius)] px-2 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="group grid items-center gap-x-8 gap-y-2 rounded-[var(--radius)] py-3 outline-none focus-visible:ring-2 focus-visible:ring-ring/50 md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)_9rem]"
               to={`/documents/${project.projectId}`}
             >
-              <span className="flex items-center justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
-                  <span className="truncate group-hover:underline group-hover:underline-offset-4">
-                    {project.title}
-                  </span>
-                  <ArrowRightIcon
-                    aria-hidden="true"
-                    className="size-3.5 shrink-0 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100"
-                  />
+              <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
+                <span className="truncate group-hover:underline group-hover:underline-offset-4">
+                  {project.title}
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                  {project.mastered} de {project.total} dominados
-                </span>
+                <ArrowRightIcon
+                  aria-hidden="true"
+                  className="size-3.5 shrink-0 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100"
+                />
               </span>
               <FillingProgress
                 aria-label={`Domínio de ${project.title}`}
@@ -498,6 +534,9 @@ const Projects = ({ stone }: { stone: StoneResponse }) => (
                 max={Math.max(1, project.total)}
                 value={project.mastered}
               />
+              <span className="text-xs text-muted-foreground tabular-nums md:text-right">
+                {project.mastered} de {project.total} dominados
+              </span>
             </Link>
           </li>
         ))}
@@ -520,11 +559,11 @@ export const StonePage = () => {
       <h1 className="page-title">Sua pedra</h1>
       {stone.isPending ? (
         <div aria-busy="true" className="mt-6 grid gap-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+          <Skeleton className="h-44" />
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_auto]">
             <Skeleton className="h-72" />
             <Skeleton className="h-72" />
           </div>
-          <Skeleton className="h-56" />
         </div>
       ) : stone.isError || !stone.data ? (
         <div className="mt-6 flex items-center gap-3 text-sm text-muted-foreground">
@@ -534,18 +573,18 @@ export const StonePage = () => {
           </Button>
         </div>
       ) : (
-        <div className="mt-6 grid gap-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-            <Reveal index={0}>
-              <LevelPanel stone={stone.data} />
-            </Reveal>
+        <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-4">
+          <Reveal index={0}>
+            <LevelPanel stone={stone.data} />
+          </Reveal>
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_auto]">
             <Reveal index={1}>
               <GoalPanel onEdit={() => setEditing(true)} stone={stone.data} />
             </Reveal>
+            <Reveal index={2}>
+              <History days={stone.data.history} />
+            </Reveal>
           </div>
-          <Reveal index={2}>
-            <History days={stone.data.history} />
-          </Reveal>
           <Reveal index={3}>
             <Projects stone={stone.data} />
           </Reveal>

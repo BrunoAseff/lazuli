@@ -94,7 +94,7 @@ describe("weekShine", () => {
     ).toEqual({ studied: 1, dull: 0.75 });
   });
 
-  it("asks fewer days when most are days off, and nothing of a new account", () => {
+  it("asks fewer days when most are days off, and the same of a new account", () => {
     expect(
       weekShine((["off", "off", "off", "off", "met", "met", "off"] as StoneDayStatus[]).map(day))
         .dull,
@@ -103,6 +103,6 @@ describe("weekShine", () => {
       weekShine(
         (["none", "none", "none", "none", "none", "none", "open"] as StoneDayStatus[]).map(day),
       ).dull,
-    ).toBe(0);
+    ).toBe(1);
   });
 });

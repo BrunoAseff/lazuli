@@ -4,7 +4,7 @@ import {
   MASTERED_FLASHCARD_DAYS,
   MASTERED_QUESTION_DAYS,
   STONE_LEVELS,
-  stoneDullFor,
+  stoneShine,
   stoneLevelFor,
   type StoneContribution,
   type StoneDay,
@@ -92,9 +92,8 @@ export const buildStoneDays = ({
 
 /** Studied days of the last seven, and the days that could have been studied. */
 export const weekShine = (week: StoneDay[]) => {
-  const studied = week.filter(({ status }) => status === "met" || status === "free").length;
-  const scheduled = week.filter(({ status }) => ["met", "free", "missed"].includes(status)).length;
-  return { studied, dull: stoneDullFor(studied, scheduled) };
+  const { dull, studied } = stoneShine(week);
+  return { studied, dull };
 };
 
 const readGoals = async (database: Database, userId: string): Promise<GoalVersion[]> => {
