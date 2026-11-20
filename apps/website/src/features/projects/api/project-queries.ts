@@ -91,7 +91,7 @@ export const useDeleteProject = (projectId: string) => {
     onSuccess: async () => {
       queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["projects", "recent"] }),
+        refreshNavigation(queryClient),
         queryClient.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.studyMetrics }),
         queryClient.invalidateQueries({ queryKey: projectKeys.lists() }),
         queryClient.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcardCollections }),
