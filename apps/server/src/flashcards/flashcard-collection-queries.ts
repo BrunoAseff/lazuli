@@ -1,5 +1,4 @@
 import {
-  MASTERED_FLASHCARD_DAYS,
   type CreateFlashcardCollectionInput,
   type FlashcardCollectionListQuery,
   type UpdateFlashcardCollectionInput,
@@ -29,6 +28,7 @@ import {
   project,
 } from "../database/schema/index.ts";
 import { ownsProject } from "../projects/project-ownership.ts";
+import { flashcardMastered } from "../stone/mastery-sql.ts";
 import { deleteCards } from "./flashcard-queries.ts";
 import { isFavoriteSql } from "../favorites/favorite-queries.ts";
 
@@ -69,7 +69,8 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
       dueCards: sql<number>`count(*) filter (where ${lte(flashcard.dueAt, now)})`.mapWith(Number),
       // Mastered: reviewed into a long interval, not lapsed, and not due again yet.
       masteredCards:
-        sql<number>`count(*) filter (where ${flashcard.srsState} = 'review' and ${flashcard.scheduledDays} >= ${MASTERED_FLASHCARD_DAYS} and ${gt(flashcard.dueAt, now)})`.mapWith(
+        // Mastered and not due: a due card shows as "para revisar" first, since it needs a review.
+        sql<number>`count(*) filter (where ${flashcardMastered(flashcard.srsState, flashcard.scheduledDays)} and ${gt(flashcard.dueAt, now)})`.mapWith(
           Number,
         ),
       nextPracticeAt:

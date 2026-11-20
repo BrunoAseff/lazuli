@@ -51,9 +51,7 @@ export const studyGoalSchema = z
   })
   .strict();
 
-export const updateStudyGoalSchema = z
-  .object({ goal: studyGoalSchema, tz: z.string().trim().min(1).max(100).optional() })
-  .strict();
+export const updateStudyGoalSchema = z.object({ goal: studyGoalSchema }).strict();
 
 export const stoneQuerySchema = z
   .object({ tz: z.string().trim().min(1).max(100).optional() })
@@ -109,6 +107,8 @@ export const stoneSessionKindSchema = z.enum(["flashcards", "quiz"]);
 /** What one practice or quiz added: the goal of today, new mastered items and the level. */
 export const stoneContributionSchema = z.object({
   counted: z.boolean(),
+  /** The session ended moments ago: only then does its summary play the level-up. */
+  fresh: z.boolean(),
   goal: z.object({
     before: z.number().int().nonnegative(),
     after: z.number().int().nonnegative(),

@@ -83,12 +83,8 @@ export const createStoneRoutes = ({
       if (!session) return;
       const input = updateStudyGoalSchema.safeParse(request.body);
       if (!input.success) return sendValidationError(reply);
-      const timeZone = normalizeTimeZone(input.data.tz);
-      if (!timeZone) return sendValidationError(reply);
       try {
-        return {
-          goal: await updateStudyGoal(database, session.user.id, input.data.goal, timeZone),
-        };
+        return { goal: await updateStudyGoal(database, session.user.id, input.data.goal) };
       } catch (error) {
         request.log.error({ err: error, userId: session.user.id }, "study goal update failed");
         return reply

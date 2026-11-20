@@ -20,19 +20,19 @@ const shownKey = (kind: StoneSessionKind, id: string) => `lazuli:level-up:${kind
 
 /**
  * The level-up moment, over the summary of the session that raised the level: it opens by itself,
- * once per session (coming back to the summary does not replay it).
+ * once, and only right after the session (an old summary opened later does not replay it).
  */
 export const StoneLevelUp = ({ id, kind }: { id: string; kind: StoneSessionKind }) => {
   const contribution = useStoneContribution(kind, id);
   const data = contribution.data;
   const [closed, setClosed] = useState(() => {
     try {
-      return window.sessionStorage.getItem(shownKey(kind, id)) === "1";
+      return window.localStorage.getItem(shownKey(kind, id)) === "1";
     } catch {
       return false;
     }
   });
-  if (!data || data.level <= data.levelBefore || closed) return null;
+  if (!data || !data.fresh || data.level <= data.levelBefore || closed) return null;
   return (
     <LevelUpDialog
       from={data.levelBefore}
@@ -40,7 +40,7 @@ export const StoneLevelUp = ({ id, kind }: { id: string; kind: StoneSessionKind 
       onOpenChange={(open) => {
         if (open) return;
         try {
-          window.sessionStorage.setItem(shownKey(kind, id), "1");
+          window.localStorage.setItem(shownKey(kind, id), "1");
         } catch {
           // Without storage, it could show again on a later visit to this summary.
         }

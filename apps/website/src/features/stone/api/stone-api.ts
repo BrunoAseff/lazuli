@@ -7,7 +7,6 @@ import {
 } from "@lazuli/shared";
 import { z } from "zod";
 
-import { getClientTimeZone } from "@/features/dashboard/api/dashboard-api.ts";
 import { apiRequest as request } from "@/lib/api-client.ts";
 
 const query = (timeZone: string) => new URLSearchParams({ tz: timeZone }).toString();
@@ -30,5 +29,5 @@ export const fetchStoneContribution = (
 export const saveStudyGoal = (goal: StudyGoal) =>
   request("/api/stone/goal", z.object({ goal: studyGoalSchema }), {
     method: "PUT",
-    body: JSON.stringify({ goal, tz: getClientTimeZone() }),
+    body: JSON.stringify({ goal }),
   });

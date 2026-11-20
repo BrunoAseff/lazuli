@@ -1,19 +1,19 @@
 import { sql } from "drizzle-orm";
-import { check, date, integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { check, integer, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth.ts";
 
 /**
  * The person's daily goal: practices per day, what counts, and the study days (bit 0 = Monday).
- * One row per day it changed: a change applies from that day on, past days keep their goal.
+ * One row per person; every day, past ones too, is judged by it, so an edit shows at once.
+ * Defaults mirror DEFAULT_STUDY_GOAL and the limits STUDY_GOAL_MIN/MAX in the shared contracts.
  */
 export const userStudyGoal = pgTable(
   "user_study_goal",
   {
     userId: text("user_id")
-      .notNull()
+      .primaryKey()
       .references(() => user.id, { onDelete: "cascade" }),
-    effectiveFrom: date("effective_from", { mode: "string" }).notNull(),
     counts: text("counts", { enum: ["both", "flashcards", "quizzes"] })
       .default("both")
       .notNull(),
@@ -22,7 +22,6 @@ export const userStudyGoal = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.userId, table.effectiveFrom] }),
     check(
       "user_study_goal_counts_check",
       sql`${table.counts} in ('both', 'flashcards', 'quizzes')`,

@@ -50,6 +50,8 @@ export const LevelUpDialog = ({
   const [cut, setCut] = useState(before.cut);
   const [glint, setGlint] = useState<number>();
   const stone = useRef<HTMLDivElement>(null);
+  // When a press skipped the motion, the click that ends that same press is not "Continuar".
+  const skippedAt = useRef(0);
   const press = useAnimationControls();
   const timeline = useRef<{ timers: number[]; stops: Array<() => void> }>({
     timers: [],
@@ -123,7 +125,11 @@ export const LevelUpDialog = ({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent
         className="gap-0 overflow-hidden px-8 pt-10 pb-7 text-center sm:max-w-sm"
-        onPointerDown={() => stage !== "done" && finish()}
+        onPointerDown={() => {
+          if (stage === "done") return;
+          skippedAt.current = performance.now();
+          finish();
+        }}
         showCloseButton={false}
       >
         <div className="grid justify-items-center">
@@ -195,13 +201,18 @@ export const LevelUpDialog = ({
 
           <motion.div
             animate={{ opacity: shown("done") ? 1 : 0, y: shown("done") ? 0 : 6 }}
-            className="mt-7 w-full"
+            // Not pressable until it shows: the tap that skips the motion must not also close.
+            className={cn("mt-7 w-full", !shown("done") && "pointer-events-none")}
+            inert={!shown("done")}
             initial={false}
             transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
           >
             <Button
               className="w-full"
-              onClick={() => onOpenChange(false)}
+              onClick={() => {
+                if (performance.now() - skippedAt.current < 600) return;
+                onOpenChange(false);
+              }}
               size="lg"
               tabIndex={shown("done") ? 0 : -1}
             >

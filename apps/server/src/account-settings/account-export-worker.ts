@@ -271,7 +271,6 @@ const selectOwnedData = async (
     const [goals, stoneLevels] = await Promise.all([
       database
         .select({
-          effectiveFrom: userStudyGoal.effectiveFrom,
           counts: userStudyGoal.counts,
           practices: userStudyGoal.practices,
           days: userStudyGoal.days,
