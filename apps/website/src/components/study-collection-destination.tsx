@@ -104,7 +104,13 @@ export function StudyCollectionDestination({
         }
         value={value}
         labelAction={
-          <Button size="xs" disabled={disabled} variant="outline" onClick={() => setCreating(true)}>
+          <Button
+            className="h-auto px-0"
+            disabled={disabled}
+            onClick={() => setCreating(true)}
+            size="xs"
+            variant="link"
+          >
             <PlusIcon aria-hidden="true" /> Nova coleção
           </Button>
         }
