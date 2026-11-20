@@ -6,7 +6,7 @@ import {
   type StoneDay,
   type StoneResponse,
 } from "@lazuli/shared";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
 
@@ -47,7 +47,6 @@ const longDay = new Intl.DateTimeFormat("pt-BR", {
 const monthName = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
 const dayDate = (date: string) => new Date(`${date}T12:00:00Z`);
 const initials = ["S", "T", "Q", "Q", "S", "S", "D"];
-const weekdayOf = (date: string) => (dayDate(date).getUTCDay() + 6) % 7;
 
 const statusLabel: Record<StoneDay["status"], string> = {
   met: "meta cumprida",
@@ -114,67 +113,111 @@ const Tip = ({
 
 /* Level ---------------------------------------------------------------------------------------- */
 
-/** The five cuts on one line, filled in gold up to where the person is. */
+const levelNote = (stone: StoneResponse, level: number) => {
+  const item = stoneLevelByNumber(level);
+  const reachedAt = stone.levels.find((entry) => entry.level === level)?.reachedAt;
+  const next = nextStoneLevel(stone.level);
+  if (level === stone.level)
+    return next
+      ? `seu nível agora · faltam ${Math.max(0, next.from - stone.mastered)} para ${next.name}`
+      : "seu nível agora · o último corte";
+  if (level < stone.level)
+    return reachedAt ? `alcançado em ${shortDate.format(new Date(reachedAt))}` : "alcançado";
+  return `com ${item.from} dominados · faltam ${Math.max(0, item.from - stone.mastered)}`;
+};
+
+/**
+ * The five cuts on one line, filled in gold up to where the person is. Pointing at a level lights
+ * its stone, marks the way to it on the line and says, below, what it takes or when it came.
+ */
 const LevelTrack = ({ stone }: { stone: StoneResponse }) => {
+  const reduced = useReducedMotion();
+  const [pointed, setPointed] = useState<number | null>(null);
   const current = stoneLevelByNumber(stone.level);
   const next = nextStoneLevel(stone.level);
   const partial = next
     ? Math.min(1, Math.max(0, (stone.mastered - current.from) / (next.from - current.from)))
     : 0;
-  const filled = (stone.level - 1 + partial) / (STONE_LEVELS.length - 1);
+  const steps = STONE_LEVELS.length - 1;
+  const filled = (stone.level - 1 + partial) / steps;
+  const shown = pointed ?? stone.level;
+  const ahead = pointed && pointed > stone.level ? (pointed - 1) / steps : null;
+  const spring = reduced ? { duration: 0 } : motionTokens.spring.smooth;
   return (
-    <div className="relative">
-      {/* The line runs between the first and the last stone, behind them. */}
-      <div className="absolute top-[18px] right-[10%] left-[10%] h-0.5 rounded-full bg-muted">
-        <motion.div
-          animate={{ scaleX: filled }}
-          className="h-full origin-left rounded-full bg-[var(--gold)]"
-          initial={{ scaleX: 0 }}
-          transition={{ ...motionTokens.spring.smooth, delay: 0.25 }}
-        />
-      </div>
-      <ol className="relative grid grid-cols-5">
-        {STONE_LEVELS.map((item) => {
-          const reachedAt = stone.levels.find(({ level }) => level === item.level)?.reachedAt;
-          const reached = item.level <= stone.level;
-          const here = item.level === stone.level;
-          return (
-            <li className="grid justify-items-center" key={item.level}>
-              <Tip
-                detail={
-                  reached && reachedAt
-                    ? `alcançado em ${shortDate.format(new Date(reachedAt))}`
-                    : `com ${item.from} dominados · faltam ${item.from - stone.mastered}`
-                }
-                title={`Nível ${item.level} · ${item.name}`}
-              >
+    <div className="grid gap-4" onMouseLeave={() => setPointed(null)}>
+      <div className="relative">
+        {/* The line runs between the first and the last stone, behind them. */}
+        <div className="absolute top-[18px] right-[10%] left-[10%] h-0.5 rounded-full bg-muted">
+          <motion.div
+            animate={{
+              width: ahead ? `${ahead * 100}%` : `${filled * 100}%`,
+              opacity: ahead ? 1 : 0,
+            }}
+            className="absolute inset-y-0 left-0 rounded-full bg-primary/50"
+            initial={false}
+            transition={spring}
+          />
+          <motion.div
+            animate={{ scaleX: filled }}
+            className="absolute inset-0 origin-left rounded-full bg-[var(--gold)]"
+            initial={reduced ? false : { scaleX: 0 }}
+            transition={{ ...spring, delay: reduced ? 0 : 0.25 }}
+          />
+        </div>
+        <ol className="relative grid grid-cols-5">
+          {STONE_LEVELS.map((item) => {
+            const reached = item.level <= stone.level;
+            const lit = reached || item.level === pointed;
+            return (
+              <li className="grid justify-items-center" key={item.level}>
                 <button
-                  aria-current={here ? "step" : undefined}
-                  className="group grid justify-items-center gap-1.5 rounded-[var(--radius)] px-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  aria-current={item.level === stone.level ? "step" : undefined}
+                  aria-label={`Nível ${item.level} · ${item.name}: ${levelNote(stone, item.level)}`}
+                  className="grid justify-items-center gap-1.5 rounded-[var(--radius)] px-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  onBlur={() => setPointed(null)}
+                  onFocus={() => setPointed(item.level)}
+                  onMouseEnter={() => setPointed(item.level)}
                   type="button"
                 >
                   <span
                     className={cn(
-                      "rounded-full bg-card px-1 transition-transform duration-200 group-hover:-translate-y-0.5",
-                      !reached && "opacity-45",
+                      "rounded-full bg-card px-1 transition-opacity duration-200",
+                      !lit && "opacity-45",
                     )}
                   >
                     <CutGem cut={item.cut} size={36} />
                   </span>
                   <span
                     className={cn(
-                      "text-xs",
-                      here ? "font-semibold text-foreground" : "text-muted-foreground",
+                      "text-xs transition-colors",
+                      item.level === shown
+                        ? "font-semibold text-foreground"
+                        : "text-muted-foreground",
                     )}
                   >
                     {item.name}
                   </span>
                 </button>
-              </Tip>
-            </li>
-          );
-        })}
-      </ol>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+      <div aria-hidden="true" className="relative h-4 overflow-hidden text-center text-xs">
+        <AnimatePresence initial={false} mode="popLayout">
+          <motion.p
+            animate={{ opacity: 1, y: 0 }}
+            className="text-muted-foreground"
+            exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 6 }}
+            key={shown}
+            transition={motionTokens.spring.snappy}
+          >
+            <span className="text-foreground">{stoneLevelByNumber(shown).name}</span> ·{" "}
+            {levelNote(stone, shown)}
+          </motion.p>
+        </AnimatePresence>
+      </div>
     </div>
   );
 };
@@ -237,7 +280,7 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
           </Button>
         </div>
       )}
-      <div className="border-t border-[var(--line-subtle)] pt-5">
+      <div className="pt-2">
         <LevelTrack stone={stone} />
       </div>
     </section>
@@ -272,39 +315,14 @@ const GoalPanel = ({ onEdit, stone }: { onEdit: () => void; stone: StoneResponse
       </Button>
     </div>
     <GoalLine stone={stone} />
-    <div className="grid content-end gap-3">
-      <p className="text-xs text-foreground">Últimos 7 dias</p>
-      <ol className="grid grid-cols-7 gap-1.5">
-        {stone.week.map((day, index) => {
-          const tip = dayTip(day);
-          const today = index === stone.week.length - 1;
-          return (
-            <li key={day.date}>
-              <Tip detail={tip.detail} title={today ? "Hoje" : tip.title}>
-                <button
-                  className={cn(
-                    "grid w-full justify-items-center gap-1.5 rounded-[var(--radius)] border border-transparent py-2 outline-none transition-colors hover:border-[var(--line-subtle)] focus-visible:ring-2 focus-visible:ring-ring/50",
-                    today && "border-[var(--line-subtle)]",
-                  )}
-                  type="button"
-                >
-                  <span className="text-[0.6875rem] text-muted-foreground">
-                    {initials[weekdayOf(day.date)]}
-                  </span>
-                  <DayMark day={day} size="0.75rem" />
-                </button>
-              </Tip>
-            </li>
-          );
-        })}
-      </ol>
-      <p className="text-xs text-muted-foreground">
-        <span className="text-foreground">
-          {stone.studiedDays} {stone.studiedDays === 1 ? "dia estudado" : "dias estudados"}
-        </span>{" "}
-        · {shineHint(stone)}
-      </p>
-    </div>
+    {/* The days themselves are in the twelve weeks below; here, only what they mean. */}
+    <p className="grid gap-0.5 self-end text-xs text-muted-foreground">
+      <span className="text-foreground">
+        {stone.studiedDays} {stone.studiedDays === 1 ? "dia estudado" : "dias estudados"} nos
+        últimos 7
+      </span>
+      <span>{shineHint(stone)}</span>
+    </p>
   </section>
 );
 
