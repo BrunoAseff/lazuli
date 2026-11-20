@@ -5,7 +5,7 @@ import {
   type StoneResponse,
   type StudyGoal,
 } from "@lazuli/shared";
-import type { CSSProperties } from "react";
+import { useEffect, useState, type ComponentProps, type CSSProperties } from "react";
 
 import { Facet } from "@/components/brand-mark.tsx";
 import { CutGem } from "@/components/brand/cut-gem.tsx";
@@ -16,6 +16,16 @@ import { Progress } from "@/components/ui/progress.tsx";
 export const goldBar = "h-1.5 [&>[data-slot=progress-indicator]]:bg-[var(--gold)]";
 
 export const weekdays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+/** A bar that fills from empty when it appears, so progress reads as movement. */
+export const FillingProgress = ({ value = 0, ...props }: ComponentProps<typeof Progress>) => {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setShown(value ?? 0));
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+  return <Progress value={shown} {...props} />;
+};
 
 /** The shine never goes all the way out: a dull stone still reads as the person's stone. */
 const MAX_DULL = 0.85;
@@ -63,7 +73,7 @@ export const WeekFacets = ({ week }: { week: StoneDay[] }) => (
 );
 
 export const WeekLine = ({ stone }: { stone: StoneResponse }) => (
-  <div className="flex items-center gap-2 text-xs text-foreground">
+  <div className="flex items-center gap-2 text-xs whitespace-nowrap text-foreground">
     <WeekFacets week={stone.week} />
     {stone.studiedDays} {stone.studiedDays === 1 ? "dia estudado" : "dias estudados"} nos últimos 7
   </div>
@@ -81,13 +91,13 @@ export const MasteryLine = ({ level, mastered }: { level: number; mastered: numb
           <span className="tabular-nums">{mastered}</span>{" "}
           {mastered === 1 ? "item dominado" : "itens dominados"}
         </span>
-        <span className="text-muted-foreground tabular-nums">
+        <span className="whitespace-nowrap text-muted-foreground tabular-nums">
           {next
             ? `faltam ${Math.max(0, next.from - mastered)} para o nível ${next.level}`
             : "último nível"}
         </span>
       </div>
-      <Progress
+      <FillingProgress
         aria-label="Domínio até o próximo nível"
         className={goldBar}
         max={next ? next.from - from : 1}
@@ -113,9 +123,9 @@ export const GoalLine = ({ stone }: { stone: StoneResponse }) => {
     <div className="grid gap-1.5">
       <div className="flex justify-between gap-3 text-xs">
         <span className="text-foreground">Meta de hoje</span>
-        <span className="text-muted-foreground tabular-nums">{label}</span>
+        <span className="whitespace-nowrap text-muted-foreground tabular-nums">{label}</span>
       </div>
-      <Progress
+      <FillingProgress
         aria-label={`Meta de hoje: ${label}`}
         className="h-1.5"
         max={goal.practices}

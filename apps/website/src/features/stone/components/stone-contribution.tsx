@@ -4,12 +4,15 @@ import {
   type StoneContribution,
   type StoneSessionKind,
 } from "@lazuli/shared";
+import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 
+import { motionTokens } from "@/components/arc/motion-tokens.ts";
+
 import { CutGem } from "@/components/brand/cut-gem.tsx";
-import { Progress } from "@/components/ui/progress.tsx";
+import { ForwardLink } from "@/components/nav-link.tsx";
 import { useStoneContribution } from "../api/stone-queries.ts";
-import { goldBar, levelTitle } from "./stone-parts.tsx";
+import { FillingProgress, goldBar, levelTitle } from "./stone-parts.tsx";
 
 /* What a practice or quiz added, shown in its summary: the goal of today and the mastery. */
 
@@ -57,6 +60,7 @@ export const StoneLevelUp = ({ id, kind }: { id: string; kind: StoneSessionKind 
 };
 
 const GoalPart = ({ goal, counted }: Pick<StoneContribution, "goal" | "counted">) => {
+  const reduced = useReducedMotion();
   const before = Math.min(goal.before, goal.target);
   const after = Math.min(goal.after, goal.target);
   return (
@@ -76,12 +80,13 @@ const GoalPart = ({ goal, counted }: Pick<StoneContribution, "goal" | "counted">
           className="absolute inset-y-0 left-0 bg-primary/45"
           style={{ width: `${(before / goal.target) * 100}%` }}
         />
-        <span
+        {/* This session's part grows in after the rest is shown. */}
+        <motion.span
+          animate={{ width: `${((after - before) / goal.target) * 100}%` }}
           className="absolute inset-y-0 bg-primary"
-          style={{
-            left: `${(before / goal.target) * 100}%`,
-            width: `${((after - before) / goal.target) * 100}%`,
-          }}
+          initial={reduced ? false : { width: "0%" }}
+          style={{ left: `${(before / goal.target) * 100}%` }}
+          transition={{ ...motionTokens.spring.smooth, delay: 0.35 }}
         />
       </div>
     </div>
@@ -106,7 +111,7 @@ const MasteryPart = ({ level, mastered, masteredGained }: StoneContribution) => 
             : "último nível"}
         </span>
       </div>
-      <Progress
+      <FillingProgress
         aria-label="Domínio até o próximo nível"
         className={goldBar}
         max={next ? next.from - from : 1}
@@ -121,9 +126,14 @@ export const StoneContributionRow = ({ id, kind }: { id: string; kind: StoneSess
   const contribution = useStoneContribution(kind, id);
   if (!contribution.data) return null;
   return (
-    <div className="mt-6 grid gap-4 border-t pt-5 sm:grid-cols-2 sm:gap-6">
-      <GoalPart counted={contribution.data.counted} goal={contribution.data.goal} />
-      <MasteryPart {...contribution.data} />
+    <div className="mt-6 border-t pt-5">
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-6">
+        <GoalPart counted={contribution.data.counted} goal={contribution.data.goal} />
+        <MasteryPart {...contribution.data} />
+      </div>
+      <div className="mt-3 flex justify-end">
+        <ForwardLink to="/stone">Ver sua pedra</ForwardLink>
+      </div>
     </div>
   );
 };

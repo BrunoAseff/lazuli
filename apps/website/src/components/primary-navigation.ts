@@ -1,4 +1,4 @@
-import { ChartBarIcon, HouseIcon } from "@/components/icons.tsx";
+import { ChartBarIcon, GemIcon, HouseIcon } from "@/components/icons.tsx";
 import {
   FlashcardDomainIcon,
   ProjectClosedIcon,
@@ -13,4 +13,5 @@ export const primaryNavigation = [
   { label: "Flashcards", path: "/flashcards", Icon: FlashcardDomainIcon },
   { label: "Quizzes", path: "/quizzes", Icon: QuizDomainIcon },
   { label: "Estatísticas", path: "/statistics", Icon: ChartBarIcon },
+  { label: "Sua pedra", path: "/stone", Icon: GemIcon },
 ] as const;

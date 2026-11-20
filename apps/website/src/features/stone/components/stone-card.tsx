@@ -11,7 +11,7 @@ export const StoneCard = () => {
   if (stone.isPending)
     return (
       <div aria-busy="true" className="flex items-center gap-5">
-        <Skeleton className="size-[84px] shrink-0 rounded-[var(--radius-panel)]" />
+        <Skeleton className="size-[76px] shrink-0 rounded-[var(--radius-panel)]" />
         <div className="grid flex-1 gap-3">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-1.5 w-full" />
@@ -33,7 +33,7 @@ export const StoneCardView = ({
   stone: StoneResponse;
 }) => (
   <section aria-labelledby="stone-card-title" className="flex items-center gap-5">
-    <StoneGem dull={stone.dull} level={stone.level} size={84} />
+    <StoneGem dull={stone.dull} level={stone.level} size={76} />
     <div className="grid min-w-0 flex-1 gap-4">
       <div>
         <div className="flex items-baseline justify-between gap-3">

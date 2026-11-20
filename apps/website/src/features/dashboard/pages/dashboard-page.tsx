@@ -84,7 +84,7 @@ export const DashboardPage = () => {
 
         <section
           aria-label="Hoje"
-          className="surface-panel grid lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)]"
+          className="surface-panel grid lg:grid-cols-[minmax(0,1fr)_minmax(24rem,28rem)]"
         >
           <DashboardReviewQueue
             onStartPractice={setPracticeCollectionId}

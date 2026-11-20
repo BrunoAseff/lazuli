@@ -122,6 +122,7 @@ import {
   X as XData,
   XCircle as XCircleData,
   XIcon as XIconData,
+  Diamond02Icon as Diamond02IconData,
 } from "@hugeicons/core-free-icons";
 
 export type IconProps = Omit<HugeiconsIconProps, "icon" | "strokeWidth"> & {
@@ -139,6 +140,7 @@ export const AlertTriangleIcon = createIcon(Alert02IconData);
 export const ArchiveIcon = createIcon(ArchiveIconData);
 export const ArchiveRestoreIcon = createIcon(ArchiveRestoreIconData);
 export const ArrowClockwiseIcon = createIcon(ReloadIconData);
+export const GemIcon = createIcon(Diamond02IconData);
 export const ArrowDownIcon = createIcon(ArrowDownIconData);
 export const ArrowLeft = createIcon(ArrowLeftData);
 export const ArrowLeftIcon = createIcon(ArrowLeftIconData);

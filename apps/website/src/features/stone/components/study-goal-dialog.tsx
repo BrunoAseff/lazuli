@@ -2,6 +2,7 @@ import { STUDY_GOAL_MAX, STUDY_GOAL_MIN, type StudyGoal } from "@lazuli/shared";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { MinusIcon, PlusIcon } from "@/components/icons.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import { Label } from "@/components/ui/label.tsx";
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group.tsx";
 import { ViewSelector } from "@/components/view-selector.tsx";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
+import { cn } from "@/lib/utils.ts";
 import { useSaveStudyGoal } from "../api/stone-queries.ts";
 import { goalUnit, weekdays } from "./stone-parts.tsx";
 
@@ -40,9 +42,17 @@ export const StudyGoalFields = ({
   const [custom, setCustom] = useState(
     () => !suggestions.some(({ value }) => value === goal.practices),
   );
+  // The custom number lives in its own card, so choosing it never adds a field to the dialog.
+  const [customValue, setCustomValue] = useState(() => (custom ? goal.practices : 4));
   const preset = custom
     ? "custom"
     : (suggestions.find(({ value }) => value === goal.practices)?.id ?? "custom");
+  const setCustomPractices = (value: number) => {
+    const practices = clamp(value);
+    setCustom(true);
+    setCustomValue(practices);
+    onChange({ ...goal, practices });
+  };
   return (
     <div className="grid gap-5 text-sm">
       <div className="grid gap-2">
@@ -70,7 +80,7 @@ export const StudyGoalFields = ({
           onValueChange={(id) => {
             const picked = suggestions.find((option) => option.id === id);
             setCustom(!picked);
-            onChange({ ...goal, practices: picked ? picked.value : Math.max(4, goal.practices) });
+            onChange({ ...goal, practices: picked ? picked.value : customValue });
           }}
           value={preset}
         >
@@ -82,24 +92,58 @@ export const StudyGoalFields = ({
               value={option.id}
             />
           ))}
-          <RadioCard description="Escolha o seu número." title="Personalizada" value="custom" />
-        </RadioGroup>
-        {preset === "custom" && (
-          <div className="flex items-center gap-2">
-            <Input
-              aria-label="Práticas por dia"
-              className="w-24"
-              max={STUDY_GOAL_MAX}
-              min={STUDY_GOAL_MIN}
-              onChange={(event) =>
-                onChange({ ...goal, practices: clamp(Number(event.target.value)) })
-              }
-              type="number"
-              value={goal.practices}
+          <div className="relative">
+            <RadioCard
+              className="pr-36"
+              description={`${goalUnit(goal, customValue).replace(/^./, (c) => c.toUpperCase())} por dia, de ${STUDY_GOAL_MIN} a ${STUDY_GOAL_MAX}.`}
+              title="Personalizada"
+              value="custom"
             />
-            <span className="text-muted-foreground">{goalUnit(goal, goal.practices)} por dia</span>
+            {/* Beside the card, not inside its label: the stepper chooses "Personalizada" too. */}
+            <div
+              className={cn(
+                "absolute top-1/2 right-3 inline-grid h-8 -translate-y-1/2 grid-cols-[2rem_2.5rem_2rem] overflow-hidden rounded-[var(--radius)] border border-input bg-card transition-opacity",
+                !custom && "opacity-60 hover:opacity-100 focus-within:opacity-100",
+              )}
+            >
+              <Button
+                aria-label="Menos uma prática por dia"
+                className="size-auto rounded-none border-0"
+                disabled={custom && customValue <= STUDY_GOAL_MIN}
+                onClick={() => setCustomPractices(customValue - 1)}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <MinusIcon aria-hidden="true" />
+              </Button>
+              <Input
+                aria-label="Práticas por dia, personalizada"
+                className="h-full rounded-none border-y-0 px-0 text-center tabular-nums focus-visible:relative"
+                inputMode="numeric"
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (Number.isFinite(value) && event.target.value !== "")
+                    setCustomPractices(value);
+                }}
+                onFocus={() => !custom && setCustomPractices(customValue)}
+                type="text"
+                value={customValue}
+              />
+              <Button
+                aria-label="Mais uma prática por dia"
+                className="size-auto rounded-none border-0"
+                disabled={custom && customValue >= STUDY_GOAL_MAX}
+                onClick={() => setCustomPractices(customValue + 1)}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <PlusIcon aria-hidden="true" />
+              </Button>
+            </div>
           </div>
-        )}
+        </RadioGroup>
       </div>
       <div className="grid gap-2">
         <Label asChild>
