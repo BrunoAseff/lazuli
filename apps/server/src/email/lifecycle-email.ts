@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { createTransactionalEmailHtml, escapeEmailHtml } from "./transactional-email.ts";
+import {
+  createTransactionalEmailHtml,
+  emailParagraph,
+  escapeEmailHtml,
+} from "./transactional-email.ts";
 import { createAccountExportEmail } from "./account-export-email.ts";
 
 export const lifecycleEmailKindSchema = z.enum([
@@ -101,7 +105,7 @@ export const createLifecycleEmail = (
     html: createTransactionalEmailHtml({
       title: content.title,
       preheader: content.body,
-      childrenHtml: `<p style="margin:0;font-size:16px;line-height:1.65">${escapeEmailHtml(greeting)}</p><p style="margin:16px 0 0;font-size:15px;line-height:1.65">${escapeEmailHtml(content.body)}</p>`,
+      childrenHtml: `${emailParagraph(escapeEmailHtml(greeting))}${emailParagraph(escapeEmailHtml(content.body))}`,
       footerHtml: "Esta mensagem confirma uma atividade da sua conta no Lazúli.",
       action: content.action && href ? { href, label: content.action.label } : undefined,
     }),

@@ -21,9 +21,9 @@ describe("transactional email", () => {
     expect(html).toContain("https://example.com/?a=1&amp;b=2");
     expect(html).toContain("Se o botão não funcionar");
     expect(html).toContain("Conteúdo confiável");
-    expect(html).toContain('align="center" cellspacing="0"');
-    expect(html).toContain("margin:28px auto 26px");
-    expect(html).toContain("background:#f2edee");
-    expect(html).toContain("background:#fffefd");
+    // The identity: paper page, white sheet, lapis action.
+    expect(html).toContain("background:#f3f4f6");
+    expect(html).toContain("background:#ffffff");
+    expect(html).toContain('bgcolor="#2a40b4"');
   });
 });
