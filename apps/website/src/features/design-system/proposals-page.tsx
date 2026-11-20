@@ -3,7 +3,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Facet } from "@/components/brand-mark.tsx";
 import { CutGem } from "@/components/brand/cut-gem.tsx";
 import { ContentPage } from "@/components/content-page.tsx";
-import { ArrowClockwiseIcon, PencilIcon } from "@/components/icons.tsx";
+import { ArrowClockwiseIcon, PencilIcon, SparklesIcon } from "@/components/icons.tsx";
 import { ForwardLink } from "@/components/nav-link.tsx";
 import { StudyStrip, type StudyStripSegment } from "@/components/study-collection-card.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -177,49 +177,27 @@ const LevelRow = ({ size }: { size: number }) => (
 
 type Goal = {
   counts: "both" | "flashcards" | "questions";
-  measure: "count" | "time";
+  /** Practices per day: a flashcard practice or a quiz, of a collection or a whole project. */
   value: number;
   days: boolean[];
 };
-const countsLabel = {
-  both: "revisões ou questões",
-  flashcards: "revisões de flashcards",
-  questions: "questões",
+const unitFor = (goal: Goal, value = goal.value) => {
+  const one = value === 1;
+  if (goal.counts === "questions") return one ? "quiz" : "quizzes";
+  if (goal.counts === "flashcards") return one ? "prática de flashcards" : "práticas de flashcards";
+  return one ? "prática ou quiz" : "práticas ou quizzes";
 };
-const goalText = (goal: Goal) =>
-  goal.measure === "time" ? `${goal.value} min` : `${goal.value} ${countsLabel[goal.counts]}`;
+const goalText = (goal: Goal) => `${goal.value} ${unitFor(goal)}`;
 const weekdays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
-/** Suggestions from the person's own data: what is due each day and their recent pace. */
-const suggestions = {
-  count: [
-    { id: "light", title: "Leve", value: 12, why: "Dá conta das revisões que vencem por dia." },
-    { id: "medium", title: "Média", value: 20, why: "As revisões do dia e alguns itens novos." },
-    { id: "intense", title: "Intensa", value: 35, why: "Acima do seu ritmo das últimas semanas." },
-  ],
-  time: [
-    { id: "light", title: "Leve", value: 10, why: "O tempo das revisões que vencem por dia." },
-    {
-      id: "medium",
-      title: "Média",
-      value: 20,
-      why: "Revisões do dia e um pouco de material novo.",
-    },
-    { id: "intense", title: "Intensa", value: 40, why: "Acima do seu ritmo das últimas semanas." },
-  ],
-};
+const suggestions = [
+  { id: "light", title: "Leve", value: 1, why: "Mantém o ritmo sem pesar." },
+  { id: "medium", title: "Média", value: 2, why: "Revisar o que vence e avançar um pouco." },
+  { id: "intense", title: "Intensa", value: 3, why: "Para semanas de prova." },
+];
 
 const GoalEditor = ({ goal, onChange }: { goal: Goal; onChange: (goal: Goal) => void }) => {
-  const options = suggestions[goal.measure];
-  const preset = options.find(({ value }) => value === goal.value)?.id ?? "custom";
-  const unit =
-    goal.measure === "time"
-      ? "minutos"
-      : goal.counts === "questions"
-        ? "questões"
-        : goal.counts === "flashcards"
-          ? "revisões"
-          : "revisões ou questões";
+  const preset = suggestions.find(({ value }) => value === goal.value)?.id ?? "custom";
   return (
     <div className="grid gap-5 text-sm">
       <div className="grid gap-2">
@@ -233,30 +211,9 @@ const GoalEditor = ({ goal, onChange }: { goal: Goal; onChange: (goal: Goal) => 
           options={[
             { value: "both", label: "Ambos" },
             { value: "flashcards", label: "Flashcards" },
-            { value: "questions", label: "Questões" },
+            { value: "questions", label: "Quizzes" },
           ]}
           value={goal.counts}
-        />
-      </div>
-      <div className="grid gap-2">
-        <Label asChild>
-          <p>Medir por</p>
-        </Label>
-        <ViewSelector
-          fullWidth
-          label="Medir por"
-          onChange={(value) =>
-            onChange({
-              ...goal,
-              measure: value as Goal["measure"],
-              value: suggestions[value as Goal["measure"]][1]!.value,
-            })
-          }
-          options={[
-            { value: "count", label: "Quantidade" },
-            { value: "time", label: "Tempo" },
-          ]}
-          value={goal.measure}
         />
       </div>
       <div className="grid gap-2">
@@ -266,16 +223,16 @@ const GoalEditor = ({ goal, onChange }: { goal: Goal; onChange: (goal: Goal) => 
         <RadioGroup
           className="grid gap-2"
           onValueChange={(id) => {
-            const picked = options.find((option) => option.id === id);
-            onChange({ ...goal, value: picked ? picked.value : goal.value + 1 });
+            const picked = suggestions.find((option) => option.id === id);
+            onChange({ ...goal, value: picked ? picked.value : 4 });
           }}
           value={preset}
         >
-          {options.map((option) => (
+          {suggestions.map((option) => (
             <RadioCard
               description={option.why}
               key={option.id}
-              title={`${option.title} · ${option.value} ${goal.measure === "time" ? "min" : unit}`}
+              title={`${option.title} · ${option.value} ${unitFor(goal, option.value)}`}
               value={option.id}
             />
           ))}
@@ -286,14 +243,18 @@ const GoalEditor = ({ goal, onChange }: { goal: Goal; onChange: (goal: Goal) => 
             <Input
               aria-label="Meta personalizada"
               className="w-24"
+              max={10}
               min={1}
               onChange={(event) =>
-                onChange({ ...goal, value: Math.max(1, Number(event.target.value) || 1) })
+                onChange({
+                  ...goal,
+                  value: Math.min(10, Math.max(1, Number(event.target.value) || 1)),
+                })
               }
               type="number"
               value={goal.value}
             />
-            <span className="text-muted-foreground">{unit} por dia</span>
+            <span className="text-muted-foreground">{unitFor(goal)} por dia</span>
           </div>
         )}
       </div>
@@ -325,8 +286,7 @@ const GoalEditor = ({ goal, onChange }: { goal: Goal; onChange: (goal: Goal) => 
         </p>
       </div>
       <p className="rounded-[var(--radius)] bg-muted/60 px-3 py-2.5 text-xs text-muted-foreground">
-        Um dia conta como estudado com {goalText(goal)}
-        {goal.measure === "count" ? ", ou quando você zera as revisões pendentes" : ""}.
+        Uma prática conta ao terminar ou depois de 20 respostas, o que vier primeiro.
       </p>
     </div>
   );
@@ -377,7 +337,7 @@ const StoneScreen = ({ goal, onEditGoal }: { goal: Goal; onEditGoal: () => void 
               <PencilIcon aria-hidden="true" /> Editar meta
             </Button>
           </div>
-          <GoalLine done={12} goal={goal} />
+          <GoalLine done={1} goal={goal} />
           <div className="flex items-center gap-2 text-xs text-foreground">
             <WeekFacets metDays={MET_DAYS} />
             {MET_DAYS} dias estudados nos últimos 7
@@ -496,7 +456,7 @@ const HomeCard = ({ goal }: { goal: Goal }) => {
             Nível {level.level} · {level.name}
           </p>
           <MasteryLine mastered={MASTERED} />
-          <GoalLine done={12} goal={goal} />
+          <GoalLine done={1} goal={goal} />
           <div className="flex items-center gap-2 text-xs text-foreground">
             <WeekFacets metDays={MET_DAYS} />
             {MET_DAYS} dias estudados nos últimos 7
@@ -552,7 +512,7 @@ const Contribution = ({
       <div className="flex justify-between gap-3 text-xs">
         <span className="text-foreground">Meta de hoje</span>
         <span className="text-muted-foreground tabular-nums">
-          {after >= goal.value ? "cumprida" : `${before} → ${after} de ${goal.value}`}
+          {after >= goal.value ? "cumprida" : `${after} de ${goal.value}`}
         </span>
       </div>
       <div className="relative h-1.5 overflow-hidden rounded-full bg-muted">
@@ -611,13 +571,55 @@ const stripGold: StudyStripSegment[] = [
   { count: 3, label: "novos", tone: "new" },
 ];
 
+/* 8 · Edge cases ------------------------------------------------------------------------------ */
+
+/** The level panel of "Sua pedra" for the two limits: little content, and past Polida. */
+const LimitPanel = ({ variant }: { variant: "short" | "beyond" }) => {
+  if (variant === "beyond") {
+    return (
+      <section className="surface-panel flex items-center gap-6 p-6">
+        <CutGem cut={1} size={84} />
+        <div className="grid min-w-0 flex-1 gap-3">
+          <p className="font-heading text-xl leading-snug">Nível 5 · Polida</p>
+          <div className="flex justify-between gap-3 text-xs">
+            <span className="text-foreground">
+              <span className="tabular-nums">612</span> itens dominados
+            </span>
+            <span className="text-muted-foreground">polida desde 3 mar.</span>
+          </div>
+          <Progress aria-label="Domínio" className={goldBar} max={1} value={1} />
+          <p className="text-xs text-muted-foreground">
+            O último corte. O contador segue, e o brilho continua pedindo a sua semana.
+          </p>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className="surface-panel flex items-center gap-6 p-6">
+      <CutGem cut={0.4} size={84} />
+      <div className="grid min-w-0 flex-1 gap-3">
+        <p className="font-heading text-xl leading-snug">Nível 2 · Desbastada</p>
+        <MasteryLine mastered={30} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            Você tem 8 itens ainda não dominados. Para chegar a Facetada, crie mais materiais.
+          </p>
+          <Button size="sm" variant="outline">
+            <SparklesIcon aria-hidden="true" /> Criar materiais
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 /* Page ---------------------------------------------------------------------------------------- */
 
 export default function ProposalsPage() {
   const [goal, setGoal] = useState<Goal>({
     counts: "both",
-    measure: "count",
-    value: 20,
+    value: 2,
     days: [true, true, true, true, true, true, false],
   });
   const [run, setRun] = useState(0);
@@ -635,7 +637,8 @@ export default function ProposalsPage() {
           <p className="mt-1 text-muted-foreground">
             Cada item que você passa a dominar soma. Um flashcard conta quando a revisão já o agenda
             para 21 dias ou mais; uma questão, quando você a acerta em duas tentativas, em dias
-            diferentes. O nível nunca cai.
+            diferentes. O nível nunca cai: esquecer um item tira ele do domínio do projeto, não da
+            pedra.
           </p>
         </div>
         <div>
@@ -648,8 +651,8 @@ export default function ProposalsPage() {
         <div>
           <p className="font-semibold">A meta é sua</p>
           <p className="mt-1 text-muted-foreground">
-            O que conta, se por quantidade ou por tempo, quanto por dia e em quais dias. Com
-            sugestões leve, média e intensa calculadas do seu próprio estudo.
+            Quantas práticas por dia (de flashcards, quizzes ou ambos) e em quais dias. Leve, média,
+            intensa ou o seu número.
           </p>
         </div>
       </section>
@@ -708,7 +711,27 @@ export default function ProposalsPage() {
       </Section>
 
       <Section
-        note="Abre em “Editar meta”, na tela “Sua pedra” (e em Configurações › Estudo). As sugestões vêm do que vence por dia na sua biblioteca e do seu ritmo recente; o resto é escolha sua. Experimente: a tela abaixo acompanha."
+        note="Os limites são os mesmos para todos: dominar 400 itens é dominar 400 itens. Uma porcentagem do seu conteúdo puniria quem cria material, porque cada item novo derrubaria o progresso."
+        title="Pouco conteúdo e depois de Polida"
+      >
+        <div className="grid items-start gap-8 lg:grid-cols-2">
+          <Option
+            label="Pouco conteúdo"
+            note="Quando faltam mais dominados do que itens ainda por dominar, a tela diz isso e oferece criar materiais."
+          >
+            <LimitPanel variant="short" />
+          </Option>
+          <Option
+            label="Depois de Polida"
+            note="O corte acaba, a gamificação não: o contador segue e o brilho continua dependendo do ritmo."
+          >
+            <LimitPanel variant="beyond" />
+          </Option>
+        </div>
+      </Section>
+
+      <Section
+        note="Abre em “Editar meta”, na tela “Sua pedra” (e em Configurações › Estudo). A meta conta práticas, não itens nem tempo. Experimente: a tela abaixo acompanha."
         title="Meta diária personalizável"
       >
         <div className="grid items-start gap-8 md:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
@@ -731,13 +754,23 @@ export default function ProposalsPage() {
           </div>
           <div className="grid content-start gap-3 text-sm text-muted-foreground">
             <p>
-              <span className="font-medium text-foreground">Por tempo:</span> conta o tempo dentro
-              de práticas e quizzes, não o tempo com o app aberto.
+              <span className="font-medium text-foreground">Práticas, não itens:</span> a meta não
+              depende do tamanho das suas coleções. Criar ou apagar material não a desajusta, e
+              ninguém precisa refazer um quiz só para bater um número.
             </p>
             <p>
-              <span className="font-medium text-foreground">Zerar as pendentes</span> continua
-              valendo como dia estudado na meta por quantidade, para que um dia com pouco a revisar
-              não pareça perdido.
+              <span className="font-medium text-foreground">Sem tempo:</span> tempo mede presença,
+              não estudo. Ficar parado e travar numa questão difícil contariam igual.
+            </p>
+            <p>
+              <span className="font-medium text-foreground">Prática:</span> praticar flashcards ou
+              fazer um quiz, de uma coleção ou do projeto inteiro. Conta ao terminar ou depois de 20
+              respostas, para uma coleção grande não deixar a meta pesada.
+            </p>
+            <p>
+              <span className="font-medium text-foreground">Dia sem o que fazer:</span> se nada
+              vence e não há quiz, o dia conta como cumprido. Sem conteúdo nenhum, a meta fica
+              pausada.
             </p>
             <p>
               <span className="font-medium text-foreground">Mudar a meta</span> vale de hoje em
@@ -775,14 +808,14 @@ export default function ProposalsPage() {
         <Button className="mb-4" onClick={() => setRun(run + 1)} size="xs" variant="outline">
           <ArrowClockwiseIcon aria-hidden="true" /> Repetir animação
         </Button>
-        <div className="grid items-start gap-8 md:grid-cols-2">
+        <div className="grid items-start gap-8 lg:grid-cols-2">
           <Option
             label="Sessão comum"
             note="Abaixo do resultado: a meta de hoje antes e depois, e os novos dominados até o próximo nível."
           >
             <SummaryShell>
               <SummaryHead />
-              <Contribution after={18} before={6} goal={goal} toNext={88} />
+              <Contribution after={1} before={0} goal={goal} toNext={88} />
             </SummaryShell>
           </Option>
           <Option
@@ -802,7 +835,7 @@ export default function ProposalsPage() {
               <div className="pt-6">
                 <SummaryHead />
               </div>
-              <Contribution after={24} before={18} goal={goal} toNext={100} />
+              <Contribution after={2} before={1} goal={goal} toNext={100} />
             </SummaryShell>
           </Option>
         </div>
