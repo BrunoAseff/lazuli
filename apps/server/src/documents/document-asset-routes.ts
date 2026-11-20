@@ -6,6 +6,8 @@ import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
 import { sendCommercialLimitError } from "../commercial/commercial-limit-errors.ts";
+import { createMutationAuthorizer } from "../routes/route-helpers.ts";
+import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
   bufferedImageSource,
@@ -34,11 +36,32 @@ export const createDocumentAssetRoutes = ({
   websiteUrl,
 }: Options): FastifyPluginAsync =>
   async function documentAssetRoutes(app) {
+    // Per person and per server process: uploads are generous, fetching from the web is tighter,
+    // so neither storage nor the remote import can be driven in a loop.
+    const authorizeUpload = createMutationAuthorizer(
+      auth,
+      websiteUrl,
+      createRequestRateLimiter({ limit: 60, windowMs: 10 * 60 * 1_000 }),
+      {
+        code: "RATE_LIMITED",
+        message:
+          "Muitas imagens enviadas em pouco tempo. Aguarde alguns minutos e tente novamente.",
+      },
+    );
+    const authorizeRemoteImport = createMutationAuthorizer(
+      auth,
+      websiteUrl,
+      createRequestRateLimiter({ limit: 20, windowMs: 10 * 60 * 1_000 }),
+      {
+        code: "RATE_LIMITED",
+        message:
+          "Muitas imagens importadas em pouco tempo. Aguarde alguns minutos e tente novamente.",
+      },
+    );
     app.post(
       "/api/projects/:projectId/documents/:documentId/assets/images",
       async (request, reply) => {
-        if (!requireTrustedOrigin(websiteUrl, request, reply)) return;
-        const session = await requireSession(auth, request, reply);
+        const session = await authorizeUpload(request, reply);
         if (!session) return;
         const { projectId, documentId } = parseDocumentParams(request);
         if (!projectId.success || !documentId.success) return documentValidationError(reply);
@@ -96,8 +119,7 @@ export const createDocumentAssetRoutes = ({
     app.post(
       "/api/projects/:projectId/documents/:documentId/assets/images/import",
       async (request, reply) => {
-        if (!requireTrustedOrigin(websiteUrl, request, reply)) return;
-        const session = await requireSession(auth, request, reply);
+        const session = await authorizeRemoteImport(request, reply);
         if (!session) return;
         const { projectId, documentId } = parseDocumentParams(request);
         const input = importDocumentImageSchema.safeParse(request.body);
