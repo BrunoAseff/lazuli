@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildReviewQueue,
-  buildStudyGoal,
   buildWeeklyActivity,
   selectDashboardContent,
 } from "./dashboard-queries.ts";
@@ -156,32 +155,5 @@ describe("dashboard query decisions", () => {
       total: 1,
     });
     expect(utc.days.at(-1)?.date).toBe("2026-10-22");
-  });
-
-  it("meets the daily goal with 20 actions, or with any study that cleared the reviews", () => {
-    const day = (date: string, total: number) => ({
-      date,
-      flashcardReviews: total,
-      quizAnswers: 0,
-      total,
-    });
-    const goal = buildStudyGoal(
-      [
-        day("2026-11-13", 0),
-        day("2026-11-14", 25),
-        day("2026-11-15", 6),
-        day("2026-11-16", 6),
-        day("2026-11-17", 20),
-        day("2026-11-18", 0),
-        day("2026-11-19", 3),
-      ],
-      [
-        { date: "2026-11-15", pending: 0 },
-        { date: "2026-11-16", pending: 4 },
-        { date: "2026-11-18", pending: 0 },
-      ],
-    );
-    expect(goal.target).toBe(20);
-    expect(goal.days.map(({ met }) => met)).toEqual([false, true, true, false, true, false, true]);
   });
 });

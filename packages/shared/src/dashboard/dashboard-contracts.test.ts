@@ -12,15 +12,6 @@ const ids = {
 };
 
 const response = {
-  studyGoal: {
-    target: 20,
-    days: Array.from({ length: 7 }, (_, index) => ({
-      date: `2026-10-${String(15 + index).padStart(2, "0")}`,
-      actions: index,
-      pending: 0,
-      met: index > 0,
-    })),
-  },
   reviewQueue: {
     totalDueReviews: 3,
     totalNewCards: 2,

@@ -1,4 +1,4 @@
-import { STUDY_GOAL_TARGET, type DashboardResponse, type DashboardWeeklyDay } from "@lazuli/shared";
+import type { DashboardResponse, DashboardWeeklyDay } from "@lazuli/shared";
 import {
   and,
   count,
@@ -91,7 +91,7 @@ type DailyMetric = {
 
 const utcDay = (value: Date) => value.toISOString().slice(0, 10);
 
-const dateKeyInTimeZone = (value: Date, timeZone: string) => {
+export const dateKeyInTimeZone = (value: Date, timeZone: string) => {
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "2-digit",
@@ -103,7 +103,7 @@ const dateKeyInTimeZone = (value: Date, timeZone: string) => {
   return `${part("year")}-${part("month")}-${part("day")}`;
 };
 
-const shiftDateKey = (date: string, days: number) => {
+export const shiftDateKey = (date: string, days: number) => {
   const [year, month, day] = date.split("-").map(Number);
   return utcDay(new Date(Date.UTC(year!, month! - 1, day!) + days * DAY_MS));
 };
@@ -134,29 +134,6 @@ export const buildWeeklyActivity = (
     flashcardRecallRate: flashcardTotal ? flashcardSuccessful / flashcardTotal : null,
     quizAccuracyRate: quizTotal ? quizSuccessful / quizTotal : null,
     totalItems: days.reduce((total, item) => total + item.total, 0),
-  };
-};
-
-/**
- * A day meets the goal with STUDY_GOAL_TARGET reviews or quiz answers, or with any study that left
- * no flashcard review pending (a small library can always be cleared, never padded to 20).
- */
-export const buildStudyGoal = (
-  days: DashboardWeeklyDay[],
-  pendingByDay: Array<{ date: string; pending: number }>,
-): DashboardResponse["studyGoal"] => {
-  const pending = new Map(pendingByDay.map((item) => [item.date, Number(item.pending)]));
-  return {
-    target: STUDY_GOAL_TARGET,
-    days: days.map(({ date, total }) => {
-      const left = pending.get(date) ?? 0;
-      return {
-        date,
-        actions: total,
-        pending: left,
-        met: total >= STUDY_GOAL_TARGET || (total > 0 && left === 0),
-      };
-    }),
   };
 };
 
@@ -496,115 +473,89 @@ export const getDashboard = async (
       .groupBy(sql`1`),
   ]);
 
-  const [
-    ownDocument,
-    generationProgress,
-    flashcardPractice,
-    quizPractice,
-    onboardingDismissal,
-    pendingByDay,
-  ] = await Promise.all([
-    database
-      .select({ documentId: projectItem.id, projectId: project.id })
-      .from(projectItem)
-      .innerJoin(
-        project,
-        and(
-          eq(project.id, projectItem.projectId),
-          eq(project.userId, userId),
-          eq(project.quotaExempt, false),
+  const [ownDocument, generationProgress, flashcardPractice, quizPractice, onboardingDismissal] =
+    await Promise.all([
+      database
+        .select({ documentId: projectItem.id, projectId: project.id })
+        .from(projectItem)
+        .innerJoin(
+          project,
+          and(
+            eq(project.id, projectItem.projectId),
+            eq(project.userId, userId),
+            eq(project.quotaExempt, false),
+          ),
+        )
+        .where(eq(projectItem.type, "document"))
+        .orderBy(desc(projectItem.updatedAt), desc(projectItem.id))
+        .limit(1),
+      database
+        .select({
+          approved:
+            sql<boolean>`coalesce(bool_or(${aiGeneration.approvedItems} > 0), false)`.mapWith(
+              Boolean,
+            ),
+          generated: sql<boolean>`coalesce(bool_or(${aiGeneration.validItems} > 0), false)`.mapWith(
+            Boolean,
+          ),
+        })
+        .from(aiGeneration)
+        .innerJoin(projectItem, sql`${aiGeneration.sourceIds}->>0 = ${projectItem.id}`)
+        .innerJoin(
+          project,
+          and(
+            eq(project.id, projectItem.projectId),
+            eq(project.userId, userId),
+            eq(project.quotaExempt, false),
+          ),
+        )
+        .where(
+          and(
+            eq(aiGeneration.userId, userId),
+            eq(aiGeneration.status, "succeeded"),
+            inArray(aiGeneration.type, relevantGenerationTypes),
+          ),
         ),
-      )
-      .where(eq(projectItem.type, "document"))
-      .orderBy(desc(projectItem.updatedAt), desc(projectItem.id))
-      .limit(1),
-    database
-      .select({
-        approved: sql<boolean>`coalesce(bool_or(${aiGeneration.approvedItems} > 0), false)`.mapWith(
-          Boolean,
-        ),
-        generated: sql<boolean>`coalesce(bool_or(${aiGeneration.validItems} > 0), false)`.mapWith(
-          Boolean,
-        ),
-      })
-      .from(aiGeneration)
-      .innerJoin(projectItem, sql`${aiGeneration.sourceIds}->>0 = ${projectItem.id}`)
-      .innerJoin(
-        project,
-        and(
-          eq(project.id, projectItem.projectId),
-          eq(project.userId, userId),
-          eq(project.quotaExempt, false),
-        ),
-      )
-      .where(
-        and(
-          eq(aiGeneration.userId, userId),
-          eq(aiGeneration.status, "succeeded"),
-          inArray(aiGeneration.type, relevantGenerationTypes),
-        ),
-      ),
-    database
-      .select({ id: flashcardPracticeSession.id })
-      .from(flashcardPracticeSession)
-      .innerJoin(
-        flashcardCollection,
-        and(
-          eq(flashcardCollection.id, flashcardPracticeSession.collectionId),
-          eq(flashcardCollection.userId, userId),
-        ),
-      )
-      .leftJoin(project, eq(project.id, flashcardCollection.projectId))
-      .where(
-        and(
-          eq(flashcardPracticeSession.userId, userId),
-          eq(flashcardPracticeSession.status, "completed"),
-          or(isNull(flashcardCollection.projectId), eq(project.quotaExempt, false)),
-        ),
-      )
-      .limit(1),
-    database
-      .select({ id: quizAttempt.id })
-      .from(quizAttempt)
-      .innerJoin(
-        quizCollection,
-        and(eq(quizCollection.id, quizAttempt.collectionId), eq(quizCollection.userId, userId)),
-      )
-      .leftJoin(project, eq(project.id, quizCollection.projectId))
-      .where(
-        and(
-          eq(quizAttempt.userId, userId),
-          eq(quizAttempt.status, "completed"),
-          or(isNull(quizCollection.projectId), eq(project.quotaExempt, false)),
-        ),
-      )
-      .limit(1),
-    database.query.userDashboardOnboarding.findFirst({
-      columns: { dismissedAt: true },
-      where: eq(userDashboardOnboarding.userId, userId),
-    }),
-    // Flashcard reviews left pending at the end of each of the last seven local days (or now, for
-    // today): the latest review before the cut-off says when each card was next due.
-    database.execute<{ date: string; pending: number }>(sql`
-      with days as (
-        select gs::date as day,
-          least(((gs::date + 1)::timestamp at time zone ${timeZone}), ${now.toISOString()}::timestamptz) as cutoff
-        from generate_series(${activityStartDay}::date, ${today}::date, interval '1 day') gs
-      )
-      select to_char(days.day, 'YYYY-MM-DD') as date, count(latest.flashcard_id)::int as pending
-      from days
-      left join lateral (
-        select distinct on (fr.flashcard_id) fr.flashcard_id, fr.next_due_at
-        from flashcard_review fr
-        join flashcard f on f.id = fr.flashcard_id and f.archived_at is null
-        join flashcard_collection c
-          on c.id = f.collection_id and c.user_id = ${userId} and c.archived_at is null
-        where fr.reviewed_at < days.cutoff
-        order by fr.flashcard_id, fr.reviewed_at desc
-      ) latest on latest.next_due_at <= days.cutoff
-      group by days.day
-      order by days.day`),
-  ]);
+      database
+        .select({ id: flashcardPracticeSession.id })
+        .from(flashcardPracticeSession)
+        .innerJoin(
+          flashcardCollection,
+          and(
+            eq(flashcardCollection.id, flashcardPracticeSession.collectionId),
+            eq(flashcardCollection.userId, userId),
+          ),
+        )
+        .leftJoin(project, eq(project.id, flashcardCollection.projectId))
+        .where(
+          and(
+            eq(flashcardPracticeSession.userId, userId),
+            eq(flashcardPracticeSession.status, "completed"),
+            or(isNull(flashcardCollection.projectId), eq(project.quotaExempt, false)),
+          ),
+        )
+        .limit(1),
+      database
+        .select({ id: quizAttempt.id })
+        .from(quizAttempt)
+        .innerJoin(
+          quizCollection,
+          and(eq(quizCollection.id, quizAttempt.collectionId), eq(quizCollection.userId, userId)),
+        )
+        .leftJoin(project, eq(project.id, quizCollection.projectId))
+        .where(
+          and(
+            eq(quizAttempt.userId, userId),
+            eq(quizAttempt.status, "completed"),
+            or(isNull(quizCollection.projectId), eq(project.quotaExempt, false)),
+          ),
+        )
+        .limit(1),
+      database.query.userDashboardOnboarding.findFirst({
+        columns: { dismissedAt: true },
+        where: eq(userDashboardOnboarding.userId, userId),
+      }),
+    ]);
 
   const content = selectDashboardContent({
     activeQuizAttempts,
@@ -658,6 +609,5 @@ export const getDashboard = async (
       steps,
     },
     weeklyActivity,
-    studyGoal: buildStudyGoal(weeklyActivity.days, pendingByDay),
   };
 };

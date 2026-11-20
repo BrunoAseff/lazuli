@@ -237,6 +237,8 @@ export const flashcardCollectionSummarySchema = z
     newCards: flashcardMetricSchema,
     studiedCards: flashcardMetricSchema,
     dueCards: flashcardMetricSchema,
+    /** Reviewed into a long interval and not due: the gold of the strip. */
+    masteredCards: flashcardMetricSchema.default(0),
     nextPracticeAt: z.iso.datetime().nullable(),
     reviewsLastSevenDays: flashcardMetricSchema,
     successRateLastSevenDays: z.number().min(0).max(1).nullable(),

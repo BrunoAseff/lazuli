@@ -1,7 +1,8 @@
-import type {
-  CreateFlashcardCollectionInput,
-  FlashcardCollectionListQuery,
-  UpdateFlashcardCollectionInput,
+import {
+  MASTERED_FLASHCARD_DAYS,
+  type CreateFlashcardCollectionInput,
+  type FlashcardCollectionListQuery,
+  type UpdateFlashcardCollectionInput,
 } from "@lazuli/shared";
 import {
   and,
@@ -66,6 +67,11 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
           Number,
         ),
       dueCards: sql<number>`count(*) filter (where ${lte(flashcard.dueAt, now)})`.mapWith(Number),
+      // Mastered: reviewed into a long interval, not lapsed, and not due again yet.
+      masteredCards:
+        sql<number>`count(*) filter (where ${flashcard.srsState} = 'review' and ${flashcard.scheduledDays} >= ${MASTERED_FLASHCARD_DAYS} and ${gt(flashcard.dueAt, now)})`.mapWith(
+          Number,
+        ),
       nextPracticeAt:
         sql<Date | null>`min(${flashcard.dueAt}) filter (where ${gt(flashcard.dueAt, now)})`.mapWith(
           flashcard.dueAt,
@@ -112,6 +118,7 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
       newCards: metrics?.newCards ?? 0,
       studiedCards: metrics?.studiedCards ?? 0,
       dueCards: metrics?.dueCards ?? 0,
+      masteredCards: metrics?.masteredCards ?? 0,
       nextPracticeAt: metrics?.nextPracticeAt ?? null,
       reviewsLastSevenDays: reviews?.reviewsLastSevenDays ?? 0,
       successRateLastSevenDays: reviews?.reviewsLastSevenDays

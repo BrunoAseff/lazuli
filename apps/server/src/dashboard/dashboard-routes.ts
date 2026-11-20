@@ -15,7 +15,7 @@ import { dismissDashboardOnboarding, getDashboard } from "./dashboard-queries.ts
 
 type DashboardRoutesOptions = { auth: Auth; database: Database; websiteUrl: string };
 
-const normalizeTimeZone = (value?: string) => {
+export const normalizeTimeZone = (value?: string) => {
   if (!value) return "UTC";
   try {
     return new Intl.DateTimeFormat("en-US", { timeZone: value }).resolvedOptions().timeZone;

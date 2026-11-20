@@ -25,6 +25,7 @@ import { createCommercialMaintenanceWorker } from "./commercial/commercial-maint
 import { createStripeBillingService } from "./commercial/stripe-billing-service.ts";
 import { createDatabase } from "./database/client.ts";
 import { createDashboardRoutes } from "./dashboard/dashboard-routes.ts";
+import { createStoneRoutes } from "./stone/stone-routes.ts";
 import { createStudyMetricsRoutes } from "./study-metrics/study-metrics-routes.ts";
 import { createDocumentRoutes } from "./documents/document-routes.ts";
 import { createDocumentAssetRoutes } from "./documents/document-asset-routes.ts";
@@ -153,6 +154,7 @@ export const buildApp = (env: ServerEnv) => {
     }),
   );
   app.register(createDashboardRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
+  app.register(createStoneRoutes({ auth, database: database.db, websiteUrl: env.WEBSITE_URL }));
   app.register(createStudyMetricsRoutes({ auth, database: database.db }));
   app.register(createAiCreditRoutes({ auth, service: aiCreditService }));
   app.register(
