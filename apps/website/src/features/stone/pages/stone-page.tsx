@@ -117,14 +117,9 @@ const Tip = ({
 const levelNote = (stone: StoneResponse, level: number) => {
   const item = stoneLevelByNumber(level);
   const reachedAt = stone.levels.find((entry) => entry.level === level)?.reachedAt;
-  const next = nextStoneLevel(stone.level);
-  if (level === stone.level)
-    return next
-      ? `seu nível agora · faltam ${Math.max(0, next.from - stone.mastered)} para ${next.name}`
-      : "seu nível agora · o último corte";
   if (level < stone.level)
     return reachedAt ? `alcançado em ${shortDate.format(new Date(reachedAt))}` : "alcançado";
-  return `com ${item.from} dominados · faltam ${Math.max(0, item.from - stone.mastered)}`;
+  return `a partir de ${item.from} dominados`;
 };
 
 /**
@@ -145,7 +140,7 @@ const LevelTrack = ({ stone }: { stone: StoneResponse }) => {
   const ahead = pointed && pointed > stone.level ? (pointed - 1) / steps : null;
   const spring = reduced ? { duration: 0 } : motionTokens.spring.smooth;
   return (
-    <div className="grid gap-4" onMouseLeave={() => setPointed(null)}>
+    <div className="relative" onMouseLeave={() => setPointed(null)}>
       <div className="relative">
         {/* The line runs between the first and the last stone, behind them. */}
         <div className="absolute top-[18px] right-[10%] left-[10%] h-0.5 rounded-full bg-muted">
@@ -205,7 +200,11 @@ const LevelTrack = ({ stone }: { stone: StoneResponse }) => {
           })}
         </ol>
       </div>
-      <div aria-hidden="true" className="relative h-4 overflow-hidden text-center text-xs">
+      {/* Over the panel's own padding, so an empty note at rest takes no room. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-full mt-3 h-4 overflow-hidden text-center text-xs"
+      >
         <AnimatePresence initial={false} mode="popLayout">
           <motion.p
             animate={{ opacity: 1, y: 0 }}
@@ -215,8 +214,13 @@ const LevelTrack = ({ stone }: { stone: StoneResponse }) => {
             key={shown}
             transition={motionTokens.spring.snappy}
           >
-            <span className="text-foreground">{stoneLevelByNumber(shown).name}</span> ·{" "}
-            {levelNote(stone, shown)}
+            {/* Only another level gets a note: the panel already says where the person is. */}
+            {shown !== stone.level && (
+              <>
+                <span className="text-foreground">{stoneLevelByNumber(shown).name}</span> ·{" "}
+                {levelNote(stone, shown)}
+              </>
+            )}
           </motion.p>
         </AnimatePresence>
       </div>
@@ -233,7 +237,7 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
   return (
     <section
       aria-labelledby="stone-level-title"
-      className="surface-panel grid items-center gap-x-12 gap-y-8 p-6 sm:p-8 xl:grid-cols-[minmax(0,7fr)_minmax(0,6fr)]"
+      className="surface-panel grid items-center gap-x-12 gap-y-8 px-6 pt-6 pb-8 sm:p-8 xl:grid-cols-[minmax(0,7fr)_minmax(0,6fr)]"
     >
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
         <motion.div
@@ -251,12 +255,25 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
             </h2>
             <p className="mt-1 text-[0.8125rem] text-muted-foreground">
               {next
-                ? "O corte vem do que você domina e não volta atrás. O brilho, dos dias estudados na semana."
-                : "O último corte. O contador segue, e o brilho continua pedindo a sua semana."}
+                ? "O corte vem do que você domina e não volta atrás."
+                : "O último corte. O contador segue."}
             </p>
           </div>
           {next ? (
-            <MasteryLine level={stone.level} mastered={stone.mastered} />
+            <div className="grid gap-3">
+              <MasteryLine level={stone.level} mastered={stone.mastered} />
+              {/* Not enough left to master for the next level: say where more comes from. */}
+              {short && (
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Crie mais materiais para chegar a {next.name}.
+                  </p>
+                  <Button asChild size="xs" variant="outline">
+                    <Link to="/documents">Ir para projetos</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="grid gap-1.5">
               <div className="flex justify-between gap-3 text-xs">
@@ -275,18 +292,6 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
         </div>
       </div>
       <LevelTrack stone={stone} />
-      {short && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius)] bg-muted/60 px-4 py-3 xl:col-span-2">
-          <p className="text-[0.8125rem] text-muted-foreground">
-            {stone.notMastered
-              ? `Você tem ${stone.notMastered} ${stone.notMastered === 1 ? "item ainda não dominado" : "itens ainda não dominados"}. Para chegar a ${next.name}, crie mais materiais.`
-              : `Tudo o que você tem já está dominado. Para chegar a ${next.name}, crie mais materiais.`}
-          </p>
-          <Button asChild size="sm" variant="outline">
-            <Link to="/documents">Ir para projetos</Link>
-          </Button>
-        </div>
-      )}
     </section>
   );
 };
@@ -295,7 +300,7 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
 
 /**
  * The shine, made visible: four facets, one lit per studied day of the last seven, dashed for the
- * ones a chosen day off excuses. The rule is written under it, so the meter never needs guessing.
+ * ones a chosen day off excuses, and one short line with the rule.
  */
 const ShineMeter = ({ stone }: { stone: StoneResponse }) => {
   const shine = stoneShine(stone.week);
@@ -329,15 +334,9 @@ const ShineMeter = ({ stone }: { stone: StoneResponse }) => {
         <p className="text-xs text-muted-foreground">
           {stone.paused
             ? "Volta a contar quando você tiver flashcards ou questões."
-            : missing
-              ? `${missing === 1 ? "Falta 1 dia estudado" : `Faltam ${missing} dias estudados`} nos últimos 7.`
-              : "Dias estudados suficientes nos últimos 7."}
+            : `Brilho total com ${shine.needed} ${shine.needed === 1 ? "dia estudado" : "dias estudados"} em 7${missing ? ` · ${missing === 1 ? "falta 1" : `faltam ${missing}`}` : ""}${shine.excused ? " (folgas contam a menos)" : ""}`}
         </p>
       </div>
-      <p className="text-xs text-muted-foreground">
-        A pedra brilha com {STONE_SHINE_DAYS} dias estudados nos últimos 7. Cada dia de folga da sua
-        meta conta como um a menos.
-      </p>
     </div>
   );
 };
@@ -378,11 +377,28 @@ const History = ({ days }: { days: StoneDay[] }) => {
   });
   return (
     <div className="grid min-w-0 content-start gap-3">
-      <h3 className="text-xs text-foreground">Últimas 12 semanas</h3>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1.5 xl:flex-nowrap">
+        <h3 className="text-xs text-foreground">Últimas 12 semanas</h3>
+        <span className="flex items-center gap-x-3 text-xs whitespace-nowrap text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Facet state="active" style={{ "--facet-size": "0.5rem" } as CSSProperties} />
+            Dia estudado
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Facet state="idle" style={{ "--facet-size": "0.5rem" } as CSSProperties} />
+            Sem a meta
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2 rounded-full border border-dashed border-muted-foreground/50" />
+            Folga
+          </span>
+        </span>
+      </div>
+
       {/* Room around the grid, so a day growing under the pointer never makes it scroll. */}
       <div className="-m-1.5 max-w-full min-w-0 overflow-x-auto p-1.5 xl:max-w-none xl:min-w-max xl:overflow-visible">
         <div className="flex w-max gap-1.5">
-          <div className="grid grid-rows-[0.875rem_repeat(7,1.25rem)] gap-1 pr-1 text-[0.6875rem] text-muted-foreground">
+          <div className="grid grid-rows-[0.875rem_repeat(7,1rem)] gap-1 pr-1 text-[0.6875rem] text-muted-foreground">
             <span />
             {initials.map((initial, index) => (
               <span className="grid place-items-center" key={index}>
@@ -391,8 +407,8 @@ const History = ({ days }: { days: StoneDay[] }) => {
             ))}
           </div>
           {weeks.map((week, index) => (
-            <div className="grid grid-rows-[0.875rem_repeat(7,1.25rem)] gap-1" key={week[0]!.date}>
-              <span className="w-5 overflow-visible text-[0.6875rem] whitespace-nowrap text-muted-foreground">
+            <div className="grid grid-rows-[0.875rem_repeat(7,1rem)] gap-1" key={week[0]!.date}>
+              <span className="w-4 overflow-visible text-[0.6875rem] whitespace-nowrap text-muted-foreground">
                 {monthLabels[index]}
               </span>
               {week.map((day) => {
@@ -402,12 +418,12 @@ const History = ({ days }: { days: StoneDay[] }) => {
                     <button
                       aria-label={`${tip.title}: ${tip.detail}`}
                       className={cn(
-                        "grid size-5 place-items-center rounded-[0.3125rem] outline-none transition-transform duration-150 hover:scale-125 focus-visible:ring-2 focus-visible:ring-ring/50",
+                        "grid size-4 place-items-center rounded-[0.25rem] outline-none transition-transform duration-150 hover:scale-125 focus-visible:ring-2 focus-visible:ring-ring/50",
                         day.date === today && "ring-1 ring-primary/40",
                       )}
                       type="button"
                     >
-                      <DayMark day={day} size="0.75rem" />
+                      <DayMark day={day} size="0.625rem" />
                     </button>
                   </Tip>
                 );
@@ -416,20 +432,6 @@ const History = ({ days }: { days: StoneDay[] }) => {
           ))}
         </div>
       </div>
-      <span className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <Facet state="active" style={{ "--facet-size": "0.5rem" } as CSSProperties} />
-          Dia estudado
-        </span>
-        <span className="flex items-center gap-1.5">
-          <Facet state="idle" style={{ "--facet-size": "0.5rem" } as CSSProperties} />
-          Sem a meta
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full border border-dashed border-muted-foreground/50" />
-          Folga
-        </span>
-      </span>
     </div>
   );
 };
@@ -443,7 +445,7 @@ const GoalPanel = ({ onEdit, stone }: { onEdit: () => void; stone: StoneResponse
     aria-labelledby="stone-goal-title"
     className="surface-panel grid gap-x-14 gap-y-8 p-6 sm:p-8 xl:grid-cols-[minmax(0,1fr)_auto]"
   >
-    <div className="grid min-w-0 content-start gap-6">
+    <div className="flex min-w-0 flex-col justify-between gap-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold" id="stone-goal-title">
