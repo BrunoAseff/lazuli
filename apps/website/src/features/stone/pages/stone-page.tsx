@@ -179,13 +179,13 @@ const LevelTrack = ({ stone }: { stone: StoneResponse }) => {
                   onMouseEnter={() => setPointed(item.level)}
                   type="button"
                 >
-                  <span
-                    className={cn(
-                      "rounded-full bg-card px-1 transition-opacity duration-200",
-                      !lit && "opacity-45",
-                    )}
-                  >
-                    <CutGem cut={item.cut} size={36} />
+                  {/* The white behind stays solid so the line never shows through a faded stone. */}
+                  <span className="rounded-full bg-card px-1">
+                    <span
+                      className={cn("block transition-opacity duration-200", !lit && "opacity-45")}
+                    >
+                      <CutGem cut={item.cut} size={36} />
+                    </span>
                   </span>
                   <span
                     className={cn(
@@ -300,7 +300,10 @@ const shineHint = (stone: StoneResponse) => {
 };
 
 const GoalPanel = ({ onEdit, stone }: { onEdit: () => void; stone: StoneResponse }) => (
-  <section aria-labelledby="stone-goal-title" className="surface-panel grid h-full gap-5 p-6">
+  <section
+    aria-labelledby="stone-goal-title"
+    className="surface-panel grid h-full content-start gap-6 p-6"
+  >
     <div className="flex items-start justify-between gap-4">
       <div className="min-w-0">
         <h2 className="text-sm font-semibold" id="stone-goal-title">
@@ -314,15 +317,17 @@ const GoalPanel = ({ onEdit, stone }: { onEdit: () => void; stone: StoneResponse
         <PencilIcon aria-hidden="true" /> Editar meta
       </Button>
     </div>
-    <GoalLine stone={stone} />
-    {/* The days themselves are in the twelve weeks below; here, only what they mean. */}
-    <p className="grid gap-0.5 self-end text-xs text-muted-foreground">
-      <span className="text-foreground">
-        {stone.studiedDays} {stone.studiedDays === 1 ? "dia estudado" : "dias estudados"} nos
-        últimos 7
-      </span>
-      <span>{shineHint(stone)}</span>
-    </p>
+    {/* Today's goal and the week read together, right under the goal they belong to. */}
+    <div className="grid gap-4">
+      <GoalLine stone={stone} />
+      <p className="grid gap-0.5 text-xs text-muted-foreground">
+        <span className="text-foreground">
+          {stone.studiedDays} {stone.studiedDays === 1 ? "dia estudado" : "dias estudados"} nos
+          últimos 7
+        </span>
+        <span>{shineHint(stone)}</span>
+      </p>
+    </div>
   </section>
 );
 
