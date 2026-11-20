@@ -41,6 +41,10 @@ import {
 } from "../api/flashcard-queries.ts";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 import { PracticeSetupDialog } from "../components/practice-setup-dialog.tsx";
+import {
+  StoneContributionRow,
+  StoneLevelUp,
+} from "@/features/stone/components/stone-contribution.tsx";
 
 const ratings: Array<{
   value: FlashcardRating;
@@ -347,6 +351,7 @@ const PracticeSummary = ({
         className="practice-stage practice-sheet result-summary"
         aria-labelledby="practice-summary-title"
       >
+        <StoneLevelUp id={session.id} kind="flashcards" />
         <div className="result-head">
           <div>
             <p className="practice-kicker">{completed ? "Sessão concluída" : "Sessão encerrada"}</p>
@@ -385,6 +390,7 @@ const PracticeSummary = ({
             tone: rating.value,
           }))}
         />
+        <StoneContributionRow id={session.id} kind="flashcards" />
       </section>
       {session.reviewedMaterials.some(({ referenceCount }) => referenceCount > 0) && (
         <section className="practice-stage practice-sheet" aria-labelledby="practice-sources-title">

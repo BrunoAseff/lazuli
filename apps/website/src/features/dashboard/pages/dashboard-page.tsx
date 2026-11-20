@@ -9,7 +9,7 @@ import { useDashboard } from "../api/dashboard-queries.ts";
 import { DashboardContinue } from "../components/dashboard-library.tsx";
 import { DashboardOnboarding } from "../components/dashboard-onboarding.tsx";
 import { DashboardReviewQueue } from "../components/dashboard-review-queue.tsx";
-import { DashboardStone } from "../components/dashboard-stone.tsx";
+import { StoneCard } from "@/features/stone/components/stone-card.tsx";
 import { getDashboardGreeting } from "../dashboard-copy.ts";
 
 const todayLabel = () =>
@@ -93,7 +93,7 @@ export const DashboardPage = () => {
           {/* Centred in its cell, so the stone never leaves a gap under itself. */}
           <div className="flex items-center border-t border-[var(--line-subtle)] p-6 lg:border-t-0 lg:border-l">
             <div className="w-full">
-              <DashboardStone bare goal={data.studyGoal} />
+              <StoneCard />
             </div>
           </div>
         </section>

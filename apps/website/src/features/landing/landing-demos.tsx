@@ -1,3 +1,4 @@
+import type { StoneDay, StoneResponse } from "@lazuli/shared";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useReducer, useRef, useState } from "react";
 
@@ -13,7 +14,7 @@ import { StudyReveal } from "@/components/study-reveal.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
-import { DashboardStone } from "@/features/dashboard/components/dashboard-stone.tsx";
+import { StoneCardView } from "@/features/stone/components/stone-card.tsx";
 import { GenerationPending } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import { cn } from "@/lib/utils.ts";
 import "@/components/study-practice.css";
@@ -32,22 +33,33 @@ import {
 } from "./practice-state.ts";
 
 /** Example days for the stone: dates only matter for their weekday names. */
-const exampleGoal = {
-  target: 20,
-  days: [
-    ["2026-11-13", 24, true],
-    ["2026-11-14", 0, false],
-    ["2026-11-15", 21, true],
-    ["2026-11-16", 30, true],
-    ["2026-11-17", 8, false],
-    ["2026-11-18", 22, true],
-    ["2026-11-19", 12, false],
-  ].map(([date, actions, met]) => ({
-    date: date as string,
-    actions: actions as number,
-    pending: met ? 0 : 3,
-    met: met as boolean,
-  })),
+/** An example stone: Facetada, a good week, today's goal half done. */
+const exampleWeek = [
+  ["2026-11-13", 2, "met"],
+  ["2026-11-14", 0, "missed"],
+  ["2026-11-15", 3, "met"],
+  ["2026-11-16", 2, "met"],
+  ["2026-11-17", 0, "off"],
+  ["2026-11-18", 2, "met"],
+  ["2026-11-19", 1, "open"],
+].map(([date, practices, status]) => ({
+  date: date as string,
+  practices: practices as number,
+  status: status as StoneDay["status"],
+}));
+const exampleStone: StoneResponse = {
+  level: 3,
+  mastered: 62,
+  notMastered: 40,
+  paused: false,
+  dull: 0,
+  studiedDays: 4,
+  goal: { counts: "both", practices: 2, days: [true, true, true, true, true, false, true] },
+  today: exampleWeek.at(-1)!,
+  week: exampleWeek,
+  history: exampleWeek,
+  levels: [],
+  projects: [],
 };
 
 /** Next review after each rating, as the app shows it for a card seen for the first time. */
@@ -340,4 +352,8 @@ const QuizDemo = () => {
 };
 
 /** Keep: the stone as it appears on the home page, with example days. */
-export const StoneDemo = () => <DashboardStone goal={exampleGoal} />;
+export const StoneDemo = () => (
+  <div className="surface-panel p-6">
+    <StoneCardView stone={exampleStone} />
+  </div>
+);

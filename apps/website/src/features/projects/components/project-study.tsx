@@ -43,6 +43,9 @@ import { QuizCollectionDialog } from "@/features/quizzes/components/quiz-collect
 import { QuizCollectionStrip } from "@/features/quizzes/components/quiz-collection-list.tsx";
 import { QuizStartDialog } from "@/features/quizzes/components/quiz-start-dialog.tsx";
 import { useProjectDocumentMaterials } from "@/features/references/api/reference-queries.ts";
+import { Progress } from "@/components/ui/progress.tsx";
+import { useStone } from "@/features/stone/api/stone-queries.ts";
+import { goldBar } from "@/features/stone/components/stone-parts.tsx";
 
 /*
  * The project's home: what to study now and the project's collections on top, then its documents,
@@ -149,6 +152,7 @@ const StudySummary = ({
           ) : null}
         </div>
       </div>
+      <ProjectMastery projectId={projectId} />
       {setupOpen && (
         <PracticeSetupDialog
           onOpenChange={(open) => !open && setSetupOpen(false)}
@@ -157,6 +161,31 @@ const StudySummary = ({
         />
       )}
     </>
+  );
+};
+
+/** How much of the project is mastered, in gold: the stone's view of this project. */
+const ProjectMastery = ({ projectId }: { projectId: string }) => {
+  const stone = useStone();
+  const project = stone.data?.projects.find((item) => item.projectId === projectId);
+  if (!project?.total) return null;
+  return (
+    <div className="-mt-2 grid gap-1.5">
+      <div className="flex justify-between gap-3 text-xs">
+        <span>
+          {project.mastered} de {project.total} itens dominados
+        </span>
+        <span className="text-muted-foreground tabular-nums">
+          {Math.round((project.mastered / project.total) * 100)}%
+        </span>
+      </div>
+      <Progress
+        aria-label="Itens dominados do projeto"
+        className={goldBar}
+        max={project.total}
+        value={project.mastered}
+      />
+    </div>
   );
 };
 

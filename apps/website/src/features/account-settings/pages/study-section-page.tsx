@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { StudyGoalSettings } from "@/features/stone/components/study-goal-settings.tsx";
 import { useStudyPreference, useUpdateStudyPreference } from "../api/account-settings-queries.ts";
 import {
   InlineFeedback,
@@ -56,6 +57,10 @@ export const StudySectionPage = () => {
   return (
     <div>
       <SettingsSectionHeader title="Estudo" />
+
+      <div className="mb-4">
+        <StudyGoalSettings />
+      </div>
 
       <SettingsSurface title="Retenção desejada">
         <p className="max-w-xl text-sm text-muted-foreground" id="retention-explanation">

@@ -23,6 +23,7 @@ const PublicPagePreview = import.meta.env.DEV
 const LegalPage = lazy(() => import("@/features/legal/legal-page.tsx"));
 const AccountOptionsPage = lazy(() => import("@/features/legal/account-options-page.tsx"));
 const DashboardPage = lazy(() => import("@/features/dashboard/pages/dashboard-page.tsx"));
+const StonePage = lazy(() => import("@/features/stone/pages/stone-page.tsx"));
 const StudyMetricsPage = lazy(() => import("@/features/study-metrics/study-metrics-page.tsx"));
 const LoginPage = lazy(() => import("@/features/auth/pages/login-page.tsx"));
 const RegisterPage = lazy(() => import("@/features/auth/pages/register-page.tsx"));
@@ -99,6 +100,7 @@ export const App = () => (
           {DesignSystemPage && <Route element={<DesignSystemPage />} path="system" />}
           {ProposalsPage && <Route element={<ProposalsPage />} path="system/propostas" />}
           <Route element={<DashboardPage />} path="dashboard" />
+          <Route element={<StonePage />} path="stone" />
           <Route element={<StudyMetricsPage />} path="statistics" />
           <Route element={<ProjectListPage />} path="documents" />
           <Route element={<FlashcardCollectionListPage />} path="flashcards" />

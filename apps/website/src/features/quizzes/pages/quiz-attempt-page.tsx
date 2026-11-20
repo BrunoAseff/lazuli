@@ -48,6 +48,10 @@ import {
   useQuizAttempt,
 } from "../api/quiz-queries.ts";
 import { useQuizCollection } from "../api/quiz-collection-queries.ts";
+import {
+  StoneContributionRow,
+  StoneLevelUp,
+} from "@/features/stone/components/stone-contribution.tsx";
 
 const formatDuration = (minutes: number) => {
   if (minutes < 60) return `${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
@@ -374,6 +378,7 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
         className="practice-stage practice-sheet result-summary"
         aria-labelledby="quiz-result-title"
       >
+        <StoneLevelUp id={attempt.id} kind="quiz" />
         <div className="result-head">
           <div>
             <p className="practice-kicker">Resultado da tentativa</p>
@@ -430,6 +435,7 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
             },
           ]}
         />
+        <StoneContributionRow id={attempt.id} kind="quiz" />
       </section>
       <section className="practice-stage practice-sheet" aria-labelledby="quiz-review-title">
         <header className="practice-section-head">

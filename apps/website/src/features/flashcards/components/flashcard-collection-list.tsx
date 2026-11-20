@@ -18,8 +18,11 @@ import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 /** New cards are always available, so reviews due now are the available cards that were studied before. */
 export const memorySegments = (collection: FlashcardCollectionSummary): StudyStripSegment[] => {
   const due = Math.max(0, collection.dueCards - collection.newCards);
-  const rest = Math.max(0, collection.totalCards - collection.newCards - due);
+  // Mastered cards leave "em dia" and come first, in gold.
+  const mastered = collection.masteredCards;
+  const rest = Math.max(0, collection.totalCards - collection.newCards - due - mastered);
   return [
+    { count: mastered, label: mastered === 1 ? "dominado" : "dominados", tone: "mastered" },
     { count: due, label: "para revisar", tone: "due" },
     { count: rest, label: "em dia", tone: "rest" },
     {
