@@ -503,6 +503,7 @@ const ReferenceSourcePickerDialog = ({
           <DialogCancelButton onClick={close}>Cancelar</DialogCancelButton>
           <Button
             pending={create.isPending}
+            pendingLabel="Conectando"
             disabled={!source || !projectId || create.isPending}
             onClick={() => {
               if (!source || !projectId) return;

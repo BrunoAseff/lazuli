@@ -65,13 +65,28 @@ export const AnalyticsProvider = ({
           </p>
           <div className="flex justify-end gap-2">
             <Button
-              disabled={updatePreference.isPending}
+              disabled={
+                updatePreference.isPending && updatePreference.variables?.status !== "denied"
+              }
               onClick={() => void choose("denied")}
+              pending={
+                updatePreference.isPending && updatePreference.variables?.status === "denied"
+              }
+              pendingLabel="Salvando"
               variant="outline"
             >
               Não permitir
             </Button>
-            <Button disabled={updatePreference.isPending} onClick={() => void choose("granted")}>
+            <Button
+              disabled={
+                updatePreference.isPending && updatePreference.variables?.status !== "granted"
+              }
+              onClick={() => void choose("granted")}
+              pending={
+                updatePreference.isPending && updatePreference.variables?.status === "granted"
+              }
+              pendingLabel="Salvando"
+            >
               Permitir
             </Button>
           </div>

@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { useAuthCapabilities } from "@/features/account-settings/api/account-settings-queries.ts";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
@@ -72,12 +71,13 @@ export const GoogleAuthOption = ({ callbackPath = "/dashboard" }: { callbackPath
     <div className="mb-5 grid gap-4">
       <Button
         className="h-11"
-        disabled={pending}
         onClick={() => void continueWithGoogle()}
+        pending={pending}
+        pendingLabel="Abrindo o Google"
         type="button"
         variant="outline"
       >
-        {pending ? <Spinner aria-hidden="true" /> : <GoogleIcon />}
+        <GoogleIcon />
         Continuar com Google
       </Button>
       {error && <AuthFeedback kind="error">{error}</AuthFeedback>}

@@ -9,7 +9,6 @@ import { z } from "zod";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -31,7 +30,6 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import {
   projectKeys,
   useCreateProject,
@@ -188,7 +186,7 @@ export const CreateProjectDialog = ({
               }
               type="submit"
             >
-              {submitting ? "Salvando…" : created ? "Salvar capa" : "Criar projeto"}
+              {created ? "Salvar capa" : "Criar projeto"}
             </Button>
           </DialogFooter>
         </form>
@@ -279,7 +277,7 @@ export const RenameProjectDialog = ({
               disabled={!form.formState.isValid || !hasChanges || mutation.isPending}
               type="submit"
             >
-              {mutation.isPending ? "Salvando..." : "Salvar"}
+              Salvar
             </Button>
           </DialogFooter>
         </form>
@@ -340,17 +338,13 @@ export const DeleteProjectDialog = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={mutation.isPending}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={mutation.isPending}
-            onClick={(event) => {
-              event.preventDefault();
-              void deleteProject();
-            }}
+          <Button
+            onClick={() => void deleteProject()}
+            pending={mutation.isPending}
             variant="destructive"
           >
-            {mutation.isPending && <Spinner />}
-            {mutation.isPending ? "Excluindo..." : "Excluir projeto"}
-          </AlertDialogAction>
+            Excluir projeto
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

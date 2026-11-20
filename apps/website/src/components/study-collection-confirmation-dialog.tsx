@@ -2,7 +2,6 @@ import { AlertTriangleIcon, ArchiveIcon } from "@/components/icons.tsx";
 import type { ReactNode } from "react";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 
 export const StudyCollectionConfirmationDialog = ({
   description,
@@ -23,19 +22,13 @@ export const StudyCollectionConfirmationDialog = ({
 }) => {
   const deleting = mode === "delete";
   const action = deleting ? "Excluir" : "Arquivar";
-  const pendingAction = deleting ? "Excluindo..." : "Arquivando...";
 
   return (
     <ConfirmationDialog
-      actionLabel={
-        <>
-          {pending && <Spinner />}
-          {pending ? pendingAction : `${action} coleção`}
-        </>
-      }
+      actionLabel={`${action} coleção`}
       description={description}
       destructive={deleting}
-      disabled={pending}
+      pending={pending}
       media={
         deleting ? <AlertTriangleIcon aria-hidden="true" /> : <ArchiveIcon aria-hidden="true" />
       }

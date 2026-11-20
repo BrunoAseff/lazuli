@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { RotateCcwIcon } from "@/components/icons.tsx";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -33,6 +32,8 @@ export const QuizStartDialog = ({
   const start = useCreateQuizAttempt(collectionId);
   const active = availability.data?.activeAttempt;
   const total = availability.data?.totalQuestions ?? 0;
+  // Which of the two buttons started the attempt, so only that one says it is working.
+  const restarting = Boolean(start.variables?.abandonActive);
   const begin = async (abandonActive = false) => {
     if (active && !abandonActive)
       return void navigate(`/quizzes/${collectionId}/attempts/${active.id}`);
@@ -60,20 +61,22 @@ export const QuizStartDialog = ({
           {active && (
             <Button
               className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
-              disabled={start.isPending}
               onClick={() => void begin(true)}
+              pending={start.isPending && restarting}
               variant="ghost"
             >
               <RotateCcwIcon aria-hidden="true" /> Recomeçar
             </Button>
           )}
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={start.isPending || availability.isPending}
+          <Button
+            disabled={availability.isPending || (start.isPending && restarting)}
             onClick={() => void begin(false)}
+            pending={start.isPending && !restarting}
+            pendingLabel={active ? "Abrindo" : "Iniciando"}
           >
             {active ? "Continuar" : "Iniciar quiz"}
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

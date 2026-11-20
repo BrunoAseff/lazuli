@@ -110,7 +110,7 @@ export function ChangeProjectCoverDialog({
             }
             onClick={() => void save()}
           >
-            {busy ? "Salvando…" : "Salvar capa"}
+            Salvar capa
           </Button>
         </DialogFooter>
       </DialogContent>

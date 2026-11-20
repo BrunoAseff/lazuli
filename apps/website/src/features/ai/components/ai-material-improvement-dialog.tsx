@@ -11,7 +11,6 @@ import {
 } from "@lazuli/shared";
 import { AiCreditCost } from "./ai-credit-cost.tsx";
 import { MagicWandIcon } from "@/components/icons.tsx";
-import { CircleNotchIcon } from "@/components/icons.tsx";
 import { ArrowClockwiseIcon } from "@/components/icons.tsx";
 import { CheckIcon } from "@/components/icons.tsx";
 import { Trash2Icon } from "@/components/icons.tsx";
@@ -440,15 +439,17 @@ export const AiMaterialImprovementDialog = ({
                 <Trash2Icon /> Descartar proposta
               </Button>
               <Button
-                disabled={busy || apply.isPending}
+                disabled={apply.isPending}
                 onClick={() => void generate(true)}
+                pending={busy}
+                pendingLabel="Refazendo"
                 variant="outline"
               >
-                {busy ? <CircleNotchIcon className="animate-spin" /> : <ArrowClockwiseIcon />}
+                <ArrowClockwiseIcon />
                 Refazer
               </Button>
-              <Button disabled={apply.isPending} onClick={() => void applyDraft()}>
-                {apply.isPending ? <CircleNotchIcon className="animate-spin" /> : <CheckIcon />}
+              <Button onClick={() => void applyDraft()} pending={apply.isPending}>
+                <CheckIcon />
                 Aplicar melhoria
               </Button>
             </>
@@ -459,11 +460,11 @@ export const AiMaterialImprovementDialog = ({
               </DialogCancelButton>
               <CreditUpgradeGuard available={balance.data?.available} cost={AI_CREDITS_PER_ITEM}>
                 <Button
-                  disabled={busy || (balance.data?.available ?? 0) < AI_CREDITS_PER_ITEM}
+                  disabled={(balance.data?.available ?? 0) < AI_CREDITS_PER_ITEM}
                   onClick={() => void generate()}
+                  pending={busy}
                 >
-                  {busy ? <CircleNotchIcon className="animate-spin" /> : <MagicWandIcon />} Gerar
-                  proposta
+                  <MagicWandIcon /> Gerar proposta
                 </Button>
               </CreditUpgradeGuard>
             </>
@@ -474,7 +475,7 @@ export const AiMaterialImprovementDialog = ({
         actionLabel="Descartar proposta"
         description="A proposta será removida e não poderá ser recuperada. Os créditos usados na geração não serão devolvidos."
         destructive
-        disabled={discard.isPending}
+        pending={discard.isPending}
         onConfirm={discardDraft}
         onOpenChange={(nextOpen) => {
           setDiscardConfirmationOpen(nextOpen);
