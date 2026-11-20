@@ -1054,13 +1054,10 @@ export const AiCollectionGenerationDialog = ({
             !busy && (
               <CreditUpgradeGuard available={balance.data?.available} cost={cost}>
                 <Button
-                  disabled={
-                    !sourcesReady ||
-                    !collectionId ||
-                    create.isPending ||
-                    (balance.data?.available ?? 0) < cost
-                  }
+                  disabled={!sourcesReady || !collectionId || (balance.data?.available ?? 0) < cost}
                   onClick={() => void requestGeneration()}
+                  pending={create.isPending}
+                  pendingLabel="Iniciando"
                 >
                   <MagicWandIcon /> Gerar propostas
                 </Button>
