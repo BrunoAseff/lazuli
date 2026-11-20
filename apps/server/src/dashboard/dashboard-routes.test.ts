@@ -36,8 +36,8 @@ const dashboardPayload = {
     steps: [
       { id: "create-document", completed: true, href: "/documents" },
       { id: "generate-material", completed: true, href: "/documents" },
-      { id: "approve-material", completed: true, href: "/documents" },
-      { id: "complete-practice", completed: true, href: "/flashcards" },
+      { id: "set-goal", completed: true, href: "/stone?meta=editar" },
+      { id: "practice-example", completed: true, href: "/flashcards" },
     ],
   },
   weeklyActivity: {

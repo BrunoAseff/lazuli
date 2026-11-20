@@ -22,10 +22,23 @@ describe("onboarding content", () => {
     expect(anotherUser.ids.project).not.toBe(first.ids.project);
     expect(z.uuid().safeParse(first.ids.project).success).toBe(true);
     expect(first.project.title).toBe("Exemplo: aprendendo a aprender");
-    expect(documentContentSchema.safeParse(first.document.content).success).toBe(true);
-    expect(first.document.contentByteSize).toBeGreaterThan(0);
-    expect(first.flashcards).toHaveLength(2);
-    expect(first.quizQuestions).toHaveLength(2);
+    expect(first.documents.map(({ title }) => title)).toEqual([
+      "Recuperação ativa",
+      "Repetição espaçada",
+      "Intercalar e elaborar",
+    ]);
+    for (const item of first.documents) {
+      expect(documentContentSchema.safeParse(item.content).success).toBe(true);
+      expect(item.contentByteSize).toBeGreaterThan(0);
+    }
+    expect(first.flashcards).toHaveLength(12);
+    expect(first.quizQuestions).toHaveLength(6);
+
+    // Every material points at a passage that exists, in the document it names.
+    const anchorsOf = (documentId: string) =>
+      JSON.stringify(first.documents.find(({ id }) => id === documentId)?.content ?? []);
+    for (const material of [...first.flashcards, ...first.quizQuestions])
+      expect(anchorsOf(material.documentId)).toContain(material.anchorId);
 
     for (const card of first.flashcards) {
       expect(flashcardContentSchema.safeParse(card.question).success).toBe(true);

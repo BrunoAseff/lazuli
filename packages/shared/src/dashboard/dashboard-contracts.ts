@@ -47,10 +47,10 @@ export const dashboardReviewQueueSchema = z.object({
 });
 
 export const dashboardOnboardingStepIdSchema = z.enum([
+  "practice-example",
   "create-document",
   "generate-material",
-  "approve-material",
-  "complete-practice",
+  "set-goal",
 ]);
 
 export const dashboardOnboardingSchema = z.object({

@@ -7,7 +7,7 @@ import {
 } from "@lazuli/shared";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { Facet } from "@/components/brand-mark.tsx";
 import { CutGem } from "@/components/brand/cut-gem.tsx";
@@ -519,7 +519,13 @@ const Projects = ({ stone }: { stone: StoneResponse }) => (
 
 export const StonePage = () => {
   const stone = useStone();
-  const [editing, setEditing] = useState(false);
+  // "?meta=editar" (from the first steps) opens the goal editor on arrival.
+  const [params, setParams] = useSearchParams();
+  const [editing, setEditingState] = useState(params.get("meta") === "editar");
+  const setEditing = (open: boolean) => {
+    setEditingState(open);
+    if (!open && params.has("meta")) setParams({}, { replace: true });
+  };
   return (
     <ContentPage maxWidth="6xl">
       <h1 className="page-title">Sua pedra</h1>

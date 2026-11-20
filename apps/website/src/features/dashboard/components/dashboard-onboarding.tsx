@@ -12,25 +12,25 @@ const stepCopy: Record<
   DashboardOnboardingStepId,
   { description: string; label: string; title: string }
 > = {
+  "practice-example": {
+    title: "Pratique o exemplo",
+    description: "Alguns minutos com os flashcards do projeto de exemplo.",
+    label: "Praticar o exemplo",
+  },
   "create-document": {
     title: "Adicione seu material",
-    description: "Crie um projeto e escreva ou importe um documento próprio.",
+    description: "Escreva ou importe um documento seu.",
     label: "Adicionar material",
   },
   "generate-material": {
-    title: "Prepare a prática",
-    description: "Use uma fonte própria para gerar flashcards ou questões com IA.",
-    label: "Gerar material",
+    title: "Crie materiais com IA",
+    description: "Gere flashcards ou questões do seu documento e salve o que aprovar.",
+    label: "Criar materiais",
   },
-  "approve-material": {
-    title: "Revise antes de salvar",
-    description: "Confira a proposta e salve somente o material que fizer sentido.",
-    label: "Revisar proposta",
-  },
-  "complete-practice": {
-    title: "Pratique e retorne",
-    description: "Conclua uma prática para iniciar seu histórico de aprendizagem.",
-    label: "Começar prática",
+  "set-goal": {
+    title: "Defina sua meta",
+    description: "Quantas práticas por dia e em quais dias.",
+    label: "Definir meta",
   },
 };
 
