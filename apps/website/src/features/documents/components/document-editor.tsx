@@ -2,13 +2,11 @@ import {
   normalizeProjectItemTitle,
   referenceTargetSchema,
   removeSourceAnchors,
-  AI_DOCUMENT_MAX_BLOCKS,
-  AI_DOCUMENT_MAX_TEXT_LENGTH,
   collectDocumentTextBlocks,
   type DocumentBlock,
 } from "@lazuli/shared";
-import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
-import { CheckIcon } from "@phosphor-icons/react/Check";
+import { ArrowLeftIcon } from "@/components/icons.tsx";
+import { CheckIcon } from "@/components/icons.tsx";
 import {
   ExperimentalMobileFormattingToolbarController,
   FormattingToolbarController,
@@ -40,6 +38,7 @@ import {
 import { cleanupAssets, collectAssetUrls } from "@/features/assets/rich-content-assets.ts";
 import { ApiError } from "@/lib/api-client.ts";
 import type { AiSelectionAction } from "@/features/ai/ai-selection-types.ts";
+import { CreateMaterialsButton } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import { AiSelectionGenerationDialog } from "@/features/ai/components/ai-selection-generation-dialog.tsx";
 import { updateAiReviewReference } from "@/features/ai/ai-review-session.ts";
 import { DocumentMaterialFlow } from "@/features/references/components/document-material-flow.tsx";
@@ -73,6 +72,7 @@ import { LocalizedBlockNoteInput } from "../editor/localized-blocknote-input.tsx
 import { DocumentSaveStatus, type DocumentSaveState } from "./document-save-status.tsx";
 import { safeReturnTo } from "../document-navigation.ts";
 import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
+import { useSourceAnchorsShown } from "@/features/references/source-anchor-visibility.ts";
 
 const blockNoteComponents = { Input: { Input: LocalizedBlockNoteInput } };
 const compactWorkspaceMaxWidth = 56 * 16;
@@ -182,6 +182,7 @@ export const DocumentEditor = ({
     async () => false,
   );
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const sourceAnchorsShown = useSourceAnchorsShown();
   const titleElementRef = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const workspace = editorContainerRef.current?.closest<HTMLElement>(".project-workspace");
@@ -289,6 +290,30 @@ export const DocumentEditor = ({
       toast.error("Não foi possível vincular o trecho.");
     }
   };
+  /**
+   * After AI materials are saved, the server has anchored their passages in this document: take
+   * its version, so the editor and autosave continue from it instead of a stale copy.
+   */
+  const adoptSavedDocument = async () => {
+    let remote: Awaited<ReturnType<typeof fetchDocument>>;
+    try {
+      remote = await fetchDocument(projectId, documentId);
+    } catch {
+      // Approval has already committed the generated materials and source anchors.
+      // Reload instead of leaving stale local content that autosave could overwrite.
+      window.location.reload();
+      return false;
+    }
+    const nextContent = remote.content as LazuliDocumentBlock;
+    editor.replaceBlocks(editor.document, nextContent);
+    setRevision(remote.revision);
+    revisionRef.current = remote.revision;
+    cleanSnapshot.current = JSON.stringify(nextContent);
+    cleanAssetUrls.current = collectAssetUrls(nextContent);
+    setDirty(false);
+    setSaveState(titleDirty ? "pending" : "saved");
+    return true;
+  };
   const selectPendingAiReference = () => {
     if (!pendingAiReference) return;
     const selection = getDocumentReferenceSelection(editor);
@@ -302,6 +327,7 @@ export const DocumentEditor = ({
     }
     const updated = updateAiReviewReference({
       blockId: selection.sourceBlockIds[0]!,
+      documentId,
       kind: pendingAiReference.kind,
       operationId: pendingAiReference.operationId,
       proposalId: pendingAiReference.proposalId,
@@ -309,11 +335,12 @@ export const DocumentEditor = ({
       referenceIndex: pendingAiReference.referenceIndex,
     });
     if (!updated) {
-      toast.error("Não foi possível atualizar a referência desta proposta.");
+      toast.error("Não foi possível atualizar a fonte desta proposta.");
       return;
     }
-    toast.success("Trecho da referência ajustado.");
+    toast.success("Trecho da fonte ajustado.");
     void navigate(pendingAiReference.returnTo, { replace: true });
+    if (aiAction) setAiDialogOpen(true);
   };
   const applyAdjustment = () => {
     if (!adjustingAnchorId || !editor.getSelectedText().trim()) {
@@ -655,84 +682,71 @@ export const DocumentEditor = ({
   return (
     <>
       <div className="document-editor-scroll mr-1 lazuli-thin-scrollbar">
-        <header className="document-editor-toolbar sticky z-20 border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:border-b-0 sm:bg-card/92 sm:px-6">
-          <div className="flex h-12 items-center justify-end gap-2 sm:h-[3.75rem]">
-            {contextualReturnTo && (
-              <Button
-                className="mr-auto"
-                onClick={() => void navigate(contextualReturnTo)}
-                size="sm"
-                variant="ghost"
-              >
-                <ArrowLeftIcon aria-hidden="true" /> Voltar
-              </Button>
-            )}
-            <DocumentReferencesButton onClick={() => setDocumentReferencesOpen(true)} />
-            <FavoriteButton kind="document" id={documentId} title={title} />
-            <DocumentFind
-              editorRef={editorContainerRef}
-              showTrigger={false}
-              initialQuery={initialSearchQuery}
-            />
-            <Button
-              onClick={async () => {
-                const blocks = collectDocumentTextBlocks(editor.document as DocumentBlock[]);
-                const selectedText = blocks.map(({ text }) => text).join(" ");
-                if (!selectedText) {
-                  toast.error("Adicione conteúdo ao documento antes de gerar materiais.");
-                  return;
-                }
-                if (
-                  blocks.length > AI_DOCUMENT_MAX_BLOCKS ||
-                  selectedText.length > AI_DOCUMENT_MAX_TEXT_LENGTH
-                ) {
-                  toast.error(
-                    "Este documento é grande demais para uma única geração. Selecione um trecho.",
-                  );
-                  return;
-                }
-                if (dirty && !(await saveRef.current(true))) {
-                  toast.error("Salve as alterações do documento antes de gerar materiais.");
-                  return;
-                }
-                void openAiFlow({
-                  anchorId: null,
-                  anchorCreated: false,
-                  selectedText,
-                  sourceBlockIds: [],
-                  sourceScope: "document",
-                });
-              }}
-              size="sm"
-              variant="outline"
-            >
-              Gerar conteúdo
-            </Button>
-            <DocumentSaveStatus
-              onOpenConflict={() => setConflictDialogOpen(true)}
-              onRetry={() => {
-                if (!adjustingAnchorRef.current) setAutoSavePaused(false);
-                if (titleDirty) void finishTitle();
-                if (dirty) void save(false);
-              }}
-              state={saveState}
-            />
+        <header className="document-editor-toolbar @container/toolbar sticky z-20 border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:border-b-0 sm:bg-card/92 sm:px-6">
+          <div className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 py-2">
+            <div className="flex min-w-0 items-center gap-3">
+              <DocumentSaveStatus
+                onOpenConflict={() => setConflictDialogOpen(true)}
+                onRetry={() => {
+                  if (!adjustingAnchorRef.current) setAutoSavePaused(false);
+                  if (titleDirty) void finishTitle();
+                  if (dirty) void save(false);
+                }}
+                state={saveState}
+              />
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+              <DocumentReferencesButton
+                documentId={documentId}
+                onClick={() => setDocumentReferencesOpen(true)}
+              />
+              <div className="flex items-center">
+                <FavoriteButton kind="document" id={documentId} title={title} />
+              </div>
+              <DocumentFind
+                editorRef={editorContainerRef}
+                showTrigger={false}
+                initialQuery={initialSearchQuery}
+              />
+              <CreateMaterialsButton
+                compactLabel="Criar materiais"
+                defaultDocumentIds={[documentId]}
+                label="Criar materiais de estudo"
+                onApproved={() => void adoptSavedDocument()}
+                onBeforeOpen={async () => {
+                  const blocks = collectDocumentTextBlocks(editor.document as DocumentBlock[]);
+                  if (!blocks.length) {
+                    toast.error("Adicione conteúdo ao documento antes de gerar materiais.");
+                    return false;
+                  }
+                  // The generation reads the saved document, so pending edits are saved first.
+                  if (dirty && !(await saveRef.current(true))) {
+                    toast.error("Salve as alterações do documento antes de gerar materiais.");
+                    return false;
+                  }
+                  return true;
+                }}
+                projectId={projectId}
+              />
+            </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[52rem] px-5 pt-6 pb-24 sm:px-8 sm:pt-12">
-          <Textarea
-            aria-label="Título do documento"
-            autoComplete="off"
-            className="mb-6 min-h-12 w-full resize-none overflow-hidden border-transparent bg-transparent px-0 py-1 font-heading text-3xl leading-[1.08] font-normal tracking-[-0.035em] shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:mb-8 sm:min-h-16 sm:text-6xl sm:leading-[1.02] md:text-6xl"
-            data-1p-ignore
-            data-lpignore="true"
-            maxLength={100}
-            onBlur={() => void finishTitle()}
-            onChange={(event) => setTitle(event.target.value)}
-            ref={titleElementRef}
-            rows={1}
-            value={title}
-          />
+        <main className="mx-auto w-full max-w-[52rem] px-5 pt-8 pb-24 sm:px-10 sm:pt-14">
+          <div className="mb-9 border-b border-border/60 pb-6">
+            <Textarea
+              aria-label="Título do documento"
+              autoComplete="off"
+              className="min-h-12 w-full resize-none overflow-hidden border-transparent bg-transparent px-0 py-1 font-heading text-3xl leading-[1.2] font-semibold tracking-[-0.04em] shadow-none focus-visible:border-transparent focus-visible:ring-0 md:text-3xl"
+              data-1p-ignore
+              data-lpignore="true"
+              maxLength={100}
+              onBlur={() => void finishTitle()}
+              onChange={(event) => setTitle(event.target.value)}
+              ref={titleElementRef}
+              rows={1}
+              value={title}
+            />
+          </div>
           <div
             onClickCapture={(event) => {
               const target = event.target;
@@ -741,7 +755,12 @@ export const DocumentEditor = ({
               const sourceAnchor = target.closest<HTMLElement>(
                 ".lazuli-source-anchor[data-anchor-id]",
               );
-              if (sourceAnchor && event.currentTarget.contains(sourceAnchor)) {
+              // Unmarked passages read as plain text: they open nothing.
+              if (
+                sourceAnchorsShown &&
+                sourceAnchor &&
+                event.currentTarget.contains(sourceAnchor)
+              ) {
                 const anchorId = sourceAnchor.dataset.anchorId;
                 if (anchorId) setActiveAnchorId(anchorId);
                 return;
@@ -752,6 +771,7 @@ export const DocumentEditor = ({
                 return;
               event.preventDefault();
             }}
+            data-source-anchors={sourceAnchorsShown ? undefined : "hidden"}
             ref={editorContainerRef}
           >
             <BlockNoteView
@@ -793,24 +813,55 @@ export const DocumentEditor = ({
           </p>
         </main>
       </div>
+      {/* Consulting a source from elsewhere (a review, a material): the way back stays in view,
+          with the same anatomy as choosing an excerpt, so reading never strands the task. */}
+      {/* One way back, whatever brought the person here: proposals waiting for review (the
+          dialog was minimized to read the source) or another screen that opened this source. */}
+      {(contextualReturnTo || (aiAction && !aiDialogOpen)) &&
+        !pendingTarget &&
+        !pendingAiReference &&
+        !adjustingAnchorId && (
+          <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-[var(--radius-overlay)] border bg-popover px-4 py-3 shadow-[var(--shadow-float)]">
+            <p className="min-w-0 flex-1 text-sm">
+              {aiAction && !aiDialogOpen
+                ? contextualReturnTo
+                  ? "Você está consultando a fonte das propostas."
+                  : "A geração com IA continua aberta."
+                : "Você está consultando a fonte."}
+            </p>
+            <Button
+              onClick={() => {
+                if (contextualReturnTo) void navigate(contextualReturnTo, { replace: true });
+                if (aiAction) setAiDialogOpen(true);
+              }}
+              size="sm"
+            >
+              <ArrowLeftIcon aria-hidden="true" />{" "}
+              {aiAction && !aiDialogOpen ? "Voltar às propostas" : "Voltar"}
+            </Button>
+          </div>
+        )}
       {(pendingTarget || pendingAiReference || adjustingAnchorId) && (
-        <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-[var(--radius-overlay)] border bg-popover px-4 py-3 shadow-[var(--shadow-overlay)]">
+        <div className="fixed bottom-5 left-1/2 z-40 flex w-[min(calc(100%-2rem),34rem)] -translate-x-1/2 items-center gap-3 rounded-[var(--radius-overlay)] border bg-popover px-4 py-3 shadow-[var(--shadow-float)]">
           <p className="min-w-0 flex-1 text-sm">
             {adjustingAnchorId
-              ? "Selecione o novo trecho desta referência."
+              ? "Selecione o novo trecho desta fonte."
               : pendingAiReference
-                ? "Selecione o novo trecho da referência sugerida."
+                ? "Selecione o novo trecho da fonte sugerida."
                 : "Selecione no documento o trecho que deseja vincular."}
           </p>
           <Button
             onClick={
               adjustingAnchorId
                 ? cancelAdjustment
-                : () =>
+                : () => {
                     void navigate(
                       pendingAiReference?.returnTo ?? referenceReturnTo ?? location.pathname,
                       { replace: true },
-                    )
+                    );
+                    // Adjusting a proposal's excerpt started in the review: cancelling returns there.
+                    if (pendingAiReference && aiAction) setAiDialogOpen(true);
+                  }
             }
             size="sm"
             variant="outline"
@@ -837,7 +888,7 @@ export const DocumentEditor = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Vincular o trecho selecionado?</AlertDialogTitle>
             <AlertDialogDescription>
-              A referência será adicionada e você voltará ao material.
+              A fonte será conectada e você voltará ao material.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -864,46 +915,22 @@ export const DocumentEditor = ({
         action={aiAction}
         documentId={documentId}
         documentRevision={revisionRef.current}
+        documentTitle={title}
         getDocumentContent={() => editor.document as DocumentBlock[]}
         open={aiDialogOpen}
         onApproved={async () => {
-          let remote: Awaited<ReturnType<typeof fetchDocument>>;
-          try {
-            remote = await fetchDocument(projectId, documentId);
-          } catch {
-            // Approval has already committed the generated materials and source anchors.
-            // Reload instead of leaving stale local content that autosave could overwrite.
-            window.location.reload();
-            return;
-          }
-          const nextContent = remote.content as LazuliDocumentBlock;
-          editor.replaceBlocks(editor.document, nextContent);
-          const snapshot = JSON.stringify(nextContent);
-          setRevision(remote.revision);
-          revisionRef.current = remote.revision;
-          cleanSnapshot.current = snapshot;
-          cleanAssetUrls.current = collectAssetUrls(nextContent);
-          setDirty(false);
-          setSaveState(titleDirty ? "pending" : "saved");
-          void closeAiFlow(false);
+          if (await adoptSavedDocument()) void closeAiFlow(false);
         }}
         onCancel={() => void closeAiFlow(true)}
         onMinimize={() => setAiDialogOpen(false)}
       />
-      {aiAction && !aiDialogOpen && (
-        <Button
-          className="fixed right-5 bottom-5 z-40 shadow-[var(--shadow-overlay)]"
-          onClick={() => setAiDialogOpen(true)}
-        >
-          Continuar geração com IA
-        </Button>
-      )}
       {linkAction && !pendingTarget && (
         <ExistingMaterialPickerDialog
           onCancel={() => closeMaterialFlow(true, linkAction.anchorId, linkAction.anchorCreated)}
           onComplete={() => closeMaterialFlow(false)}
           persistDocument={() => saveRef.current(true)}
           source={{ type: "selection", documentId, anchorId: linkAction.anchorId }}
+          sourceTitle={title}
           sourcePreview={linkAction.selectedText}
         />
       )}
@@ -913,6 +940,7 @@ export const DocumentEditor = ({
           onComplete={() => setWholeDocumentPickerOpen(false)}
           persistDocument={() => saveRef.current(true)}
           source={{ type: "document", documentId }}
+          sourceTitle={title}
         />
       )}
       <DocumentReferencesDialog
@@ -1007,6 +1035,7 @@ export const DocumentEditor = ({
         }}
         onOpenChange={setDocumentReferencesOpen}
         open={documentReferencesOpen}
+        showAnchorsOption
       />
       <AlertDialog open={blocker.state === "blocked"}>
         <AlertDialogContent>
@@ -1027,7 +1056,7 @@ export const DocumentEditor = ({
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog onOpenChange={setConflictDialogOpen} open={conflictDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Este documento foi alterado em outro lugar</AlertDialogTitle>
             <AlertDialogDescription>
@@ -1035,8 +1064,10 @@ export const DocumentEditor = ({
               decidir.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="sm:flex-wrap">
-            <AlertDialogCancel className="whitespace-nowrap">Continuar editando</AlertDialogCancel>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="whitespace-nowrap sm:mr-auto">
+              Decidir depois
+            </AlertDialogCancel>
             <Button
               onClick={() => {
                 void fetchDocument(projectId, documentId)

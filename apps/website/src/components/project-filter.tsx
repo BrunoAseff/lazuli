@@ -5,8 +5,8 @@ import {
   FolderIcon,
   FolderXIcon,
   Layers3Icon,
-  type LucideIcon,
-} from "lucide-react";
+  type AppIcon,
+} from "@/components/icons.tsx";
 import { type Ref, useEffect, useState } from "react";
 
 import { HighlightText } from "@/components/highlight-text.tsx";
@@ -159,14 +159,14 @@ const ProjectOption = ({
   query = "",
 }: {
   active: boolean;
-  icon: LucideIcon;
+  icon: AppIcon;
   label: string;
   onSelect: () => void;
   query?: string;
 }) => (
   <button
     className={cn(
-      "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-[var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       active && "bg-muted",
     )}
     onClick={onSelect}

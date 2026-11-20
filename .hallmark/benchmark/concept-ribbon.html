@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Lazúli — estudo Folha</title>
+    <style>
+      :root {
+        --paper: #f8f8f2;
+        --ink: #202126;
+        --blue: #2622d9;
+        --deep: #111057;
+        --line: #b6b7c0;
+        --accent: #d2b367;
+        --body: Arial, sans-serif;
+        --display: Georgia, serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        overflow-x: clip;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font: 18px/1.4 var(--body);
+      }
+      button,
+      a {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:focus-visible,
+      a:focus-visible {
+        outline: 3px solid var(--blue);
+        outline-offset: 6px;
+      }
+      header {
+        position: absolute;
+        z-index: 3;
+        top: 30px;
+        left: 4%;
+        right: 4%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      header a {
+        font-size: 16px;
+        text-underline-offset: 5px;
+      }
+      .brand {
+        font: 36px var(--display);
+        text-decoration: none;
+      }
+      main {
+        position: relative;
+        min-height: 850px;
+        height: 100svh;
+        max-height: 1120px;
+        max-width: 1800px;
+        margin: auto;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .title {
+        position: absolute;
+        left: 7%;
+        top: 27%;
+        z-index: 2;
+        max-width: 330px;
+      }
+      .title h1 {
+        font: 400 clamp(40px, 4.6vw, 70px)/1.04 var(--display);
+        letter-spacing: -0.045em;
+        margin: 0;
+      }
+      .definition {
+        position: absolute;
+        left: 7%;
+        bottom: 13%;
+        max-width: 315px;
+        font-size: 18px;
+        line-height: 1.45;
+      }
+      .actions {
+        position: absolute;
+        right: 7%;
+        bottom: 13%;
+        display: flex;
+        flex-direction: column;
+        align-items: start;
+        gap: 22px;
+      }
+      .primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        background: var(--blue);
+        color: var(--paper);
+        padding: 16px 26px;
+        border: 0;
+        border-radius: 5px;
+        font-size: 17px;
+      }
+      .secondary {
+        border: 0;
+        background: transparent;
+        padding: 0;
+        text-decoration: underline;
+        text-underline-offset: 6px;
+        font-size: 17px;
+      }
+      .foot {
+        position: absolute;
+        bottom: 28px;
+        left: 7%;
+        right: 7%;
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        color: var(--deep);
+      }
+      .practice {
+        position: absolute;
+        z-index: 5;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 590px;
+        text-align: center;
+        display: none;
+        color: var(--deep);
+      }
+      .practice h2 {
+        font: 400 48px/1.1 var(--display);
+        margin: 0 0 32px;
+      }
+      .practice p {
+        font-size: 23px;
+      }
+      .practice .options {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin-top: 28px;
+      }
+      .options button {
+        padding: 12px 16px;
+        background: transparent;
+        border: 1px solid var(--blue);
+        border-radius: 4px;
+        font-size: 16px;
+      }
+      .practice > button {
+        margin-top: 10px;
+      }
+      .finished {
+        display: none;
+      }
+      .demo .title,
+      .demo .definition,
+      .demo .actions {
+        display: none;
+      }
+      .demo .practice {
+        display: block;
+      }
+      .demo main {
+        min-height: 820px;
+      }
+      .origin .question,
+      .origin .answer {
+        display: none;
+      }
+      .origin .finished {
+        display: block;
+      }
+      .answer[hidden] {
+        display: none;
+      }
+      button:hover,
+      .primary:hover {
+        filter: brightness(0.85);
+      }
+      .caption {
+        font-size: 15px !important;
+        color: var(--ink);
+      }
+      @media (max-width: 760px) {
+        main {
+          min-height: 850px;
+          max-height: none;
+        }
+        .title {
+          left: 24px;
+          top: 110px;
+          max-width: 290px;
+        }
+        .title h1 {
+          font-size: 44px;
+        }
+        .definition {
+          left: 24px;
+          right: 24px;
+          bottom: 150px;
+          max-width: 320px;
+          font-size: 16px;
+        }
+        .actions {
+          left: 24px;
+          right: auto;
+          bottom: 57px;
+          flex-direction: row;
+          align-items: center;
+          gap: 20px;
+        }
+        .primary,
+        .secondary {
+          font-size: 15px;
+        }
+        .primary {
+          padding: 13px 17px;
+        }
+        .foot {
+          bottom: 15px;
+          left: 24px;
+          right: 24px;
+          font-size: 12px;
+        }
+        .practice {
+          width: calc(100% - 64px);
+          top: 46%;
+        }
+        .practice h2 {
+          font-size: 36px;
+        }
+        .practice p {
+          font-size: 20px;
+        }
+        .practice .options {
+          flex-wrap: wrap;
+        }
+        .demo main {
+          min-height: 780px;
+        }
+        header {
+          left: 24px;
+          right: 24px;
+          top: 24px;
+        }
+        .brand {
+          font-size: 30px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+          animation: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="index.html">Lazúli</a><a href="index.html">Estudo visual</a>
+    </header>
+    <main>
+      <canvas id="ribbon" aria-hidden="true"></canvas>
+      <div class="title"><h1>Seu estudo ganha outra forma.</h1></div>
+      <p class="definition">
+        Transforme seus documentos em flashcards, quizzes e revisões conectadas.
+      </p>
+      <div class="actions">
+        <a class="primary" href="http://localhost:3002/register">Começar grátis</a
+        ><button class="secondary" id="try">Experimente um flashcard</button>
+      </div>
+      <section class="practice" aria-label="Demonstração de flashcard">
+        <div class="question">
+          <p class="caption">Flashcard de exemplo</p>
+          <h2>Por que o céu é azul?</h2>
+          <button class="primary" id="reveal">Mostrar resposta</button>
+        </div>
+        <div class="answer" hidden>
+          <p>A atmosfera espalha mais a luz azul do que a vermelha.</p>
+          <p class="caption">Como foi lembrar?</p>
+          <div class="options">
+            <button data-rating="again">Repetir</button><button data-rating="hard">Difícil</button
+            ><button data-rating="good">Bom</button><button data-rating="easy">Fácil</button>
+          </div>
+        </div>
+        <div class="finished">
+          <p class="caption">A pergunta continua ligada ao seu material.</p>
+          <h2>Uma ideia que você pode revisitar.</h2>
+          <p>Na atmosfera, a luz azul se espalha mais do que a vermelha.</p>
+          <button class="secondary" id="reset">Voltar ao início</button>
+        </div>
+      </section>
+      <div class="foot">
+        <span>Estudo de material / uma folha em transformação</span
+        ><span id="state">Registrar → praticar → retomar</span>
+      </div>
+    </main>
+    <script>
+      const c = document.getElementById("ribbon"),
+        ctx = c.getContext("2d");
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+      let width = 0,
+        height = 0,
+        dpr = 1,
+        p = 0,
+        target = 0,
+        rx = 0,
+        ry = 0,
+        tx = 0,
+        ty = 0,
+        raf = 0,
+        last = 0;
+      const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+      const mix = (a, b, t) => a + (b - a) * t;
+      const add = (a, b) => a.map((v, i) => v + b[i]);
+      const sub = (a, b) => a.map((v, i) => v - b[i]);
+      const mul = (a, s) => a.map((v) => v * s);
+      const cross = (a, b) => [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+      ];
+      const norm = (a) => mul(a, 1 / (Math.hypot(...a) || 1));
+      const dot = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
+      function bez(a, b, c, d, t) {
+        return a.map(
+          (v, i) =>
+            (1 - t) ** 3 * v +
+            3 * (1 - t) ** 2 * t * b[i] +
+            3 * (1 - t) * t * t * c[i] +
+            t ** 3 * d[i],
+        );
+      }
+      function curve(t) {
+        return t < 0.64
+          ? bez(
+              [-0.85, 0.45, 0.0],
+              [-1.3, 2.45, -0.4],
+              [1.7, 2.35, 0.8],
+              [1.12, 0.78, 0.15],
+              t / 0.64,
+            )
+          : bez(
+              [1.12, 0.78, 0.15],
+              [0.85, -0.05, -0.6],
+              [-0.16, 0.1, 0.25],
+              [-0.05, -0.72, 0.5],
+              (t - 0.64) / 0.36,
+            );
+      }
+      function shape(t, v, amount) {
+        const center = curve(t),
+          tangent = norm(sub(curve(Math.min(0.9999, t + 0.001)), curve(Math.max(0, t - 0.001))));
+        let right = norm(cross(tangent, [0, 0, 1]));
+        const tw = 0.32 + Math.sin(t * 6.5) * 0.75;
+        right = add(mul(right, Math.cos(tw)), mul(norm(cross(tangent, right)), Math.sin(tw)));
+        const curved = add(center, mul(right, v * 0.72));
+        curved[2] += v * v * 0.16;
+        const flat = [v * 4.6, (0.5 - t) * 3.05, Math.sin(t * Math.PI) * 0.03];
+        return curved.map((n, i) => mix(n, flat[i], amount));
+      }
+      function rotate(pt) {
+        let [x, y, z] = pt;
+        let a = -0.17 + rx * (1 - p),
+          b = -0.37 + ry * (1 - p);
+        let z2 = z * Math.cos(a) - y * Math.sin(a);
+        y = z * Math.sin(a) + y * Math.cos(a);
+        z = z2;
+        let x2 = x * Math.cos(b) + z * Math.sin(b);
+        z = z * Math.cos(b) - x * Math.sin(b);
+        x = x2;
+        return [x, y, z];
+      }
+      function project(pt) {
+        const [x, y, z] = rotate(pt);
+        const small = width < 760;
+        const scale = small ? width * 0.215 : Math.min(width * 0.135, height * 0.205);
+        const zoom = 6 / (6 - z);
+        return [
+          (small ? width * 0.54 : width * 0.58) + x * scale * zoom,
+          (small ? height * 0.48 : height * 0.47) - y * scale * zoom,
+          z,
+        ];
+      }
+      function render() {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        let scale = width < 760 ? width * 0.215 : Math.min(width * 0.135, height * 0.205);
+        let cx = width < 760 ? width * 0.54 : width * 0.58;
+        let sh = ctx.createRadialGradient(cx, height * 0.77, 0, cx, height * 0.77, scale * 2);
+        sh.addColorStop(0, "rgba(14,18,80,.13)");
+        sh.addColorStop(1, "rgba(14,18,80,0)");
+        ctx.save();
+        ctx.translate(0, height * 0.77);
+        ctx.scale(1, 0.2);
+        ctx.translate(0, -height * 0.77);
+        ctx.fillStyle = sh;
+        ctx.fillRect(0, 0, width, height * 5);
+        ctx.restore();
+        const faces = [],
+          N = 145,
+          M = 8,
+          light = norm([-0.6, 0.9, 1.2]);
+        for (let i = 0; i < N; i++) {
+          for (let j = 0; j < M; j++) {
+            const t = i / N,
+              v = j / M - 0.5;
+            const a = shape(t, v, p),
+              b = shape((i + 1) / N, v, p),
+              cc = shape((i + 1) / N, (j + 1) / M - 0.5, p),
+              d = shape(t, (j + 1) / M - 0.5, p);
+            let n = norm(cross(sub(b, a), sub(d, a)));
+            const normal = rotate(n);
+            const l = 0.5 + 0.5 * dot(normal, light);
+            const pts = [a, b, cc, d].map(project);
+            faces.push({
+              pts,
+              z: pts.reduce((s, q) => s + q[2], 0) / 4,
+              l,
+              front: normal[2] > 0,
+              i,
+              j,
+            });
+          }
+        }
+        faces.sort((a, b) => a.z - b.z);
+        for (const f of faces) {
+          const shade = clamp(f.l, 0, 1);
+          const grain = Math.sin(f.i * 31.7 + f.j * 79.3) * 0.9;
+          const blue = [27 + shade * 32, 25 + shade * 43, 125 + shade * 108];
+          const white = [223 + shade * 27, 225 + shade * 26, 224 + shade * 24];
+          const base = f.front ? blue : white;
+          const color = base.map((n, i) =>
+            Math.round(mix(n, [249, 248, 243][i], p) + grain * (1 - p)),
+          );
+          ctx.beginPath();
+          f.pts.forEach((a, i) => (i ? ctx.lineTo(a[0], a[1]) : ctx.moveTo(a[0], a[1])));
+          ctx.closePath();
+          ctx.fillStyle = `rgb(${color.join(",")})`;
+          ctx.strokeStyle = ctx.fillStyle;
+          ctx.lineWidth = 0.7;
+          ctx.fill();
+          ctx.stroke();
+        }
+        if (p < 0.99) {
+          let q = project([-0.06, -1.2, 0.2]);
+          ctx.save();
+          ctx.globalAlpha = 1 - p;
+          ctx.translate(q[0], q[1]);
+          ctx.rotate(-0.22);
+          ctx.fillStyle = "#2821c9";
+          ctx.shadowColor = "#12105555";
+          ctx.shadowBlur = 12;
+          ctx.shadowOffsetY = 12;
+          ctx.beginPath();
+          ctx.roundRect(-scale * 0.17, -scale * 0.16, scale * 0.34, scale * 0.34, scale * 0.08);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      function tick(now) {
+        const delta = last ? Math.min(2, (now - last) / 16.67) : 1;
+        last = now;
+        p = mix(p, target, 1 - Math.pow(0.9, delta));
+        rx = mix(rx, tx, 0.08);
+        ry = mix(ry, ty, 0.08);
+        if (Math.abs(p - target) < 0.001) p = target;
+        render();
+        if (Math.abs(p - target) > 0.0001 || Math.abs(rx - tx) > 0.001 || Math.abs(ry - ty) > 0.001)
+          raf = requestAnimationFrame(tick);
+        else {
+          raf = 0;
+          last = 0;
+        }
+      }
+      function start() {
+        if (!raf) raf = requestAnimationFrame(tick);
+      }
+      function resize() {
+        const rect = c.getBoundingClientRect();
+        width = rect.width;
+        height = rect.height;
+        dpr = Math.min(devicePixelRatio, 1.5);
+        c.width = width * dpr;
+        c.height = height * dpr;
+        render();
+      }
+      new ResizeObserver(resize).observe(c);
+      document.querySelector("main").addEventListener("pointermove", (e) => {
+        if (reduced.matches || target) return;
+        tx = (e.clientY / height - 0.5) * 0.13;
+        ty = (e.clientX / width - 0.5) * 0.17;
+        start();
+      });
+      function go(value) {
+        target = value;
+        if (reduced.matches) {
+          p = value;
+          render();
+        } else start();
+      }
+      document.getElementById("try").onclick = () => {
+        go(1);
+        document.body.classList.add("demo");
+        document.getElementById("reveal").focus();
+      };
+      document.getElementById("reveal").onclick = () => {
+        document.querySelector(".answer").hidden = false;
+        document.getElementById("reveal").hidden = true;
+        document.querySelector("[data-rating]").focus();
+      };
+      document.querySelectorAll("[data-rating]").forEach(
+        (b) =>
+          (b.onclick = () => {
+            if (b.dataset.rating === "again") {
+              document.querySelector(".answer").hidden = true;
+              document.getElementById("reveal").hidden = false;
+              document.getElementById("reveal").focus();
+              document.getElementById("state").textContent = "Repetir: o cartão voltou à fila.";
+            } else {
+              document.body.classList.add("origin");
+              document.getElementById("reset").focus();
+            }
+          }),
+      );
+      document.getElementById("reset").onclick = () => {
+        document.body.className = "";
+        document.querySelector(".answer").hidden = true;
+        document.getElementById("reveal").hidden = false;
+        go(0);
+        document.getElementById("try").focus();
+      };
+    </script>
+  </body>
+</html>

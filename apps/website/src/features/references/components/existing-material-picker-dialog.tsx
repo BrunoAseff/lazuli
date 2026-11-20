@@ -7,13 +7,7 @@ import {
   type ReferenceSource,
   type ReferenceTarget,
 } from "@lazuli/shared";
-import {
-  ArrowLeftIcon,
-  CheckIcon,
-  Layers3Icon,
-  LoaderCircleIcon,
-  SquareCheckBigIcon,
-} from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, Layers3Icon, SquareCheckBigIcon } from "@/components/icons.tsx";
 import { useMemo, useState, type Ref } from "react";
 import { toast } from "sonner";
 
@@ -36,7 +30,8 @@ import { useQuizCollections } from "@/features/quizzes/api/quiz-collection-queri
 import { useQuizQuestions } from "@/features/quizzes/api/quiz-queries.ts";
 import { cn } from "@/lib/utils.ts";
 import { useCreateReferences } from "../api/reference-queries.ts";
-import { ReferenceSourcePreview } from "./reference-source-preview.tsx";
+import { CreationWorkspace } from "@/features/ai/components/creation-workspace.tsx";
+import { MaterialKindPicker } from "@/features/ai/components/material-kind-picker.tsx";
 
 type MaterialType = ReferenceTarget["type"];
 
@@ -45,12 +40,14 @@ export const ExistingMaterialPickerDialog = ({
   onComplete,
   persistDocument,
   source,
+  sourceTitle,
   sourcePreview,
 }: {
   onCancel: () => void;
   onComplete: () => void;
   persistDocument: () => Promise<boolean>;
   source: ReferenceSource;
+  sourceTitle?: string;
   sourcePreview?: string;
 }) => {
   const [type, setType] = useState<MaterialType>("flashcard");
@@ -124,141 +121,151 @@ export const ExistingMaterialPickerDialog = ({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-xl">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
         <DialogHeader className="border-b px-6 py-5">
-          <DialogTitle className="pr-8 text-xl">Vincular materiais</DialogTitle>
+          <DialogTitle className="pr-8">Ligar flashcards ou questões</DialogTitle>
           <DialogDescription>
             {collectionId
               ? "Escolha um ou mais materiais desta coleção."
               : "Escolha o tipo e a coleção que deseja consultar."}
           </DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 space-y-4 overflow-y-auto px-6 py-5 lazuli-thin-scrollbar">
-          {sourcePreview && <ReferenceSourcePreview text={sourcePreview} />}
-          {!collectionId && (
-            <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted/50 p-1">
-              <Button
-                onClick={() => {
-                  setType("flashcard");
-                  setQuery("");
-                }}
-                variant={type === "flashcard" ? "secondary" : "ghost"}
-              >
-                <Layers3Icon aria-hidden="true" className="size-4" /> Flashcards
-              </Button>
-              <Button
-                onClick={() => {
-                  setType("quizQuestion");
-                  setQuery("");
-                }}
-                variant={type === "quizQuestion" ? "secondary" : "ghost"}
-              >
-                <SquareCheckBigIcon aria-hidden="true" className="size-4" /> Questões
-              </Button>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            {collectionId && (
-              <Button
-                aria-label="Voltar às coleções"
-                onClick={() => {
-                  setCollectionId(undefined);
-                  setQuery("");
-                }}
-                size="icon-sm"
-                variant="ghost"
-              >
-                <ArrowLeftIcon aria-hidden="true" />
-              </Button>
-            )}
-            <SearchInput
-              autoFocus
-              containerClassName="flex-1"
-              onValueChange={setQuery}
-              placeholder={collectionId ? "Pesquisar materiais" : "Pesquisar coleções"}
-              value={query}
-            />
-          </div>
-          <div className="max-h-72 space-y-1 overflow-y-auto rounded-xl border bg-card p-1.5 lazuli-thin-scrollbar">
-            {!collectionId &&
-              collections?.map((collection) => (
-                <button
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  key={collection.id}
-                  onClick={() => {
-                    setCollectionId(collection.id);
+        <div className="min-h-0 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
+          <CreationWorkspace
+            sourceControls
+            composing
+            destinationLabel="Escolher materiais"
+            source={
+              <div className="space-y-7">
+                {sourceTitle && <h3>{sourceTitle}</h3>}
+                {!sourcePreview && <p data-source-label>Documento inteiro</p>}
+                {sourcePreview && <blockquote>{sourcePreview}</blockquote>}
+                <MaterialKindPicker
+                  label="Tipo de material"
+                  value={type}
+                  onChange={(next) => {
+                    setType(next);
+                    setCollectionId(undefined);
                     setQuery("");
                   }}
-                  type="button"
-                >
-                  {type === "flashcard" ? (
-                    <Layers3Icon aria-hidden="true" className="size-4 text-muted-foreground" />
-                  ) : (
-                    <SquareCheckBigIcon
-                      aria-hidden="true"
-                      className="size-4 text-muted-foreground"
-                    />
-                  )}
-                  <OverflowTooltip text={collection.title}>
-                    {(ref) => (
-                      <span className="min-w-0 flex-1 truncate" ref={ref as Ref<HTMLSpanElement>}>
-                        <HighlightText query={query} text={collection.title} />
-                      </span>
-                    )}
-                  </OverflowTooltip>
-                </button>
-              ))}
-            {collectionId &&
-              materials?.map((material) => {
-                const target: ReferenceTarget = { type, id: material.id };
-                const active = selected.some(
-                  ({ id, type: selectedType }) => id === material.id && selectedType === type,
-                );
-                const preview =
-                  type === "flashcard" && "questionText" in material
-                    ? material.questionText
-                    : "contentText" in material
-                      ? material.contentText
-                      : "Material sem texto";
-                return (
-                  <button
-                    aria-pressed={active}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      active && "bg-muted/65",
-                    )}
-                    key={material.id}
-                    onClick={() => toggle(target)}
-                    type="button"
+                />
+              </div>
+            }
+          >
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                {collectionId && (
+                  <Button
+                    aria-label="Voltar às coleções"
+                    onClick={() => {
+                      setCollectionId(undefined);
+                      setQuery("");
+                    }}
+                    size="icon-sm"
+                    variant="ghost"
                   >
-                    <span
-                      className={cn(
-                        "flex size-4 shrink-0 items-center justify-center rounded-[0.3rem] border",
-                        active && "border-primary bg-primary text-primary-foreground",
-                      )}
+                    <ArrowLeftIcon aria-hidden="true" />
+                  </Button>
+                )}
+                <SearchInput
+                  autoFocus
+                  containerClassName="flex-1"
+                  onValueChange={setQuery}
+                  placeholder={collectionId ? "Pesquisar materiais" : "Pesquisar coleções"}
+                  value={query}
+                />
+              </div>
+              <div className="max-h-72 min-w-0 space-y-1 overflow-x-hidden overflow-y-auto rounded-[var(--radius)] border border-input bg-card p-1.5 lazuli-thin-scrollbar">
+                {!collectionId &&
+                  collections?.map((collection) => (
+                    <button
+                      className="flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      key={collection.id}
+                      onClick={() => {
+                        setCollectionId(collection.id);
+                        setQuery("");
+                      }}
+                      type="button"
                     >
-                      {active && <CheckIcon aria-hidden="true" className="size-3" />}
-                    </span>
-                    <OverflowTooltip text={preview || "Material sem texto"}>
-                      {(ref) => (
-                        <span className="min-w-0 flex-1 truncate" ref={ref as Ref<HTMLSpanElement>}>
-                          <HighlightText query={query} text={preview || "Material sem texto"} />
-                        </span>
+                      {type === "flashcard" ? (
+                        <Layers3Icon aria-hidden="true" className="size-4 text-muted-foreground" />
+                      ) : (
+                        <SquareCheckBigIcon
+                          aria-hidden="true"
+                          className="size-4 text-muted-foreground"
+                        />
                       )}
-                    </OverflowTooltip>
-                  </button>
-                );
-              })}
-            {((!collectionId && collections?.length === 0) ||
-              (collectionId && materials?.length === 0)) && (
-              <p className="px-2 py-4 text-sm text-muted-foreground">Nenhum item encontrado.</p>
-            )}
-          </div>
+                      <OverflowTooltip text={collection.title}>
+                        {(ref) => (
+                          <span
+                            className="min-w-0 flex-1 truncate"
+                            ref={ref as Ref<HTMLSpanElement>}
+                          >
+                            <HighlightText query={query} text={collection.title} />
+                          </span>
+                        )}
+                      </OverflowTooltip>
+                    </button>
+                  ))}
+                {collectionId &&
+                  materials?.map((material) => {
+                    const target: ReferenceTarget = { type, id: material.id };
+                    const active = selected.some(
+                      ({ id, type: selectedType }) => id === material.id && selectedType === type,
+                    );
+                    const preview =
+                      type === "flashcard" && "questionText" in material
+                        ? material.questionText
+                        : "contentText" in material
+                          ? material.contentText
+                          : "Material sem texto";
+                    return (
+                      <button
+                        aria-pressed={active}
+                        className={cn(
+                          "flex w-full min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-[var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                          active && "bg-[var(--primary-soft)] hover:bg-[var(--primary-soft)]",
+                        )}
+                        key={material.id}
+                        onClick={() => toggle(target)}
+                        type="button"
+                      >
+                        <span
+                          className={cn(
+                            "flex size-4 shrink-0 items-center justify-center rounded-[0.3rem] border border-input bg-card",
+                            active && "border-action bg-action text-action-foreground",
+                          )}
+                        >
+                          {active && <CheckIcon aria-hidden="true" className="size-3" />}
+                        </span>
+                        <OverflowTooltip text={preview || "Material sem texto"}>
+                          {(ref) => (
+                            <span
+                              className="min-w-0 flex-1 truncate"
+                              ref={ref as Ref<HTMLSpanElement>}
+                            >
+                              <HighlightText query={query} text={preview || "Material sem texto"} />
+                            </span>
+                          )}
+                        </OverflowTooltip>
+                      </button>
+                    );
+                  })}
+                {((!collectionId && collections?.length === 0) ||
+                  (collectionId && materials?.length === 0)) && (
+                  <p className="px-2 py-4 text-sm text-muted-foreground">Nenhum item encontrado.</p>
+                )}
+              </div>
+            </div>
+          </CreationWorkspace>
         </div>
         <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
           <DialogCancelButton onClick={onCancel}>Cancelar</DialogCancelButton>
-          <Button disabled={!selected.length || create.isPending} onClick={() => void save()}>
-            {create.isPending && <LoaderCircleIcon aria-hidden="true" className="animate-spin" />}
+          <Button
+            pending={create.isPending}
+            disabled={!selected.length || create.isPending}
+            onClick={() => void save()}
+          >
             {!selected.length
               ? "Vincular materiais"
               : selected.length === 1

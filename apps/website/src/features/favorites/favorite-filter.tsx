@@ -1,4 +1,4 @@
-import { FilterIcon } from "lucide-react";
+import { FilterIcon } from "@/components/icons.tsx";
 import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";

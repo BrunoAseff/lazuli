@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { createBrowserRouter, RouterProvider } from "react-router";
 
 import { App } from "./app.tsx";
+import { shouldRetryRequest } from "./lib/api-client.ts";
 import { AppErrorPage } from "./components/app-error-page.tsx";
 import { Toaster } from "./components/ui/sonner.tsx";
 import { TooltipProvider } from "./components/ui/tooltip.tsx";
@@ -13,6 +14,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
+      retry: shouldRetryRequest,
       staleTime: 30_000,
     },
   },

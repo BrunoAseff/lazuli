@@ -1,0 +1,59 @@
+.source-reading {
+  max-height: 13rem;
+  overflow: hidden;
+  /* The scrollbar's room is kept from the start, so the text never rewraps when it appears. */
+  scrollbar-gutter: stable;
+  transition:
+    max-height 280ms var(--ease-out),
+    mask-size 280ms var(--ease-out);
+  /* Collapsed text fades out instead of being cut mid-line. */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 3rem), transparent);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  overflow-wrap: anywhere;
+  font-family: var(--font-reading);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--foreground);
+}
+.source-reading p + p {
+  margin-top: 1em;
+}
+.source-reading p {
+  white-space: pre-wrap;
+}
+.source-reading:not([data-clipped]) {
+  mask-image: none;
+}
+/* Opens to the text's own height (up to a reading window) and animates both ways. */
+.source-reading[data-expanded="true"] {
+  max-height: min(var(--source-full, 20rem), 24rem);
+}
+/* Only after the animation, and only when the text is longer than the reading window. */
+.source-reading[data-settled] {
+  overflow-y: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .source-reading {
+    transition: none;
+  }
+  /* No transition means no transitionend: scrolling is available as soon as it opens. */
+  .source-reading[data-expanded="true"] {
+    overflow-y: auto;
+  }
+}
+.source-reading:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+/* In a wide workspace the column scrolls; the text is not boxed a second time. */
+.source-reading[data-fill] {
+  max-height: none;
+  overflow: visible;
+}
+
+/* A preview to confirm the choice, not to study: smaller reading voice. */
+.source-reading-compact .source-reading {
+  font-size: 15px;
+  line-height: 1.6;
+}

@@ -1,3 +1,4 @@
+import { formatUpdated } from "@/lib/date-format.ts";
 import type { DocumentSummary } from "@lazuli/shared";
 import { Link } from "react-router";
 
@@ -22,7 +23,7 @@ export const RecentDocuments = ({
         {items.map((document) => (
           <div key={document.id} className="relative min-w-0">
             <Link
-              className="group flex h-full min-w-0 flex-col justify-between rounded-xl border border-border/50 bg-card p-4 transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 sm:min-h-32"
+              className="surface-card-action group flex h-full min-w-0 flex-col justify-between rounded-xl border border-border/50 bg-card p-4 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 sm:min-h-32"
               key={document.id}
               to={`/documents/${projectId}/document/${document.id}`}
             >
@@ -30,12 +31,11 @@ export const RecentDocuments = ({
                 <DocumentDomainIcon
                   aria-hidden="true"
                   className="mb-4 size-5 text-muted-foreground"
-                  weight="duotone"
                 />
                 <OverflowTooltip text={document.title}>
                   {(ref) => (
                     <span
-                      className="block font-heading text-lg leading-snug [overflow-wrap:anywhere] sm:truncate"
+                      className="block text-[0.9375rem] leading-snug font-medium [overflow-wrap:anywhere] sm:truncate"
                       ref={ref as React.RefObject<HTMLSpanElement>}
                     >
                       {document.title}
@@ -44,7 +44,7 @@ export const RecentDocuments = ({
                 </OverflowTooltip>
               </div>
               <time className="mt-4 text-xs text-muted-foreground" dateTime={document.updatedAt}>
-                Atualizado em {formatProjectDate(document.updatedAt)}
+                {formatUpdated(document.updatedAt)}
               </time>
             </Link>
             <FavoriteButton
@@ -60,13 +60,13 @@ export const RecentDocuments = ({
 
   return (
     <div className="mt-5 overflow-hidden rounded-xl border border-border/50 bg-card">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] border-b border-border/50 bg-muted/35 px-4 py-2 text-xs font-medium text-muted-foreground">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] border-b border-border/50 px-4 py-2 text-xs font-medium text-muted-foreground">
         <span>Documento</span>
         <span className="hidden sm:block">Atualizado em</span>
       </div>
       {items.map((document) => (
         <Link
-          className="group grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border/40 px-4 transition-colors duration-150 last:border-b-0 hover:bg-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/40"
+          className="group grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border/40 px-4 last:border-b-0 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/40"
           key={document.id}
           to={`/documents/${projectId}/document/${document.id}`}
         >
@@ -74,12 +74,12 @@ export const RecentDocuments = ({
             <DocumentDomainIcon
               aria-hidden="true"
               className="size-[1.125rem] shrink-0 text-muted-foreground"
-              weight="duotone"
             />
             <OverflowTooltip text={document.title}>
               {(ref) => (
+                // White table: no gray fill on hover (it reads as the page); the title underlines.
                 <span
-                  className="truncate font-medium"
+                  className="truncate font-medium underline-offset-4 group-hover:underline"
                   ref={ref as React.RefObject<HTMLSpanElement>}
                 >
                   {document.title}

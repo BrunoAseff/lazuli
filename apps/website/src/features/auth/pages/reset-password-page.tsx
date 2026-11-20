@@ -1,6 +1,6 @@
+import { BackLink } from "@/components/nav-link.tsx";
 import { useState } from "react";
-import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
-import { LockKeyOpenIcon } from "@phosphor-icons/react/LockKeyOpen";
+import { LockKeyOpenIcon } from "@/components/icons.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useSearchParams } from "react-router";
@@ -49,8 +49,9 @@ export const ResetPasswordPage = () => {
 
   return (
     <AuthLayout>
-      <div className="mb-5 flex size-11 items-center justify-center rounded-[var(--radius)] border border-primary/25 bg-primary/5 text-primary">
-        <LockKeyOpenIcon aria-hidden="true" className="size-6" weight="duotone" />
+      {/* A plain glyph, like the empty states: no tile around it. */}
+      <div className="mb-4 text-muted-foreground">
+        <LockKeyOpenIcon aria-hidden="true" className="size-6" />
       </div>
 
       {complete ? (
@@ -72,13 +73,9 @@ export const ResetPasswordPage = () => {
           <AuthSubmitButton asChild>
             <Link to="/forgot-password">Solicitar novo link</Link>
           </AuthSubmitButton>
-          <Link
-            className="mt-5 inline-flex w-fit items-center gap-1.5 text-sm font-normal text-muted-foreground transition-colors hover:text-foreground"
-            to="/login"
-          >
-            <ArrowLeftIcon aria-hidden="true" className="size-3.5" />
+          <BackLink className="mt-5" to="/login">
             Voltar para entrar
-          </Link>
+          </BackLink>
         </>
       ) : (
         <>

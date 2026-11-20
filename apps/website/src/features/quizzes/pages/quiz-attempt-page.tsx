@@ -1,16 +1,17 @@
+import { isNotFound, ResourceUnavailable } from "@/components/not-found-page.tsx";
+import { Trash2Icon } from "@/components/icons.tsx";
 import { useCreateBlockNote } from "@blocknote/react";
+import { BackButton, BackLink } from "@/components/nav-link.tsx";
 import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
-import type { QuizAttempt } from "@lazuli/shared";
+import { collectDocumentTextBlocks, type DocumentBlock, type QuizAttempt } from "@lazuli/shared";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  CheckCircle2Icon,
-  CircleIcon,
+  ChevronDownIcon,
   LoaderCircleIcon,
   RotateCcwIcon,
-  XCircleIcon,
-} from "lucide-react";
-import { useEffect, useState } from "react";
+} from "@/components/icons.tsx";
+import { useEffect, useState, Fragment } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
@@ -25,14 +26,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Progress } from "@/components/ui/progress.tsx";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motionTokens } from "@/components/arc/motion-tokens.ts";
+import { AutoHeight } from "@/components/auto-height.tsx";
+import { StudySessionProgress } from "@/components/study-session-progress.tsx";
+import { ResultDistribution } from "@/components/result-distribution.tsx";
+import { StudyAnswerChoice, StudyAnswerOutcome } from "@/components/study-answer-choice.tsx";
+import "@/components/study-practice.css";
 import { releaseResolvedAssetUrls, resolveAssetUrl } from "@/features/assets/asset-api.ts";
 import { lazuliBlockNoteDictionary } from "@/features/documents/editor/blocknote-dictionary.ts";
 import {
   documentSchema,
   type LazuliDocumentBlock,
 } from "@/features/documents/editor/document-schema.tsx";
-import { cn } from "@/lib/utils.ts";
 import { MaterialReferencesButton } from "@/features/references/components/material-references-dialog.tsx";
 import {
   useAbandonQuizAttempt,
@@ -42,6 +48,22 @@ import {
   useQuizAttempt,
 } from "../api/quiz-queries.ts";
 import { useQuizCollection } from "../api/quiz-collection-queries.ts";
+import {
+  StoneContributionRow,
+  StoneLevelUp,
+} from "@/features/stone/components/stone-contribution.tsx";
+
+const formatDuration = (minutes: number) => {
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours} h ${rest} min` : `${hours} h`;
+};
+
+const questionPreview = (content: unknown[]) =>
+  collectDocumentTextBlocks(content as DocumentBlock[])
+    .map(({ text }) => text)
+    .join(" ");
 
 export const QuizAttemptPage = () => {
   const { attemptId = "" } = useParams();
@@ -55,6 +77,8 @@ export const QuizAttemptPage = () => {
   const [index, setIndex] = useState(0);
   const [exitOpen, setExitOpen] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [direction, setDirection] = useState(1);
+  const reduced = useReducedMotion();
   const attempt = attemptQuery.data;
   useEffect(() => {
     if (attempt?.status === "active") {
@@ -93,12 +117,13 @@ export const QuizAttemptPage = () => {
     );
   if (!attempt)
     return (
-      <main className="mx-auto w-full max-w-3xl px-5 py-12">
-        <h1 className="font-heading text-3xl">Tentativa não encontrada</h1>
-        <Button asChild className="mt-5" variant="outline">
-          <Link to="/quizzes">Voltar para quizzes</Link>
-        </Button>
-      </main>
+      <ResourceUnavailable
+        backLabel="Voltar aos quizzes"
+        backTo="/quizzes"
+        notFound={isNotFound(attemptQuery.error) || !attemptQuery.isError}
+        onRetry={() => void attemptQuery.refetch()}
+        title="Tentativa não encontrada"
+      />
     );
   if (attempt.status === "completed") return <QuizResult attempt={attempt} />;
   const item = attempt.items[index]!;
@@ -117,203 +142,162 @@ export const QuizAttemptPage = () => {
       toast.error("Responda todas as questões antes de concluir.");
     }
   };
+  const goTo = (next: number) => {
+    setDirection(next >= index ? 1 : -1);
+    setIndex(next);
+    setReviewing(false);
+  };
+  const pending = attempt.totalQuestions - attempt.answeredQuestions;
   return (
-    <main className="flex min-h-full flex-col bg-background px-4 py-5 sm:px-8 sm:py-7 lg:px-12">
-      <div className="mx-auto w-full max-w-5xl rounded-xl border border-border/45 bg-card px-4 py-5 sm:px-7 lg:px-10">
-        <header className="border-b border-border/45 pb-5">
-          <div className="flex items-start justify-between gap-3 sm:items-center sm:gap-4">
-            <Button
-              aria-label="Sair do quiz"
-              onClick={() => setExitOpen(true)}
-              size="icon"
-              variant="ghost"
-            >
-              <ArrowLeftIcon />
-            </Button>
-            <div className="min-w-0 flex-1">
-              <h1 className="font-heading text-lg leading-snug [overflow-wrap:anywhere] sm:text-xl">
-                {attempt.collectionTitle}
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                {attempt.answeredQuestions} de {attempt.totalQuestions} respondidas
-              </p>
-            </div>
-            <span className="shrink-0 pt-1 text-xs tabular-nums sm:pt-0 sm:text-sm">
-              {index + 1} / {attempt.totalQuestions}
-            </span>
-          </div>
-          <Progress
-            className="mt-4"
-            value={(attempt.answeredQuestions / attempt.totalQuestions) * 100}
-          />
-          <div
-            className="mt-3 flex gap-1 overflow-x-auto pb-1 lazuli-thin-scrollbar"
-            aria-label="Navegação das questões"
-          >
-            {attempt.items.map((navigationItem, itemIndex) => (
-              <button
-                aria-label={`Questão ${itemIndex + 1}${
-                  navigationItem.selectedOptionId ? ", respondida" : ", pendente"
-                }`}
-                aria-current={itemIndex === index ? "step" : undefined}
-                className={cn(
-                  "size-7 shrink-0 rounded-md border text-xs tabular-nums transition-colors hover:border-primary/40 hover:bg-primary/5",
-                  navigationItem.selectedOptionId && "bg-muted",
-                  itemIndex === index && "border-primary bg-primary/8 font-semibold",
-                )}
-                key={navigationItem.id}
-                onClick={() => {
-                  setIndex(itemIndex);
-                  setReviewing(false);
-                }}
-                type="button"
-              >
-                {itemIndex + 1}
-              </button>
-            ))}
-          </div>
-        </header>
+    <main className="practice">
+      <header className="practice-head">
+        <BackButton
+          aria-label={`Sair do quiz ${attempt.collectionTitle}`}
+          onClick={() => setExitOpen(true)}
+        >
+          {attempt.collectionTitle}
+        </BackButton>
+        <p className="practice-count">
+          <span className="text-foreground">{attempt.answeredQuestions}</span> de{" "}
+          {attempt.totalQuestions} respondidas
+        </p>
+      </header>
+      <div className="practice-progress">
+        <StudySessionProgress
+          completed={attempt.answeredQuestions}
+          label={`${attempt.answeredQuestions} de ${attempt.totalQuestions} questões respondidas`}
+          total={attempt.totalQuestions}
+        />
+      </div>
+      <AnimatePresence custom={direction} initial={false} mode="wait">
         {reviewing ? (
-          <section className="py-7 sm:py-9">
-            <h2 className="font-heading text-3xl">Revisar respostas</h2>
+          <motion.section
+            animate={{ opacity: 1, x: 0 }}
+            className="practice-stage practice-sheet"
+            exit={{ opacity: 0 }}
+            initial={reduced ? { opacity: 0 } : { opacity: 0, x: 20 }}
+            key="review"
+            transition={{ duration: 0.18, ease: motionTokens.ease.standard }}
+          >
+            <p className="practice-kicker">Antes de concluir</p>
+            <h2 className="font-heading text-lg font-semibold">Revisar respostas</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Confira as questões antes de concluir. Respostas pendentes estão indicadas abaixo.
+              {pending
+                ? `Ainda ${pending === 1 ? "há 1 questão pendente" : `há ${pending} questões pendentes`}. Abra uma questão para responder.`
+                : "Todas as questões foram respondidas. Abra uma questão para mudar a resposta."}
             </p>
-            <div className="mt-7 space-y-2">
+            <ol className="mt-7 grid gap-1">
               {attempt.items.map((reviewItem, itemIndex) => {
                 const selectedOption = reviewItem.options.find(
                   ({ id }) => id === reviewItem.selectedOptionId,
                 );
                 return (
-                  <button
-                    aria-label={`Ir para a questão ${itemIndex + 1}${
-                      reviewItem.selectedOptionId ? ", respondida" : ", pendente"
-                    }`}
-                    className="flex w-full items-center gap-3 rounded-lg border border-border/50 bg-background px-3 py-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
-                    key={reviewItem.id}
-                    onClick={() => {
-                      setIndex(itemIndex);
-                      setReviewing(false);
-                    }}
-                  >
-                    {selectedOption ? (
-                      <CheckCircle2Icon className="size-5 shrink-0" />
-                    ) : (
-                      <CircleIcon className="size-5 shrink-0 text-muted-foreground" />
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-medium">Questão {itemIndex + 1}</span>
-                      <span
-                        className={cn(
-                          "block text-sm text-muted-foreground [overflow-wrap:anywhere] sm:truncate",
-                          !selectedOption && "text-destructive",
-                        )}
-                      >
-                        {selectedOption ? `Sua resposta: ${selectedOption.text}` : "Sem resposta"}
+                  <li key={reviewItem.id}>
+                    <button
+                      aria-label={`Ir para a questão ${itemIndex + 1}${
+                        selectedOption ? ", respondida" : ", pendente"
+                      }`}
+                      className="practice-review-row"
+                      data-pending={selectedOption ? undefined : ""}
+                      onClick={() => goTo(itemIndex)}
+                      type="button"
+                    >
+                      <span className="practice-review-number">{itemIndex + 1}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm">
+                          {questionPreview(reviewItem.question) || `Questão ${itemIndex + 1}`}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {selectedOption ? selectedOption.text : "Sem resposta"}
+                        </span>
                       </span>
-                    </span>
-                    <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground" />
-                  </button>
+                      <ArrowRightIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+                    </button>
+                  </li>
                 );
               })}
+            </ol>
+            <div className="practice-footer">
+              <Button onClick={() => setReviewing(false)} variant="outline">
+                <ArrowLeftIcon /> Voltar à questão
+              </Button>
+              <Button
+                pending={complete.isPending}
+                disabled={!allAnswered || complete.isPending}
+                onClick={() => void finish()}
+              >
+                Concluir quiz
+              </Button>
             </div>
-            {!allAnswered && (
-              <p className="mt-5 text-sm text-destructive">
-                Ainda há {attempt.totalQuestions - attempt.answeredQuestions}{" "}
-                {attempt.totalQuestions - attempt.answeredQuestions === 1
-                  ? "questão pendente"
-                  : "questões pendentes"}
-                .
-              </p>
-            )}
-          </section>
+          </motion.section>
         ) : (
-          <section className="py-7 sm:py-9">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Questão {index + 1}
-            </p>
-            <RichContent content={item.question} />
-            <div className="mt-8 grid gap-3">
-              {item.options.map((option) => (
-                <button
-                  aria-pressed={item.selectedOptionId === option.id}
-                  className={cn(
-                    "flex min-h-14 w-full items-center gap-3 rounded-lg border border-border/50 bg-background px-4 py-3 text-left transition-colors",
-                    item.selectedOptionId === option.id
-                      ? "border-primary bg-primary/8 hover:border-primary hover:bg-primary/8"
-                      : "hover:border-primary/40 hover:bg-primary/5",
-                  )}
+          <motion.section
+            animate={{ opacity: 1, x: 0 }}
+            className="practice-stage practice-sheet"
+            custom={direction}
+            exit={reduced ? { opacity: 0 } : { opacity: 0, x: -20 * direction }}
+            initial={reduced ? { opacity: 0 } : { opacity: 0, x: 20 * direction }}
+            key={item.id}
+            transition={{ duration: 0.18, ease: motionTokens.ease.standard }}
+          >
+            <p className="practice-kicker">Questão {index + 1}</p>
+            <div className="practice-question">
+              <RichContent content={item.question} />
+            </div>
+            <div className="choices" role="group" aria-label="Alternativas">
+              {item.options.map((option, optionIndex) => (
+                <StudyAnswerChoice
+                  text={option.text}
+                  index={optionIndex}
+                  selected={item.selectedOptionId === option.id}
                   disabled={answer.isPending}
                   key={option.id}
-                  onClick={() => void select(option.id)}
-                  type="button"
-                >
-                  {item.selectedOptionId === option.id ? (
-                    <CheckCircle2Icon className="size-5 shrink-0" />
-                  ) : (
-                    <CircleIcon className="size-5 shrink-0 text-muted-foreground" />
-                  )}
-                  <span>{option.text}</span>
-                </button>
+                  onSelect={() => void select(option.id)}
+                />
               ))}
             </div>
-          </section>
-        )}
-        <footer className="flex flex-col gap-3 border-t border-border/45 pt-5 sm:flex-row sm:items-center sm:justify-between">
-          {reviewing ? (
-            <Button onClick={() => setReviewing(false)} variant="outline">
-              <ArrowLeftIcon /> Voltar à questão
-            </Button>
-          ) : (
-            <div className="ml-auto flex gap-2">
-              <Button
-                disabled={index === 0}
-                onClick={() => setIndex((value) => value - 1)}
-                variant="outline"
-              >
+            <div className="practice-footer">
+              <Button disabled={index === 0} onClick={() => goTo(index - 1)} variant="ghost">
                 <ArrowLeftIcon /> Anterior
               </Button>
               {index === attempt.items.length - 1 ? (
-                <Button onClick={() => setReviewing(true)}>Revisar respostas</Button>
+                <Button onClick={() => setReviewing(true)}>
+                  Revisar respostas <ArrowRightIcon />
+                </Button>
               ) : (
-                <Button onClick={() => setIndex((value) => value + 1)}>
+                <Button
+                  onClick={() => goTo(index + 1)}
+                  variant={item.selectedOptionId ? "default" : "outline"}
+                >
                   Próxima <ArrowRightIcon />
                 </Button>
               )}
             </div>
-          )}
-          {reviewing ? (
-            <Button disabled={!allAnswered || complete.isPending} onClick={() => void finish()}>
-              {complete.isPending && <LoaderCircleIcon className="animate-spin" />} Concluir quiz
-            </Button>
-          ) : null}
-        </footer>
-      </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
       <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Sair da tentativa?</AlertDialogTitle>
             <AlertDialogDescription>
               Suas respostas estão salvas. Você pode continuar depois ou abandonar esta tentativa.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="sm:flex-wrap">
-            <AlertDialogCancel>Continuar respondendo</AlertDialogCancel>
-            <Button
-              onClick={() => void navigate(`/quizzes/${attempt.collectionId}`)}
-              variant="outline"
-            >
-              Sair e continuar depois
-            </Button>
+          {/* Destructive choice apart on the left; leaving keeps the answers, so it is the main way out. */}
+          <AlertDialogFooter>
             <AlertDialogAction
-              variant="destructive"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+              variant="ghost"
               onClick={async () => {
                 await abandon.mutateAsync();
                 await navigate(`/quizzes/${attempt.collectionId}`);
               }}
             >
-              Abandonar tentativa
+              <Trash2Icon aria-hidden="true" /> Abandonar
             </AlertDialogAction>
+            <AlertDialogCancel>Continuar respondendo</AlertDialogCancel>
+            <Button onClick={() => void navigate(`/quizzes/${attempt.collectionId}`)}>Sair</Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -326,6 +310,7 @@ const RichContent = ({ content }: { content: unknown[] }) => {
     {
       schema: documentSchema,
       initialContent: content as LazuliDocumentBlock,
+      domAttributes: { editor: { role: "document" } },
       dictionary: lazuliBlockNoteDictionary,
       resolveFileUrl: resolveAssetUrl,
     },
@@ -354,30 +339,25 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
       ? id === params.get("item")
       : Boolean(requestedQuestion) && questionId === requestedQuestion,
   );
-  const reviewIndex = requestedIndex >= 0 ? requestedIndex : 0;
-  const item = attempt.items[reviewIndex]!;
-  useEffect(() => {
-    if (requestedIndex >= 0) return;
+  // Reviewing is about mistakes: open the first wrong answer unless a link asked for another one.
+  // "none" keeps everything closed after the learner collapses the open question.
+  const firstIncorrect = attempt.items.findIndex(({ isCorrect }) => !isCorrect);
+  const openIndex =
+    params.get("item") === "none" ? -1 : requestedIndex >= 0 ? requestedIndex : firstIncorrect;
+  const toggleQuestion = (index: number) =>
     setParams(
       (current) => {
         const updated = new URLSearchParams(current);
-        updated.set("item", item.id);
-        if (item.questionId) updated.set("question", item.questionId);
-        else updated.delete("question");
-        return updated;
-      },
-      { replace: true },
-    );
-  }, [item.id, item.questionId, requestedIndex, setParams]);
-  const selectQuestion = (index: number) =>
-    setParams(
-      (current) => {
-        const updated = new URLSearchParams(current);
+        updated.delete("reference");
+        if (index === openIndex) {
+          updated.set("item", "none");
+          updated.delete("question");
+          return updated;
+        }
         updated.set("item", attempt.items[index]!.id);
         const questionId = attempt.items[index]!.questionId;
         if (questionId) updated.set("question", questionId);
         else updated.delete("question");
-        updated.delete("reference");
         return updated;
       },
       { replace: true },
@@ -390,26 +370,48 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
     ),
   );
   return (
-    <main className="flex min-h-full flex-col bg-background px-4 py-6 sm:px-8 sm:py-8">
-      <div className="mx-auto w-full max-w-4xl rounded-xl border border-border/45 bg-card px-5 py-7 sm:px-9">
-        <header className="border-b border-border/45 pb-8 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Resultado
-          </p>
-          <h1 className="mt-2 font-heading text-4xl">{rate}%</h1>
-          <p className="mt-2 text-muted-foreground">
-            {attempt.correctAnswers} de {attempt.totalQuestions} respostas corretas
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Concluído em cerca de {durationMinutes} {durationMinutes === 1 ? "minuto" : "minutos"}
-            {collection.data?.bestScoreRate !== null && collection.data?.bestScoreRate !== undefined
-              ? ` · Melhor pontuação da coleção: ${Math.round(
-                  collection.data.bestScoreRate * 100,
-                )}%`
-              : ""}
-          </p>
-          <div className="mt-5 flex justify-center gap-2">
+    <main className="practice">
+      <header className="practice-head">
+        <BackLink to={`/quizzes/${attempt.collectionId}`}>{attempt.collectionTitle}</BackLink>
+      </header>
+      <section
+        className="practice-stage practice-sheet result-summary"
+        aria-labelledby="quiz-result-title"
+      >
+        <StoneLevelUp id={attempt.id} kind="quiz" />
+        <div className="result-head">
+          <div>
+            <p className="practice-kicker">Resultado da tentativa</p>
+            <h1 className="page-title" id="quiz-result-title">
+              {attempt.correctAnswers} de {attempt.totalQuestions}{" "}
+              {attempt.totalQuestions === 1 ? "acerto" : "acertos"}
+            </h1>
+            {/* Each fact stays whole when the line wraps. */}
+            <p className="result-subtitle">
+              {[
+                `${rate}% de aproveitamento`,
+                collection.data?.bestScoreRate !== null &&
+                collection.data?.bestScoreRate !== undefined
+                  ? `melhor da coleção ${Math.round(collection.data.bestScoreRate * 100)}%`
+                  : null,
+                formatDuration(durationMinutes),
+              ]
+                .filter(Boolean)
+                .map((fact, index) => (
+                  // The separator stays outside, so the line can break between facts only.
+                  <Fragment key={index}>
+                    {index > 0 && " · "}
+                    <span className="whitespace-nowrap">{fact}</span>
+                  </Fragment>
+                ))}
+            </p>
+          </div>
+          <div className="practice-actions">
+            <Button asChild variant="outline">
+              <Link to={`/quizzes/${attempt.collectionId}`}>Voltar à coleção</Link>
+            </Button>
             <Button
+              disabled={restart.isPending}
               onClick={async () => {
                 const next = await restart.mutateAsync({
                   id: crypto.randomUUID(),
@@ -420,86 +422,86 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
             >
               <RotateCcwIcon /> Tentar novamente
             </Button>
-            <Button asChild variant="outline">
-              <Link to={`/quizzes/${attempt.collectionId}`}>Voltar à coleção</Link>
-            </Button>
           </div>
+        </div>
+        <ResultDistribution
+          label="Respostas"
+          parts={[
+            { count: attempt.correctAnswers, label: "Corretas", tone: "correct" },
+            {
+              count: attempt.totalQuestions - attempt.correctAnswers,
+              label: "Erradas",
+              tone: "incorrect",
+            },
+          ]}
+        />
+        <StoneContributionRow id={attempt.id} kind="quiz" />
+      </section>
+      <section className="practice-stage practice-sheet" aria-labelledby="quiz-review-title">
+        <header className="practice-section-head">
+          <h2 id="quiz-review-title">Revisão das respostas</h2>
+          <span>
+            {attempt.totalQuestions - attempt.correctAnswers}{" "}
+            {attempt.totalQuestions - attempt.correctAnswers === 1 ? "erro" : "erros"}
+          </span>
         </header>
-        <section className="pt-8">
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="font-heading text-2xl">Revisão</h2>
-            <span className="text-sm text-muted-foreground">
-              {reviewIndex + 1} de {attempt.totalQuestions}
-            </span>
-          </div>
-          <RichContent content={item.question} />
-          <div className="mt-6 grid gap-3">
-            {item.options.map((option) => {
-              const correct = option.id === item.correctOptionId;
-              const selected = option.id === item.selectedOptionId;
-              return (
-                <div
-                  className={cn(
-                    "flex items-start gap-3 rounded-lg border border-border/50 px-4 py-3 sm:items-center",
-                    correct && "border-success/40 bg-success/10",
-                    selected && !correct && "border-destructive/40 bg-destructive/5",
-                  )}
-                  key={option.id}
+        <ol className="result-list">
+          {attempt.items.map((reviewItem, itemIndex) => {
+            const open = itemIndex === openIndex;
+            return (
+              <li className="result-item" data-open={open || undefined} key={reviewItem.id}>
+                <button
+                  aria-expanded={open}
+                  className="result-row"
+                  onClick={() => toggleQuestion(itemIndex)}
+                  type="button"
                 >
-                  {correct ? (
-                    <CheckCircle2Icon className="size-5 text-success" />
-                  ) : selected ? (
-                    <XCircleIcon className="size-5 text-destructive" />
-                  ) : (
-                    <CircleIcon className="size-5 text-muted-foreground" />
-                  )}
-                  <span className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-4">
-                    <span className="block [overflow-wrap:anywhere]">{option.text}</span>
-                    {(correct || selected) && (
-                      <span
-                        className={cn(
-                          "mt-1.5 block shrink-0 text-xs font-medium sm:mt-0 sm:ml-auto",
-                          correct ? "text-success" : "text-destructive",
-                        )}
-                      >
-                        {selected && correct
-                          ? "Sua resposta · correta"
-                          : selected
-                            ? "Sua resposta"
-                            : "Resposta correta"}
-                      </span>
-                    )}
+                  <span
+                    aria-hidden="true"
+                    className="result-badge"
+                    data-outcome={reviewItem.isCorrect ? "correct" : "incorrect"}
+                  >
+                    {itemIndex + 1}
                   </span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-5">
-            {item.questionId && (
-              <MaterialReferencesButton
-                count={item.referenceCount}
-                target={{ id: item.questionId, type: "quizQuestion" }}
-              />
-            )}
-          </div>
-          <div className="mt-6 flex justify-between">
-            <Button
-              disabled={reviewIndex === 0}
-              onClick={() => selectQuestion(reviewIndex - 1)}
-              variant="outline"
-            >
-              <ArrowLeftIcon /> Anterior
-            </Button>
-            <Button
-              disabled={reviewIndex === attempt.items.length - 1}
-              onClick={() => selectQuestion(reviewIndex + 1)}
-              variant="outline"
-            >
-              Próxima <ArrowRightIcon />
-            </Button>
-          </div>
-        </section>
-      </div>
+                  <span className="result-row-text">
+                    <span className="sr-only">
+                      Questão {itemIndex + 1}, {reviewItem.isCorrect ? "correta" : "incorreta"}
+                      :{" "}
+                    </span>
+                    {questionPreview(reviewItem.question) || `Questão ${itemIndex + 1}`}
+                  </span>
+                  <ChevronDownIcon aria-hidden="true" className="result-row-chevron" />
+                </button>
+                <AutoHeight>
+                  {open && (
+                    <div className="result-detail">
+                      <div className="choices mt-0">
+                        {reviewItem.options.map((option, optionIndex) => (
+                          <StudyAnswerOutcome
+                            correct={option.id === reviewItem.correctOptionId}
+                            index={optionIndex}
+                            key={option.id}
+                            selected={option.id === reviewItem.selectedOptionId}
+                            text={option.text}
+                          />
+                        ))}
+                      </div>
+                      {reviewItem.questionId && (
+                        <div className="mt-4">
+                          <MaterialReferencesButton
+                            count={reviewItem.referenceCount}
+                            target={{ id: reviewItem.questionId, type: "quizQuestion" }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </AutoHeight>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
     </main>
   );
 };

@@ -2,8 +2,8 @@ import * as React from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
-import { controlTransition, menuItem, overlayMotion, overlaySurface } from "./ui-styles.ts";
-import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react";
+import { controlTransition, menuItem, overlayMotion, floatSurface } from "./ui-styles.ts";
+import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "@/components/icons.tsx";
 
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;
@@ -36,7 +36,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        `flex w-fit items-center justify-between gap-2 rounded-[var(--radius)] border border-input bg-card py-2 pr-2.5 pl-3 text-sm whitespace-nowrap outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 *:data-[slot=select-value]:[&_svg]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${controlTransition}`,
+        `flex w-fit items-center justify-between gap-2 rounded-[var(--radius)] border border-input bg-card py-2 pr-2.5 pl-3 text-sm whitespace-nowrap outline-none select-none hover:border-[color-mix(in_oklab,var(--foreground)_32%,transparent)] data-[state=open]:border-ring focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 *:data-[slot=select-value]:[&_svg]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${controlTransition}`,
         className,
       )}
       {...props}
@@ -62,7 +62,7 @@ function SelectContent({
         data-slot="select-content"
         data-align-trigger={position === "item-aligned"}
         className={cn(
-          `relative z-50 max-h-(--radix-select-content-available-height) w-(--radix-select-trigger-width) min-w-max max-w-[calc(100vw-16px)] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto p-1.5 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ${overlaySurface} ${overlayMotion}`,
+          `relative z-50 max-h-(--radix-select-content-available-height) w-(--radix-select-trigger-width) min-w-max max-w-[calc(100vw-16px)] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto p-1.5 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ${floatSurface} ${overlayMotion}`,
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,
@@ -103,7 +103,10 @@ function SelectItem({
       {...props}
     >
       <span className="flex min-w-0 flex-1 items-center gap-2">
-        <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+        {/* Radix drops className on ItemText, so the row layout lives on an inner span. */}
+        <SelectPrimitive.ItemText>
+          <span className="flex min-w-0 items-center gap-2 whitespace-nowrap">{children}</span>
+        </SelectPrimitive.ItemText>
       </span>
       <span className="pointer-events-none ml-3 flex size-4 shrink-0 items-center justify-center">
         <SelectPrimitive.ItemIndicator>

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router";
 import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION, type LegalStatus } from "@lazuli/shared";
 import { Button } from "@/components/ui/button.tsx";
+import { LazuliWordmark } from "@/components/brand-mark.tsx";
 import { NewTabIndicator } from "@/components/new-tab-indicator.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import {
@@ -13,7 +14,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { SessionLoading } from "@/features/auth/components/session-feedback.tsx";
 import { startSignOut } from "@/features/auth/sign-out.ts";
 import { ApiError } from "@/lib/api-client.ts";
@@ -80,7 +80,9 @@ export const LegalGate = ({ children, userId }: { children: ReactNode; userId: s
 
   return (
     <main className="min-h-svh bg-background">
-      <div className="px-6 py-5 font-heading text-2xl font-semibold">Lazúli</div>
+      <div className="px-6 py-5">
+        <LazuliWordmark />
+      </div>
       <Dialog open>
         <DialogContent
           showCloseButton={false}
@@ -166,12 +168,13 @@ export const LegalGate = ({ children, userId }: { children: ReactNode; userId: s
                 Sair
               </Button>
               <Button
+                pending={mutation.isPending}
                 disabled={
                   !checked || status.isError || Boolean(versionChanged) || mutation.isPending
                 }
                 onClick={() => mutation.mutate()}
               >
-                {mutation.isPending && <Spinner aria-hidden="true" />}Concordar e continuar
+                Concordar e continuar
               </Button>
             </div>
           </DialogFooter>

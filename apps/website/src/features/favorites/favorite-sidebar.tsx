@@ -68,7 +68,7 @@ export const FavoriteSidebar = ({ onNavigate }: { onNavigate: () => void }) => {
                     to={item.href}
                     onClick={onNavigate}
                   >
-                    <Icon aria-hidden="true" weight="duotone" />
+                    <Icon aria-hidden="true" />
                     <OverflowTooltip
                       side="right"
                       text={`${item.title} · ${favoriteLabels[item.kind]}${item.context ? ` · ${item.context}` : ""}`}

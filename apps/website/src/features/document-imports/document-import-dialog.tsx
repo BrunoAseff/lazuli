@@ -1,8 +1,10 @@
 import { DOCUMENT_IMPORT_MAX_ACTIVE } from "@lazuli/shared";
-import { UploadCloudIcon, XIcon } from "lucide-react";
+import { UploadCloudIcon, XIcon } from "@/components/icons.tsx";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { DocumentDomainIcon } from "@/components/domain-icons.ts";
 import {
@@ -39,6 +41,7 @@ export const DocumentImportDialog = ({
   onSubmit: (files: PreparedImportFile[]) => Promise<boolean>;
   open: boolean;
 }) => {
+  const reduced = useReducedMotion();
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const addFiles = (incoming: File[]) => {
@@ -74,66 +77,77 @@ export const DocumentImportDialog = ({
       }}
       open={open}
     >
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl">Importar documentos</DialogTitle>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="border-b border-border/50 px-6 py-5">
+          <DialogTitle>Importar documentos</DialogTitle>
           <DialogDescription>
-            Revise os arquivos antes de enviá-los. São aceitos PDF textual, DOCX, Markdown e texto.
+            Escolha os arquivos e ajuste os nomes antes de importar, se precisar.
           </DialogDescription>
         </DialogHeader>
-        <FileDropzone
-          accept={acceptedDocumentImportTypes}
-          multiple
-          disabled={submitting}
-          onFiles={addFiles}
-        />
-        {files.length > 0 && (
-          <div className="lazuli-thin-scrollbar max-h-60 space-y-2 overflow-y-auto pr-1">
-            {files.map((item) => (
-              <div
-                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 sm:flex sm:gap-3"
-                key={item.id}
-              >
-                <DocumentDomainIcon
-                  className="size-[1.125rem] shrink-0 text-muted-foreground"
-                  weight="duotone"
-                />
-                <div className="flex min-w-0 flex-1 items-center overflow-hidden rounded-lg border bg-background transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/25">
-                  <Input
-                    aria-label={`Nome de ${item.originalName}`}
-                    className="h-9 min-w-0 rounded-none border-0 bg-transparent pr-1 shadow-none focus-visible:border-0 focus-visible:ring-0"
-                    maxLength={Math.max(1, 255 - item.extension.length)}
-                    onChange={(event) =>
-                      setFiles((current) =>
-                        current.map((file) =>
-                          file.id === item.id ? { ...file, title: event.target.value } : file,
-                        ),
-                      )
-                    }
-                    value={item.title}
-                  />
-                  <span className="flex h-9 shrink-0 items-center border-l bg-muted/45 px-2 text-sm text-muted-foreground">
-                    {item.extension}
-                  </span>
-                </div>
-                <span className="col-start-2 shrink-0 text-xs text-muted-foreground sm:col-auto">
-                  {formatBytes(item.file.size)}
-                </span>
-                <Button
-                  aria-label={`Remover ${item.originalName}`}
-                  onClick={() =>
-                    setFiles((current) => current.filter((file) => file.id !== item.id))
-                  }
-                  size="icon-sm"
-                  variant="ghost"
-                >
-                  <XIcon />
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-        <DialogFooter>
+        <div className="min-h-0 space-y-5 overflow-y-auto px-6 py-5 lazuli-thin-scrollbar">
+          <FileDropzone
+            accept={acceptedDocumentImportTypes}
+            multiple
+            disabled={submitting}
+            onFiles={addFiles}
+            description="Transforme seus arquivos em documentos editáveis, prontos para conectar ao estudo."
+            hint={`PDF textual, DOCX, Markdown e TXT · até ${DOCUMENT_IMPORT_MAX_ACTIVE} arquivos por vez`}
+          />
+          {files.length > 0 && (
+            <section aria-label="Arquivos para importar" className="space-y-1">
+              <h3 className="mb-3 text-sm font-medium">
+                Revisar {files.length} {files.length === 1 ? "arquivo" : "arquivos"}
+              </h3>
+              <AnimatePresence initial={false}>
+                {files.map((item) => (
+                  <motion.div
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 overflow-hidden border-b border-border/40 py-3 last:border-b-0 sm:flex sm:gap-3"
+                    exit={{ opacity: 0, height: 0, paddingTop: 0, paddingBottom: 0 }}
+                    initial={reduced ? false : { opacity: 0, height: 0 }}
+                    key={item.id}
+                    transition={reduced ? { duration: 0 } : motionTokens.spring.smooth}
+                  >
+                    <DocumentDomainIcon className="size-[1.125rem] shrink-0 text-muted-foreground" />
+                    {/* Same anatomy as every field (border, surface, hover, focus); the extension is a quiet suffix. */}
+                    <div className="flex min-w-0 flex-1 items-center overflow-hidden rounded-[var(--radius)] border border-input bg-card transition-[border-color,box-shadow] hover:border-[color-mix(in_oklab,var(--foreground)_32%,transparent)] focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/25">
+                      <Input
+                        aria-label={`Nome de ${item.originalName}`}
+                        className="h-9 min-w-0 rounded-none border-0 bg-transparent pr-1 shadow-none focus-visible:border-0 focus-visible:ring-0"
+                        maxLength={Math.max(1, 255 - item.extension.length)}
+                        onChange={(event) =>
+                          setFiles((current) =>
+                            current.map((file) =>
+                              file.id === item.id ? { ...file, title: event.target.value } : file,
+                            ),
+                          )
+                        }
+                        value={item.title}
+                      />
+                      <span className="flex h-9 shrink-0 items-center pr-3 text-sm text-muted-foreground">
+                        {item.extension}
+                      </span>
+                    </div>
+                    <span className="col-start-2 shrink-0 text-xs text-muted-foreground sm:col-auto">
+                      {formatBytes(item.file.size)}
+                    </span>
+                    <Button
+                      aria-label={`Remover ${item.originalName}`}
+                      onClick={() =>
+                        setFiles((current) => current.filter((file) => file.id !== item.id))
+                      }
+                      size="icon-sm"
+                      variant="ghost"
+                    >
+                      <XIcon />
+                    </Button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </section>
+          )}
+        </div>
+        <DialogFooter className="mx-0 mb-0 rounded-none border-t border-border/50 px-6 py-4">
           <DialogCancelButton disabled={submitting} onClick={() => close(false)}>
             Cancelar
           </DialogCancelButton>

@@ -1,9 +1,9 @@
-import { DatabaseIcon } from "@phosphor-icons/react/Database";
-import { GraduationCapIcon } from "@phosphor-icons/react/GraduationCap";
-import { ShieldCheckIcon } from "@phosphor-icons/react/ShieldCheck";
-import { UserCircleIcon } from "@phosphor-icons/react/UserCircle";
-import { PaletteIcon } from "@phosphor-icons/react/Palette";
-import { HardDriveIcon } from "@phosphor-icons/react/HardDrive";
+import { DatabaseIcon } from "@/components/icons.tsx";
+import { GraduationCapIcon } from "@/components/icons.tsx";
+import { ShieldCheckIcon } from "@/components/icons.tsx";
+import { UserCircleIcon } from "@/components/icons.tsx";
+import { PaletteIcon } from "@/components/icons.tsx";
+import { HardDriveIcon } from "@/components/icons.tsx";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 
 import { ContentPage } from "@/components/content-page.tsx";
@@ -40,7 +40,7 @@ export const AccountSettingsLayout = () => {
           <SelectContent>
             {sections.map(({ Icon, label, path }) => (
               <SelectItem key={path} value={path}>
-                <Icon aria-hidden="true" weight="duotone" />
+                <Icon aria-hidden="true" />
                 {label}
               </SelectItem>
             ))}
@@ -62,7 +62,7 @@ export const AccountSettingsLayout = () => {
                   }
                   to={path}
                 >
-                  <Icon aria-hidden="true" className="size-[1.1rem]" weight="duotone" />
+                  <Icon aria-hidden="true" className="size-[1.1rem]" />
                   {label}
                 </NavLink>
               </li>

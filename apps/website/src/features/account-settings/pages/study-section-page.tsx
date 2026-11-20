@@ -3,12 +3,12 @@ import {
   ACCOUNT_RETENTION_MIN,
   ACCOUNT_RETENTION_RECOMMENDED,
 } from "@lazuli/shared";
-import { MinusIcon, PlusIcon } from "lucide-react";
+import { MinusIcon, PlusIcon } from "@/components/icons.tsx";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
+import { StudyGoalSettings } from "@/features/stone/components/study-goal-settings.tsx";
 import { useStudyPreference, useUpdateStudyPreference } from "../api/account-settings-queries.ts";
 import {
   InlineFeedback,
@@ -57,6 +57,10 @@ export const StudySectionPage = () => {
   return (
     <div>
       <SettingsSectionHeader title="Estudo" />
+
+      <div className="mb-4">
+        <StudyGoalSettings />
+      </div>
 
       <SettingsSurface title="Retenção desejada">
         <p className="max-w-xl text-sm text-muted-foreground" id="retention-explanation">
@@ -127,8 +131,11 @@ export const StudySectionPage = () => {
               >
                 Restaurar padrão
               </Button>
-              <Button disabled={!valid || updatePreference.isPending} onClick={() => void save()}>
-                {updatePreference.isPending && <Spinner aria-hidden="true" />}
+              <Button
+                pending={updatePreference.isPending}
+                disabled={!valid || updatePreference.isPending}
+                onClick={() => void save()}
+              >
                 Salvar
               </Button>
             </div>

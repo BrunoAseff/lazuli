@@ -1,0 +1,40 @@
+/* Authoring alternatives with the same anatomy the learner sees: an edged row and a letter seal.
+   The correct answer is the seal that turns green, not a different icon. */
+.alternative-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+
+  &:focus-within {
+    border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
+  }
+  &[data-correct] {
+    border-color: color-mix(in oklab, var(--success) 28%, transparent);
+    background: color-mix(in oklab, var(--success) 6%, var(--card));
+  }
+}
+
+.alternative-seal {
+  display: grid;
+  margin-top: 0.125rem;
+  border-radius: 999px;
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 45%, transparent);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    &:not(:disabled):not([aria-pressed="true"]):hover .choice-seal {
+      color: var(--success);
+      box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--success) 60%, transparent);
+    }
+  }
+}

@@ -36,7 +36,11 @@ const uuidFrom = (userId: string, name: string) => {
 const textBlock = (
   id: string,
   text: string,
-  options: { anchorId?: string; level?: number; type?: "heading" | "paragraph" } = {},
+  options: {
+    anchorId?: string;
+    level?: number;
+    type?: "heading" | "paragraph" | "numberedListItem";
+  } = {},
 ): DocumentBlock => ({
   id,
   type: options.type ?? "paragraph",
@@ -53,147 +57,346 @@ const textBlock = (
 
 const richText = (id: string, text: string) => flashcardContentSchema.parse([textBlock(id, text)]);
 
+/*
+ * The example project: three short documents on how to study, and the flashcards and questions
+ * made from them, each linked to the passage it came from. Real content, so practising it shows
+ * the whole app: documents, sources, practice, quiz and the stone.
+ */
+
+type ExampleBlock = { kind: "h1" | "h2" | "p" | "li"; text: string; anchor?: string };
+
+const exampleDocuments: Array<{ key: string; title: string; blocks: ExampleBlock[] }> = [
+  {
+    key: "recall",
+    title: "Recuperação ativa",
+    blocks: [
+      { kind: "h1", text: "Recuperação ativa" },
+      {
+        kind: "p",
+        text: "Reler dá a sensação de que você sabe. Tentar lembrar mostra se você sabe de verdade.",
+      },
+      { kind: "h2", text: "O que é" },
+      {
+        kind: "p",
+        anchor: "definition",
+        text: "Recuperação ativa é buscar uma informação na memória sem olhar o material: responder uma pergunta, explicar um conceito ou resolver um exercício antes de consultar a resposta.",
+      },
+      { kind: "h2", text: "O efeito do teste" },
+      {
+        kind: "p",
+        anchor: "testing",
+        text: "Pesquisas sobre o efeito do teste mostram que tentar lembrar fortalece a memória mais do que reler pelo mesmo tempo. O esforço de buscar a resposta torna a próxima lembrança mais fácil.",
+      },
+      {
+        kind: "p",
+        anchor: "feedback",
+        text: "Errar faz parte. Conferir a resposta logo depois de tentar corrige o engano e mostra o que ainda falta estudar.",
+      },
+      { kind: "h2", text: "Como praticar" },
+      { kind: "li", anchor: "steps", text: "Leia um trecho e feche o material." },
+      { kind: "li", text: "Escreva ou diga o que lembra, com suas palavras." },
+      { kind: "li", text: "Confira e marque o que faltou." },
+      { kind: "li", text: "Transforme o que faltou em perguntas para revisar depois." },
+    ],
+  },
+  {
+    key: "spacing",
+    title: "Repetição espaçada",
+    blocks: [
+      { kind: "h1", text: "Repetição espaçada" },
+      {
+        kind: "p",
+        text: "Esquecer é normal. A questão é quando revisar para lembrar por mais tempo com menos esforço.",
+      },
+      { kind: "h2", text: "A curva do esquecimento" },
+      {
+        kind: "p",
+        anchor: "forgetting",
+        text: "Hermann Ebbinghaus mostrou, no fim do século XIX, que esquecemos rápido logo depois de aprender e mais devagar com o passar dos dias. Cada revisão deixa essa curva menos íngreme.",
+      },
+      { kind: "h2", text: "Intervalos que crescem" },
+      {
+        kind: "p",
+        anchor: "intervals",
+        text: "Na repetição espaçada, cada revisão acontece um pouco antes de você esquecer. Quando lembrar fica fácil, o intervalo até a próxima aumenta: um dia, depois alguns dias, depois semanas.",
+      },
+      {
+        kind: "p",
+        anchor: "cramming",
+        text: "Estudar tudo de uma vez na véspera funciona para a prova do dia seguinte, mas o conteúdo se perde em poucos dias.",
+      },
+      { kind: "h2", text: "Como o Lazúli agenda" },
+      {
+        kind: "p",
+        anchor: "scheduler",
+        text: "Depois de cada flashcard, você diz como foi lembrar: Repetir, Difícil, Bom ou Fácil. O Lazúli usa essa resposta para marcar a próxima revisão. Um flashcard conta como dominado quando a próxima revisão fica a 21 dias ou mais.",
+      },
+    ],
+  },
+  {
+    key: "interleaving",
+    title: "Intercalar e elaborar",
+    blocks: [
+      { kind: "h1", text: "Intercalar e elaborar" },
+      {
+        kind: "p",
+        text: "Duas estratégias simples deixam o estudo mais parecido com a prova: misturar assuntos e perguntar por quê.",
+      },
+      { kind: "h2", text: "Misturar assuntos" },
+      {
+        kind: "p",
+        anchor: "interleaving",
+        text: "Intercalar é alternar assuntos ou tipos de problema na mesma sessão, em vez de fazer um bloco inteiro de cada. Parece mais difícil, mas treina reconhecer qual estratégia usar, como acontece na prova.",
+      },
+      { kind: "h2", text: "Perguntar por quê" },
+      {
+        kind: "p",
+        anchor: "elaboration",
+        text: "Elaborar é explicar por que algo é verdade e como se liga ao que você já sabe. Perguntas como “por que isso acontece?” e “qual a diferença entre A e B?” criam mais caminhos até a mesma lembrança.",
+      },
+      { kind: "h2", text: "Um plano de estudo" },
+      { kind: "li", anchor: "plan", text: "Leia e organize as ideias principais." },
+      { kind: "li", text: "Crie perguntas sobre o que leu." },
+      { kind: "li", text: "Pratique sem consultar e confira." },
+      { kind: "li", text: "Revise nos dias que o Lazúli marcar, misturando assuntos." },
+    ],
+  },
+];
+
+const exampleFlashcards: Array<{
+  key: string;
+  document: string;
+  anchor: string;
+  question: string;
+  answer: string;
+}> = [
+  {
+    key: "recall-definition",
+    document: "recall",
+    anchor: "definition",
+    question: "O que é recuperação ativa?",
+    answer: "Buscar uma informação na memória sem olhar o material, antes de consultar a resposta.",
+  },
+  {
+    key: "recall-testing",
+    document: "recall",
+    anchor: "testing",
+    question: "O que diz o efeito do teste?",
+    answer: "Que tentar lembrar fortalece a memória mais do que reler pelo mesmo tempo.",
+  },
+  {
+    key: "recall-feedback",
+    document: "recall",
+    anchor: "feedback",
+    question: "Errar ao tentar lembrar atrapalha o aprendizado?",
+    answer: "Não. Conferir a resposta logo depois corrige o engano e mostra o que falta estudar.",
+  },
+  {
+    key: "recall-steps",
+    document: "recall",
+    anchor: "steps",
+    question: "Qual é o primeiro passo para praticar recuperação ativa com um texto?",
+    answer: "Ler um trecho e fechar o material antes de tentar lembrar.",
+  },
+  {
+    key: "spacing-forgetting",
+    document: "spacing",
+    anchor: "forgetting",
+    question: "O que mostra a curva do esquecimento?",
+    answer: "Que esquecemos rápido logo depois de aprender e mais devagar com o tempo.",
+  },
+  {
+    key: "spacing-intervals",
+    document: "spacing",
+    anchor: "intervals",
+    question: "Na repetição espaçada, quando acontece cada revisão?",
+    answer:
+      "Um pouco antes de você esquecer, com intervalos que crescem conforme lembrar fica fácil.",
+  },
+  {
+    key: "spacing-cramming",
+    document: "spacing",
+    anchor: "cramming",
+    question: "Qual é o problema de estudar tudo na véspera?",
+    answer: "Funciona para a prova seguinte, mas o conteúdo se perde em poucos dias.",
+  },
+  {
+    key: "spacing-mastered",
+    document: "spacing",
+    anchor: "scheduler",
+    question: "Quando um flashcard conta como dominado no Lazúli?",
+    answer: "Quando a próxima revisão fica a 21 dias ou mais.",
+  },
+  {
+    key: "interleaving-definition",
+    document: "interleaving",
+    anchor: "interleaving",
+    question: "O que é intercalar o estudo?",
+    answer:
+      "Alternar assuntos ou tipos de problema na mesma sessão, em vez de estudar um bloco de cada vez.",
+  },
+  {
+    key: "interleaving-why",
+    document: "interleaving",
+    anchor: "interleaving",
+    question: "Por que intercalar ajuda na prova?",
+    answer: "Porque treina reconhecer qual estratégia usar em cada problema.",
+  },
+  {
+    key: "elaboration-definition",
+    document: "interleaving",
+    anchor: "elaboration",
+    question: "O que é elaboração?",
+    answer: "Explicar por que algo é verdade e como se liga ao que você já sabe.",
+  },
+  {
+    key: "elaboration-example",
+    document: "interleaving",
+    anchor: "elaboration",
+    question: "Dê um exemplo de pergunta de elaboração.",
+    answer: "“Por que isso acontece?” ou “qual a diferença entre A e B?”",
+  },
+];
+
+const exampleQuestions: Array<{
+  key: string;
+  document: string;
+  anchor: string;
+  question: string;
+  options: string[];
+  correctOptionIndex: number;
+}> = [
+  {
+    key: "recall-practice",
+    document: "recall",
+    anchor: "definition",
+    question: "Qual destas é uma prática de recuperação ativa?",
+    options: [
+      "Reler o capítulo destacando as frases importantes",
+      "Explicar o conceito sem olhar e só depois conferir no texto",
+      "Copiar o resumo do professor",
+      "Assistir à aula de novo em velocidade maior",
+    ],
+    correctOptionIndex: 1,
+  },
+  {
+    key: "recall-error",
+    document: "recall",
+    anchor: "feedback",
+    question: "O que acontece quando você erra uma resposta e confere logo em seguida?",
+    options: [
+      "A memória do conteúdo enfraquece",
+      "O conteúdo precisa ser relido do início",
+      "O engano é corrigido e você vê o que falta estudar",
+      "Nada muda em relação a não ter tentado",
+    ],
+    correctOptionIndex: 2,
+  },
+  {
+    key: "spacing-interval",
+    document: "spacing",
+    anchor: "intervals",
+    question: "O que acontece com o intervalo entre revisões quando lembrar fica fácil?",
+    options: ["Ele aumenta", "Ele diminui", "Ele fica igual", "As revisões param"],
+    correctOptionIndex: 0,
+  },
+  {
+    key: "spacing-author",
+    document: "spacing",
+    anchor: "forgetting",
+    question: "Quem descreveu a curva do esquecimento?",
+    options: ["Jean Piaget", "Ivan Pavlov", "Sigmund Freud", "Hermann Ebbinghaus"],
+    correctOptionIndex: 3,
+  },
+  {
+    key: "interleaving-session",
+    document: "interleaving",
+    anchor: "interleaving",
+    question: "Qual sessão de estudo usa intercalação?",
+    options: [
+      "Fazer 30 exercícios de frações e depois 30 de porcentagem",
+      "Alternar exercícios de frações, porcentagem e equações",
+      "Reler a teoria de frações três vezes",
+      "Assistir a uma aula sobre equações",
+    ],
+    correctOptionIndex: 1,
+  },
+  {
+    key: "elaboration-question",
+    document: "interleaving",
+    anchor: "elaboration",
+    question: "Qual destas é uma pergunta de elaboração?",
+    options: [
+      "Por que a fotossíntese depende de luz?",
+      "Em que ano foi a Proclamação da República?",
+      "Qual é a fórmula da água?",
+      "Quantas páginas tem o capítulo?",
+    ],
+    correctOptionIndex: 0,
+  },
+];
+
+const blockType = {
+  h1: { type: "heading", level: 1 },
+  h2: { type: "heading", level: 2 },
+  p: { type: "paragraph" },
+  li: { type: "numberedListItem" },
+} as const;
+
 export const createOnboardingFixture = (userId: string) => {
+  const anchorId = (documentKey: string, anchor: string) =>
+    uuidFrom(userId, `anchor:${documentKey}:${anchor}`);
+  const documentId = (documentKey: string) => uuidFrom(userId, `document:${documentKey}`);
   const ids = {
     project: uuidFrom(userId, "project"),
-    document: uuidFrom(userId, "document"),
-    activeRecallAnchor: uuidFrom(userId, "anchor:active-recall"),
-    spacingAnchor: uuidFrom(userId, "anchor:spacing"),
     flashcardCollection: uuidFrom(userId, "flashcard-collection"),
-    flashcardActiveRecall: uuidFrom(userId, "flashcard:active-recall"),
-    flashcardSpacing: uuidFrom(userId, "flashcard:spacing"),
     quizCollection: uuidFrom(userId, "quiz-collection"),
-    quizActiveRecall: uuidFrom(userId, "quiz:active-recall"),
-    quizSpacing: uuidFrom(userId, "quiz:spacing"),
   };
 
-  const documentContent = documentContentSchema.parse([
-    textBlock(uuidFrom(userId, "block:title"), "Como estudar para lembrar", {
-      level: 1,
-      type: "heading",
-    }),
-    textBlock(
-      uuidFrom(userId, "block:introduction"),
-      "Aprender não depende apenas de reler. Recordar uma ideia sem consultar o material e voltar a ela em momentos diferentes tornam o estudo mais ativo.",
-    ),
-    textBlock(uuidFrom(userId, "block:active-recall-title"), "Recuperação ativa", {
-      level: 2,
-      type: "heading",
-    }),
-    textBlock(
-      uuidFrom(userId, "block:active-recall"),
-      "Recuperação ativa é tentar lembrar ou explicar uma informação antes de consultar a resposta. Esse esforço revela lacunas e fortalece o caminho usado para recuperar o conhecimento.",
-      { anchorId: ids.activeRecallAnchor },
-    ),
-    textBlock(uuidFrom(userId, "block:spacing-title"), "Repetição espaçada", {
-      level: 2,
-      type: "heading",
-    }),
-    textBlock(
-      uuidFrom(userId, "block:spacing"),
-      "Repetição espaçada distribui as revisões ao longo do tempo. Em vez de concentrar tudo em uma sessão, o conteúdo retorna em intervalos crescentes conforme se torna mais fácil recordá-lo.",
-      { anchorId: ids.spacingAnchor },
-    ),
-    textBlock(uuidFrom(userId, "block:cycle-title"), "Um ciclo simples", {
-      level: 2,
-      type: "heading",
-    }),
-    {
-      ...textBlock(uuidFrom(userId, "block:cycle-one"), "Leia e organize a ideia principal."),
-      type: "numberedListItem",
-    },
-    {
-      ...textBlock(
-        uuidFrom(userId, "block:cycle-two"),
-        "Feche o material e tente recuperar a informação.",
+  const documents = exampleDocuments.map((source, position) => {
+    const content = documentContentSchema.parse(
+      source.blocks.map((block, index) =>
+        textBlock(uuidFrom(userId, `block:${source.key}:${index}`), block.text, {
+          ...blockType[block.kind],
+          anchorId: block.anchor ? anchorId(source.key, block.anchor) : undefined,
+        }),
       ),
-      type: "numberedListItem",
-    },
-    {
-      ...textBlock(
-        uuidFrom(userId, "block:cycle-three"),
-        "Revise novamente depois de algum tempo.",
-      ),
-      type: "numberedListItem",
-    },
-  ]);
+    );
+    return {
+      id: documentId(source.key),
+      title: source.title,
+      position,
+      content,
+      contentByteSize: utf8ByteLength(JSON.stringify(content)),
+    };
+  });
 
-  const flashcards = [
-    {
-      id: ids.flashcardActiveRecall,
-      question: richText(
-        uuidFrom(userId, "flashcard:active-recall:question"),
-        "O que caracteriza a recuperação ativa?",
-      ),
-      answer: richText(
-        uuidFrom(userId, "flashcard:active-recall:answer"),
-        "Tentar lembrar ou explicar uma informação antes de consultar a resposta.",
-      ),
-      questionText: "O que caracteriza a recuperação ativa?",
-      answerText: "Tentar lembrar ou explicar uma informação antes de consultar a resposta.",
-    },
-    {
-      id: ids.flashcardSpacing,
-      question: richText(
-        uuidFrom(userId, "flashcard:spacing:question"),
-        "Por que distribuir revisões ao longo do tempo?",
-      ),
-      answer: richText(
-        uuidFrom(userId, "flashcard:spacing:answer"),
-        "Porque reencontrar o conteúdo em intervalos crescentes fortalece sua recuperação.",
-      ),
-      questionText: "Por que distribuir revisões ao longo do tempo?",
-      answerText:
-        "Porque reencontrar o conteúdo em intervalos crescentes fortalece sua recuperação.",
-    },
-  ];
+  const flashcards = exampleFlashcards.map((card) => ({
+    id: uuidFrom(userId, `flashcard:${card.key}`),
+    question: richText(uuidFrom(userId, `flashcard:${card.key}:question`), card.question),
+    answer: richText(uuidFrom(userId, `flashcard:${card.key}:answer`), card.answer),
+    questionText: card.question,
+    answerText: card.answer,
+    documentId: documentId(card.document),
+    anchorId: anchorId(card.document, card.anchor),
+  }));
 
-  const quizQuestions = [
-    {
-      id: ids.quizActiveRecall,
-      content: quizQuestionContentSchema.parse([
-        textBlock(
-          uuidFrom(userId, "quiz:active-recall:content"),
-          "Qual ação é um exemplo de recuperação ativa?",
-        ),
-      ]),
-      contentText: "Qual ação é um exemplo de recuperação ativa?",
-      options: [
-        "Fechar as anotações e explicar o conceito com as próprias palavras",
-        "Reler o mesmo parágrafo várias vezes seguidas",
-        "Copiar integralmente o conteúdo para outra página",
-        "Destacar todas as frases do texto",
-      ],
-      correctOptionIndex: 0,
-    },
-    {
-      id: ids.quizSpacing,
-      content: quizQuestionContentSchema.parse([
-        textBlock(
-          uuidFrom(userId, "quiz:spacing:content"),
-          "Qual é o objetivo da repetição espaçada?",
-        ),
-      ]),
-      contentText: "Qual é o objetivo da repetição espaçada?",
-      options: [
-        "Distribuir revisões em intervalos que aumentam conforme a lembrança melhora",
-        "Concentrar todas as revisões em uma única sessão longa",
-        "Evitar qualquer contato futuro com o conteúdo estudado",
-        "Substituir a prática por uma releitura contínua",
-      ],
-      correctOptionIndex: 0,
-    },
-  ];
+  const quizQuestions = exampleQuestions.map((question) => ({
+    id: uuidFrom(userId, `quiz:${question.key}`),
+    content: quizQuestionContentSchema.parse([
+      textBlock(uuidFrom(userId, `quiz:${question.key}:content`), question.question),
+    ]),
+    contentText: question.question,
+    options: question.options,
+    correctOptionIndex: question.correctOptionIndex,
+    documentId: documentId(question.document),
+    anchorId: anchorId(question.document, question.anchor),
+  }));
 
   return {
     ids,
     project: { id: ids.project, title: "Exemplo: aprendendo a aprender", coverKey: null },
-    document: {
-      id: ids.document,
-      title: "Como estudar para lembrar",
-      content: documentContent,
-      contentByteSize: utf8ByteLength(JSON.stringify(documentContent)),
-    },
+    documents,
     flashcardCollection: { id: ids.flashcardCollection, title: "Memória e aprendizagem" },
     flashcards,
     quizCollection: { id: ids.quizCollection, title: "Memória e aprendizagem" },
@@ -215,19 +418,23 @@ export const initializeNewUser = async (database: Database, userId: string) => {
 
     if (!createdProject) return { created: false as const };
 
-    await tx.insert(projectItem).values({
-      id: fixture.document.id,
-      projectId: fixture.project.id,
-      parentId: null,
-      type: "document",
-      title: fixture.document.title,
-      position: 0,
-    });
-    await tx.insert(document).values({
-      id: fixture.document.id,
-      content: fixture.document.content,
-      contentByteSize: fixture.document.contentByteSize,
-    });
+    await tx.insert(projectItem).values(
+      fixture.documents.map((item) => ({
+        id: item.id,
+        projectId: fixture.project.id,
+        parentId: null,
+        type: "document" as const,
+        title: item.title,
+        position: item.position,
+      })),
+    );
+    await tx.insert(document).values(
+      fixture.documents.map((item) => ({
+        id: item.id,
+        content: item.content,
+        contentByteSize: item.contentByteSize,
+      })),
+    );
     // PostgreSQL document JSON is metadata, not billable object storage.
     await tx.insert(userStorage).values({ userId }).onConflictDoNothing();
 
@@ -237,8 +444,12 @@ export const initializeNewUser = async (database: Database, userId: string) => {
       projectId: fixture.project.id,
     });
     await tx.insert(flashcard).values(
-      fixture.flashcards.map((card) => ({
-        ...card,
+      fixture.flashcards.map(({ answer, answerText, id, question, questionText }) => ({
+        id,
+        question,
+        answer,
+        questionText,
+        answerText,
         collectionId: fixture.flashcardCollection.id,
       })),
     );
@@ -269,35 +480,22 @@ export const initializeNewUser = async (database: Database, userId: string) => {
       ),
     );
 
+    // Every material points at the passage it came from, in its own document.
     await tx.insert(studyMaterialReference).values([
-      {
-        id: uuidFrom(userId, "reference:flashcard:active-recall"),
+      ...fixture.flashcards.map((card) => ({
+        id: uuidFrom(userId, `reference:${card.id}`),
         userId,
-        documentId: fixture.document.id,
-        anchorId: fixture.ids.activeRecallAnchor,
-        flashcardId: fixture.ids.flashcardActiveRecall,
-      },
-      {
-        id: uuidFrom(userId, "reference:flashcard:spacing"),
+        documentId: card.documentId,
+        anchorId: card.anchorId,
+        flashcardId: card.id,
+      })),
+      ...fixture.quizQuestions.map((question) => ({
+        id: uuidFrom(userId, `reference:${question.id}`),
         userId,
-        documentId: fixture.document.id,
-        anchorId: fixture.ids.spacingAnchor,
-        flashcardId: fixture.ids.flashcardSpacing,
-      },
-      {
-        id: uuidFrom(userId, "reference:quiz:active-recall"),
-        userId,
-        documentId: fixture.document.id,
-        anchorId: fixture.ids.activeRecallAnchor,
-        quizQuestionId: fixture.ids.quizActiveRecall,
-      },
-      {
-        id: uuidFrom(userId, "reference:quiz:spacing"),
-        userId,
-        documentId: fixture.document.id,
-        anchorId: fixture.ids.spacingAnchor,
-        quizQuestionId: fixture.ids.quizSpacing,
-      },
+        documentId: question.documentId,
+        anchorId: question.anchorId,
+        quizQuestionId: question.id,
+      })),
     ]);
 
     return { created: true as const };

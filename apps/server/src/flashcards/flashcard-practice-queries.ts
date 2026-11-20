@@ -12,6 +12,7 @@ import {
   flashcardPracticeItem,
   flashcardPracticeSession,
   flashcardReview,
+  project,
   studyMaterialReference,
   userStudyPreference,
 } from "../database/schema/index.ts";
@@ -52,12 +53,63 @@ const cardSelection = {
   updatedAt: flashcard.updatedAt,
 };
 
+/** What a session practices: one collection, or the flashcards of every collection in a project. */
+export type PracticeScope = { type: "collection"; id: string } | { type: "project"; id: string };
+
+const sessionScopeColumn = (scope: PracticeScope) =>
+  scope.type === "collection"
+    ? flashcardPracticeSession.collectionId
+    : flashcardPracticeSession.projectId;
+
+/** Live collections of a project that belong to the user. */
+const projectCollections = (userId: string, projectId: string) =>
+  sql`(select ${flashcardCollection.id} from ${flashcardCollection} where ${flashcardCollection.userId} = ${userId} and ${flashcardCollection.projectId} = ${projectId} and ${flashcardCollection.archivedAt} is null)`;
+
+/** Cards in scope for a stored session: its collection, or a live collection of its project. */
+const cardInSessionScope = sql`(
+  (${flashcardPracticeSession.collectionId} is not null and ${flashcard.collectionId} = ${flashcardPracticeSession.collectionId})
+  or (${flashcardPracticeSession.projectId} is not null and ${flashcard.collectionId} in (
+    select ${flashcardCollection.id} from ${flashcardCollection}
+    where ${flashcardCollection.projectId} = ${flashcardPracticeSession.projectId}
+      and ${flashcardCollection.userId} = ${flashcardPracticeSession.userId}
+      and ${flashcardCollection.archivedAt} is null
+  ))
+)`;
+
+/** Cards in scope when starting or sizing a session. */
+const cardInScope = (userId: string, scope: PracticeScope) =>
+  scope.type === "collection"
+    ? eq(flashcard.collectionId, scope.id)
+    : sql`${flashcard.collectionId} in ${projectCollections(userId, scope.id)}`;
+
+/** The scope exists and is the user's; a collection may be archived, a project cannot be. */
+const findScope = async (tx: Transaction, userId: string, scope: PracticeScope, lock = false) => {
+  if (scope.type === "collection") {
+    const query = tx
+      .select({ archivedAt: flashcardCollection.archivedAt })
+      .from(flashcardCollection)
+      .where(and(eq(flashcardCollection.id, scope.id), eq(flashcardCollection.userId, userId)))
+      .limit(1);
+    const [row] = lock ? await query.for("update") : await query;
+    return row ? { archived: Boolean(row.archivedAt) } : null;
+  }
+  const query = tx
+    .select({ id: project.id })
+    .from(project)
+    .where(and(eq(project.id, scope.id), eq(project.userId, userId)))
+    .limit(1);
+  const [row] = lock ? await query.for("update") : await query;
+  return row ? { archived: false } : null;
+};
+
 const ownedSession = async (tx: Transaction, userId: string, sessionId: string, lock = false) => {
   const query = tx
     .select({
       id: flashcardPracticeSession.id,
       collectionId: flashcardPracticeSession.collectionId,
-      collectionTitle: flashcardCollection.title,
+      projectId: flashcardPracticeSession.projectId,
+      // The title of what is practiced: the collection, or the project.
+      collectionTitle: sql<string>`coalesce(${flashcardCollection.title}, ${project.title}, '')`,
       status: flashcardPracticeSession.status,
       totalCards: flashcardPracticeSession.totalCards,
       reviewedCards: flashcardPracticeSession.reviewedCards,
@@ -66,10 +118,11 @@ const ownedSession = async (tx: Transaction, userId: string, sessionId: string, 
       finishedAt: flashcardPracticeSession.finishedAt,
     })
     .from(flashcardPracticeSession)
-    .innerJoin(
+    .leftJoin(
       flashcardCollection,
       eq(flashcardCollection.id, flashcardPracticeSession.collectionId),
     )
+    .leftJoin(project, eq(project.id, flashcardPracticeSession.projectId))
     .where(
       and(eq(flashcardPracticeSession.id, sessionId), eq(flashcardPracticeSession.userId, userId)),
     )
@@ -123,7 +176,7 @@ const nextItem = async (
         eq(flashcardPracticeItem.sessionId, sessionId),
         isNull(flashcardPracticeItem.reviewedAt),
         isNull(flashcard.archivedAt),
-        eq(flashcard.collectionId, flashcardPracticeSession.collectionId),
+        cardInSessionScope,
       ),
     )
     .orderBy(asc(flashcardPracticeItem.position))
@@ -174,7 +227,7 @@ const sessionPayload = async (tx: Transaction, userId: string, sessionId: string
           eq(flashcardPracticeItem.sessionId, sessionId),
           isNull(flashcardPracticeItem.reviewedAt),
           isNull(flashcard.archivedAt),
-          eq(flashcard.collectionId, flashcardPracticeSession.collectionId),
+          cardInSessionScope,
         ),
       );
     const normalizedTotal = session.reviewedCards + (pending?.value ?? 0);
@@ -235,16 +288,12 @@ const sessionPayload = async (tx: Transaction, userId: string, sessionId: string
 export const getPracticeAvailability = async (
   db: Database,
   userId: string,
-  collectionId: string,
+  scope: PracticeScope,
   now = new Date(),
 ) =>
   db.transaction(async (tx) => {
-    const [collection] = await tx
-      .select({ archivedAt: flashcardCollection.archivedAt })
-      .from(flashcardCollection)
-      .where(and(eq(flashcardCollection.id, collectionId), eq(flashcardCollection.userId, userId)))
-      .limit(1);
-    if (!collection) return { kind: "not-found" as const };
+    const found = await findScope(tx, userId, scope);
+    if (!found) return { kind: "not-found" as const };
     const [counts] = await tx
       .select({
         dueCards:
@@ -257,11 +306,7 @@ export const getPracticeAvailability = async (
       })
       .from(flashcard)
       .where(
-        and(
-          eq(flashcard.collectionId, collectionId),
-          isNull(flashcard.archivedAt),
-          lte(flashcard.dueAt, now),
-        ),
+        and(cardInScope(userId, scope), isNull(flashcard.archivedAt), lte(flashcard.dueAt, now)),
       );
     const [active] = await tx
       .select({ id: flashcardPracticeSession.id })
@@ -269,7 +314,7 @@ export const getPracticeAvailability = async (
       .where(
         and(
           eq(flashcardPracticeSession.userId, userId),
-          eq(flashcardPracticeSession.collectionId, collectionId),
+          eq(sessionScopeColumn(scope), scope.id),
           eq(flashcardPracticeSession.status, "active"),
         ),
       )
@@ -277,7 +322,7 @@ export const getPracticeAvailability = async (
     const activeSession = active ? await sessionPayload(tx, userId, active.id, now) : null;
     return {
       kind: "ok" as const,
-      archived: Boolean(collection.archivedAt),
+      archived: found.archived,
       activeSession: activeSession?.status === "active" ? activeSession : null,
       newCards: counts?.newCards ?? 0,
       dueCards: counts?.dueCards ?? 0,
@@ -288,30 +333,25 @@ export const getPracticeAvailability = async (
 export const createPracticeSession = async (
   db: Database,
   userId: string,
-  collectionId: string,
+  scope: PracticeScope,
   input: CreateFlashcardPracticeSessionInput,
   now = new Date(),
 ) =>
   db.transaction(async (tx) => {
-    const [collection] = await tx
-      .select({ archivedAt: flashcardCollection.archivedAt })
-      .from(flashcardCollection)
-      .where(and(eq(flashcardCollection.id, collectionId), eq(flashcardCollection.userId, userId)))
-      .limit(1)
-      .for("update");
-    if (!collection) return { kind: "not-found" as const };
-    if (collection.archivedAt) return { kind: "archived" as const };
+    const found = await findScope(tx, userId, scope, true);
+    if (!found) return { kind: "not-found" as const };
+    if (found.archived) return { kind: "archived" as const };
     const [duplicateId] = await tx
       .select({
         id: flashcardPracticeSession.id,
         userId: flashcardPracticeSession.userId,
-        collectionId: flashcardPracticeSession.collectionId,
+        scopeId: sessionScopeColumn(scope),
       })
       .from(flashcardPracticeSession)
       .where(eq(flashcardPracticeSession.id, input.id))
       .limit(1);
     if (duplicateId) {
-      if (duplicateId.userId === userId && duplicateId.collectionId === collectionId)
+      if (duplicateId.userId === userId && duplicateId.scopeId === scope.id)
         return {
           kind: "ok" as const,
           created: false,
@@ -325,7 +365,7 @@ export const createPracticeSession = async (
       .where(
         and(
           eq(flashcardPracticeSession.userId, userId),
-          eq(flashcardPracticeSession.collectionId, collectionId),
+          eq(sessionScopeColumn(scope), scope.id),
           eq(flashcardPracticeSession.status, "active"),
         ),
       )
@@ -344,11 +384,7 @@ export const createPracticeSession = async (
       .select({ id: flashcard.id })
       .from(flashcard)
       .where(
-        and(
-          eq(flashcard.collectionId, collectionId),
-          isNull(flashcard.archivedAt),
-          lte(flashcard.dueAt, now),
-        ),
+        and(cardInScope(userId, scope), isNull(flashcard.archivedAt), lte(flashcard.dueAt, now)),
       )
       .orderBy(
         asc(sql`${flashcard.lastReviewedAt} is null`),
@@ -361,7 +397,8 @@ export const createPracticeSession = async (
     await tx.insert(flashcardPracticeSession).values({
       id: input.id,
       userId,
-      collectionId,
+      collectionId: scope.type === "collection" ? scope.id : null,
+      projectId: scope.type === "project" ? scope.id : null,
       totalCards: cards.length,
       startedAt: now,
       lastActivityAt: now,

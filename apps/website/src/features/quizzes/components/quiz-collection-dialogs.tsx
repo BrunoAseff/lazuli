@@ -16,11 +16,13 @@ import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
 export const QuizCollectionDialog = ({
   collection,
+  defaultProjectId,
   onCreated,
   onOpenChange,
   open,
 }: {
   collection?: QuizCollectionSummary;
+  defaultProjectId?: string;
   onCreated?: (collection: QuizCollectionSummary) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -32,6 +34,7 @@ export const QuizCollectionDialog = ({
   return (
     <StudyCollectionDialog
       collection={collection}
+      defaultProjectId={defaultProjectId}
       createDescription="Agrupe questões relacionadas a um mesmo assunto."
       onOpenChange={onOpenChange}
       onReset={() => mutation.reset()}

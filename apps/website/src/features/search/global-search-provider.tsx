@@ -1,3 +1,4 @@
+import { resolveActiveResult } from "./search-selection.ts";
 import {
   favoriteListSchema,
   favoriteKindSchema,
@@ -5,7 +6,7 @@ import {
   type SearchKind,
   type SearchResult,
 } from "@lazuli/shared";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   createContext,
   Fragment,
@@ -17,8 +18,8 @@ import {
   type ReactNode,
 } from "react";
 import { useNavigate } from "react-router";
-import { XIcon } from "lucide-react";
-import { MagnifyingGlassIcon } from "@phosphor-icons/react/MagnifyingGlass";
+import { HeartIcon, XIcon } from "@/components/icons.tsx";
+import { MagnifyingGlassIcon } from "@/components/icons.tsx";
 import {
   DocumentDomainIcon,
   ProjectClosedIcon,
@@ -41,7 +42,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx";
-import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { Kbd } from "@/components/ui/kbd.tsx";
+import { primaryNavigation } from "@/components/primary-navigation.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { EmptyState } from "@/components/empty-state.tsx";
 import { HighlightText } from "@/components/highlight-text.tsx";
@@ -65,7 +67,9 @@ const resultIcons = {
   quizzes: QuizDomainIcon,
   question: QuizDomainIcon,
 };
-const SearchContext = createContext<{ openSearch: (favorites?: boolean) => void } | null>(null);
+const SearchContext = createContext<{
+  openSearch: (favorites?: boolean) => void;
+} | null>(null);
 export const useGlobalSearch = () => {
   const context = useContext(SearchContext);
   if (!context) throw new Error("Search provider is missing");
@@ -138,6 +142,8 @@ export const GlobalSearchProvider = ({
     queryKey: ["global-search", userId, debounced, kind, onlyFavorites, page],
     enabled: open && Boolean(debounced),
     staleTime: 0,
+    // Typing refines what is on screen instead of blanking it between keystrokes.
+    placeholderData: keepPreviousData,
     queryFn: ({ signal }) =>
       apiRequest("/api/search", globalSearchResponseSchema, {
         method: "POST",
@@ -161,12 +167,14 @@ export const GlobalSearchProvider = ({
           href: `/documents/${item.id}`,
         });
   const waiting = query.trim() !== debounced;
+  const narrowed = Boolean(debounced || onlyFavorites || kind);
   const loading = waiting || (debounced ? results.isFetching : favorites.isPending);
   const failed = debounced ? results.isError : favorites.isError;
-  const items = loading
-    ? []
-    : debounced
-      ? (results.data?.items ?? [])
+  // While a new search runs, the previous results stay (dimmed) so the list never flashes empty.
+  const items = debounced
+    ? (results.data?.items ?? [])
+    : favorites.isPending
+      ? []
       : suggested.filter((item) => !kind || item.kind === kind);
   const groups = Object.entries(searchLabels)
     .map(([key, label]) => ({
@@ -175,6 +183,17 @@ export const GlobalSearchProvider = ({
       items: items.filter((item) => item.kind === key),
     }))
     .filter((group) => group.items.length);
+  // Enter opens the active result: whenever the results change, the first one becomes active
+  // unless the current choice is still listed (typing used to leave nothing selected).
+  const showsNavigation = !debounced && !kind && !onlyFavorites && !failed;
+  const resultValues = [
+    ...groups.flatMap((group) => group.items.map((item) => `${item.kind}:${item.id}`)),
+    ...(showsNavigation ? primaryNavigation.map(({ path }) => `nav:${path}`) : []),
+  ];
+  const activeResult = resolveActiveResult(resultValues, selected);
+  useEffect(() => {
+    if (activeResult !== selected) setSelected(activeResult);
+  }, [activeResult, selected]);
   const changeFilter = () => {
     setPage(1);
     setSelected("");
@@ -218,63 +237,75 @@ export const GlobalSearchProvider = ({
             resultado.
           </DialogDescription>
           <Command shouldFilter={false} value={selected} onValueChange={setSelected}>
-            <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
-              <CommandInput
-                aria-label="Pesquisar em todos os materiais"
-                placeholder="Pesquisar no Lazúli"
-                value={query}
-                maxLength={200}
-                onValueChange={(value) => {
-                  setQuery(value);
-                  changeFilter();
-                }}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Fechar pesquisa"
-                onClick={() => setOpen(false)}
-              >
-                <XIcon />
-              </Button>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3 pb-2">
-              <Select
-                value={kind ?? "all"}
-                onValueChange={(value) => {
-                  setKind(value === "all" ? undefined : (value as SearchKind));
-                  changeFilter();
-                }}
-              >
-                <SelectTrigger aria-label="Tipo de material" className="w-48 max-sm:w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os tipos</SelectItem>
-                  {Object.entries(searchLabels).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <label className="flex min-h-9 cursor-pointer items-center gap-2 text-sm">
-                <Checkbox
-                  checked={onlyFavorites}
-                  onCheckedChange={(checked) => {
-                    setOnlyFavorites(checked === true);
+            <div className="flex shrink-0 flex-wrap items-center gap-x-1.5 gap-y-2 border-b border-[var(--line-subtle)] px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
+              <div className="min-w-0 flex-[1_1_16rem]">
+                <CommandInput
+                  aria-label="Pesquisar em todos os materiais"
+                  placeholder="Pesquisar no Lazúli"
+                  value={query}
+                  maxLength={200}
+                  onValueChange={(value) => {
+                    setQuery(value);
                     changeFilter();
                   }}
                 />
-                Somente favoritos
-              </label>
+              </div>
+              <div className="ml-auto flex items-center gap-1 max-sm:order-last max-sm:w-full max-sm:px-1">
+                <Select
+                  value={kind ?? "all"}
+                  onValueChange={(value) => {
+                    setKind(value === "all" ? undefined : (value as SearchKind));
+                    changeFilter();
+                  }}
+                >
+                  <SelectTrigger
+                    aria-label="Tipo de material"
+                    className="h-8 w-auto gap-1.5 border-transparent bg-transparent px-2.5 text-muted-foreground shadow-none hover:border-transparent hover:bg-muted hover:text-foreground data-[state=open]:border-transparent data-[state=open]:bg-muted"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="all">Todos os tipos</SelectItem>
+                    {Object.entries(searchLabels).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  aria-pressed={onlyFavorites}
+                  className="h-8 gap-1.5 px-2.5 aria-pressed:bg-primary-soft aria-pressed:text-primary"
+                  onClick={() => {
+                    setOnlyFavorites((value) => !value);
+                    changeFilter();
+                  }}
+                  size="sm"
+                  variant="ghost"
+                >
+                  <HeartIcon
+                    aria-hidden="true"
+                    className={onlyFavorites ? "fill-primary text-primary" : undefined}
+                  />
+                  Favoritos
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Fechar pesquisa"
+                  className="sm:ml-1"
+                  onClick={() => setOpen(false)}
+                >
+                  <XIcon />
+                </Button>
+              </div>
             </div>
             <CommandList
               label="Resultados da pesquisa"
               aria-busy={loading}
-              className="min-h-40 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+              className="min-h-40 pb-[max(0.5rem,env(safe-area-inset-bottom))] aria-busy:[&_[cmdk-group]]:opacity-60 [&_[cmdk-group]]:transition-opacity sm:h-[calc(var(--cmdk-list-height,9.5rem)+0.5rem)] sm:flex-[0_1_auto] sm:transition-[height] sm:duration-200 sm:ease-[var(--ease-out)] motion-reduce:transition-none"
             >
-              {loading && (
+              {loading && !items.length && (
                 <p role="status" className="px-5 py-8 text-sm text-muted-foreground">
                   Pesquisando…
                 </p>
@@ -282,6 +313,7 @@ export const GlobalSearchProvider = ({
               {failed && (
                 <div className="p-4">
                   <EmptyState
+                    surface="inline"
                     minHeight="sm"
                     icon={MagnifyingGlassIcon}
                     title="Não foi possível pesquisar"
@@ -297,27 +329,18 @@ export const GlobalSearchProvider = ({
                   />
                 </div>
               )}
-              {!loading && !failed && !items.length && (
+              {!loading && !failed && !items.length && narrowed && (
                 <div className="p-4">
                   <EmptyState
+                    surface="inline"
                     minHeight="sm"
                     icon={MagnifyingGlassIcon}
-                    title={
-                      debounced || onlyFavorites || kind
-                        ? "Nenhum material encontrado"
-                        : "Encontre seus materiais"
-                    }
-                    description={
-                      debounced || onlyFavorites || kind
-                        ? "Tente outras palavras ou limpe os filtros."
-                        : "Pesquise pelo nome ou por um trecho dos seus materiais."
-                    }
+                    title="Nenhum material encontrado"
+                    description="Tente outras palavras ou limpe os filtros."
                     action={
-                      debounced || onlyFavorites || kind ? (
-                        <Button variant="outline" onClick={clear}>
-                          Limpar pesquisa e filtros
-                        </Button>
-                      ) : undefined
+                      <Button variant="outline" onClick={clear}>
+                        Limpar pesquisa e filtros
+                      </Button>
                     }
                   />
                 </div>
@@ -338,7 +361,8 @@ export const GlobalSearchProvider = ({
                               changeFilter();
                             }}
                           >
-                            Ver mais
+                            {/* Names what there is more of: "Ver mais documentos". */}
+                            Ver mais {group.label.toLocaleLowerCase("pt-BR")}
                           </Button>
                         )}
                       </span>
@@ -354,7 +378,6 @@ export const GlobalSearchProvider = ({
                         >
                           <Icon
                             aria-hidden="true"
-                            weight="duotone"
                             className="mt-0.5 size-[1.125rem] shrink-0 text-muted-foreground"
                           />
                           <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
@@ -378,6 +401,29 @@ export const GlobalSearchProvider = ({
                   </CommandGroup>
                 </Fragment>
               ))}
+              {showsNavigation && (
+                <>
+                  {groups.length > 0 && <CommandSeparator alwaysRender />}
+                  <CommandGroup heading="Ir para">
+                    {primaryNavigation.map(({ Icon, label, path }) => (
+                      <CommandItem
+                        key={path}
+                        value={`nav:${path}`}
+                        onSelect={() => {
+                          setOpen(false);
+                          void navigate(path);
+                        }}
+                      >
+                        <Icon
+                          aria-hidden="true"
+                          className="size-[1.125rem] shrink-0 text-muted-foreground"
+                        />
+                        <span className="text-sm">{label}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
               {((debounced && kind) || !debounced) &&
                 (page > 1 || (debounced ? results.data?.hasMore : favorites.data?.hasMore)) && (
                   <div className="flex justify-between gap-3 px-4 py-3">
@@ -407,8 +453,17 @@ export const GlobalSearchProvider = ({
                 )}
             </CommandList>
           </Command>
-          <p className="hidden shrink-0 border-t border-border/60 px-4 py-2 text-xs text-muted-foreground sm:block">
-            ↑ ↓ navegar · Enter abrir · Esc fechar
+          <p className="hidden shrink-0 items-center gap-4 border-t border-[var(--line-subtle)] px-4 py-2.5 text-xs text-muted-foreground sm:flex">
+            <span className="flex items-center gap-1.5">
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd> navegar
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Kbd>Enter</Kbd> abrir
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Kbd>Esc</Kbd> fechar
+            </span>
           </p>
         </DialogContent>
       </Dialog>

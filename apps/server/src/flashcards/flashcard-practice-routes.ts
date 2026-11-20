@@ -2,6 +2,7 @@ import {
   createFlashcardPracticeSessionSchema,
   flashcardCollectionIdSchema,
   flashcardPracticeSessionIdSchema,
+  projectIdSchema,
   submitFlashcardReviewSchema,
 } from "@lazuli/shared";
 import type { FastifyPluginAsync, FastifyReply } from "fastify";
@@ -19,6 +20,7 @@ import {
   getPracticeAvailability,
   getPracticeSession,
   submitPracticeReview,
+  type PracticeScope,
 } from "./flashcard-practice-queries.ts";
 
 type Options = { analytics?: AnalyticsService; auth: Auth; database: Database; websiteUrl: string };
@@ -74,47 +76,56 @@ export const createFlashcardPracticeRoutes = ({
       return session;
     };
 
-    app.get("/api/flashcard-collections/:collectionId/practice", async (request, reply) => {
-      const session = await requireSession(auth, request, reply);
-      if (!session) return;
-      const parsed = flashcardCollectionIdSchema.safeParse(
-        (request.params as { collectionId?: unknown }).collectionId,
-      );
-      if (!parsed.success) return sendValidationError(reply);
-      const result = await getPracticeAvailability(database, session.user.id, parsed.data);
-      if (result.kind === "not-found")
-        return reply
-          .status(404)
-          .send({ code: "COLLECTION_NOT_FOUND", message: "Esta coleção não foi encontrada." });
-      return {
-        activeSession: result.activeSession ? serializeSession(result.activeSession) : null,
-        newCards: result.newCards,
-        dueCards: result.dueCards,
-        totalAvailable: result.totalAvailable,
-        archived: result.archived,
-      };
-    });
+    /*
+     * A practice runs over one collection or over the flashcards of every collection in a
+     * project; both share the same availability and start contract.
+     */
+    const scopes = [
+      {
+        path: "/api/flashcard-collections/:collectionId",
+        parse: (params: unknown): PracticeScope | null => {
+          const id = flashcardCollectionIdSchema.safeParse(
+            (params as { collectionId?: unknown }).collectionId,
+          );
+          return id.success ? { type: "collection", id: id.data } : null;
+        },
+        notFound: { code: "COLLECTION_NOT_FOUND", message: "Esta coleção não foi encontrada." },
+      },
+      {
+        path: "/api/projects/:projectId",
+        parse: (params: unknown): PracticeScope | null => {
+          const id = projectIdSchema.safeParse((params as { projectId?: unknown }).projectId);
+          return id.success ? { type: "project", id: id.data } : null;
+        },
+        notFound: { code: "PROJECT_NOT_FOUND", message: "Este projeto não foi encontrado." },
+      },
+    ];
 
-    app.post(
-      "/api/flashcard-collections/:collectionId/practice-sessions",
-      async (request, reply) => {
+    for (const scope of scopes) {
+      app.get(`${scope.path}/practice`, async (request, reply) => {
+        const session = await requireSession(auth, request, reply);
+        if (!session) return;
+        const parsed = scope.parse(request.params);
+        if (!parsed) return sendValidationError(reply);
+        const result = await getPracticeAvailability(database, session.user.id, parsed);
+        if (result.kind === "not-found") return reply.status(404).send(scope.notFound);
+        return {
+          activeSession: result.activeSession ? serializeSession(result.activeSession) : null,
+          newCards: result.newCards,
+          dueCards: result.dueCards,
+          totalAvailable: result.totalAvailable,
+          archived: result.archived,
+        };
+      });
+
+      app.post(`${scope.path}/practice-sessions`, async (request, reply) => {
         const session = await authorizeMutation(request, reply);
         if (!session) return;
-        const collectionId = flashcardCollectionIdSchema.safeParse(
-          (request.params as { collectionId?: unknown }).collectionId,
-        );
+        const parsed = scope.parse(request.params);
         const input = createFlashcardPracticeSessionSchema.safeParse(request.body);
-        if (!collectionId.success || !input.success) return sendValidationError(reply);
-        const result = await createPracticeSession(
-          database,
-          session.user.id,
-          collectionId.data,
-          input.data,
-        );
-        if (result.kind === "not-found")
-          return reply
-            .status(404)
-            .send({ code: "COLLECTION_NOT_FOUND", message: "Esta coleção não foi encontrada." });
+        if (!parsed || !input.success) return sendValidationError(reply);
+        const result = await createPracticeSession(database, session.user.id, parsed, input.data);
+        if (result.kind === "not-found") return reply.status(404).send(scope.notFound);
         if (result.kind === "archived")
           return reply.status(409).send({
             code: "COLLECTION_ARCHIVED",
@@ -148,8 +159,8 @@ export const createFlashcardPracticeRoutes = ({
             kind: "flashcard",
           });
         return reply.status(201).send(serializeSession(created));
-      },
-    );
+      });
+    }
 
     app.get("/api/flashcard-practice-sessions/:sessionId", async (request, reply) => {
       const session = await requireSession(auth, request, reply);

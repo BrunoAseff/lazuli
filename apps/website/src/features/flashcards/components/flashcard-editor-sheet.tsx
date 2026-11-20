@@ -1,22 +1,19 @@
 import { useCreateBlockNote } from "@blocknote/react";
-import {
-  FLASHCARD_COLLECTION_MAX_PAGE_SIZE,
-  flashcardContentSchema,
-  type FlashcardDetail,
-} from "@lazuli/shared";
-import { CopyIcon, LoaderCircleIcon, SlidersHorizontalIcon } from "lucide-react";
-import { MagicWandIcon } from "@phosphor-icons/react/MagicWand";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { flashcardContentSchema, type FlashcardDetail } from "@lazuli/shared";
+import { MagicWandIcon } from "@/components/icons.tsx";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
   DiscardStudyItemChangesDialog,
   StudyItemActionsPanel,
   StudyItemDetails,
+  StudyRefineAction,
+  StudyDetailsButton,
 } from "@/components/study-item-editor-controls.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
-import { StudyCollectionPicker } from "@/components/study-collection-picker.tsx";
+import { FlashcardMemoryStatus } from "./flashcard-items.tsx";
+import { StudyCollectionDestination } from "@/components/study-collection-destination.tsx";
 import {
   Dialog,
   DialogCancelButton,
@@ -36,10 +33,11 @@ import {
 import { RichContentField } from "@/components/rich-content-field.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
+import { MaterialSourcesAction } from "@/features/references/components/material-sources-action.tsx";
+import { CreationWorkspace } from "@/features/ai/components/creation-workspace.tsx";
 import { AiMaterialImprovementDialog } from "@/features/ai/components/ai-material-improvement-dialog.tsx";
 import type { StudyItemAction } from "@/lib/study-actions.ts";
 import type { StudyEditorPresentation } from "@/lib/study-editor.ts";
-import { useFlashcardCollections } from "../api/flashcard-collection-queries.ts";
 import { uploadFlashcardImage } from "../api/flashcard-api.ts";
 import { useCreateFlashcard, useUpdateFlashcard } from "../api/flashcard-queries.ts";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
@@ -187,7 +185,7 @@ const FlashcardEditor = ({
         onSaved?.(cardId, targetCollectionId);
         const followUpSucceeded = await onCreated?.(cardId);
         if (followUpSucceeded === false)
-          toast.warning("Flashcard criado, mas a referência não pôde ser adicionada.");
+          toast.warning("Flashcard criado, mas a fonte não pôde ser conectada.");
         else if (!onCreated) toast.success("Flashcard criado.");
       }
       committed.current = true;
@@ -230,17 +228,19 @@ const FlashcardEditor = ({
   };
   const collectionPicker = (
     <CollectionPicker
+      // A new material starts in the first collection, like the AI dialogs; that default is not an edit.
+      autoSelect={!card}
       disabled={readOnly}
       value={targetCollectionId}
       onChange={(value) => {
+        if (targetCollectionId) setDirty(true);
         setTargetCollectionId(value);
-        setDirty(true);
       }}
     />
   );
   const fields = (
     <>
-      {sourcePreview && <ReferenceSourcePreview text={sourcePreview} />}
+      {sourcePreview && presentation === "panel" && <ReferenceSourcePreview text={sourcePreview} />}
       <RichContentField
         appearance={presentation === "panel" ? "workbench" : "boxed"}
         editable={!readOnly}
@@ -261,6 +261,7 @@ const FlashcardEditor = ({
   );
   const saveButton = (
     <Button
+      pending={isPending}
       disabled={
         readOnly ||
         isPending ||
@@ -271,7 +272,6 @@ const FlashcardEditor = ({
       }
       onClick={() => void save()}
     >
-      {isPending && <LoaderCircleIcon aria-hidden="true" className="animate-spin" />}
       Salvar
     </Button>
   );
@@ -281,7 +281,7 @@ const FlashcardEditor = ({
       onClick={() => setImprovementOpen(true)}
       variant="outline"
     >
-      <MagicWandIcon aria-hidden="true" /> Melhorar com IA
+      <MagicWandIcon aria-hidden="true" /> Refinar com IA
     </Button>
   );
   const details = (
@@ -298,7 +298,12 @@ const FlashcardEditor = ({
       )}
       {readOnly && <p className="mt-5 text-xs text-muted-foreground">Coleção arquivada.</p>}
       {card && onAction && (
-        <StudyItemActionsPanel archived={Boolean(card.archivedAt)} canMove onAction={onAction} />
+        <StudyItemActionsPanel
+          archived={Boolean(card.archivedAt)}
+          canMove
+          canDuplicate
+          onAction={onAction}
+        />
       )}
     </>
   );
@@ -307,25 +312,40 @@ const FlashcardEditor = ({
     <>
       {presentation === "dialog" ? (
         <Dialog open={open} onOpenChange={(next) => !next && requestClose()}>
-          <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-3xl">
+          <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
             <DialogHeader className="border-b px-6 py-5">
-              <DialogTitle className="pr-8 text-xl">
+              <DialogTitle className="pr-8">
                 {card ? "Editar flashcard" : "Novo flashcard"}
               </DialogTitle>
               <DialogDescription>
                 Escreva uma pergunta clara e uma resposta objetiva.
               </DialogDescription>
             </DialogHeader>
-            <div className="min-h-0 space-y-7 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
-              {collectionPicker}
-              {fields}
-              {card && (
-                <ReferenceManager
-                  disabled={dirty}
-                  returnTo={`/flashcards/${card.collectionId}?card=${card.id}`}
-                  target={{ type: "flashcard", id: card.id }}
-                />
-              )}
+            <div className="min-h-0 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
+              {/* With an excerpt, the left pane is the source alone and the collection joins the material;
+                  without one, the left pane holds where the card goes. */}
+              <CreationWorkspace
+                sourceControls={!sourcePreview}
+                composing
+                sourceLabel={sourcePreview ? "Trecho de origem" : "Destino"}
+                source={
+                  sourcePreview ? (
+                    <blockquote>{sourcePreview}</blockquote>
+                  ) : (
+                    <div className="font-sans text-sm">{collectionPicker}</div>
+                  )
+                }
+              >
+                {sourcePreview && <div className="font-sans text-sm">{collectionPicker}</div>}
+                <div className="grid gap-6">{fields}</div>
+                {card && (
+                  <ReferenceManager
+                    disabled={dirty}
+                    returnTo={`/flashcards/${card.collectionId}?card=${card.id}`}
+                    target={{ type: "flashcard", id: card.id }}
+                  />
+                )}
+              </CreationWorkspace>
             </div>
             <DialogFooter className="mx-0 mb-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
               <DialogCancelButton disabled={isPending} onClick={requestClose}>
@@ -346,32 +366,24 @@ const FlashcardEditor = ({
           </DialogContent>
         </Dialog>
       ) : (
-        <div className="grid min-h-0 flex-1 bg-background @min-[960px]/study-workspace:grid-cols-[minmax(0,1fr)_16rem]">
+        <div className="grid min-h-0 min-w-0 flex-1 bg-background @min-[960px]/study-workspace:grid-cols-[minmax(0,1fr)_16rem]">
           <section className="@container/editor m-2 flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-xl bg-card px-5 py-4 ring-1 ring-border/45 lazuli-thin-scrollbar sm:px-6 lg:px-8">
-            <header className="mx-auto flex min-h-10 w-full max-w-3xl items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-2 text-muted-foreground">
-                <Badge className="bg-muted text-muted-foreground" variant="secondary">
-                  {card?.srsState === "new"
-                    ? "Novo"
-                    : card?.srsState === "review"
-                      ? "Revisão"
-                      : "Aprendendo"}
-                </Badge>
-                {card && (
-                  <Badge className="bg-muted text-muted-foreground" variant="secondary">
-                    {card.dueAt <= new Date().toISOString() ? "Disponível agora" : "Agendado"}
-                  </Badge>
+            <header className="sticky top-0 z-10 mx-auto flex min-h-10 w-full max-w-3xl flex-wrap items-center justify-between gap-3 bg-card/95 py-2 backdrop-blur-sm">
+              {card && <FlashcardMemoryStatus card={card} />}
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+                {card && <MaterialSourcesAction target={{ type: "flashcard", id: card.id }} />}
+                <StudyDetailsButton onClick={() => setDetailsSheetOpen(true)} />
+                {!readOnly && (
+                  <>
+                    {card && (
+                      <StudyRefineAction
+                        disabled={dirty || isPending}
+                        onImprove={() => setImprovementOpen(true)}
+                      />
+                    )}
+                    {saveButton}
+                  </>
                 )}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  className="@min-[960px]/study-workspace:hidden"
-                  onClick={() => setDetailsSheetOpen(true)}
-                  size="sm"
-                  variant="outline"
-                >
-                  <SlidersHorizontalIcon aria-hidden="true" /> Detalhes
-                </Button>
               </div>
             </header>
             <div className="mx-auto w-full max-w-3xl pt-[clamp(1.5rem,4vh,2.5rem)] pb-8">
@@ -399,25 +411,10 @@ const FlashcardEditor = ({
                 onChange={changeAnswer}
                 workbenchRole="answer"
               />
-              {!readOnly && (
-                <div className="mt-8 flex flex-wrap justify-end gap-2">
-                  {improveButton}
-                  {card && onAction && (
-                    <Button
-                      disabled={dirty}
-                      onClick={() => onAction("duplicate")}
-                      variant="outline"
-                    >
-                      <CopyIcon /> Duplicar
-                    </Button>
-                  )}
-                  {saveButton}
-                </div>
-              )}
             </div>
           </section>
           <StudyItemDetails
-            description="Organização e referências deste flashcard."
+            description="Coleção e fontes deste flashcard."
             onOpenChange={setDetailsSheetOpen}
             open={detailsSheetOpen}
           >
@@ -460,42 +457,21 @@ export const FlashcardEditorPanel = (props: Omit<FlashcardEditorProps, "presenta
 
 export const CollectionPicker = ({
   disabled = false,
+  autoSelect = false,
   value,
   onChange,
 }: {
+  autoSelect?: boolean;
   disabled?: boolean;
   value: string;
   onChange: (value: string) => void;
 }) => {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const input = useMemo(
-    () => ({
-      page: 1,
-      pageSize: FLASHCARD_COLLECTION_MAX_PAGE_SIZE,
-      project: undefined,
-      query,
-      status: "active" as const,
-    }),
-    [query],
-  );
-  const collections = useFlashcardCollections(input);
-  const selected = collections.data?.items.find(({ id }) => id === value);
   return (
-    <StudyCollectionPicker
+    <StudyCollectionDestination
+      autoSelect={autoSelect}
+      kind="flashcard"
       disabled={disabled}
-      empty="Nenhuma coleção encontrada."
-      items={collections.data?.items ?? []}
-      loading={collections.isPending}
-      onChange={(collectionId) => {
-        onChange(collectionId);
-        setOpen(false);
-      }}
-      onOpenChange={setOpen}
-      onQueryChange={setQuery}
-      open={open}
-      query={query}
-      selectedTitle={selected?.title}
+      onChange={onChange}
       value={value}
     />
   );

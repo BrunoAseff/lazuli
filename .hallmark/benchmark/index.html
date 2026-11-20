@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Lazúli — benchmark visual</title>
+    <style>
+      /* Hallmark: custom research gallery; signature: inspected references at reading scale. */
+      /* Critique: evidence is explicit; visual captures are not a claim of full interaction testing. */
+      :root {
+        --bg: #f5f4f0;
+        --ink: #24231f;
+        --muted: #64635d;
+        --line: #d2d0c7;
+        --accent: #c24a29;
+        --paper: #fff;
+        --font: Arial, Helvetica, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        overflow-x: clip;
+      }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.5 var(--font);
+      }
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
+      a {
+        color: inherit;
+        text-underline-offset: 4px;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+      a:focus-visible,
+      button:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 5px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 24px 4vw;
+        border-bottom: 1px solid var(--line);
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+      }
+      header strong {
+        font-size: 20px;
+      }
+      main {
+        max-width: 1720px;
+        margin: auto;
+        padding: 30px 4vw 70px;
+      }
+      nav {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 28px;
+      }
+      nav button {
+        border: 1px solid var(--line);
+        background: transparent;
+        padding: 9px 15px;
+        border-radius: 4px;
+      }
+      nav button[aria-selected="true"] {
+        background: var(--ink);
+        color: var(--paper);
+        border-color: var(--ink);
+      }
+      .stage {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 34px;
+        align-items: start;
+      }
+      .picture {
+        margin: 0;
+        min-width: 0;
+      }
+      .picture img {
+        width: 100%;
+        height: auto;
+        max-height: 73vh;
+        object-fit: contain;
+        object-position: top;
+        display: block;
+        background: var(--paper);
+      }
+      figcaption {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      #state {
+        background: transparent;
+        border: 0;
+        padding: 0;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+      }
+      h1 {
+        font-size: 36px;
+        line-height: 1.08;
+        margin: 8px 0 24px;
+        letter-spacing: -1px;
+        overflow-wrap: break-word;
+        min-width: 0;
+      }
+      h2 {
+        font-size: 24px;
+        line-height: 1.15;
+        margin: 12px 0;
+      }
+      aside > p:first-child {
+        color: var(--accent);
+        margin-top: 0;
+      }
+      aside p {
+        margin: 0 0 20px;
+      }
+      aside .take {
+        font-size: 22px;
+        line-height: 1.3;
+      }
+      aside .detail {
+        font-size: 16px;
+        color: var(--muted);
+      }
+      details {
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+        margin-top: 22px;
+      }
+      summary {
+        cursor: pointer;
+        margin-bottom: 16px;
+      }
+      details p {
+        font-size: 15px;
+      }
+      .verdict {
+        margin-top: 65px;
+        border-top: 1px solid var(--ink);
+        padding-top: 22px;
+      }
+      .verdict-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 36px;
+        margin: 28px 0;
+      }
+      .verdict-grid p {
+        max-width: 42ch;
+        color: var(--muted);
+      }
+      .note {
+        color: var(--muted);
+        font-size: 14px;
+        max-width: 100ch;
+      }
+      footer {
+        border-top: 1px solid var(--line);
+        padding-top: 20px;
+        margin-top: 35px;
+      }
+      .sources {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+      noscript {
+        display: block;
+        padding: 30px;
+      }
+      @media (max-width: 900px) {
+        header {
+          display: block;
+        }
+        header p {
+          margin-top: 7px;
+        }
+        .stage {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .picture img {
+          max-height: none;
+        }
+        aside {
+          max-width: 65ch;
+        }
+        .verdict-grid {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 12px;
+        }
+        nav {
+          gap: 6px;
+        }
+        nav button {
+          font-size: 14px;
+        }
+        h1 {
+          font-size: 32px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>Lazúli / pesquisa visual</strong>
+      <p>Referências inspecionadas em 27 de outubro de 2026. Isto não é a landing.</p>
+    </header>
+    <main>
+      <nav role="tablist" aria-label="Referências"></nav>
+      <section class="stage" aria-label="Análise da referência">
+        <figure class="picture">
+          <a id="image-link" href="lusion-live.png"
+            ><img
+              id="shot"
+              src="lusion-live.png"
+              alt="Página inicial do Lusion"
+              width="1280"
+              height="720"
+          /></a>
+          <figcaption>
+            <span id="caption">Captura do site público</span
+            ><button id="state" hidden>Ver após scroll</button>
+          </figcaption>
+        </figure>
+        <aside aria-live="polite">
+          <p id="type"></p>
+          <h1 id="name">Lusion</h1>
+          <p id="take" class="take"></p>
+          <p id="use" class="detail"></p>
+          <a id="site" href="https://lusion.co/" target="_blank" rel="noreferrer"
+            >Abrir referência</a
+          >
+          <details>
+            <summary>Observação e limites</summary>
+            <p id="seen"></p>
+            <p id="move"></p>
+            <p id="avoid"></p>
+            <a id="source" hidden target="_blank" rel="noreferrer">Fonte complementar</a>
+          </details>
+        </aside>
+      </section>
+      <section class="verdict">
+        <h2>O que muda na decisão para o Lazúli</h2>
+        <div class="verdict-grid">
+          <div>
+            <h2>Uma ideia visível.</h2>
+            <p>
+              Uma pergunta ou um trecho em escala de leitura. Sem cinco janelas, barras laterais,
+              rótulos e instruções disputando a mesma tela.
+            </p>
+          </div>
+          <div>
+            <h2>Matéria que faz algo.</h2>
+            <p>
+              O pigmento precisa marcar, revelar e preservar conteúdo. Uma pedra decorativa ou um
+              fundo azul não resolvem a identidade.
+            </p>
+          </div>
+          <div>
+            <h2>Forma própria. Fluxo verdadeiro.</h2>
+            <p>
+              Liberdade de composição e cor na página pública. Fidelidade ao produto na prática:
+              pergunta, revelar, avaliar, continuar.
+            </p>
+          </div>
+        </div>
+        <p class="note">
+          Contraponto adicional: o
+          <a href="https://bruno-simon.com/" target="_blank" rel="noreferrer"
+            >portfólio de Bruno Simon</a
+          >
+          pede que o visitante dirija pelo mundo para explorar. A documentação pública de controles
+          foi consultada; o jogo não foi auditado. É uma referência de autoria, mas a obrigação de
+          aprender a navegar contraria o acesso rápido que o Lazúli precisa oferecer.
+        </p>
+      </section>
+      <footer>
+        <p class="note">
+          Método: fontes oficiais, capturas locais e inspeções limitadas explicitadas em cada
+          referência. Não é um ranking, teste de conversão ou auditoria de acessibilidade dos sites.
+          Imagens usadas somente neste estudo, sem incorporação à aplicação.
+        </p>
+        <div class="sources">
+          <a href="research.md">Ler decisões e hipóteses</a
+          ><a href="references.json">Registro das referências</a>
+        </div>
+      </footer>
+      <noscript
+        ><p>
+          As referências e análises completas estão em <a href="research.md">research.md</a>.
+        </p></noscript
+      >
+    </main>
+    <script>
+      const refs = [
+        {
+          name: "Lusion",
+          type: "Matéria e presença",
+          url: "https://lusion.co/",
+          image: "lusion-live.png",
+          second: "lusion-scroll.png",
+          take: "A matéria ocupa o palco. O texto abre espaço.",
+          seen: "Composição tridimensional em grande escala, com luz, sombra e superfícies distintas. A frase de apresentação fica fora da cena e continua legível.",
+          move: "Inspecionados: abertura carregada e primeiro scroll. A massa tridimensional mantém a presença enquanto a composição muda. As capturas são estados, não um vídeo.",
+          use: "No Lazúli: dar escala e comportamento ao pigmento, em vez de espalhar pequenos cartões pela tela.",
+          avoid:
+            "Um objeto abstrato sozinho não explica nosso produto. A matéria precisa participar da transformação de uma nota em prática.",
+        },
+        {
+          name: "Lando Norris",
+          type: "Identidade em transformação",
+          url: "https://landonorris.com/",
+          image: "lando-live.png",
+          second: "lando-scroll.png",
+          take: "O protagonista muda de estado sem perder a identidade.",
+          seen: "Retrato e capacete ocupam o mesmo centro visual. A composição reconhecível dispensa uma montagem com vários assuntos competindo.",
+          move: "Inspecionados: revelação entre retrato e capacete e estado após scroll. O case da OFF+BRAND documenta a direção de movimento ligada à velocidade.",
+          source: "https://www.itsoffbrand.com/our-work/lando-norris",
+          use: "No Lazúli: uma mesma ideia atravessa leitura, pergunta e revisão. A transição deve mostrar de onde veio o conteúdo.",
+          avoid:
+            "Copiar velocidade, amarelo neon ou tipografia esportiva descaracterizaria o Lazúli. O princípio transferível é a continuidade.",
+        },
+        {
+          name: "Tracing Paper",
+          type: "Universo próprio para software",
+          url: "https://illoca.com/tracingpaper",
+          image: "illoca-home-desktop.png",
+          take: "O ofício fornece a linguagem da apresentação.",
+          seen: "O desenho arquitetônico determina cenário, textura, tipografia e cor. A página pública tem uma expressão própria, além da interface da ferramenta.",
+          move: "Abertura capturada e conteúdo funcional consultado. O navegador ficou instável na tentativa de interação; a coreografia completa não foi validada.",
+          use: "No Lazúli: partir de tinta, inscrição e recuperação de conhecimento para desenhar o sistema visual inteiro.",
+          avoid:
+            "Não transportar a mesa, a malha de papel ou a ilustração para o Lazúli. Repetir o cenário de outra marca seria só trocar de template.",
+        },
+        {
+          name: "Shopify Editions",
+          type: "Direção artística de campanha",
+          url: "https://www.shopify.com/editions/winter2026",
+          image: "shopify-home-desktop.png",
+          take: "Uma página pública pode ter linguagem própria.",
+          seen: "Pintura e objetos contemporâneos constroem um mundo visual; um índice dá acesso direto às novidades. A estética não depende do painel do Shopify.",
+          move: "Abertura capturada e catálogo consultado. A pesquisa não mediu desempenho nem confirmou todas as transições da galeria.",
+          use: "No Lazúli: permitir contraste, iluminação e escala diferentes do aplicativo, mantendo o sentido da marca.",
+          avoid:
+            "A densidade do índice e a quantidade de conteúdo não servem ao nosso primeiro contato. Não vamos reproduzir a pintura como fundo decorativo.",
+        },
+        {
+          name: "i-D / Elle Fanning",
+          type: "Composição editorial",
+          url: "https://spotlight.i-d.co/ellefanning",
+          image: "id-home-desktop.png",
+          take: "A hierarquia vem da composição, não de contêineres.",
+          seen: "Recorte fotográfico, tipografia e margens trabalham na mesma superfície. O assunto domina a abertura; quase não há texto auxiliar.",
+          move: "Abertura capturada. O reconhecimento de storytelling foi conferido no anúncio oficial do Framer; interações internas não foram auditadas nesta rodada.",
+          source: "https://www.framer.com/awards/",
+          use: "No Lazúli: compor em uma superfície ampla, com uma hierarquia evidente e poucos elementos grandes.",
+          avoid:
+            "Foto e manchete sozinhas não demonstram aprendizagem. A referência é de composição, não de arquitetura funcional.",
+        },
+        {
+          name: "Cosmos",
+          type: "Utilidade no primeiro contato",
+          url: "https://www.cosmos.so/",
+          image: "cosmos-home-desktop.png",
+          take: "A ação principal já comunica o que o produto faz.",
+          seen: "A busca é o centro. As imagens ao redor representam o material pesquisável, sem exigir leitura de uma lista de recursos.",
+          move: "Abertura capturada durante a troca de assunto do título. Busca e cadastro não foram enviados; a referência analisada é a apresentação.",
+          use: "No Lazúli: permitir uma ação simples e fiel ao produto, com pergunta, revelação e avaliação legíveis.",
+          avoid:
+            "Uma nuvem de cartões ou partículas seria insuficiente. O visitante precisa entender a relação entre a ação e seu próprio estudo.",
+        },
+        {
+          name: "Siena Film",
+          type: "Contraponto: custo de entrada",
+          url: "https://www.siena.film/",
+          image: "siena-home-desktop.png",
+          take: "Encantamento também pode criar uma barreira.",
+          seen: "Uma entrada tipográfica forte oferece “Enter” antes do conteúdo. O estado acessível também lista instruções para arrastar, rolar e navegar.",
+          move: "A entrada foi capturada. O clique não produziu transição verificável nesta sessão; o interior não é apresentado como inspecionado.",
+          use: "No Lazúli: evitar qualquer ritual obrigatório antes de entender o produto ou acessar o cadastro.",
+          avoid:
+            "Não esconder a proposta atrás de “Entrar na experiência”, tutorial de navegação, áudio ou preloader.",
+        },
+      ];
+      let current = 0,
+        alternate = false;
+      const el = (id) => document.getElementById(id);
+      const nav = document.querySelector("nav");
+      refs.forEach((r, i) => {
+        let b = document.createElement("button");
+        b.textContent = r.name;
+        b.setAttribute("role", "tab");
+        b.setAttribute("aria-selected", String(i === 0));
+        b.addEventListener("click", () => show(i));
+        b.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+            e.preventDefault();
+            let next = (i + (e.key === "ArrowRight" ? 1 : -1) + refs.length) % refs.length;
+            show(next);
+            nav.children[next].focus();
+          }
+        });
+        nav.append(b);
+      });
+      function show(i) {
+        current = i;
+        alternate = false;
+        const r = refs[i];
+        for (const key of ["name", "type", "take", "use", "seen", "move", "avoid"])
+          el(key).textContent = r[key];
+        el("site").href = r.url;
+        el("source").hidden = !r.source;
+        if (r.source) el("source").href = r.source;
+        el("state").hidden = !r.second;
+        document.querySelector("details").open = false;
+        [...nav.children].forEach((b, n) => {
+          b.setAttribute("aria-selected", String(n === i));
+          b.tabIndex = n === i ? 0 : -1;
+        });
+        picture();
+      }
+      function picture() {
+        const r = refs[current],
+          img = alternate ? r.second : r.image;
+        el("shot").src = img;
+        el("shot").alt = r.name + (alternate ? " — estado após scroll" : " — abertura capturada");
+        el("image-link").href = img;
+        el("caption").textContent = alternate
+          ? "Estado após scroll observado"
+          : "Abertura capturada no site público";
+        el("state").textContent = alternate ? "Ver abertura" : "Ver após scroll";
+      }
+      el("state").onclick = () => {
+        alternate = !alternate;
+        picture();
+      };
+      show(0);
+    </script>
+  </body>
+</html>

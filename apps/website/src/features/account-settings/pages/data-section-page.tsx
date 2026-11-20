@@ -66,8 +66,8 @@ const exportCategories: ReadonlyArray<{
     value: "quizzes",
   },
   {
-    description: "Referências e vínculos entre materiais",
-    label: "Referências",
+    description: "Fontes e vínculos entre materiais",
+    label: "Fontes",
     value: "references",
   },
 ] as const;
@@ -301,12 +301,15 @@ export const DataSectionPage = () => {
             <div className="grid gap-1">
               {exportCategories.map(({ description, label, value }) => (
                 <label
-                  className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 rounded-[var(--radius)] px-3 py-3 transition-colors hover:bg-muted/55"
+                  // No fill on hover: the option sits on the white dialog. The checkbox drops 1px to
+                  // meet the title's x-height, which sits below the centre of its line box.
+                  className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5 rounded-[var(--radius)] px-3 py-3"
                   htmlFor={`export-${value}`}
                   key={value}
                 >
                   <Checkbox
                     checked={categories.includes(value)}
+                    className="translate-y-px"
                     id={`export-${value}`}
                     onCheckedChange={(checked) => toggleCategory(value, checked === true)}
                   />
@@ -328,10 +331,10 @@ export const DataSectionPage = () => {
               </Button>
             </DialogClose>
             <Button
+              pending={requestExport.isPending}
               disabled={categories.length === 0 || requestExport.isPending}
               onClick={() => void createExport()}
             >
-              {requestExport.isPending && <Spinner aria-hidden="true" />}
               Solicitar cópia
             </Button>
           </DialogFooter>
@@ -403,11 +406,11 @@ export const DataSectionPage = () => {
               Cancelar
             </Button>
             <Button
+              pending={deleteAccount.isPending}
               disabled={!canDelete || deleteAccount.isPending}
               onClick={() => void removeAccount()}
               variant="destructive"
             >
-              {deleteAccount.isPending && <Spinner aria-hidden="true" />}
               Excluir minha conta
             </Button>
           </DialogFooter>

@@ -3,7 +3,7 @@ import {
   flashcardCollectionListQuerySchema,
   type FlashcardCollectionSummary,
 } from "@lazuli/shared";
-import { Layers3Icon } from "lucide-react";
+import { Layers3Icon } from "@/components/icons.tsx";
 import { useState } from "react";
 
 import { StudyCollectionListPage } from "@/components/study-collection-list-page.tsx";

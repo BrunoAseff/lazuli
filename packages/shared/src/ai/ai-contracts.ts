@@ -15,6 +15,10 @@ export const AI_SELECTION_MAX_ITEMS = 5;
 export const AI_COLLECTION_MAX_ITEMS = 10;
 export const AI_CREDITS_PER_ITEM = 10;
 export const AI_MAX_REFERENCES_PER_ITEM = 3;
+/** Documents of the same project used together in one generation (the first plus these). */
+export const AI_MAX_ADDITIONAL_SOURCES = 4;
+/** Proposals already made, sent back so "Gerar mais" continues instead of repeating them. */
+export const AI_MAX_AVOIDED_ITEMS = 40;
 
 export const aiMaterialKindSchema = z.enum(["flashcard", "quizQuestion"]);
 export const aiImprovementIntentSchema = z.enum([
@@ -85,6 +89,8 @@ const generatedTextSchema = z.string().trim().min(1).max(4_000);
 export const aiReferenceProposalSchema = z
   .object({
     scope: z.enum(["selection", "document"]).default("selection"),
+    /** The document the reference points to; null is the draft's own (first) document. */
+    documentId: z.uuid().nullable().default(null),
     blockId: z.string().trim().max(128).nullable().default(null),
     quote: z.string().trim().max(AI_SELECTION_MAX_TEXT_LENGTH).default(""),
   })
@@ -175,12 +181,54 @@ export const createAiCollectionGenerationSchema = z
       .array(z.string().trim().min(1).max(128))
       .max(AI_DOCUMENT_MAX_BLOCKS)
       .default([]),
+    /** More documents of the same project, each whole or one section. */
+    additionalSources: z
+      .array(
+        z.object({
+          documentId: z.uuid(),
+          sourceBlockIds: z
+            .array(z.string().trim().min(1).max(128))
+            .max(AI_DOCUMENT_MAX_BLOCKS)
+            .default([]),
+        }),
+      )
+      .max(AI_MAX_ADDITIONAL_SOURCES)
+      .default([]),
+    /** What was already proposed from these sources: the new batch must cover something else. */
+    avoid: z.array(z.string().trim().min(1).max(500)).max(AI_MAX_AVOIDED_ITEMS).default([]),
+    /** "Gerar mais": the draft under review that this batch continues (it stays the draft). */
+    continuesOperationId: aiGenerationIdSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    ({ additionalSources, documentId }) =>
+      new Set([documentId, ...additionalSources.map((source) => source.documentId)]).size ===
+      additionalSources.length + 1,
+    { message: "Cada documento entra uma vez." },
+  );
 
 export const aiCollectionDraftSchema = aiSelectionDraftSchema.extend({
+  /** Set on a "Gerar mais" batch: the draft it continues. */
+  continuesOperationId: aiGenerationIdSchema.nullable().default(null),
   requestedItems: z.number().int().min(1).max(AI_COLLECTION_MAX_ITEMS),
   sourceScope: z.enum(["document", "section"]),
+  /** The other documents of a generation from several, with the text the model read. */
+  additionalSources: z
+    .array(
+      z.object({
+        documentId: z.uuid(),
+        documentTitle: z.string().trim().max(100),
+        documentRevision: z.number().int().nonnegative(),
+        /** The section read, when not the whole document. */
+        sourceBlockIds: z
+          .array(z.string().trim().min(1).max(128))
+          .max(AI_DOCUMENT_MAX_BLOCKS)
+          .default([]),
+        sourceText: z.string().max(AI_DOCUMENT_MAX_TEXT_LENGTH),
+      }),
+    )
+    .max(AI_MAX_ADDITIONAL_SOURCES)
+    .default([]),
   flashcards: z.array(aiFlashcardProposalSchema).max(AI_COLLECTION_MAX_ITEMS),
   quizQuestions: z.array(aiQuizProposalSchema).max(AI_COLLECTION_MAX_ITEMS),
 });

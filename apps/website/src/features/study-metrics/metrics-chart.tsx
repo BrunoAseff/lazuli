@@ -11,12 +11,12 @@ import {
   Tooltip,
   Rectangle,
 } from "recharts";
-import { TableIcon, ChartNoAxesCombinedIcon, XIcon } from "lucide-react";
+import { XIcon } from "@/components/icons.tsx";
 import type { StudyMetricsPoint, StudyMetricsResponse, StudyMetricsView } from "@lazuli/shared";
 import { ChartContainer } from "@/components/ui/chart.tsx";
 import { ChartTooltipSurface, ChartTooltipValues } from "@/components/chart-tooltip.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group.tsx";
+import { ViewSelector } from "@/components/view-selector.tsx";
 import {
   Select,
   SelectContent,
@@ -46,7 +46,7 @@ import { MetricsPagination } from "./metrics-ui.tsx";
 import { MetricsHoverTooltip } from "./metrics-hover-tooltip.tsx";
 
 const ratings = [
-  { key: "again", label: "Novamente", color: "var(--destructive)" },
+  { key: "again", label: "Repetir", color: "var(--destructive)" },
   { key: "hard", label: "Difícil", color: "var(--warning)" },
   { key: "good", label: "Bom", color: "var(--primary)" },
   { key: "easy", label: "Fácil", color: "var(--success)" },
@@ -64,7 +64,7 @@ const seriesFor = (kind: Kind) =>
     : kind === "activity"
       ? [
           { key: "evaluations", label: "Revisões de flashcards", color: "var(--primary)" },
-          { key: "quizAnswers", label: "Respostas de quizzes", color: "var(--warning)" },
+          { key: "quizAnswers", label: "Respostas de quizzes", color: "var(--chart-3)" },
         ]
       : kind === "answers"
         ? [
@@ -220,7 +220,8 @@ export function MetricsChart({
         padding={rate ? { left: 16, right: 16 } : undefined}
       />
       <YAxis
-        width={36}
+        // Wide enough for "100%"; counts stay compact.
+        width={rate ? 44 : 36}
         domain={rate ? [0, 100] : [0, "auto"]}
         tickFormatter={(v) => (rate ? `${v}%` : formatCount(Number(v)))}
         allowDecimals={false}
@@ -261,6 +262,17 @@ export function MetricsChart({
         { key: "correct", label: "Respostas corretas" },
       ]
     : series;
+  const columnMaxima = Object.fromEntries(
+    columns.map(({ key }) => [
+      key,
+      Math.max(
+        1,
+        ...[...data.series, ...(data.previousSeries ?? [])].map(
+          (point) => Number(values(point)[key as keyof ReturnType<typeof values>]) || 0,
+        ),
+      ),
+    ]),
+  );
   const cell = (point: StudyMetricsPoint, key: string) =>
     key === "correct"
       ? `${formatCount(point.quizCorrect)} / ${formatCount(point.quizAnswers)}`
@@ -277,7 +289,7 @@ export function MetricsChart({
     <div className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
-          <h2 className="font-heading text-xl">{titles[kind]}</h2>
+          <h2 className="text-sm leading-snug font-semibold">{titles[kind]}</h2>
           <span className="text-xs text-muted-foreground">
             {data.bucket === "day" ? "Por dia" : data.bucket === "week" ? "Por semana" : "Por mês"}
           </span>
@@ -300,30 +312,18 @@ export function MetricsChart({
               </SelectContent>
             </Select>
           )}
-          <RadioGroup
-            aria-label="Visualização dos dados"
+          <ViewSelector
+            label="Visualização dos dados"
             value={table ? "table" : "chart"}
-            onValueChange={(v) => change("Display", v)}
-            className="inline-flex h-11 gap-0 rounded-[var(--radius)] border border-border bg-card sm:h-9"
-          >
-            {[
-              { value: "chart", label: "Gráfico", Icon: ChartNoAxesCombinedIcon },
-              { value: "table", label: "Tabela", Icon: TableIcon },
-            ].map(({ value, label, Icon }) => (
-              <RadioGroupItem
-                key={value}
-                value={value}
-                aria-label={label}
-                className="flex h-full w-auto items-center gap-1.5 rounded-none border-0 px-3 text-sm text-muted-foreground first:rounded-l-[calc(var(--radius)-1px)] last:rounded-r-[calc(var(--radius)-1px)] not-first:border-l not-first:border-border hover:bg-muted hover:text-foreground focus-visible:ring-inset data-[state=checked]:bg-primary/15 data-[state=checked]:text-primary"
-              >
-                <Icon className="hidden size-4 sm:block" />
-                {label}
-              </RadioGroupItem>
-            ))}
-          </RadioGroup>
+            onChange={(v) => change("Display", v)}
+            options={[
+              { value: "chart", label: "Gráfico" },
+              { value: "table", label: "Tabela" },
+            ]}
+          />
         </div>
       </div>
-      {!rate && (
+      {!rate && !table && (
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
           {series.map((s) => (
             <span key={s.key} className="inline-flex items-center gap-1.5">
@@ -349,7 +349,7 @@ export function MetricsChart({
       )}
       {table ? (
         <div>
-          <div className="max-h-80 overflow-y-auto rounded-lg border border-border/50">
+          <div className="rounded-lg border border-border/50 sm:max-h-96 sm:overflow-y-auto">
             <div className="divide-y divide-border/50 sm:hidden">
               {tableRows.map(({ point, previous }) => (
                 <div
@@ -381,9 +381,14 @@ export function MetricsChart({
               <Table aria-label={`Dados de ${titles[kind].toLowerCase()}`}>
                 <TableHeader className="sticky top-0 bg-card">
                   <TableRow>
-                    <TableHead className="px-3 py-3">Período</TableHead>
+                    <TableHead className="px-4 py-3 text-xs text-muted-foreground">
+                      Período
+                    </TableHead>
                     {columns.map((c) => (
-                      <TableHead key={c.key} className="px-3 py-3 text-right whitespace-normal">
+                      <TableHead
+                        key={c.key}
+                        className="px-4 py-3 text-right text-xs whitespace-normal text-muted-foreground"
+                      >
                         {c.label}
                       </TableHead>
                     ))}
@@ -395,7 +400,7 @@ export function MetricsChart({
                       key={`${previous}-${point.date}`}
                       className={previous ? "bg-muted/25" : ""}
                     >
-                      <TableCell className="px-3 py-3 text-sm whitespace-normal">
+                      <TableCell className="px-4 py-4 text-sm whitespace-normal">
                         {previousLabel && (
                           <span className="mb-1 block text-xs text-muted-foreground">
                             {previous ? "Anterior" : "Atual"}
@@ -406,9 +411,26 @@ export function MetricsChart({
                       {columns.map((c) => (
                         <TableCell
                           key={c.key}
-                          className="px-3 py-3 text-right text-sm font-medium tabular-nums"
+                          className={`px-4 py-4 text-right text-sm font-medium tabular-nums ${cell(point, c.key) === "0" ? "text-muted-foreground/70" : ""}`}
                         >
-                          {cell(point, c.key)}
+                          <div className="flex items-center justify-end gap-3">
+                            {!rate && (
+                              <span
+                                aria-hidden="true"
+                                className="relative hidden h-1.5 w-20 overflow-hidden rounded-full bg-muted sm:block lg:w-28"
+                              >
+                                <span
+                                  className="absolute inset-0 origin-left rounded-full transition-transform duration-200 motion-reduce:transition-none"
+                                  style={{
+                                    background: series.find(({ key }) => key === c.key)?.color,
+                                    transform: `scaleX(${Number(values(point)[c.key as keyof ReturnType<typeof values>]) / columnMaxima[c.key]!})`,
+                                    opacity: previous ? 0.45 : 0.8,
+                                  }}
+                                />
+                              </span>
+                            )}
+                            <span className="min-w-5">{cell(point, c.key)}</span>
+                          </div>
                         </TableCell>
                       ))}
                     </TableRow>

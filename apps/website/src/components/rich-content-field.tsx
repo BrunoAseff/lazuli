@@ -36,7 +36,7 @@ export const RichContentField = ({
     )}
     <div
       className={cn(
-        "min-h-40 rounded-lg border bg-background px-3 py-3 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20",
+        "lazuli-boxed-field rounded-[var(--radius)] border border-input bg-card px-3 py-2.5 transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20",
         appearance === "workbench" &&
           "min-h-0 rounded-none border-0 bg-transparent px-0 py-0 focus-within:border-transparent focus-within:ring-0",
         error &&

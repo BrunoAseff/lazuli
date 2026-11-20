@@ -1,7 +1,7 @@
-import { CheckIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+import { MonitorIcon, MoonIcon, SunIcon } from "@/components/icons.tsx";
 import { useTheme } from "next-themes";
 import { SettingsSectionHeader, SettingsSurface } from "../components/settings-ui.tsx";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group.tsx";
+import { RadioCard, RadioGroup } from "@/components/ui/radio-group.tsx";
 
 const themes = [
   { value: "system", label: "Sistema", icon: MonitorIcon },
@@ -22,17 +22,13 @@ export default function AppearanceSectionPage() {
           onValueChange={setTheme}
         >
           {themes.map(({ value, label, icon: Icon }) => (
-            <RadioGroupItem
+            <RadioCard
+              icon={<Icon aria-hidden="true" />}
               key={value}
+              layout="tile"
+              title={label}
               value={value}
-              className="relative flex h-24 w-full flex-col items-center justify-center gap-2 rounded-lg border-border bg-background text-sm text-foreground transition-colors hover:bg-muted disabled:pointer-events-none data-[state=checked]:bg-[var(--primary-soft)] data-[state=checked]:text-primary"
-            >
-              <Icon aria-hidden="true" className="size-5" />
-              {label}
-              {theme === value && (
-                <CheckIcon aria-hidden="true" className="absolute top-2 right-2 size-3.5" />
-              )}
-            </RadioGroupItem>
+            />
           ))}
         </RadioGroup>
       </SettingsSurface>

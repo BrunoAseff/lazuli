@@ -1,4 +1,4 @@
-import { PlusIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
+import { PlusIcon, SearchXIcon, TriangleAlertIcon } from "@/components/icons.tsx";
 import type { ComponentType, ReactNode } from "react";
 
 import { EmptyState } from "@/components/empty-state.tsx";
@@ -16,6 +16,7 @@ export const StudyItemListState = ({
   query,
   skeleton,
   totalItems,
+  guidedElsewhere = false,
 }: {
   children: ReactNode;
   createLabel?: string;
@@ -28,6 +29,8 @@ export const StudyItemListState = ({
   query: string;
   skeleton: ReactNode;
   totalItems?: number;
+  /** The empty collection is guided in the work area: the index stays quiet instead of repeating it. */
+  guidedElsewhere?: boolean;
 }) => {
   if (loading) return skeleton;
   if (error)
@@ -42,9 +45,11 @@ export const StudyItemListState = ({
         icon={TriangleAlertIcon}
         iconClassName="text-destructive"
         minHeight="sm"
+        surface="inline"
         title="Não foi possível carregar"
       />
     );
+  if (totalItems === 0 && guidedElsewhere && !query) return null;
   if (totalItems === 0) {
     const Icon = query ? SearchXIcon : EmptyIcon;
     return (
@@ -61,6 +66,8 @@ export const StudyItemListState = ({
         }
         icon={Icon}
         minHeight="sm"
+        // Inside the index column: no card of its own, aligned with the list's side margins.
+        surface="inline"
         title={query ? "Nenhum resultado" : emptyTitle}
       />
     );

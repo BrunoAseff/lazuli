@@ -43,3 +43,10 @@ export const apiRequest = async <T>(
   if (!schema) return undefined as T;
   return schema.parse(await response.json());
 };
+
+/**
+ * Retry only what can recover: a network failure or a server error. A 4xx (not found, forbidden,
+ * invalid) answers the same way every time, so retrying only delays the message the page shows.
+ */
+export const shouldRetryRequest = (failureCount: number, error: unknown) =>
+  failureCount < 3 && !(error instanceof ApiError && error.status >= 400 && error.status < 500);

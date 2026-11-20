@@ -1,3 +1,3 @@
-import { formatMediumDate } from "@/lib/date-format.ts";
+import { formatRecent } from "@/lib/date-format.ts";
 
-export const formatProjectDate = formatMediumDate;
+export const formatProjectDate = formatRecent;

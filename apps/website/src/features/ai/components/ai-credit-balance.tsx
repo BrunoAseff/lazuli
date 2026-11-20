@@ -1,6 +1,6 @@
-import { CoinsIcon } from "@phosphor-icons/react/Coins";
-import { ArrowUpRightIcon } from "@phosphor-icons/react/ArrowUpRight";
-import { HardDriveIcon } from "@phosphor-icons/react/HardDrive";
+import { CoinsIcon } from "@/components/icons.tsx";
+import { ArrowUpRightIcon } from "@/components/icons.tsx";
+import { HardDriveIcon } from "@/components/icons.tsx";
 import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -36,7 +36,7 @@ export const AiCreditBalance = () => {
       <section
         aria-label="Saldo de créditos de IA"
         className={cn(
-          "grid min-w-0 gap-2 rounded-lg bg-card/50 p-3",
+          "grid min-w-0 gap-1.5 rounded-lg px-2 py-2",
           creditsCritical && "bg-destructive/10 text-destructive",
         )}
       >
@@ -48,7 +48,7 @@ export const AiCreditBalance = () => {
           <span
             className={cn("shrink-0 text-muted-foreground", creditsCritical && "text-destructive")}
           >
-            <CoinsIcon aria-hidden="true" className="size-4" weight="duotone" />
+            <CoinsIcon aria-hidden="true" className="size-4" />
           </span>
           <span className="min-w-0 flex-1 truncate text-sm">Créditos</span>
           <span aria-live="polite" className="shrink-0 text-sm tabular-nums">
@@ -110,7 +110,7 @@ export const AiCreditBalance = () => {
             type="button"
           >
             <span className="flex items-center gap-2 text-xs">
-              <HardDriveIcon className="size-4 text-primary" weight="duotone" />
+              <HardDriveIcon className="size-4 text-muted-foreground" />
               Armazenamento
             </span>
             <BillingUsage

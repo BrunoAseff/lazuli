@@ -42,9 +42,9 @@ const ProjectTitleLink = ({
 };
 
 export const ProjectTable = ({ listLocation, onAction, projects, query }: ProjectTableProps) => (
-  <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+  <div className="surface-panel overflow-hidden">
     <table className="w-full table-fixed text-left text-sm">
-      <thead className="border-b border-border/50 bg-muted/35 text-xs text-muted-foreground">
+      <thead className="border-b border-border/50 text-xs text-muted-foreground">
         <tr>
           <th className="w-auto px-4 py-3 font-medium" scope="col">
             Projeto
@@ -62,6 +62,7 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
       </thead>
       <tbody className="divide-y divide-border/40">
         {projects.map((project) => (
+          // No fill on hover: on the white table any gray reads as the page. The title underlines.
           <tr key={project.id}>
             <td className="px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
@@ -70,6 +71,7 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
                   compact
                   coverKey={project.coverKey}
                   assetId={project.coverThumbnailAssetId ?? project.coverAssetId}
+                  seed={project.id}
                 />
                 <div className="min-w-0">
                   <ProjectTitleLink listLocation={listLocation} project={project} query={query} />

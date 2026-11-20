@@ -101,7 +101,46 @@ export type CollectionGenerationJob = {
   projectTitle?: string;
   sourceBlockIds: string[];
   sourceScope: "document" | "section";
+  /** Other documents of the same project read together with the first (older jobs lack it). */
+  additionalSources?: Array<{ documentId: string; sourceBlockIds: string[] }>;
+  /** Proposals already made from these sources, to be continued instead of repeated. */
+  avoid?: string[];
+  /** "Gerar mais": the draft this batch continues. */
+  continuesOperationId?: string | null;
 };
+
+/** A prepared source document: the blocks as read, and its text for the review. */
+type PreparedSource = {
+  documentId: string;
+  documentTitle: string;
+  documentRevision: number;
+  sourceText: string;
+};
+
+/**
+ * A reference from a generation over several documents names its block as "2::blockId": point
+ * it at that document and give back the plain block id. A single document keeps its references.
+ */
+const resolveSourceReferences = <
+  T extends { references: Array<{ blockId: string; quote: string }> },
+>(
+  item: T,
+  sources: PreparedSource[],
+) =>
+  sources.length > 1
+    ? {
+        ...item,
+        references: item.references.map((reference) => {
+          const at = reference.blockId.indexOf("::");
+          const index = at === -1 ? 0 : Number(reference.blockId.slice(0, at)) - 1;
+          return {
+            ...reference,
+            blockId: at === -1 ? reference.blockId : reference.blockId.slice(at + 2),
+            documentId: index > 0 ? (sources[index]?.documentId ?? null) : null,
+          };
+        }),
+      }
+    : item;
 
 type CollectionGenerationInput = CollectionGenerationJob & {
   idempotencyKey: string;
@@ -520,6 +559,9 @@ export const createAiGenerationService = ({
         kind: input.kind,
         quantity: input.quantity,
         sourceBlockIds: input.sourceBlockIds,
+        additionalSources: input.additionalSources ?? [],
+        avoid: input.avoid ?? [],
+        continuesOperationId: input.continuesOperationId ?? null,
       });
       const operationId = randomUUID();
       const admission = await store.begin({
@@ -540,6 +582,9 @@ export const createAiGenerationService = ({
             projectTitle: input.projectTitle,
             sourceBlockIds: input.sourceBlockIds,
             sourceScope: input.sourceBlockIds.length ? "section" : "document",
+            additionalSources: input.additionalSources ?? [],
+            avoid: input.avoid ?? [],
+            continuesOperationId: input.continuesOperationId ?? null,
           } satisfies CollectionGenerationJob,
         },
         origin: "collection",
@@ -547,8 +592,13 @@ export const createAiGenerationService = ({
         provider: provider.name,
         requestedItems: input.quantity,
         regenerationOfId: null,
+        continuationOfId: input.continuesOperationId ?? null,
         requestedModel: provider.model,
-        sourceIds: [input.documentId, ...input.sourceBlockIds],
+        sourceIds: [
+          input.documentId,
+          ...(input.additionalSources ?? []).map(({ documentId }) => documentId),
+          ...input.sourceBlockIds,
+        ],
         type: "collection_generation",
         userId: input.userId,
       });
@@ -590,10 +640,13 @@ export const createAiGenerationService = ({
       blocks,
       job,
       operationId,
+      sources = [],
       userId,
     }: {
       blocks: AiSourceBlock[];
       job: CollectionGenerationJob;
+      /** The documents read, first one included; empty for a single document (older callers). */
+      sources?: PreparedSource[];
       operationId: string;
       userId: string;
     }) {
@@ -606,7 +659,7 @@ export const createAiGenerationService = ({
           sourceIds: [job.documentId, ...job.sourceBlockIds],
           userId,
         });
-        const prompt = createCollectionPrompt({ ...job, blocks });
+        const prompt = createCollectionPrompt({ ...job, avoid: job.avoid ?? [], blocks });
         while (attempts < 2) {
           attempts += 1;
           try {
@@ -637,8 +690,23 @@ export const createAiGenerationService = ({
               documentRevision: job.documentRevision,
               anchorId: null,
               sourceScope: job.sourceScope,
-              sourceBlockIds: blocks.map(({ id }) => id),
-              sourceText: blocks.map(({ text }) => text).join(" "),
+              // The first document stays the draft's own; the others travel with their text.
+              sourceBlockIds:
+                sources.length > 1
+                  ? blocks.filter(({ id }) => id.startsWith("1::")).map(({ id }) => id.slice(3))
+                  : blocks.map(({ id }) => id),
+              sourceText:
+                sources.length > 1
+                  ? (sources[0]?.sourceText ?? "")
+                  : blocks.map(({ text }) => text).join(" "),
+              continuesOperationId: job.continuesOperationId ?? null,
+              additionalSources: sources.slice(1).map((source, index) => ({
+                documentId: source.documentId,
+                documentTitle: source.documentTitle,
+                documentRevision: source.documentRevision,
+                sourceBlockIds: job.additionalSources?.[index]?.sourceBlockIds ?? [],
+                sourceText: source.sourceText,
+              })),
               requestedItems: job.quantity,
               projectId: job.projectId,
               projectTitle: job.projectTitle,
@@ -647,7 +715,7 @@ export const createAiGenerationService = ({
               expiresAt: expiresAt.toISOString(),
               approved: false,
               flashcards: generated.flashcards.map((item) => ({
-                ...withValidatedReferences(item, blocks),
+                ...resolveSourceReferences(withValidatedReferences(item, blocks), sources),
                 id: randomUUID(),
                 evidence:
                   item.evidence ||
@@ -657,7 +725,7 @@ export const createAiGenerationService = ({
                     .join(" "),
               })),
               quizQuestions: generated.quizQuestions.map((item) => ({
-                ...withValidatedReferences(item, blocks),
+                ...resolveSourceReferences(withValidatedReferences(item, blocks), sources),
                 id: randomUUID(),
                 evidence:
                   item.evidence ||

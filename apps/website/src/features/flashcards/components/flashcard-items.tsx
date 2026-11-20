@@ -1,29 +1,52 @@
 import type { FlashcardSummary } from "@lazuli/shared";
-import { ArchiveIcon, BrainIcon, RefreshCwIcon, SparklesIcon } from "lucide-react";
 
-import { StudyItemTitle } from "@/components/study-item-title.tsx";
-import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { HighlightText } from "@/components/highlight-text.tsx";
+import { StudyIndexList, StudyIndexRow } from "@/components/study-index.tsx";
 import { formatMediumDate } from "@/lib/date-format.ts";
-import { cn } from "@/lib/utils.ts";
 
-const scheduleMeta = (card: FlashcardSummary) => {
-  if (card.archivedAt) return { Icon: ArchiveIcon, label: "Arquivado" };
-  const state = {
-    new: { Icon: SparklesIcon, label: "Novo" },
-    learning: { Icon: BrainIcon, label: "Aprendendo" },
-    review: { Icon: RefreshCwIcon, label: "Revisão" },
-    relearning: { Icon: RefreshCwIcon, label: "Reaprendendo" },
-  }[card.srsState];
-  if (!card.lastReviewedAt) return state;
-  const due = new Date(card.dueAt);
-  return {
-    ...state,
-    label:
-      due <= new Date()
-        ? `${state.label} · disponível agora`
-        : `${state.label} · ${formatMediumDate(due)}`,
-  };
+type MemoryState = "archived" | "new" | "learning" | "due" | "consolidated";
+
+const memoryState = (card: FlashcardSummary, now: Date): MemoryState => {
+  if (card.archivedAt) return "archived";
+  if (card.srsState === "new") return "new";
+  if (card.lastReviewedAt && new Date(card.dueAt) <= now) return "due";
+  if (card.srsState === "review") return "consolidated";
+  return "learning";
 };
+
+const memoryLabel = (card: FlashcardSummary, state: MemoryState) => {
+  if (state === "archived") return "Arquivado";
+  if (state === "new") return "Novo";
+  if (state === "due") return "Revisar agora";
+  const prefix = state === "learning" ? "Aprendendo" : "Próxima revisão";
+  return `${prefix} · ${formatMediumDate(new Date(card.dueAt))}`;
+};
+
+/** A ring that fills as the card moves from new to consolidated; lapis marks what is due now. */
+export const FlashcardMemoryMark = ({ state }: { state: MemoryState }) => (
+  <svg className="flashcard-memory-mark" data-state={state} viewBox="0 0 12 12">
+    <circle cx="6" cy="6" r="4.25" />
+    {state === "learning" && <path d="M6 1.75a4.25 4.25 0 0 0 0 8.5Z" />}
+  </svg>
+);
+
+/** The editor states the card's memory with the same glyph and words as the index. */
+export const FlashcardMemoryStatus = ({ card }: { card: FlashcardSummary }) => {
+  const state = memoryState(card, new Date());
+  return (
+    <p className="flex items-center gap-2 text-sm">
+      <FlashcardMemoryMark state={state} />
+      <span className="flashcard-memory-label text-muted-foreground" data-state={state}>
+        {memoryLabel(card, state)}
+      </span>
+    </p>
+  );
+};
+
+/** The same glyphs in the "Mostrar" filter act as their legend. */
+export const NewMemoryMark = () => <FlashcardMemoryMark state="new" />;
+export const DueMemoryMark = () => <FlashcardMemoryMark state="due" />;
+export const ScheduledMemoryMark = () => <FlashcardMemoryMark state="consolidated" />;
 
 export const FlashcardIndex = ({
   activeId,
@@ -39,32 +62,38 @@ export const FlashcardIndex = ({
   onSelect: (cardId: string, selected: boolean) => void;
   query: string;
   selected: Set<string>;
-}) => (
-  <div className="space-y-1">
-    {cards.map((card) => {
-      const schedule = scheduleMeta(card);
-      return (
-        <article
-          className={cn(
-            "group grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-accent/55",
-            activeId === card.id && "bg-accent",
-          )}
-          key={card.id}
-        >
-          <Checkbox
-            aria-label={`Selecionar flashcard: ${card.questionText}`}
-            checked={selected.has(card.id)}
-            className="mt-1"
-            onCheckedChange={(value) => onSelect(card.id, value === true)}
+}) => {
+  const now = new Date();
+  return (
+    <StudyIndexList label="Flashcards da coleção" selecting={selected.size > 0}>
+      {cards.map((card) => {
+        const state = memoryState(card, now);
+        const text = card.questionText.trim();
+        return (
+          <StudyIndexRow
+            active={activeId === card.id}
+            key={card.id}
+            mark={<FlashcardMemoryMark state={state} />}
+            meta={
+              <span className="flashcard-memory-label" data-state={state}>
+                {memoryLabel(card, state)}
+              </span>
+            }
+            onOpen={() => onOpen(card)}
+            onSelect={(value) => onSelect(card.id, value)}
+            selectLabel={`Selecionar flashcard: ${text || "pergunta com imagem"}`}
+            selected={selected.has(card.id)}
+            title={
+              text ? (
+                <HighlightText query={query} text={text} />
+              ) : (
+                <span className="text-muted-foreground italic">Pergunta com imagem</span>
+              )
+            }
+            titleText={text || undefined}
           />
-          <button className="min-w-0 text-left" onClick={() => onOpen(card)} type="button">
-            <StudyItemTitle query={query} text={card.questionText} />
-            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-              {schedule.label}
-            </span>
-          </button>
-        </article>
-      );
-    })}
-  </div>
-);
+        );
+      })}
+    </StudyIndexList>
+  );
+};

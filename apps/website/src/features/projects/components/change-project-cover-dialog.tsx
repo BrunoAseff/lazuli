@@ -4,7 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api-client.ts";
 import { Button } from "@/components/ui/button.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +15,7 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { projectKeys, useUpdateProject } from "../api/project-queries.ts";
 import {
+  coverUploadChanged,
   initialCoverSelection,
   ProjectCoverEditor,
   uploadProjectCover,
@@ -81,7 +81,8 @@ export function ChangeProjectCoverDialog({
           <DialogTitle>Alterar capa</DialogTitle>
           <DialogDescription>Escolha a capa de {project.title}.</DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1">
+        {/* Scrolls only when the window is too short; the editor itself fits. */}
+        <div className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1 lazuli-thin-scrollbar">
           <ProjectCoverEditor
             project={project}
             value={selection}
@@ -99,16 +100,16 @@ export function ChangeProjectCoverDialog({
             Cancelar
           </DialogCancelButton>
           <Button
+            pending={busy}
             disabled={
               busy ||
               (selection.mode === "upload"
-                ? !selection.file
+                ? !coverUploadChanged(selection, project)
                 : !selection.presetChanged ||
                   (selection.preset === project.coverKey && !project.coverAssetId))
             }
             onClick={() => void save()}
           >
-            {busy && <Spinner />}
             {busy ? "Salvando…" : "Salvar capa"}
           </Button>
         </DialogFooter>

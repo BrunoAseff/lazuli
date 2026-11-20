@@ -5,8 +5,8 @@ import {
   type AiSelectionDraft,
   type DocumentBlock,
 } from "@lazuli/shared";
-import { ArrowClockwiseIcon } from "@phosphor-icons/react/ArrowClockwise";
-import { CircleNotchIcon } from "@phosphor-icons/react/CircleNotch";
+import { ArrowClockwiseIcon, Trash2Icon } from "@/components/icons.tsx";
+import { CircleNotchIcon } from "@/components/icons.tsx";
 import { AiCreditCost } from "./ai-credit-cost.tsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -24,23 +24,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.tsx";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import { CreationWorkspace } from "./creation-workspace.tsx";
+import { SourceReading } from "@/features/references/components/source-reading.tsx";
+import { ViewSelector } from "@/components/view-selector.tsx";
+import { PlusIcon } from "@/components/icons.tsx";
+import { PrepareSource } from "./prepare-source.tsx";
+import { StudyCollectionDestination } from "@/components/study-collection-destination.tsx";
+import { QuantitySelector } from "@/components/quantity-selector.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
-import { useFlashcardCollections } from "@/features/flashcards/api/flashcard-collection-queries.ts";
-import { useQuizCollections } from "@/features/quizzes/api/quiz-collection-queries.ts";
 import { CreditUpgradeGuard } from "@/features/billing/components/credit-upgrade-guard.tsx";
 import { hasDuplicateQuizOptionTexts } from "@/features/quizzes/components/quiz-alternatives-field.tsx";
 import type { AiEditableQuizProposal } from "./ai-quiz-proposal-editor.tsx";
 import { AiProposalReviewList } from "./ai-proposal-review-list.tsx";
+import { studyItemAgreement, studyItemCount } from "@/lib/text.ts";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
 import { cn } from "@/lib/utils.ts";
+import { AssetImage } from "@/components/asset-image.tsx";
 import {
   clearAiReviewSession,
   readAiReviewSession,
@@ -114,10 +113,54 @@ const SelectionInlineContent = ({ content }: { content: DocumentBlock["content"]
   });
 };
 
+const SelectionSourceBlocks = ({ blocks }: { blocks: DocumentBlock[] }) => (
+  <div className="space-y-4">
+    {blocks.map((block) => (
+      <div key={block.id}>
+        {block.content && !Array.isArray(block.content) ? (
+          <div className="overflow-x-auto lazuli-thin-scrollbar">
+            <table className="w-full border-collapse text-sm">
+              <tbody>
+                {block.content.rows.map((row, index) => (
+                  <tr key={index}>
+                    {row.cells.map((cell, cellIndex) => (
+                      <td key={cellIndex} className="border border-border/50 px-2.5 py-2 align-top">
+                        <SelectionInlineContent
+                          content={Array.isArray(cell) ? cell : cell.content}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p
+            className={cn(
+              block.type === "heading" && "font-sans text-base font-semibold",
+              block.type === "quote" && "border-l-2 border-primary/30 pl-3",
+            )}
+          >
+            {block.type === "bulletListItem" && "• "}
+            <SelectionInlineContent content={block.content} />
+          </p>
+        )}
+        {block.children?.length ? (
+          <div className="mt-3 pl-4">
+            <SelectionSourceBlocks blocks={block.children} />
+          </div>
+        ) : null}
+      </div>
+    ))}
+  </div>
+);
+
 export const AiSelectionGenerationDialog = ({
   action,
   documentId,
   documentRevision,
+  documentTitle = "",
   getDocumentContent,
   open,
   onApproved,
@@ -127,6 +170,8 @@ export const AiSelectionGenerationDialog = ({
   action: AiSelectionAction | null;
   documentId: string;
   documentRevision: number;
+  /** Names the source when it is the whole document, whose text opens only on request. */
+  documentTitle?: string;
   getDocumentContent: () => DocumentBlock[];
   open: boolean;
   onApproved: (revision: number) => Promise<void> | void;
@@ -144,28 +189,16 @@ export const AiSelectionGenerationDialog = ({
   const [flashcards, setFlashcards] = useState<EditableFlashcard[]>([]);
   const [quizQuestions, setQuizQuestions] = useState<EditableQuiz[]>([]);
   const [regenerationConfirmationOpen, setRegenerationConfirmationOpen] = useState(false);
-  const [sourceExpanded, setSourceExpanded] = useState(false);
+  const [showDocumentText, setShowDocumentText] = useState(false);
+  const [guidanceOpen, setGuidanceOpen] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
   const balance = useAiCreditBalance();
-  const flashcardCollections = useFlashcardCollections(
-    { page: 1, pageSize: 24, query: "", status: "active" },
-    kind === "flashcard",
-  );
-  const quizCollections = useQuizCollections(
-    { page: 1, pageSize: 24, query: "", status: "active" },
-    kind === "quizQuestion",
-  );
   const createGeneration = useCreateAiSelectionGeneration();
   const generation = useAiGeneration(operationId);
   const approve = useApproveAiGeneration(operationId);
-  const collections = useMemo(
-    () =>
-      kind === "flashcard"
-        ? (flashcardCollections.data?.items ?? [])
-        : (quizCollections.data?.items ?? []),
-    [flashcardCollections.data?.items, kind, quizCollections.data?.items],
-  );
   const appliedOperationId = useRef("");
   const restoringReview = useRef(false);
+  const dialogContent = useRef<HTMLDivElement>(null);
   const cost = quantity * AI_CREDITS_PER_ITEM;
   const persistReview = () => {
     if (!draft?.projectId) return;
@@ -182,14 +215,6 @@ export const AiSelectionGenerationDialog = ({
   };
 
   useEffect(() => {
-    setCollectionId((current) =>
-      current && collections.some(({ id }) => id === current)
-        ? current
-        : (collections[0]?.id ?? ""),
-    );
-  }, [collections]);
-
-  useEffect(() => {
     if (!action) {
       setOperationId("");
       setDraft(null);
@@ -198,7 +223,6 @@ export const AiSelectionGenerationDialog = ({
       setGuidance("");
       setQuantity(1);
       setRegenerationConfirmationOpen(false);
-      setSourceExpanded(false);
       appliedOperationId.current = "";
     }
   }, [action]);
@@ -365,10 +389,15 @@ export const AiSelectionGenerationDialog = ({
           ? `${collectionPath}?${draft.kind === "flashcard" ? "card" : "question"}=${result.createdIds[0]}`
           : collectionPath;
       toast.success(
-        `${result.createdIds.length} ${result.createdIds.length === 1 ? "material criado" : "materiais criados"} e conectado à fonte.`,
+        `${studyItemCount(draft.kind, result.createdIds.length)} ${studyItemAgreement(draft.kind, result.createdIds.length, "criad")} e ${studyItemAgreement(draft.kind, result.createdIds.length, "conectad")} à fonte.`,
         {
           action: {
-            label: result.createdIds.length === 1 ? "Ver material" : "Ver coleção",
+            label:
+              result.createdIds.length === 1
+                ? draft.kind === "flashcard"
+                  ? "Ver flashcard"
+                  : "Ver questão"
+                : "Ver coleção",
             onClick: () => void navigate(destination),
           },
         },
@@ -383,237 +412,293 @@ export const AiSelectionGenerationDialog = ({
 
   const close = () => {
     if (createGeneration.isPending || approve.isPending) return;
+    setShowDocumentText(false);
+    setGuidanceOpen(false);
     if (draft && flashcards.length + quizQuestions.length > 0) onMinimize();
     else onCancel();
   };
   const selectedSourcePreview = action?.selectedPreview || action?.selectedText || "";
+  const selectedImage = useMemo(() => {
+    if (action?.sourceScope !== "image" || !open) return null;
+    const id = action.sourceBlockIds?.[0];
+    const pending = [...getDocumentContent()];
+    while (pending.length) {
+      const block = pending.shift()!;
+      if (block.id === id && block.type === "image") {
+        const props = (block.props ?? {}) as { url?: string; name?: string; caption?: string };
+        return props.url
+          ? { url: props.url, name: props.name ?? "", caption: props.caption ?? "" }
+          : null;
+      }
+      if (block.children) pending.push(...block.children);
+    }
+    return null;
+  }, [action, getDocumentContent, open]);
+
+  // What the material is made from, as text: the selected parts, the whole document or the
+  // plain selection. An image is shown as itself.
+  const sourceText = action?.selectedPreviewParts?.length ? (
+    <div className="space-y-2 whitespace-normal">
+      {action.selectedPreviewParts.map((part, index) =>
+        part.kind === "table" ? (
+          <div className="overflow-x-auto lazuli-thin-scrollbar" key={index}>
+            <table className="w-full border-collapse text-sm">
+              <tbody>
+                {part.rows.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {row.map((cell, cellIndex) => (
+                      <td className="border border-border px-2.5 py-1.5 align-top" key={cellIndex}>
+                        <SelectionInlineContent content={cell.content} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p
+            className={cn(
+              "whitespace-pre-wrap",
+              part.blockType === "heading" && "font-semibold text-foreground",
+              part.blockType === "quote" && "border-l-2 border-border pl-3 italic",
+            )}
+            key={index}
+          >
+            {part.text.startsWith("• ") && "• "}
+            {part.text.startsWith("☐ ") && "☐ "}
+            {/^\d+\. /.exec(part.text)?.[0]}
+            {part.text.startsWith("> ") && "> "}
+            <SelectionInlineContent content={part.content} />
+          </p>
+        ),
+      )}
+    </div>
+  ) : action?.sourceScope === "document" ? (
+    <SelectionSourceBlocks blocks={getDocumentContent()} />
+  ) : (
+    selectedSourcePreview
+  );
+  const sourceImage =
+    action?.sourceScope === "image" && selectedImage ? (
+      <figure className="grid gap-2">
+        <AssetImage
+          alt={selectedImage.name || "Imagem selecionada do documento"}
+          className="max-h-[22rem] w-auto object-contain"
+          url={selectedImage.url}
+        />
+        {selectedImage.caption && (
+          <figcaption className="font-sans text-xs text-muted-foreground">
+            {selectedImage.caption}
+          </figcaption>
+        )}
+      </figure>
+    ) : null;
+  // While reviewing, the source sits beside the proposals so their links can open passages in it.
+  const sourceSection = (
+    <section>
+      <p data-source-label>
+        {action?.sourceScope === "document"
+          ? "Documento inteiro"
+          : action?.sourceScope === "image"
+            ? "Imagem selecionada"
+            : "Trecho selecionado"}
+      </p>
+      {sourceImage ?? (
+        <SourceReading key={action?.anchorId ?? documentId} text={selectedSourcePreview}>
+          {sourceText}
+        </SourceReading>
+      )}
+    </section>
+  );
 
   return (
     <>
       <Dialog open={open && Boolean(action)} onOpenChange={(nextOpen) => !nextOpen && close()}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-3xl">
-          <DialogHeader className="border-b px-6 py-5">
-            <DialogTitle>Geração de conteúdo</DialogTitle>
+        <DialogContent
+          ref={dialogContent}
+          onOpenAutoFocus={(event) => {
+            const choice = dialogContent.current?.querySelector<HTMLButtonElement>(
+              '[data-kind-choice] [aria-pressed="true"]',
+            );
+            if (choice) {
+              event.preventDefault();
+              choice.focus();
+            }
+          }}
+          className={cn(
+            "max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0",
+            // Preparing is a short form in one column; reviewing needs the source beside it.
+            draft ? "sm:max-w-5xl" : "sm:max-w-lg",
+          )}
+        >
+          <DialogHeader className={draft ? "border-b px-6 py-5" : "px-6 pt-6"}>
+            <DialogTitle>
+              {draft
+                ? "Revisar propostas"
+                : kind === "flashcard"
+                  ? "Criar flashcards com IA"
+                  : "Criar questões com IA"}
+            </DialogTitle>
             <DialogDescription>
               {draft
-                ? "Revise e ajuste cada proposta antes de criar os materiais."
-                : action?.sourceScope === "document"
-                  ? "Transforme este documento em materiais de estudo editáveis."
-                  : action?.sourceScope === "image"
-                    ? "Transforme a imagem selecionada em materiais de estudo editáveis."
-                    : "Transforme o trecho selecionado em materiais de estudo editáveis."}
+                ? "Ajuste o texto, desligue o que não quer salvar ou descarte. Só o que estiver ligado entra na coleção."
+                : "Você revisa as propostas antes de salvar."}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="min-h-0 overflow-y-auto px-6 py-5 lazuli-thin-scrollbar">
-            {!draft ? (
-              <div className="grid gap-5">
-                <section className="rounded-[var(--radius)] border bg-muted/25 p-4">
-                  <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                    {action?.sourceScope === "document"
-                      ? "Documento inteiro"
-                      : action?.sourceScope === "image"
-                        ? "Imagem selecionada"
-                        : "Trecho selecionado"}
-                  </p>
-                  <div
-                    className={cn(
-                      "whitespace-pre-wrap leading-relaxed",
-                      sourceExpanded
-                        ? "max-h-[min(40vh,20rem)] overflow-y-auto pr-2 lazuli-thin-scrollbar"
-                        : "line-clamp-4",
-                    )}
-                  >
-                    {action?.selectedPreviewParts?.length ? (
-                      <div className="space-y-2 whitespace-normal">
-                        {action.selectedPreviewParts.map((part, index) =>
-                          part.kind === "table" ? (
-                            <div className="overflow-x-auto lazuli-thin-scrollbar" key={index}>
-                              <table className="w-full border-collapse text-sm">
-                                <tbody>
-                                  {part.rows.map((row, rowIndex) => (
-                                    <tr key={rowIndex}>
-                                      {row.map((cell, cellIndex) => (
-                                        <td
-                                          className="border border-border px-2.5 py-1.5 align-top"
-                                          key={cellIndex}
-                                        >
-                                          <SelectionInlineContent content={cell.content} />
-                                        </td>
-                                      ))}
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          ) : (
-                            <p
-                              className={cn(
-                                "whitespace-pre-wrap",
-                                part.blockType === "heading" && "font-semibold text-foreground",
-                                part.blockType === "quote" &&
-                                  "border-l-2 border-border pl-3 italic",
-                              )}
-                              key={index}
-                            >
-                              {part.text.startsWith("• ") && "• "}
-                              {part.text.startsWith("☐ ") && "☐ "}
-                              {/^\d+\. /.exec(part.text)?.[0]}
-                              {part.text.startsWith("> ") && "> "}
-                              <SelectionInlineContent content={part.content} />
-                            </p>
-                          ),
-                        )}
-                      </div>
-                    ) : (
-                      selectedSourcePreview
-                    )}
-                  </div>
-                  {(selectedSourcePreview.length > 280 ||
-                    selectedSourcePreview.includes("\n") ||
-                    (action?.selectedPreviewParts?.length ?? 0) > 1 ||
-                    action?.selectedPreviewParts?.some((part) => part.kind === "table")) && (
-                    <Button
-                      className="mt-2 h-auto px-0 py-0"
-                      onClick={() => setSourceExpanded((current) => !current)}
-                      variant="link"
-                    >
-                      {sourceExpanded ? "Ver menos" : "Ver texto completo"}
-                    </Button>
-                  )}
-                </section>
-
-                <div className="grid gap-2">
-                  <Label>Tipo de material</Label>
-                  <Tabs value={kind} onValueChange={(value) => setKind(value as AiMaterialKind)}>
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="flashcard">Flashcards</TabsTrigger>
-                      <TabsTrigger value="quizQuestion">Questões</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="ai-collection">Coleção</Label>
-                  <Select value={collectionId} onValueChange={setCollectionId}>
-                    <SelectTrigger className="w-full" id="ai-collection">
-                      <SelectValue placeholder="Selecione uma coleção" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {collections.map((collection) => (
-                        <SelectItem key={collection.id} value={collection.id}>
-                          {collection.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {!collections.length && (
-                    <p className="text-xs text-destructive">
-                      Crie uma coleção de {kind === "flashcard" ? "flashcards" : "quizzes"} antes de
-                      gerar.
+          <div
+            className={cn(
+              "relative min-h-0 overflow-y-auto lazuli-thin-scrollbar",
+              draft ? "px-6 py-7 sm:px-8 md:overflow-hidden" : "px-6 pt-5 pb-6",
+            )}
+          >
+            {draft ? (
+              <CreationWorkspace reviewing source={sourceSection}>
+                <div className="grid gap-6">
+                  {/* The count and what will be saved are in the list beside; here only the one
+                      choice left: try again, which costs nothing (three attempts are included). */}
+                  <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      {draft.regenerationCount >= 3
+                        ? "Novas tentativas esgotadas"
+                        : `Sem custo · ${3 - draft.regenerationCount} de 3 tentativas`}
                     </p>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>Quantidade</Label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {Array.from({ length: AI_SELECTION_MAX_ITEMS }, (_, index) => index + 1).map(
-                      (value) => (
-                        <Button
-                          key={value}
-                          onClick={() => setQuantity(value)}
-                          size="sm"
-                          type="button"
-                          variant={quantity === value ? "default" : "outline"}
-                        >
-                          {value}
-                        </Button>
-                      ),
-                    )}
+                    <Button
+                      disabled={createGeneration.isPending || draft.regenerationCount >= 3}
+                      onClick={() => setRegenerationConfirmationOpen(true)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <ArrowClockwiseIcon /> Gerar novamente
+                    </Button>
                   </div>
-                </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="ai-guidance">Orientação (opcional)</Label>
-                  <Textarea
-                    id="ai-guidance"
-                    maxLength={500}
-                    onChange={(event) => setGuidance(event.target.value)}
-                    placeholder="Ex.: priorize conceitos e evite perguntas sobre datas."
-                    rows={3}
-                    value={guidance}
+                  <AiProposalReviewList
+                    flashcards={flashcards}
+                    onFlashcardChange={(id, change) =>
+                      setFlashcards((current) =>
+                        current.map((item) => (item.id === id ? { ...item, ...change } : item)),
+                      )
+                    }
+                    onNavigateReference={() => {
+                      persistReview();
+                      onMinimize();
+                    }}
+                    onQuizChange={(id, change) =>
+                      setQuizQuestions((current) =>
+                        current.map((item) => (item.id === id ? { ...item, ...change } : item)),
+                      )
+                    }
+                    onRemove={(id, kind) => {
+                      const remainingCount = flashcards.length + quizQuestions.length - 1;
+                      if (kind === "flashcard")
+                        setFlashcards((current) => current.filter((item) => item.id !== id));
+                      else setQuizQuestions((current) => current.filter((item) => item.id !== id));
+                      if (remainingCount === 0) {
+                        clearAiReviewSession(draft.operationId);
+                        clearGenerationUrl();
+                        setDraft(null);
+                        onCancel();
+                      }
+                    }}
+                    operationId={draft.operationId}
+                    quizQuestions={quizQuestions}
+                    returnTo={`${location.pathname}${location.search}`}
+                    source={{
+                      documentId: draft.documentId,
+                      documentTitle: draft.documentTitle,
+                      projectId: draft.projectId ?? "",
+                      projectTitle: draft.projectTitle,
+                    }}
                   />
                 </div>
-
-                <AiCreditCost cost={cost} available={balance.data?.available} />
-              </div>
+              </CreationWorkspace>
             ) : (
-              <div className="grid gap-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium">
-                      {draft.flashcards.length + draft.quizQuestions.length} propostas geradas
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {draft.consumedCredits} créditos consumidos · {selectedCount} selecionadas
-                    </p>
+              <div className="grid gap-5">
+                <PrepareSource
+                  documentTitle={documentTitle}
+                  expanded={showDocumentText}
+                  onToggle={() => setShowDocumentText(!showDocumentText)}
+                  scope={action?.sourceScope ?? "selection"}
+                >
+                  {sourceImage ?? sourceText}
+                </PrepareSource>
+                <div className="grid gap-5">
+                  <div className="grid gap-2" data-kind-choice>
+                    <Label>O que criar?</Label>
+                    <ViewSelector
+                      fullWidth
+                      label="O que criar"
+                      onChange={(next) => {
+                        setKind(next as AiMaterialKind);
+                        setCollectionId("");
+                      }}
+                      options={[
+                        { value: "flashcard", label: "Flashcards" },
+                        { value: "quizQuestion", label: "Questões" },
+                      ]}
+                      value={kind}
+                    />
                   </div>
-                  <Button
-                    disabled={createGeneration.isPending || draft.regenerationCount >= 3}
-                    onClick={() => setRegenerationConfirmationOpen(true)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <ArrowClockwiseIcon /> Gerar novamente
-                  </Button>
-                </div>
 
-                <AiProposalReviewList
-                  flashcards={flashcards}
-                  onFlashcardChange={(id, change) =>
-                    setFlashcards((current) =>
-                      current.map((item) => (item.id === id ? { ...item, ...change } : item)),
-                    )
-                  }
-                  onNavigateReference={() => {
-                    persistReview();
-                    onMinimize();
-                  }}
-                  onQuizChange={(id, change) =>
-                    setQuizQuestions((current) =>
-                      current.map((item) => (item.id === id ? { ...item, ...change } : item)),
-                    )
-                  }
-                  onRemove={(id, kind) => {
-                    const remainingCount = flashcards.length + quizQuestions.length - 1;
-                    if (kind === "flashcard")
-                      setFlashcards((current) => current.filter((item) => item.id !== id));
-                    else setQuizQuestions((current) => current.filter((item) => item.id !== id));
-                    if (remainingCount === 0) {
-                      clearAiReviewSession(draft.operationId);
-                      clearGenerationUrl();
-                      setDraft(null);
-                      onCancel();
-                    }
-                  }}
-                  operationId={draft.operationId}
-                  quizQuestions={quizQuestions}
-                  returnTo={`${location.pathname}${location.search}`}
-                  source={{
-                    documentId: draft.documentId,
-                    documentTitle: draft.documentTitle,
-                    projectId: draft.projectId ?? "",
-                    projectTitle: draft.projectTitle,
-                  }}
-                />
+                  <div className="grid gap-2">
+                    <Label>{kind === "flashcard" ? "Quantos?" : "Quantas?"}</Label>
+                    <QuantitySelector
+                      label="Quantidade de propostas"
+                      value={quantity}
+                      options={Array.from(
+                        { length: AI_SELECTION_MAX_ITEMS },
+                        (_, index) => index + 1,
+                      )}
+                      onChange={setQuantity}
+                    />
+                  </div>
+
+                  <StudyCollectionDestination
+                    key={kind}
+                    kind={kind}
+                    autoSelect
+                    label="Salvar em"
+                    value={collectionId}
+                    onChange={setCollectionId}
+                  />
+
+                  {/* Optional guidance stays out of the way until wanted. */}
+                  {guidanceOpen || guidance ? (
+                    <div className="grid gap-2">
+                      <Label htmlFor="ai-guidance">
+                        Orientação para a IA{" "}
+                        <span className="font-normal text-muted-foreground">Opcional</span>
+                      </Label>
+                      <Textarea
+                        autoFocus={guidanceOpen && !guidance}
+                        id="ai-guidance"
+                        maxLength={500}
+                        onChange={(event) => setGuidance(event.target.value)}
+                        placeholder="Ex.: priorize conceitos e evite perguntas sobre datas."
+                        rows={3}
+                        value={guidance}
+                      />
+                    </div>
+                  ) : (
+                    <Button
+                      className="h-auto w-fit px-0 py-0.5 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                      onClick={() => setGuidanceOpen(true)}
+                      size="xs"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <PlusIcon aria-hidden="true" /> Adicionar orientação para a IA
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
-
             {(createGeneration.isPending || generation.data?.status === "running") && (
               <div className="absolute inset-0 grid place-items-center bg-background/80 backdrop-blur-sm">
                 <div className="text-center">
-                  <CircleNotchIcon className="mx-auto mb-3 size-7 animate-spin text-primary" />
+                  <CircleNotchIcon className="mx-auto mb-3 size-7 animate-spin text-muted-foreground" />
                   <p className="font-medium">Criando propostas…</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Você pode fechar e continuar depois.
@@ -623,7 +708,23 @@ export const AiSelectionGenerationDialog = ({
             )}
           </div>
 
-          <DialogFooter className="mx-0 mb-0 shrink-0 rounded-none border-t px-6 py-4">
+          <DialogFooter className="mx-0 mb-0 shrink-0 flex-col rounded-none border-t px-6 py-4 sm:items-center">
+            {!draft && (
+              <div className="w-full sm:mr-auto sm:w-auto">
+                <AiCreditCost cost={cost} available={balance.data?.available} />
+              </div>
+            )}
+            {draft && (
+              <Button
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+                disabled={approve.isPending}
+                onClick={() => setDiscardOpen(true)}
+                type="button"
+                variant="ghost"
+              >
+                <Trash2Icon /> Descartar propostas
+              </Button>
+            )}
             <Button
               className="w-full min-w-0 shrink sm:w-auto"
               disabled={createGeneration.isPending || approve.isPending}
@@ -635,6 +736,7 @@ export const AiSelectionGenerationDialog = ({
             </Button>
             {draft ? (
               <Button
+                pending={approve.isPending}
                 className="w-full min-w-0 shrink sm:w-auto"
                 disabled={
                   approve.isPending ||
@@ -650,8 +752,7 @@ export const AiSelectionGenerationDialog = ({
                 }
                 onClick={() => void save()}
               >
-                {approve.isPending && <CircleNotchIcon className="animate-spin" />}
-                Salvar {selectedCount} {selectedCount === 1 ? "material" : "materiais"}
+                Salvar {studyItemCount(draft.kind, selectedCount)}
               </Button>
             ) : (
               <CreditUpgradeGuard available={balance.data?.available} cost={cost}>
@@ -672,6 +773,22 @@ export const AiSelectionGenerationDialog = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmationDialog
+        actionLabel="Descartar"
+        description="As propostas serão removidas. Os créditos já consumidos pela geração não serão devolvidos."
+        destructive
+        onConfirm={() => {
+          if (!draft) return;
+          clearAiReviewSession(draft.operationId);
+          clearGenerationUrl();
+          setDraft(null);
+          setDiscardOpen(false);
+          onCancel();
+        }}
+        onOpenChange={setDiscardOpen}
+        open={discardOpen}
+        title="Descartar todas as propostas?"
+      />
       <ConfirmationDialog
         actionLabel="Gerar novamente"
         description="As propostas atuais serão substituídas. Esta tentativa está incluída e não consumirá novos créditos."

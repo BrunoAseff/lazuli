@@ -1,150 +1,138 @@
+import { formatRecent } from "@/lib/date-format.ts";
 import type { DashboardResponse } from "@lazuli/shared";
-import { FileTextIcon } from "@phosphor-icons/react/FileText";
-import { PlayIcon } from "@phosphor-icons/react/Play";
-import { ArrowRightIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode, type Ref } from "react";
 import { Link } from "react-router";
 
 import { DocumentDomainIcon, QuizDomainIcon } from "@/components/domain-icons.ts";
-import { Badge } from "@/components/ui/badge.tsx";
-import { DashboardSectionTitle } from "./dashboard-section-title.tsx";
+import type { AppIcon } from "@/components/icons.tsx";
+import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
+import { QuizStartDialog } from "@/features/quizzes/components/quiz-start-dialog.tsx";
 
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-});
-
-const SectionHeading = ({
-  href,
-  icon,
-  id,
-  title,
-}: {
-  href?: string;
-  icon: ReactNode;
-  id: string;
+type Item = {
+  key: string;
+  icon: AppIcon;
   title: string;
-}) => (
-  <DashboardSectionTitle
-    action={
-      href ? (
-        <Link
-          className="inline-flex shrink-0 items-center gap-1 text-sm text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-          to={href}
-        >
-          Ver todos
-          <ArrowRightIcon aria-hidden="true" className="size-4" />
-        </Link>
-      ) : undefined
-    }
-    icon={icon}
-    id={id}
-    title={title}
-  />
-);
+  detail: string;
+  /** Right column: when it was last touched, or that it is under way. */
+  when: string | null;
+  inProgress: boolean;
+  href?: string;
+  onSelect?: () => void;
+};
 
-export const DashboardRecentDocuments = ({
+const questionCount = (count: number) => `${count} ${count === 1 ? "questão" : "questões"}`;
+
+const timeOf = (item: Item) => (item.when ? new Date(item.when).getTime() : 0);
+
+/**
+ * Everything to pick up again, quizzes and documents in one list: what is under way first, then
+ * the most recent. Rows sit on white, so hover never fills: the name underlines.
+ */
+export const DashboardContinue = ({
   documents,
+  quizzes,
 }: {
   documents: DashboardResponse["recentDocuments"];
+  quizzes: DashboardResponse["quizContinuations"];
 }) => {
-  if (!documents.length) return null;
+  // A quiz not yet under way starts from a dialog here; the editor would show its answers.
+  const [starting, setStarting] = useState<string | null>(null);
+  const items: Item[] = [
+    ...quizzes.map(
+      (quiz): Item => ({
+        key: `quiz:${quiz.collectionId}`,
+        icon: QuizDomainIcon,
+        title: quiz.collectionTitle,
+        detail:
+          quiz.kind === "active"
+            ? `Quiz · ${quiz.answeredQuestions} de ${quiz.totalQuestions} respondidas`
+            : quiz.kind === "untried"
+              ? `Quiz · ${questionCount(quiz.totalQuestions)} · ainda não praticado`
+              : `Quiz · ${questionCount(quiz.totalQuestions)}`,
+        when: quiz.kind === "active" ? null : quiz.lastAttemptAt,
+        inProgress: quiz.kind === "active",
+        href:
+          quiz.kind === "active"
+            ? `/quizzes/${quiz.collectionId}/attempts/${quiz.attemptId}`
+            : undefined,
+        onSelect: quiz.kind === "active" ? undefined : () => setStarting(quiz.collectionId),
+      }),
+    ),
+    ...documents.map(
+      (document): Item => ({
+        key: `document:${document.documentId}`,
+        icon: DocumentDomainIcon,
+        title: document.documentTitle,
+        detail: `Documento · ${document.projectTitle}`,
+        when: document.updatedAt,
+        inProgress: false,
+        href: `/documents/${document.projectId}/document/${document.documentId}`,
+      }),
+    ),
+  ]
+    .sort((a, b) => Number(b.inProgress) - Number(a.inProgress) || timeOf(b) - timeOf(a))
+    .slice(0, 5);
+  if (!items.length) return null;
   return (
-    <section
-      aria-labelledby="dashboard-documents-title"
-      className="h-full px-3 py-5 sm:px-5 sm:py-6"
-    >
-      <SectionHeading
-        href="/documents"
-        icon={<DocumentDomainIcon aria-hidden="true" className="size-6" weight="duotone" />}
-        id="dashboard-documents-title"
-        title="Documentos recentes"
-      />
-      <div className="mt-4 space-y-1">
-        {documents.map((document) => (
-          <Link
-            className="group flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
-            key={document.documentId}
-            to={`/documents/${document.projectId}/document/${document.documentId}`}
-          >
-            <FileTextIcon
-              aria-hidden="true"
-              className="size-5 shrink-0 text-muted-foreground"
-              weight="duotone"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="flex min-w-0 items-center gap-2">
-                <span className="truncate font-medium group-hover:underline">
-                  {document.documentTitle}
-                </span>
-                {document.isExample && <Badge variant="secondary">Exemplo</Badge>}
-              </span>
-              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                {document.projectTitle}
-              </span>
-            </span>
-            <time
-              className="hidden shrink-0 text-xs text-muted-foreground sm:block"
-              dateTime={document.updatedAt}
-            >
-              {dateFormatter.format(new Date(document.updatedAt))}
-            </time>
-          </Link>
+    <section aria-labelledby="dashboard-continue-title" className="surface-panel p-6">
+      <h2 className="text-sm leading-snug font-semibold" id="dashboard-continue-title">
+        Continuar de onde parou
+      </h2>
+      <ul className="mt-2 grid">
+        {items.map((item) => (
+          <li key={item.key}>
+            <ContinueRow item={item} />
+          </li>
         ))}
-      </div>
+      </ul>
+      {starting && (
+        <QuizStartDialog
+          collectionId={starting}
+          open
+          onOpenChange={(open) => !open && setStarting(null)}
+        />
+      )}
     </section>
   );
 };
 
-export const DashboardContinuations = ({
-  quizzes,
-}: {
-  quizzes: DashboardResponse["quizContinuations"];
-}) => {
-  if (!quizzes.length) return null;
+const rowClass =
+  "group -mx-2 flex w-[calc(100%+1rem)] min-w-0 items-center gap-3 rounded-[var(--radius)] px-2 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+
+const ContinueRow = ({ item }: { item: Item }) => {
+  const Icon = item.icon;
+  const content = (titleRef: Ref<HTMLSpanElement>): ReactNode => (
+    <>
+      <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1">
+        <span
+          className="block truncate text-[0.9375rem] font-medium underline-offset-4 group-hover:underline"
+          ref={titleRef}
+        >
+          {item.title}
+        </span>
+        {/* One details line for every kind: what it is, where it stands, when it was last touched. */}
+        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+          {[item.detail, item.inProgress ? "em andamento" : item.when && formatRecent(item.when)]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+      </span>
+    </>
+  );
   return (
-    <section
-      aria-labelledby="dashboard-continuations-title"
-      className="h-full px-3 py-5 sm:px-5 sm:py-6"
-    >
-      <SectionHeading
-        icon={<QuizDomainIcon aria-hidden="true" className="size-6" weight="duotone" />}
-        id="dashboard-continuations-title"
-        title="Continuar"
-      />
-      <div className="mt-4 space-y-1">
-        {quizzes.map((collection) => {
-          const href =
-            collection.kind === "active"
-              ? `/quizzes/${collection.collectionId}/attempts/${collection.attemptId}`
-              : `/quizzes/${collection.collectionId}`;
-          const description =
-            collection.kind === "active"
-              ? `${collection.answeredQuestions} de ${collection.totalQuestions} respondidas`
-              : collection.kind === "untried"
-                ? `${collection.totalQuestions} questões · ainda não praticado`
-                : `${collection.totalQuestions} questões · praticado recentemente`;
-          return (
-            <Link
-              className="group flex min-w-0 items-center gap-3 rounded-lg px-3 py-3 outline-none transition-colors duration-150 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
-              key={`${collection.kind}:${collection.collectionId}`}
-              to={href}
-            >
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[color-mix(in_oklch,var(--warning),transparent_86%)] text-[var(--warning)]">
-                <PlayIcon aria-hidden="true" className="size-5" weight="duotone" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium group-hover:underline">
-                  {collection.collectionTitle}
-                </span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">{description}</span>
-              </span>
-              <ArrowRightIcon aria-hidden="true" className="size-4 shrink-0 text-primary" />
-            </Link>
-          );
-        })}
-      </div>
-    </section>
+    <OverflowTooltip text={item.title}>
+      {(ref) =>
+        item.href ? (
+          <Link className={rowClass} to={item.href}>
+            {content(ref as Ref<HTMLSpanElement>)}
+          </Link>
+        ) : (
+          <button className={rowClass} onClick={item.onSelect} type="button">
+            {content(ref as Ref<HTMLSpanElement>)}
+          </button>
+        )
+      }
+    </OverflowTooltip>
   );
 };

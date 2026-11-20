@@ -6,8 +6,8 @@ import {
   type ReactCustomBlockRenderProps,
   useResolveUrl,
 } from "@blocknote/react";
-import { ImageBrokenIcon } from "@phosphor-icons/react/ImageBroken";
-import { TrashIcon } from "@phosphor-icons/react/Trash";
+import { ImageBrokenIcon } from "@/components/icons.tsx";
+import { TrashIcon } from "@/components/icons.tsx";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -24,7 +24,7 @@ const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageB
   return (
     <ResizableFileBlockWrapper
       {...(props as any)}
-      buttonIcon={<ImageBrokenIcon aria-hidden size={24} weight="duotone" />}
+      buttonIcon={<ImageBrokenIcon aria-hidden size={24} />}
     >
       {presentation.kind === "uploading" ? (
         <div className="lazuli-image-uploading" contentEditable={false}>
@@ -39,7 +39,7 @@ const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageB
         />
       ) : presentation.kind === "error" ? (
         <div className="lazuli-broken-image" contentEditable={false}>
-          <ImageBrokenIcon aria-hidden weight="duotone" />
+          <ImageBrokenIcon aria-hidden />
           <div>
             <p>Não foi possível exibir esta imagem.</p>
             <p>O arquivo pode estar indisponível ou protegido pelo site de origem.</p>

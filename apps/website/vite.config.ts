@@ -9,6 +9,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // BlockNote's internal controls join the product icon family without patching node_modules.
+      "lucide-react": fileURLToPath(new URL("./src/components/icons.tsx", import.meta.url)),
+      "react-icons/ri": fileURLToPath(
+        new URL("./src/components/editor-icons.tsx", import.meta.url),
+      ),
     },
   },
   server: {

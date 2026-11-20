@@ -17,12 +17,19 @@ afterEach(() => {
 });
 
 it.each([
-  { name: "a single truncated line", width: 180, height: 20, expected: true },
-  { name: "a title clamped to two lines", width: 100, height: 60, expected: true },
-  { name: "a fully visible title", width: 100, height: 20, expected: false },
+  { name: "a single truncated line", width: 180, height: 20, expected: true, linked: false },
+  { name: "a title clamped to two lines", width: 100, height: 60, expected: true, linked: false },
+  { name: "a fully visible title", width: 100, height: 20, expected: false, linked: false },
+  {
+    name: "truncated text inside a link without a second tab stop",
+    width: 180,
+    height: 20,
+    expected: true,
+    linked: true,
+  },
 ])(
   "offers the full text only when needed for $name, and rechecks after resizing",
-  async ({ width, height, expected }) => {
+  async ({ width, height, expected, linked }) => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     let resize = () => {};
     vi.stubGlobal(
@@ -49,16 +56,28 @@ it.each([
     try {
       await act(async () =>
         root.render(
-          <OverflowTooltip text="Título completo do material">
-            {(ref) => <span ref={ref}>Título completo do material</span>}
-          </OverflowTooltip>,
+          linked ? (
+            <a href="/material">
+              <OverflowTooltip text="Título completo do material">
+                {(ref) => <span ref={ref}>Título completo do material</span>}
+              </OverflowTooltip>
+            </a>
+          ) : (
+            <OverflowTooltip text="Título completo do material">
+              {(ref) => <span ref={ref}>Título completo do material</span>}
+            </OverflowTooltip>
+          ),
         ),
       );
       expect(Boolean(host.querySelector('[role="tooltip"]'))).toBe(expected);
+      expect(host.querySelector("span")?.getAttribute("tabindex")).toBe(
+        expected && !linked ? "0" : null,
+      );
       scrollWidth.mockReturnValue(100);
       scrollHeight.mockReturnValue(40);
       await act(async () => resize());
       expect(host.querySelector('[role="tooltip"]')).toBeNull();
+      expect(host.querySelector("span")?.getAttribute("tabindex")).toBeNull();
     } finally {
       await act(async () => root.unmount());
       host.remove();

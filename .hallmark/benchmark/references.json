@@ -1,0 +1,83 @@
+[
+  {
+    "name": "Lusion",
+    "type": "Matéria e presença",
+    "url": "https://lusion.co/",
+    "image": "lusion-live.png",
+    "second": "lusion-scroll.png",
+    "take": "A matéria ocupa o palco. O texto abre espaço.",
+    "seen": "Composição tridimensional em grande escala, com luz, sombra e superfícies distintas. A frase de apresentação fica fora da cena e continua legível.",
+    "move": "Inspecionados: abertura carregada e primeiro scroll. A massa tridimensional mantém a presença enquanto a composição muda. As capturas são estados, não um vídeo.",
+    "use": "No Lazúli: dar escala e comportamento ao pigmento, em vez de espalhar pequenos cartões pela tela.",
+    "avoid": "Um objeto abstrato sozinho não explica nosso produto. A matéria precisa participar da transformação de uma nota em prática."
+  },
+  {
+    "name": "Lando Norris",
+    "type": "Identidade em transformação",
+    "url": "https://landonorris.com/",
+    "image": "lando-live.png",
+    "second": "lando-scroll.png",
+    "take": "O protagonista muda de estado sem perder a identidade.",
+    "seen": "Retrato e capacete ocupam o mesmo centro visual. A composição reconhecível dispensa uma montagem com vários assuntos competindo.",
+    "move": "Inspecionados: revelação entre retrato e capacete e estado após scroll. O case da OFF+BRAND documenta a direção de movimento ligada à velocidade.",
+    "source": "https://www.itsoffbrand.com/our-work/lando-norris",
+    "use": "No Lazúli: uma mesma ideia atravessa leitura, pergunta e revisão. A transição deve mostrar de onde veio o conteúdo.",
+    "avoid": "Copiar velocidade, amarelo neon ou tipografia esportiva descaracterizaria o Lazúli. O princípio transferível é a continuidade."
+  },
+  {
+    "name": "Tracing Paper",
+    "type": "Universo próprio para software",
+    "url": "https://illoca.com/tracingpaper",
+    "image": "illoca-home-desktop.png",
+    "take": "O ofício fornece a linguagem da apresentação.",
+    "seen": "O desenho arquitetônico determina cenário, textura, tipografia e cor. A página pública tem uma expressão própria, além da interface da ferramenta.",
+    "move": "Abertura capturada e conteúdo funcional consultado. O navegador ficou instável na tentativa de interação; a coreografia completa não foi validada.",
+    "use": "No Lazúli: partir de tinta, inscrição e recuperação de conhecimento para desenhar o sistema visual inteiro.",
+    "avoid": "Não transportar a mesa, a malha de papel ou a ilustração para o Lazúli. Repetir o cenário de outra marca seria só trocar de template."
+  },
+  {
+    "name": "Shopify Editions",
+    "type": "Direção artística de campanha",
+    "url": "https://www.shopify.com/editions/winter2026",
+    "image": "shopify-home-desktop.png",
+    "take": "Uma página pública pode ter linguagem própria.",
+    "seen": "Pintura e objetos contemporâneos constroem um mundo visual; um índice dá acesso direto às novidades. A estética não depende do painel do Shopify.",
+    "move": "Abertura capturada e catálogo consultado. A pesquisa não mediu desempenho nem confirmou todas as transições da galeria.",
+    "use": "No Lazúli: permitir contraste, iluminação e escala diferentes do aplicativo, mantendo o sentido da marca.",
+    "avoid": "A densidade do índice e a quantidade de conteúdo não servem ao nosso primeiro contato. Não vamos reproduzir a pintura como fundo decorativo."
+  },
+  {
+    "name": "i-D / Elle Fanning",
+    "type": "Composição editorial",
+    "url": "https://spotlight.i-d.co/ellefanning",
+    "image": "id-home-desktop.png",
+    "take": "A hierarquia vem da composição, não de contêineres.",
+    "seen": "Recorte fotográfico, tipografia e margens trabalham na mesma superfície. O assunto domina a abertura; quase não há texto auxiliar.",
+    "move": "Abertura capturada. O reconhecimento de storytelling foi conferido no anúncio oficial do Framer; interações internas não foram auditadas nesta rodada.",
+    "source": "https://www.framer.com/awards/",
+    "use": "No Lazúli: compor em uma superfície ampla, com uma hierarquia evidente e poucos elementos grandes.",
+    "avoid": "Foto e manchete sozinhas não demonstram aprendizagem. A referência é de composição, não de arquitetura funcional."
+  },
+  {
+    "name": "Cosmos",
+    "type": "Utilidade no primeiro contato",
+    "url": "https://www.cosmos.so/",
+    "image": "cosmos-home-desktop.png",
+    "take": "A ação principal já comunica o que o produto faz.",
+    "seen": "A busca é o centro. As imagens ao redor representam o material pesquisável, sem exigir leitura de uma lista de recursos.",
+    "move": "Abertura capturada durante a troca de assunto do título. Busca e cadastro não foram enviados; a referência analisada é a apresentação.",
+    "use": "No Lazúli: permitir uma ação simples e fiel ao produto, com pergunta, revelação e avaliação legíveis.",
+    "avoid": "Uma nuvem de cartões ou partículas seria insuficiente. O visitante precisa entender a relação entre a ação e seu próprio estudo."
+  },
+  {
+    "name": "Siena Film",
+    "type": "Contraponto: custo de entrada",
+    "url": "https://www.siena.film/",
+    "image": "siena-home-desktop.png",
+    "take": "Encantamento também pode criar uma barreira.",
+    "seen": "Uma entrada tipográfica forte oferece “Enter” antes do conteúdo. O estado acessível também lista instruções para arrastar, rolar e navegar.",
+    "move": "A entrada foi capturada. O clique não produziu transição verificável nesta sessão; o interior não é apresentado como inspecionado.",
+    "use": "No Lazúli: evitar qualquer ritual obrigatório antes de entender o produto ou acessar o cadastro.",
+    "avoid": "Não esconder a proposta atrás de “Entrar na experiência”, tutorial de navegação, áudio ou preloader."
+  }
+]

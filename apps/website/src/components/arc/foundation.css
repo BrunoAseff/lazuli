@@ -1,0 +1,34 @@
+/* Lazúli's semantic bridge for MIT Arc components. No parallel theme or font reset. */
+.arc-control {
+  --surface: var(--card);
+  --surface-muted: var(--muted);
+  --text-muted: var(--muted-foreground);
+  --radius-control: var(--radius);
+  --control-height-sm: 28px;
+  --control-height-md: 36px;
+  --space-3: 12px;
+  --radius-pill: 999px;
+  --control-track: var(--input);
+  --control-track-hover: color-mix(in oklab, var(--foreground) 30%, transparent);
+  --control-on: var(--action);
+  --control-thumb: var(--card);
+  --control-thumb-on: var(--action-foreground);
+  --control-thumb-shadow: 0 1px 3px rgb(0 0 0 / 15%);
+  --leading-body: 1.4;
+  --text-sm: 0.875rem;
+  --duration-fast: 150ms;
+  --duration-standard: 200ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-resting: 0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+.arc-control button:focus-visible,
+button.arc-control:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+@media (pointer: coarse) {
+  .arc-control {
+    --control-height-sm: 38px;
+    --control-height-md: 44px;
+  }
+}

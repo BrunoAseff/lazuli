@@ -31,6 +31,8 @@ import {
   studyMaterialReference,
   user,
   userAnalyticsPreference,
+  userStoneLevel,
+  userStudyGoal,
   userStudyPreference,
   userInterfacePreference,
   userFavorite,
@@ -266,7 +268,26 @@ const selectOwnedData = async (
         .where(eq(billingSubscription.userId, userId)),
     ]);
     result.account = owners[0] ?? null;
-    result.studyPreferences = study[0] ?? { desiredRetention: 90 };
+    const [goals, stoneLevels] = await Promise.all([
+      database
+        .select({
+          effectiveFrom: userStudyGoal.effectiveFrom,
+          counts: userStudyGoal.counts,
+          practices: userStudyGoal.practices,
+          days: userStudyGoal.days,
+        })
+        .from(userStudyGoal)
+        .where(eq(userStudyGoal.userId, userId)),
+      database
+        .select({ level: userStoneLevel.level, reachedAt: userStoneLevel.reachedAt })
+        .from(userStoneLevel)
+        .where(eq(userStoneLevel.userId, userId)),
+    ]);
+    result.studyPreferences = {
+      ...(study[0] ?? { desiredRetention: 90 }),
+      studyGoals: goals,
+      stoneLevels,
+    };
     result.analyticsPreference = analytics[0] ?? null;
     result.subscription = subscriptions[0] ?? null;
     const [appearance, favorites] = await Promise.all([

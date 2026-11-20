@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 
 const formSchema = z.object({
   title: studyCollectionTitleSchema,
@@ -36,6 +35,7 @@ type SubmitInput = CreateStudyCollectionInput | UpdateStudyCollectionInput;
 export const StudyCollectionDialog = ({
   collection,
   createDescription,
+  defaultProjectId = null,
   onOpenChange,
   onReset,
   onSubmit,
@@ -45,6 +45,8 @@ export const StudyCollectionDialog = ({
 }: {
   collection?: Collection;
   createDescription: string;
+  /** A new collection made from inside a project starts in that project. */
+  defaultProjectId?: string | null;
   onOpenChange: (open: boolean) => void;
   onReset: () => void;
   onSubmit: (input: SubmitInput) => Promise<void>;
@@ -56,12 +58,18 @@ export const StudyCollectionDialog = ({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     mode: "onChange",
-    defaultValues: { title: collection?.title ?? "", projectId: collection?.project?.id ?? null },
+    defaultValues: {
+      title: collection?.title ?? "",
+      projectId: collection?.project?.id ?? defaultProjectId,
+    },
   });
   useEffect(() => {
     if (open)
-      form.reset({ title: collection?.title ?? "", projectId: collection?.project?.id ?? null });
-  }, [collection, form, open]);
+      form.reset({
+        title: collection?.title ?? "",
+        projectId: collection?.project?.id ?? defaultProjectId,
+      });
+  }, [collection, defaultProjectId, form, open]);
   const watchedTitle = form.watch("title");
   const watchedProjectId = form.watch("projectId");
   const parsedTitle = studyCollectionTitleSchema.safeParse(watchedTitle);
@@ -95,7 +103,7 @@ export const StudyCollectionDialog = ({
         </DialogHeader>
         <form className="grid gap-5" onSubmit={submit}>
           <div className="grid gap-2">
-            <Label htmlFor="study-collection-title">Título</Label>
+            <Label htmlFor="study-collection-title">Nome da coleção</Label>
             <Input
               {...form.register("title")}
               aria-describedby="study-collection-title-error"
@@ -112,7 +120,9 @@ export const StudyCollectionDialog = ({
             />
           </div>
           <div className="grid gap-2">
-            <Label>Projeto</Label>
+            <Label>
+              Projeto <span className="font-normal text-muted-foreground">Opcional</span>
+            </Label>
             <ProjectFilter
               allowAll={false}
               disabled={pending}
@@ -126,16 +136,16 @@ export const StudyCollectionDialog = ({
               }
               value={watchedProjectId ?? "none"}
             />
-            <p className="text-xs text-muted-foreground">
-              Opcional. Ajuda a filtrar suas coleções.
-            </p>
           </div>
           <DialogFooter>
             <DialogCancelButton disabled={pending} onClick={close}>
               Cancelar
             </DialogCancelButton>
-            <Button disabled={!form.formState.isValid || !changed || pending} type="submit">
-              {pending && <Spinner />}
+            <Button
+              pending={pending}
+              disabled={!form.formState.isValid || !changed || pending}
+              type="submit"
+            >
               {pending ? "Salvando..." : collection ? "Salvar" : "Criar coleção"}
             </Button>
           </DialogFooter>

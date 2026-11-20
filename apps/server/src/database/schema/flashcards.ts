@@ -115,9 +115,11 @@ export const flashcardPracticeSession = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    collectionId: text("collection_id")
-      .notNull()
-      .references(() => flashcardCollection.id, { onDelete: "cascade" }),
+    // A session practices one collection, or the due flashcards of every collection in a project.
+    collectionId: text("collection_id").references(() => flashcardCollection.id, {
+      onDelete: "cascade",
+    }),
+    projectId: text("project_id").references(() => project.id, { onDelete: "cascade" }),
     status: flashcardPracticeStatus("status").default("active").notNull(),
     totalCards: integer("total_cards").notNull(),
     reviewedCards: integer("reviewed_cards").default(0).notNull(),
@@ -130,6 +132,13 @@ export const flashcardPracticeSession = pgTable(
     uniqueIndex("flashcard_practice_one_active_collection_idx")
       .on(table.userId, table.collectionId)
       .where(sql`${table.status} = 'active'`),
+    uniqueIndex("flashcard_practice_one_active_project_idx")
+      .on(table.userId, table.projectId)
+      .where(sql`${table.status} = 'active' and ${table.projectId} is not null`),
+    check(
+      "flashcard_practice_scope_check",
+      sql`(${table.collectionId} is null) <> (${table.projectId} is null)`,
+    ),
     index("flashcard_practice_user_status_activity_idx").on(
       table.userId,
       table.status,

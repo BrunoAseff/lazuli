@@ -1,4 +1,4 @@
-import { PlusIcon, ReplaceIcon, UploadCloudIcon } from "lucide-react";
+import { PlusIcon, ReplaceIcon, UploadCloudIcon } from "@/components/icons.tsx";
 import { useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button.tsx";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
@@ -12,6 +12,9 @@ export function FileDropzone({
   children,
   buttonLabel,
   replacing = false,
+  description,
+  hint,
+  busy = false,
 }: {
   accept: string;
   multiple?: boolean;
@@ -20,6 +23,9 @@ export function FileDropzone({
   children?: ReactNode;
   buttonLabel?: string;
   replacing?: boolean;
+  description?: string;
+  hint?: string;
+  busy?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -27,11 +33,16 @@ export function FileDropzone({
   return (
     <div
       className={cn(
-        "file-drop-target grid min-h-28 place-items-center rounded-xl border border-dashed p-4 text-center sm:min-h-36 sm:p-5",
-        disabled && "opacity-50",
+        "file-drop-target group/drop relative grid min-h-40 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed bg-card p-5 text-center sm:min-h-48 sm:p-7",
+        disabled && "cursor-not-allowed opacity-50",
       )}
       aria-disabled={disabled}
+      aria-busy={busy}
       data-dragging={dragging && !disabled}
+      // The whole target opens the picker; the button inside stays the keyboard entry point.
+      onClick={() => {
+        if (!disabled && !busy) input.current?.click();
+      }}
       onDragEnter={(event) => {
         event.preventDefault();
         if (!disabled) setDragging(true);
@@ -58,31 +69,51 @@ export function FileDropzone({
           event.currentTarget.value = "";
         }}
       />
-      <div className="w-full min-w-0">
+      <span aria-hidden="true" className="file-drop-wash" />
+      <div className="relative w-full min-w-0">
         {children ?? (
           <>
             <UploadCloudIcon
               aria-hidden="true"
-              className="mx-auto mb-3 size-7 text-muted-foreground"
+              className="file-drop-icon mx-auto mb-4 size-8 text-muted-foreground"
             />
             <p className="text-sm font-medium">
-              {mobile ? "Selecione no seu dispositivo" : "Arraste os arquivos para cá"}
+              {busy
+                ? "Lendo arquivo…"
+                : dragging
+                  ? "Solte para adicionar"
+                  : mobile
+                    ? "Selecione no seu dispositivo"
+                    : multiple
+                      ? "Arraste os arquivos para cá"
+                      : "Arraste o arquivo para cá"}
             </p>
-            {!mobile && (
-              <p className="mt-1 text-xs text-muted-foreground">ou escolha no seu dispositivo</p>
-            )}
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              {description ?? "Escolha os materiais que vão fazer parte do seu estudo."}
+            </p>
           </>
         )}
         <Button
           type="button"
           className="mt-4"
           disabled={disabled}
-          onClick={() => input.current?.click()}
+          onClick={(event) => {
+            event.stopPropagation();
+            input.current?.click();
+          }}
           variant="outline"
         >
           {replacing ? <ReplaceIcon aria-hidden="true" /> : <PlusIcon aria-hidden="true" />}
-          {buttonLabel ?? (mobile ? "Selecionar arquivos" : "Escolher arquivos")}
+          {buttonLabel ??
+            (multiple
+              ? mobile
+                ? "Selecionar arquivos"
+                : "Escolher arquivos"
+              : mobile
+                ? "Selecionar arquivo"
+                : "Escolher arquivo")}
         </Button>
+        {hint && <p className="mt-3 text-xs text-muted-foreground">{hint}</p>}
       </div>
     </div>
   );

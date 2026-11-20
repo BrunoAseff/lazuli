@@ -180,7 +180,10 @@ export const flashcardPracticeItemSchema = z.object({
 
 export const flashcardPracticeSessionSchema = z.object({
   id: z.uuid(),
-  collectionId: flashcardCollectionIdSchema,
+  /** One of the two is set: the collection practiced, or the project whose flashcards are. */
+  collectionId: flashcardCollectionIdSchema.nullable(),
+  projectId: z.uuid().nullable(),
+  /** The title of what is practiced: the collection's, or the project's. */
   collectionTitle: z.string(),
   status: flashcardPracticeStatusSchema,
   totalCards: z.number().int().nonnegative(),
@@ -234,6 +237,8 @@ export const flashcardCollectionSummarySchema = z
     newCards: flashcardMetricSchema,
     studiedCards: flashcardMetricSchema,
     dueCards: flashcardMetricSchema,
+    /** Reviewed into a long interval and not due: the gold of the strip. */
+    masteredCards: flashcardMetricSchema.default(0),
     nextPracticeAt: z.iso.datetime().nullable(),
     reviewsLastSevenDays: flashcardMetricSchema,
     successRateLastSevenDays: z.number().min(0).max(1).nullable(),

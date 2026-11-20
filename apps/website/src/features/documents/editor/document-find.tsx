@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronUpIcon, SearchIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, SearchIcon, XIcon } from "@/components/icons.tsx";
 import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -205,7 +205,7 @@ export const DocumentFind = ({
         </Button>
       )}
       {open && (
-        <div className="absolute top-[calc(100%+0.5rem)] right-3 z-30 flex w-[min(30rem,calc(100vw-1.5rem))] items-center gap-1 rounded-[var(--radius-overlay)] border bg-popover p-1.5 shadow-[var(--shadow-overlay)] sm:right-5">
+        <div className="absolute top-[calc(100%+0.5rem)] right-3 z-30 flex w-[min(30rem,calc(100vw-1.5rem))] items-center gap-1 rounded-[var(--radius-overlay)] border bg-popover p-1.5 shadow-[var(--shadow-float)] sm:right-5">
           <div className="relative min-w-0 flex-1">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input

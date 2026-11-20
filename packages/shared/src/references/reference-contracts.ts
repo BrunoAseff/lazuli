@@ -102,3 +102,15 @@ export type ReferenceListQuery = z.infer<typeof referenceListQuerySchema>;
 export type StudyMaterialReference = z.infer<typeof studyMaterialReferenceSchema>;
 export type ReferenceListResponse = z.infer<typeof referenceListResponseSchema>;
 export type CreateReferencesResponse = z.infer<typeof createReferencesResponseSchema>;
+
+/** Per document of a project: how many flashcards and questions were made from it. */
+export const projectDocumentMaterialsSchema = z.object({
+  items: z.array(
+    z.object({
+      documentId: z.uuid(),
+      flashcards: z.number().int().nonnegative(),
+      questions: z.number().int().nonnegative(),
+    }),
+  ),
+});
+export type ProjectDocumentMaterials = z.infer<typeof projectDocumentMaterialsSchema>;

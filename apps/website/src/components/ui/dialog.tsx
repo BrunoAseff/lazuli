@@ -6,7 +6,9 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { overlayMotion, overlaySurface } from "./ui-styles.ts";
-import { XIcon } from "lucide-react";
+import { XIcon } from "@/components/icons.tsx";
+import { useOverlayFocusReturn } from "./use-overlay-focus-return.ts";
+import { preserveLocalEscape } from "./preserve-local-escape.ts";
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -44,17 +46,31 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  animated = true,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  animated?: boolean;
 }) {
+  const focusReturn = useOverlayFocusReturn({ onOpenAutoFocus, onCloseAutoFocus });
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay
+        className={animated ? undefined : "data-open:animate-none data-closed:animate-none"}
+      />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        {...focusReturn}
+        onEscapeKeyDown={(event) => {
+          onEscapeKeyDown?.(event);
+          preserveLocalEscape(event);
+        }}
         className={cn(
-          `fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-5 p-5 text-sm outline-none sm:max-w-sm ${overlaySurface} ${overlayMotion}`,
+          `fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-5 p-5 text-sm outline-none sm:max-w-sm ${overlaySurface}`,
+          animated && overlayMotion,
           className,
         )}
         {...props}
@@ -117,7 +133,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("font-heading text-xl leading-tight font-normal", className)}
+      className={cn("font-heading text-lg leading-snug font-semibold", className)}
       {...props}
     />
   );

@@ -6,7 +6,7 @@ import {
   PencilIcon,
   Trash2Icon,
   UploadIcon,
-} from "lucide-react";
+} from "@/components/icons.tsx";
 
 import { ContextMenuItem, ContextMenuSeparator } from "@/components/ui/context-menu.tsx";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu.tsx";

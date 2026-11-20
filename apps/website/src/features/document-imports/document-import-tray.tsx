@@ -1,6 +1,6 @@
 import type { DocumentImport, StorageUsage } from "@lazuli/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2Icon, ChevronDownIcon, XIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, XIcon } from "@/components/icons.tsx";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -80,7 +80,7 @@ export const DocumentImportTray = ({
     setCompletedDismissedAt(dismissedAt);
   };
   return (
-    <section className="fixed right-4 bottom-4 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[var(--radius-overlay)] border bg-popover shadow-[var(--shadow-overlay)]">
+    <section className="fixed right-4 bottom-4 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-[var(--radius-overlay)] border bg-popover shadow-[var(--shadow-float)]">
       <header className="flex h-12 items-center gap-2 border-b px-4">
         <p className="min-w-0 flex-1 font-medium">
           {active
@@ -130,7 +130,7 @@ export const DocumentImportTray = ({
                   className={cn(
                     "flex gap-3 rounded-lg px-2 py-2.5 transition-colors",
                     canOpen &&
-                      "cursor-pointer hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "cursor-pointer hover:bg-[var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   )}
                   key={item.id}
                   onClick={canOpen ? openDocument : undefined}
@@ -146,10 +146,7 @@ export const DocumentImportTray = ({
                   role={canOpen ? "link" : undefined}
                   tabIndex={canOpen ? 0 : undefined}
                 >
-                  <DocumentDomainIcon
-                    className="mt-0.5 size-[1.125rem] shrink-0 text-muted-foreground"
-                    weight="duotone"
-                  />
+                  <DocumentDomainIcon className="mt-0.5 size-[1.125rem] shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
                     <OverflowTooltip side="top" text={item.originalName}>
                       {(ref) => (
@@ -173,7 +170,14 @@ export const DocumentImportTray = ({
                     )}
                   </div>
                   {item.status === "completed" ? (
-                    <CheckCircle2Icon className="mt-0.5 size-5 shrink-0 text-success" />
+                    // The app's "done" mark: the same filled seal as a correct answer.
+                    <span
+                      aria-label="Concluído"
+                      className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-success text-success-foreground"
+                      role="img"
+                    >
+                      <CheckIcon aria-hidden="true" className="size-3" strokeWidth={2.4} />
+                    </span>
                   ) : item.status === "failed" ? (
                     <Button
                       onClick={() =>

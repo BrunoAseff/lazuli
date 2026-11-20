@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { useBilling } from "@/features/billing/billing-context.tsx";
 import { useBillingSummary } from "@/features/billing/api/billing-queries.ts";
 import { authClient } from "@/features/auth/auth-client.ts";
@@ -104,10 +103,10 @@ export const AccountSectionPage = () => {
             nameChanged ? (
               <>
                 <Button
+                  pending={updateName.isPending}
                   disabled={!nameValid || updateName.isPending}
                   onClick={() => void saveName()}
                 >
-                  {updateName.isPending && <Spinner aria-hidden="true" />}
                   Salvar
                 </Button>
                 <Button
@@ -149,10 +148,10 @@ export const AccountSectionPage = () => {
             emailChanged ? (
               <>
                 <Button
+                  pending={emailPending}
                   disabled={!emailValid || emailPending}
                   onClick={() => void requestEmailChange()}
                 >
-                  {emailPending && <Spinner aria-hidden="true" />}
                   Salvar
                 </Button>
                 <Button

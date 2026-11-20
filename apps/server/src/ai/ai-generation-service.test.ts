@@ -281,6 +281,7 @@ describe("AI generation service", () => {
               references: [
                 {
                   blockId: "block-1",
+                  documentId: null,
                   quote: "Recuperar uma ideia fortalece a memória.",
                   scope: "selection",
                 },
@@ -291,6 +292,85 @@ describe("AI generation service", () => {
           sourceScope: "section",
         }),
         validItems: 1,
+      }),
+    );
+  });
+
+  it("points each reference of a generation over several documents at its own document", async () => {
+    const store = createStore();
+    const linked = {
+      flashcards: [
+        {
+          answer: "Recuperar exige esforço, e o esforço aponta onde a tarefa travou.",
+          evidence: "Recuperar fortalece a memória; um impasse indica o que falta.",
+          references: [
+            { blockId: "1::block-1", quote: "Recuperar uma ideia fortalece a memória." },
+            { blockId: "2::block-9", quote: "Um impasse indica o que falta saber." },
+          ],
+          question: "Como recuperar ajuda a destravar um impasse?",
+          sourceBlockIds: ["1::block-1", "2::block-9"],
+          warning: null,
+        },
+      ],
+      quizQuestions: [],
+    };
+    const service = createAiGenerationService({
+      logger,
+      provider: createFakeAiProvider({ output: linked }),
+      retryDelayMs: 0,
+      store,
+    });
+    const second = "44444444-4444-4444-8444-444444444444";
+
+    await service.processCollectionDraft({
+      blocks: [
+        { id: "1::block-1", text: "Recuperar uma ideia fortalece a memória.", document: "A" },
+        { id: "2::block-9", text: "Um impasse indica o que falta saber.", document: "B" },
+      ],
+      job: {
+        collectionId: "11111111-1111-4111-8111-111111111111",
+        documentId: "22222222-2222-4222-8222-222222222222",
+        documentRevision: 3,
+        guidance: "",
+        kind: "flashcard",
+        quantity: 3,
+        sourceBlockIds: [],
+        sourceScope: "document",
+        additionalSources: [{ documentId: second, sourceBlockIds: [] }],
+      },
+      operationId: "33333333-3333-4333-8333-333333333333",
+      sources: [
+        {
+          documentId: "22222222-2222-4222-8222-222222222222",
+          documentTitle: "A",
+          documentRevision: 3,
+          sourceText: "Recuperar uma ideia fortalece a memória.",
+        },
+        {
+          documentId: second,
+          documentTitle: "B",
+          documentRevision: 1,
+          sourceText: "Um impasse indica o que falta saber.",
+        },
+      ],
+      userId: input.userId,
+    });
+
+    expect(store.complete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          sourceBlockIds: ["block-1"],
+          sourceText: "Recuperar uma ideia fortalece a memória.",
+          additionalSources: [expect.objectContaining({ documentId: second, documentTitle: "B" })],
+          flashcards: [
+            expect.objectContaining({
+              references: [
+                expect.objectContaining({ blockId: "block-1", documentId: null }),
+                expect.objectContaining({ blockId: "block-9", documentId: second }),
+              ],
+            }),
+          ],
+        }),
       }),
     );
   });
@@ -400,6 +480,7 @@ describe("AI generation service", () => {
             references: [
               {
                 blockId: "block-1",
+                documentId: null,
                 quote: "Recuperar uma ideia fortalece a memória.",
                 scope: "selection",
               },

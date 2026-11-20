@@ -1,4 +1,5 @@
-export type AiSourceBlock = { id: string; text: string };
+/** A block of source text; with several documents, `document` names the one it comes from. */
+export type AiSourceBlock = { id: string; text: string; document?: string };
 export type AiSelectionContext = {
   after: AiSourceBlock[];
   before: AiSourceBlock[];
@@ -64,23 +65,41 @@ export const createSelectionPrompt = ({
   system: SELECTION_SYSTEM_PROMPT,
 });
 
+const SEVERAL_DOCUMENTS_PROMPT = `A evidência vem de mais de um documento: o campo document de cada bloco diz de qual.
+Além de materiais sobre cada documento, você pode criar materiais que liguem ideias de documentos diferentes, mas somente quando houver, em cada documento envolvido, um trecho literal que sustente a ligação. Nesses materiais, inclua em references um trecho de cada documento envolvido.
+Nunca crie uma ligação que os trechos não sustentem; se os documentos não se relacionam, crie apenas materiais de cada um, distribuídos entre eles.`;
+
+const AVOID_PROMPT = `AVOID lista materiais já criados a partir destas fontes. Não repita nem reformule esses materiais: cubra conceitos ainda não tratados. Se a fonte não tiver conceitos novos suficientes, retorne menos materiais.`;
+
 export const createCollectionPrompt = ({
+  avoid = [],
   blocks,
   guidance,
   kind,
   quantity,
   sourceScope,
 }: {
+  avoid?: string[];
   blocks: AiSourceBlock[];
   guidance: string;
   kind: "flashcard" | "quizQuestion";
   quantity: number;
   sourceScope: "document" | "section";
-}) => ({
-  prompt: `<REQUEST>${serializePromptData({ kind, quantity, guidance, sourceScope })}</REQUEST>\n<SOURCE_CONTEXT>{}</SOURCE_CONTEXT>\n<SOURCE_EVIDENCE>${serializePromptData(blocks)}</SOURCE_EVIDENCE>`,
-  promptVersion: COLLECTION_PROMPT_VERSION,
-  system: `${SELECTION_SYSTEM_PROMPT}\nDistribua o lote entre conceitos distintos da fonte e evite propostas semanticamente duplicadas. Retorne no máximo ${quantity} materiais e associe a cada um apenas os blocos que sustentam sua resposta.`,
-});
+}) => {
+  const several = blocks.some((block) => block.document);
+  return {
+    prompt: `<REQUEST>${serializePromptData({ kind, quantity, guidance, sourceScope })}</REQUEST>${avoid.length ? `\n<AVOID>${serializePromptData(avoid)}</AVOID>` : ""}\n<SOURCE_CONTEXT>{}</SOURCE_CONTEXT>\n<SOURCE_EVIDENCE>${serializePromptData(blocks)}</SOURCE_EVIDENCE>`,
+    promptVersion: COLLECTION_PROMPT_VERSION,
+    system: [
+      SELECTION_SYSTEM_PROMPT,
+      `Distribua o lote entre conceitos distintos da fonte e evite propostas semanticamente duplicadas. Retorne no máximo ${quantity} materiais e associe a cada um apenas os blocos que sustentam sua resposta.`,
+      several ? SEVERAL_DOCUMENTS_PROMPT : "",
+      avoid.length ? AVOID_PROMPT : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  };
+};
 
 const IMPROVEMENT_INTENT_LABELS = {
   clarify: "tornar o material mais claro",

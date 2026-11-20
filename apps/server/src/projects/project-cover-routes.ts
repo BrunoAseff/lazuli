@@ -47,6 +47,12 @@ export const prepareProjectCover = async (
     height: cropHeight,
   });
   return Promise.all([
+    // The source: the whole image, oriented and bounded, so the framing can be redone later.
+    sharp(input, { limitInputPixels: 25_000_000, animated: false })
+      .autoOrient()
+      .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 88 })
+      .toBuffer(),
     cropped
       .clone()
       .resize({ width: 1600, height: 900, fit: "fill", withoutEnlargement: true })
@@ -120,7 +126,7 @@ export const createProjectCoverRoutes =
           });
         }
         const attemptId = crypto.randomUUID();
-        const keys = ["main", "thumbnail"].map(
+        const keys = ["source", "main", "thumbnail"].map(
           (name) => `${current.user.id}/${projectId.data}/covers/${attemptId}/${name}.webp`,
         );
         await enqueueObjectDeletions(database, keys, 10 * 60_000);
@@ -142,9 +148,11 @@ export const createProjectCoverRoutes =
               (latest.coverKey ?? "") !== options.expectedCoverKey
             )
               return "conflict" as const;
-            const oldIds = [latest.coverAssetId, latest.coverThumbnailAssetId].filter(
-              (id): id is string => Boolean(id),
-            );
+            const oldIds = [
+              latest.coverAssetId,
+              latest.coverThumbnailAssetId,
+              latest.coverSourceAssetId,
+            ].filter((id): id is string => Boolean(id));
             if (oldIds.length) {
               const removed = await tx
                 .delete(asset)
@@ -152,7 +160,9 @@ export const createProjectCoverRoutes =
                 .returning();
               await releaseStoredObjects(tx, current.user.id, removed);
             }
-            const ids = [options.uploadId, crypto.randomUUID()];
+            // Order matches the prepared images: source, main (the upload id), thumbnail.
+            const ids = [crypto.randomUUID(), options.uploadId, crypto.randomUUID()];
+            const names = ["original", "principal", "miniatura"];
             for (const [index, image] of images.entries()) {
               const created = await createAsset(
                 tx,
@@ -161,7 +171,7 @@ export const createProjectCoverRoutes =
                   userId: current.user.id,
                   projectId: latest.id,
                   objectKey: keys[index]!,
-                  originalName: `capa-${index === 0 ? "principal" : "miniatura"}.webp`,
+                  originalName: `capa-${names[index]}.webp`,
                   mimeType: "image/webp",
                   byteSize: image.length,
                   attachedAt: new Date(),
@@ -174,8 +184,12 @@ export const createProjectCoverRoutes =
               .update(project)
               .set({
                 coverKey: null,
-                coverAssetId: ids[0],
-                coverThumbnailAssetId: ids[1],
+                coverSourceAssetId: ids[0],
+                coverAssetId: ids[1],
+                coverThumbnailAssetId: ids[2],
+                coverCropX: options.x,
+                coverCropY: options.y,
+                coverCropZoom: options.zoom,
                 updatedAt: new Date(),
               })
               .where(eq(project.id, latest.id));

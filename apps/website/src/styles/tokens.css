@@ -1,0 +1,159 @@
+/*
+ * Lazúli: lapis lazuli. Ultramarine (the pigment) and pyrite (the gold flecks).
+ * Shared by product and public pages. Every text pair below was measured for WCAG AA.
+ * [data-identity] scopes let /system/identidade show both themes side by side. Every scope
+ * re-declares the full set so tokens that reference others resolve inside it.
+ */
+:root {
+  /* Raw material, theme independent. */
+  --lapis-night: #0e1330;
+  --lapis-deep: #1b2a78;
+  --lapis-main: #2a40b4;
+  --lapis-bright: #5b72dc;
+  --lapis-light: #a9b8f5;
+  --lapis-veil: #eceffd;
+  --pyrite: #c9a14a;
+  --pyrite-bright: #e0bd6a;
+  /* Aliases kept for the public pages until they move to the semantic tokens. */
+  --lapis: var(--lapis-main);
+  --paper: #f3f4f6;
+  --sheet: #ffffff;
+  --ink: #141a2e;
+  --ink-secondary: #586074;
+
+  --radius: 0.625rem;
+  --radius-panel: 1rem;
+  --radius-overlay: 1.25rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-move: cubic-bezier(0.65, 0, 0.35, 1);
+  --transition-fast: 200ms var(--ease-out);
+}
+
+:root,
+[data-identity] {
+  /* Clean, near-neutral paper: the blue reads as pigment against it, and a lapis-tinted hover can
+     never be mistaken for the page. */
+  --background: var(--paper);
+  --foreground: var(--ink); /* 15.8:1 */
+  --card: var(--sheet);
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+  --primary: var(--lapis-main); /* 7.7:1 on the page, 8.4:1 on white */
+  --primary-hover: #1f3093;
+  --primary-soft: var(--lapis-veil);
+  --primary-foreground: #ffffff;
+  /* Filled actions. Same as primary here; at night the fill keeps the pigment. */
+  --action: var(--primary);
+  --action-hover: var(--primary-hover);
+  --action-foreground: #ffffff;
+  /* Hover depends on the surface the row sits on (see --row-hover in identity.css):
+     on the page, the neutral fill of a ghost button, a step darker than the page;
+     on a white surface (card, dialog, menu), a whisper of ink that stays far from the page gray,
+     so a hovered row never dissolves the card's edge into the background. */
+  --page-hover: var(--muted);
+  --card-hover: color-mix(in oklab, var(--foreground) 3%, var(--card));
+  --secondary: var(--card);
+  --secondary-foreground: var(--foreground);
+  --muted: #e9ebef;
+  --muted-foreground: var(--ink-secondary); /* 5.8:1 on the page, 6.3:1 on white */
+  --accent: #e8eaf0;
+  --accent-foreground: var(--foreground);
+  /* Mineral pigments beside ultramarine: cinnabar (vermilion) for errors, malachite for success. */
+  --destructive: #b8402c; /* 5.0:1 on the page, 5.5:1 on white */
+  --destructive-foreground: #ffffff;
+  --success: #0f7a62; /* 4.8:1 on the page, 5.3:1 on white */
+  --success-foreground: #ffffff;
+  --warning: #916015;
+  --warning-foreground: #ffffff;
+  --border: rgb(20 26 46 / 12%);
+  --input: rgb(20 26 46 / 22%);
+  --line-subtle: rgb(20 26 46 / 7%);
+  --ring: var(--primary);
+  --gold: var(--pyrite); /* fills and icons only: 2.4:1 on white */
+  --gold-ink: #7d5f17; /* gold as text: 5.5:1 on the page */
+  --chart-1: var(--primary);
+  --chart-2: var(--success);
+  --chart-3: #367e80;
+  --chart-4: var(--muted-foreground);
+  --chart-5: var(--destructive);
+  --search-match: color-mix(in oklab, var(--primary) 16%, transparent);
+  --search-current: color-mix(in oklab, var(--primary) 30%, transparent);
+  --shadow-overlay: 0 16px 48px rgb(20 26 46 / 12%), 0 2px 8px rgb(20 26 46 / 6%);
+  /* Small floating surfaces (menus, popovers, selects): a short shadow; the big one is for dialogs. */
+  --shadow-float: 0 4px 14px rgb(20 26 46 / 8%), 0 1px 3px rgb(20 26 46 / 6%);
+  --sidebar: #eceef2;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #e0e3eb;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--line-subtle);
+  --sidebar-ring: var(--ring);
+  /* The gem: four facets lit from the top left, around a flat table; matte before it is cut. */
+  /* Raw lapis is blue: matte and darker than the cut gem, so its shine still reads at level 1. */
+  --gem-rough: #3d4f9a;
+  --gem-rough-light: #5a6cb6;
+  --gem-rough-dark: #2a3876;
+  --facet-table: #7084e2;
+  --facet-1: var(--lapis-bright);
+  --facet-2: var(--lapis-main);
+  --facet-3: var(--lapis-deep);
+  --facet-4: #22359a;
+}
+
+/* Night: a deep ink with only a trace of blue, so text and surfaces stay easy to read; the
+   ultramarine lives in actions, markers and the stone. Borders recede. */
+.dark,
+[data-identity="dark"] {
+  --background: #121420;
+  --foreground: #eceef6; /* 14.5:1 on cards */
+  --card: #1a1d2a;
+  --card-foreground: var(--foreground);
+  --popover: #1f2231;
+  --popover-foreground: var(--foreground);
+  --primary: var(--lapis-light); /* text, borders, markers: 8.6:1 on cards */
+  --primary-hover: #c5cffb;
+  --primary-soft: #262d4a;
+  --primary-foreground: #121842;
+  --action: #3f58d4; /* white text 5.9:1 */
+  --action-hover: #4a63dc;
+  --action-foreground: #ffffff;
+  --page-hover: var(--muted);
+  --card-hover: color-mix(in oklab, var(--foreground) 5%, var(--card));
+  --secondary: #232737;
+  --secondary-foreground: var(--foreground);
+  --muted: #232737;
+  --muted-foreground: #a0a6ba; /* 6.9:1 on cards: a clear step below the text */
+  --accent: #282c3d;
+  --accent-foreground: var(--foreground);
+  --destructive: #f29b88; /* 7.8:1 on cards */
+  --destructive-foreground: #3a150d;
+  --success: #7dd3b8; /* 9.5:1 on cards */
+  --success-foreground: #0e2f26;
+  --warning: #e2b974;
+  --warning-foreground: #332610;
+  --border: rgb(220 226 255 / 9%);
+  --input: rgb(220 226 255 / 18%);
+  --line-subtle: rgb(220 226 255 / 6%);
+  --gold: var(--pyrite-bright);
+  --gold-ink: var(--pyrite-bright); /* 9.2:1 on cards */
+  --chart-3: #8ac6c2;
+  --shadow-overlay: 0 16px 48px rgb(0 0 0 / 34%), 0 2px 8px rgb(0 0 0 / 18%);
+  --shadow-float: 0 4px 14px rgb(0 0 0 / 28%), 0 1px 3px rgb(0 0 0 / 18%);
+  --sidebar: #0f111a;
+  --sidebar-accent: #232737;
+  --gem-rough: #5466b0;
+  --gem-rough-light: #7486c8;
+  --gem-rough-dark: #3d4d92;
+  --facet-table: #c3cdfa;
+  --facet-1: #dbe2ff;
+  --facet-2: var(--lapis-light);
+  --facet-3: #5065c8;
+  --facet-4: #7387e0;
+}
+
+[data-identity] {
+  color: var(--foreground);
+  background: var(--background);
+}

@@ -1,0 +1,434 @@
+/*
+ * Lazúli identity: lapis lazuli. Ultramarine (the pigment) and pyrite (the gold flecks).
+ * Brand pieces on top of the tokens (styles/tokens.css): springs, the facet, the wordmark, the
+ * loader.
+ */
+:root {
+  /* Springs, as CSS easings (simulated; see lib/motion.ts for the same values in JS). */
+  --spring-snap: linear(
+    0.001,
+    0.09,
+    0.256,
+    0.424,
+    0.569,
+    0.685,
+    0.773,
+    0.838,
+    0.885,
+    0.919,
+    0.943,
+    0.96,
+    0.971,
+    0.98,
+    0.986,
+    0.99,
+    0.993,
+    0.995,
+    0.997,
+    0.998,
+    0.998,
+    0.999,
+    0.999,
+    0.999,
+    1
+  );
+  --spring-snap-duration: 340ms;
+  --spring-morph: linear(
+    0,
+    0.063,
+    0.202,
+    0.358,
+    0.521,
+    0.665,
+    0.783,
+    0.873,
+    0.937,
+    0.978,
+    1.005,
+    1.02,
+    1.026,
+    1.026,
+    1.024,
+    1.02,
+    1.015,
+    1.011,
+    1.008,
+    1.005,
+    1.003,
+    1.001,
+    1,
+    1,
+    1
+  );
+  --spring-morph-duration: 450ms;
+  --spring-settle: linear(
+    0.001,
+    0.052,
+    0.159,
+    0.293,
+    0.423,
+    0.547,
+    0.653,
+    0.738,
+    0.809,
+    0.863,
+    0.903,
+    0.934,
+    0.956,
+    0.972,
+    0.983,
+    0.99,
+    0.995,
+    0.998,
+    0.999,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  );
+  --spring-settle-duration: 560ms;
+}
+
+/* The facet: the rhombus that marks state everywhere (active, due, mastered, step). */
+.facet {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--facet-size, 0.5rem);
+  height: var(--facet-size, 0.5rem);
+  border: 1.5px solid currentColor;
+  border-radius: 1.5px;
+  transform: rotate(45deg) scale(var(--facet-scale, 1));
+  transition:
+    background-color var(--spring-snap-duration) var(--spring-snap),
+    border-color var(--spring-snap-duration) var(--spring-snap),
+    transform var(--spring-morph-duration) var(--spring-morph);
+}
+.facet[data-state="active"] {
+  color: var(--primary);
+  background: currentColor;
+}
+.facet[data-state="gold"] {
+  color: var(--gold);
+  background: currentColor;
+}
+.facet[data-state="idle"] {
+  color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+}
+
+/* The gem on the stone (lapis backgrounds in any theme): the night facets and the bright gold. */
+.lz-on-lapis {
+  --facet-table: #c3cdfa;
+  --facet-1: #dbe2ff;
+  --facet-2: var(--lapis-light);
+  --facet-3: #5065c8;
+  --facet-4: #7387e0;
+  --gold: var(--pyrite-bright);
+}
+
+/* Wordmark: the accent of the ú is a gold facet. */
+.lz-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--font-reading);
+  font-weight: 560;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.lz-wordmark-gem {
+  width: 0.95em;
+  height: 0.95em;
+  margin-left: -0.1em;
+  translate: 0 -0.13em;
+}
+.lz-wordmark-word {
+  white-space: nowrap;
+}
+.lz-wordmark-u {
+  position: relative;
+  display: inline-block;
+}
+.lz-wordmark-u::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.05em;
+  width: 0.15em;
+  height: 0.15em;
+  border-radius: 0.02em;
+  background: var(--gold, var(--pyrite));
+  transform: translateX(-50%) rotate(45deg);
+}
+
+/* Loader: light travels around the cut, facet by facet. */
+@keyframes lz-gem-glint {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0.45;
+  }
+}
+.lz-gem-loader [data-facet] {
+  animation: lz-gem-glint 1.6s var(--ease-move) infinite;
+}
+.lz-gem-loader [data-facet="2"] {
+  animation-delay: 0.2s;
+}
+.lz-gem-loader [data-facet="3"] {
+  animation-delay: 0.4s;
+}
+.lz-gem-loader [data-facet="4"] {
+  animation-delay: 0.6s;
+}
+.lz-gem-loader [data-facet="table"] {
+  animation-delay: 0.8s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lz-gem-loader [data-facet] {
+    animation: none;
+  }
+  .facet {
+    transition: none;
+  }
+}
+
+/* Sidebar: the active destination carries the facet at the left edge (outside the clipped button).
+ * Primary destinations use a travelling highlight (.app-nav-highlight); other lists mark in place. */
+[data-sidebar="menu-item"]:has(> .app-nav-item:not(.app-nav-primary)[data-active="true"])::before,
+.app-nav-highlight::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  /* Sits on the highlight's left edge like a notch, inside the sidebar gutter (never at the
+     window edge). */
+  left: -0.2rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-top: -0.2rem;
+  border-radius: 1px;
+  background: var(--primary);
+  transform: rotate(45deg);
+}
+.app-nav-highlight {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--sidebar-accent);
+}
+.app-nav-primary {
+  position: relative;
+  z-index: 1;
+  &[data-active="true"] {
+    background: transparent;
+  }
+}
+
+/* Waiting for generated material: a band of pigment passes over outlines of what is coming. */
+@keyframes generation-sheen {
+  from {
+    background-position: 160% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+.generation-ghost {
+  background-image: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in oklab, var(--primary) 9%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  animation: generation-sheen 1.8s var(--ease-move) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .generation-ghost {
+    animation: none;
+  }
+}
+
+/* The one row hover, resolved by surface: page rows darken toward ink, rows on white surfaces
+   take only a whisper, so they never match the page behind the card. */
+:root {
+  --row-hover: var(--page-hover);
+}
+.surface-panel,
+.practice-sheet,
+.collection-card,
+[data-slot="card"],
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"],
+[data-slot="popover-content"],
+[data-slot="select-content"],
+[data-slot="dropdown-menu-content"],
+[data-slot="context-menu-content"] {
+  --row-hover: var(--card-hover);
+}
+
+/* Checkbox: the check is drawn left to right as the box fills, and wiped on the way out. */
+.checkbox-check > svg {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path var(--spring-snap-duration) var(--spring-snap);
+}
+.checkbox-check[data-state="checked"] > svg {
+  clip-path: inset(0 0 0 0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .checkbox-check > svg {
+    transition: none;
+  }
+}
+
+/* Empty and not-found states settle in instead of popping (opacity only: no layout movement). */
+@keyframes empty-state-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .empty-state {
+    animation: empty-state-in 320ms var(--ease-out) both;
+  }
+}
+
+/* Text on the lapis stone: white for what matters, a softer white for supporting text, so the
+   hierarchy survives on the dark surface. Actions on the stone use .stone-action and .stone-link. */
+.on-stone {
+  --foreground: #ffffff;
+  --muted-foreground: rgb(255 255 255 / 72%);
+  --line-subtle: rgb(255 255 255 / 16%);
+  --ring: #ffffff;
+  color: var(--foreground);
+}
+
+/* The one filled action on the stone: solid white, lapis ink, medium label. */
+.stone-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding-inline: 1.25rem;
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--lapis-night);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgb(5 8 30 / 0.3);
+  outline: none;
+  transition:
+    background-color 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+.stone-action:hover {
+  background: #e7eaf6;
+}
+.stone-action:active {
+  transform: scale(0.98);
+}
+.stone-action[data-size="sm"] {
+  height: 2.25rem;
+  padding-inline: 0.875rem;
+  font-size: 0.875rem;
+}
+
+/* Every other action on the stone is text, with an arrow when it leads somewhere. */
+.stone-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.75rem;
+  padding-inline: 0.25rem;
+  border-radius: var(--radius);
+  color: rgb(255 255 255 / 86%);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  white-space: nowrap;
+  outline: none;
+  transition: color 160ms var(--ease-out);
+}
+.stone-link:hover {
+  color: #ffffff;
+}
+.stone-link[data-size="sm"] {
+  height: 2.25rem;
+  font-size: 0.875rem;
+}
+.stone-link svg {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 200ms var(--ease-out);
+}
+.stone-link:hover svg {
+  transform: translateX(2px);
+}
+.stone-action:focus-visible,
+.stone-link:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--lapis-night),
+    0 0 0 4px #ffffff;
+}
+
+/* Rows on a white surface never take a fill on hover: any gray there reads as the page. The row's
+   title (group-hover underline) or its own action answers instead. */
+@media (hover: hover) and (pointer: fine) {
+  .surface-panel .surface-action:hover {
+    background-color: transparent;
+  }
+}
+
+/* File tree rows live on white (the navigator panel, the files popover). Hover firms the text,
+   without a fill; the open file takes a slightly darker tone and the lapis notch on its left edge,
+   the same pattern as the app's main navigation. */
+.tree-row {
+  color: color-mix(in oklab, var(--foreground) 80%, transparent);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+.tree-row svg {
+  transition: color var(--transition-fast);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tree-row:hover {
+    color: var(--foreground);
+  }
+  .tree-row:hover svg {
+    color: var(--foreground);
+  }
+}
+.tree-row {
+  isolation: isolate;
+}
+.tree-row[data-active] {
+  color: var(--foreground);
+}
+/* The selection is the item's own size: it starts at the item (after its indentation), never at
+   the column's edge, with the notch on its left edge. */
+.tree-row[data-active]::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 var(--tree-start, 0.25rem);
+  z-index: -1;
+  border-radius: calc(var(--radius) - 2px);
+  background: color-mix(in oklab, var(--foreground) 7%, var(--card));
+}
+.tree-row[data-active]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(var(--tree-start, 0.25rem) - 0.2rem);
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-top: -0.2rem;
+  border-radius: 1px;
+  background: var(--primary);
+  transform: rotate(45deg);
+}

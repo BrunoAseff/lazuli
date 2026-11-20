@@ -1,0 +1,5 @@
+ALTER TABLE "flashcard_practice_session" ALTER COLUMN "collection_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "flashcard_practice_session" ADD COLUMN "project_id" text;--> statement-breakpoint
+ALTER TABLE "flashcard_practice_session" ADD CONSTRAINT "flashcard_practice_session_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "flashcard_practice_one_active_project_idx" ON "flashcard_practice_session" USING btree ("user_id","project_id") WHERE "flashcard_practice_session"."status" = 'active' and "flashcard_practice_session"."project_id" is not null;--> statement-breakpoint
+ALTER TABLE "flashcard_practice_session" ADD CONSTRAINT "flashcard_practice_scope_check" CHECK (("flashcard_practice_session"."collection_id" is null) <> ("flashcard_practice_session"."project_id" is null));

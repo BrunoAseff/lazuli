@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
@@ -23,11 +24,11 @@ export const SettingsSurface = ({
   meta?: ReactNode;
   title?: string;
 }) => (
-  <section className={cn("rounded-[var(--radius-panel)] bg-card/60 p-5 sm:p-6", className)}>
+  <section className={cn("surface-panel p-5 sm:p-6", className)}>
     {(title || meta || action) && (
       <header className="mb-2 flex flex-wrap items-start justify-between gap-x-5 gap-y-2">
         <div className="min-w-0">
-          {title && <h3 className="font-heading text-xl font-medium">{title}</h3>}
+          {title && <h3 className="text-sm leading-snug font-semibold">{title}</h3>}
           {meta && <div className="mt-1 text-sm text-muted-foreground">{meta}</div>}
         </div>
         {action && <div className="shrink-0">{action}</div>}
@@ -37,6 +38,11 @@ export const SettingsSurface = ({
   </section>
 );
 
+/**
+ * A labelled field with an optional action column. The column opens and closes with an animation
+ * and the actions fade in and out, so editing a value never makes buttons pop in or the input
+ * jump narrower in one frame.
+ */
 export const SettingsField = ({
   action,
   children,
@@ -51,10 +57,8 @@ export const SettingsField = ({
   message?: ReactNode;
 }) => (
   <div
-    className={cn(
-      "grid gap-x-3 gap-y-1.5 py-2 sm:items-start",
-      action ? "sm:grid-cols-[4rem_minmax(0,1fr)_10rem]" : "sm:grid-cols-[4rem_minmax(0,1fr)]",
-    )}
+    className="settings-field grid gap-y-1.5 py-2 sm:items-start"
+    data-action={action ? "" : undefined}
   >
     {htmlFor ? (
       <label className="pt-2 text-sm text-muted-foreground" htmlFor={htmlFor}>
@@ -64,14 +68,23 @@ export const SettingsField = ({
       <p className="pt-2 text-sm text-muted-foreground">{label}</p>
     )}
     <div className="min-w-0">{children}</div>
-    {action && <div className="flex items-center gap-1.5 sm:min-h-9 sm:justify-end">{action}</div>}
-    {message && (
-      <div
-        className={cn(
-          "text-xs text-muted-foreground sm:col-start-2 sm:min-h-4",
-          action && "sm:col-span-2",
+    <div className="min-w-0 overflow-hidden">
+      <AnimatePresence initial={false}>
+        {action && (
+          <motion.div
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-1.5 pt-1.5 sm:min-h-9 sm:justify-end sm:pt-0 sm:pl-3"
+            exit={{ opacity: 0, x: 6 }}
+            initial={{ opacity: 0, x: 6 }}
+            transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+          >
+            {action}
+          </motion.div>
         )}
-      >
+      </AnimatePresence>
+    </div>
+    {message && (
+      <div className="text-xs text-muted-foreground sm:col-span-2 sm:col-start-2 sm:min-h-4">
         {message}
       </div>
     )}
@@ -130,7 +143,7 @@ export const InlineFeedback = ({
 }) => (
   <p
     className={cn(
-      "text-sm",
+      "message-in text-sm",
       kind === "error" && "text-destructive",
       kind === "success" && "text-success",
       kind === "neutral" && "text-muted-foreground",
@@ -144,7 +157,7 @@ export const InlineFeedback = ({
 export const SettingsLoading = () => (
   <div className="space-y-6" aria-label="Carregando configurações" role="status">
     <Skeleton className="h-10 w-48" />
-    <div className="rounded-[var(--radius-panel)] bg-card/60 p-6">
+    <div className="surface-panel p-6">
       <Skeleton className="h-6 w-40" />
       <Skeleton className="mt-7 h-9 w-full" />
       <Skeleton className="mt-5 h-9 w-full" />
@@ -153,8 +166,8 @@ export const SettingsLoading = () => (
 );
 
 export const SettingsError = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="rounded-[var(--radius-panel)] bg-card/60 p-6">
-    <h2 className="font-heading text-2xl font-medium">Não foi possível carregar esta seção</h2>
+  <div className="surface-panel p-6">
+    <h2 className="text-lg font-semibold">Não foi possível carregar esta seção</h2>
     <p className="mt-2 text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
     <Button className="mt-5" onClick={onRetry} variant="outline">
       Tentar novamente

@@ -1,5 +1,5 @@
 import type { Pagination, StudyCollectionStatus } from "@lazuli/shared";
-import { PlusIcon, type LucideIcon } from "lucide-react";
+import { PlusIcon, type AppIcon } from "@/components/icons.tsx";
 import type { ReactNode } from "react";
 
 import { ContentPage } from "@/components/content-page.tsx";
@@ -39,7 +39,7 @@ export const StudyCollectionListPage = ({
 }: {
   children?: ReactNode;
   emptyDescription: string;
-  emptyIcon: LucideIcon;
+  emptyIcon: AppIcon;
   error: boolean;
   loading: boolean;
   noResults: boolean;

@@ -14,6 +14,7 @@ type PdfRun = {
   fontName: string;
   height: number;
   text: string;
+  tracked?: boolean;
   width: number;
   x: number;
   y: number;
@@ -68,6 +69,75 @@ const median = (values: number[]) => {
   return ordered[Math.floor(ordered.length / 2)] ?? 12;
 };
 
+/**
+ * Text as the PDF stores it is not always text as it reads:
+ * - tracked (letter-spaced) titles arrive as "U N I V E R S I D A D E", word breaks in separate items;
+ * - symbol fonts without a Unicode map arrive as private-use code points, which render as empty boxes.
+ */
+const TRACKED_WORD = /^(?:\S ){3,}\S$/u;
+const SPACED_LETTERS = /^(?:\S )+\S$/u;
+const PRIVATE_USE = /[\uE000-\uF8FF]/gu;
+export const normalizePdfText = (text: string) => {
+  const visible = text.replace(PRIVATE_USE, "");
+  return TRACKED_WORD.test(visible) ? visible.replaceAll(" ", "") : visible;
+};
+/** On a tracked line, short words ("D O") are tracked too, even below the single-item threshold. */
+const untrackLine = (line: PdfLine) => {
+  if (!line.runs.some((run) => run.tracked)) return;
+  for (const run of line.runs)
+    if (SPACED_LETTERS.test(run.text)) run.text = run.text.replaceAll(" ", "");
+};
+
+const lineEnd = (line: PdfLine) => Math.max(...line.runs.map((run) => run.x + run.width), line.x);
+
+/** Inserts positioned elements (tables, images) into text that is already in reading order. */
+export const placeByPosition = (text: PdfElement[], placed: PdfElement[]) => {
+  const result = [...text];
+  for (const element of [...placed].sort((left, right) => right.y - left.y)) {
+    const index = result.findIndex((candidate) => candidate.y < element.y);
+    result.splice(index < 0 ? result.length : index, 0, element);
+  }
+  return result;
+};
+
+/**
+ * Two-column bands read column by column: from the first row where two lines share a baseline
+ * with a gutter between them, every line that sits entirely on one side of the gutter belongs to
+ * the band; the left column is emitted first, then the right. A full-width line ends the band.
+ */
+export const orderColumns = (lines: PdfLine[]) => {
+  const sameRow = (left: PdfLine, right: PdfLine) =>
+    Math.abs(left.y - right.y) <= Math.max(1.5, Math.max(left.height, right.height) * 0.12);
+  const ordered: PdfLine[] = [];
+  let index = 0;
+  while (index < lines.length) {
+    const line = lines[index]!;
+    const partner = lines.find(
+      (other) => other !== line && sameRow(line, other) && other.x > lineEnd(line),
+    );
+    if (!partner) {
+      ordered.push(line);
+      index += 1;
+      continue;
+    }
+    const gutter = partner.x;
+    const band: PdfLine[] = [];
+    while (index < lines.length) {
+      const candidate = lines[index]!;
+      const left = lineEnd(candidate) <= gutter + 1;
+      const right = candidate.x >= gutter - 1;
+      if (!left && !right) break;
+      band.push(candidate);
+      index += 1;
+    }
+    ordered.push(
+      ...band.filter((candidate) => candidate.x < gutter - 1),
+      ...band.filter((candidate) => candidate.x >= gutter - 1),
+    );
+  }
+  return ordered;
+};
+
 const groupTextLines = (items: unknown[]): PdfLine[] => {
   const lines: PdfLine[] = [];
   for (const candidate of items) {
@@ -80,18 +150,24 @@ const groupTextLines = (items: unknown[]): PdfLine[] => {
       transform: number[];
       width: number;
     };
-    if (!item.str) continue;
+    const text = normalizePdfText(item.str);
+    if (!text) continue;
     const run: PdfRun = {
+      tracked: text !== item.str.replace(PRIVATE_USE, ""),
       color: item.textColor,
       fontName: item.fontName,
       height: Math.abs(item.height || item.transform[3] || 0),
-      text: item.str,
+      text,
       width: item.width,
       x: item.transform[4] ?? 0,
       y: item.transform[5] ?? 0,
     };
+    // Same baseline is not enough: a run far to the right of the line's end belongs to another
+    // column (two-column layouts would otherwise read across both columns at once).
     let line = lines.find(
-      (current) => Math.abs(current.y - run.y) <= Math.max(1.5, run.height * 0.12),
+      (current) =>
+        Math.abs(current.y - run.y) <= Math.max(1.5, run.height * 0.12) &&
+        run.x - lineEnd(current) <= Math.max(24, run.height * 4),
     );
     if (!line) {
       line = { height: run.height, runs: [], x: run.x, y: run.y };
@@ -101,8 +177,11 @@ const groupTextLines = (items: unknown[]): PdfLine[] => {
     line.height = Math.max(line.height, run.height);
     line.x = Math.min(line.x, run.x);
   }
-  for (const line of lines) line.runs.sort((left, right) => left.x - right.x);
-  return lines.sort((left, right) => right.y - left.y || left.x - right.x);
+  for (const line of lines) {
+    line.runs.sort((left, right) => left.x - right.x);
+    untrackLine(line);
+  }
+  return orderColumns(lines.sort((left, right) => right.y - left.y || left.x - right.x));
 };
 
 const lineText = (line: PdfLine) =>
@@ -117,6 +196,7 @@ const lineContent = (line: PdfLine, normalFont: string) => {
   let previousEnd: number | null = null;
   for (const run of line.runs) {
     let text = run.text.replace(/\s+/g, " ");
+    if (content.at(-1)?.text.endsWith(" ")) text = text.trimStart();
     if (!text) continue;
     if (
       previousEnd !== null &&
@@ -310,14 +390,19 @@ export const convertPdfTextLines = (items: unknown[]): PdfElement[] => {
   let previousLine: PdfLine | undefined;
   for (const line of lines) {
     const text = lineText(line);
-    const gap = previousLine ? previousLine.y - line.y : Number.POSITIVE_INFINITY;
+    // Going back up the page (the top of the next column) starts a new context, like a page top.
+    const rawGap = previousLine ? previousLine.y - line.y : Number.POSITIVE_INFINITY;
+    const gap = rawGap > 0 ? rawGap : Number.POSITIVE_INFINITY;
     const headingRatio = line.height / bodyHeight;
     const bullet = /^[●•▪◦]\s*/.test(text);
     const numbered = /^\d+[.)]\s+/.test(text) && headingRatio < 1.3;
     const allBold = line.runs
       .filter((run) => run.text.trim())
       .every((run) => run.fontName !== normalFont);
-    const standaloneBold = allBold && text.length <= 100 && gap > bodyHeight * 1.65;
+    // A bold line reads as a heading only when it is short and does not close like a sentence or
+    // a list entry (";", "." or ","); list markers always win over boldness.
+    const standaloneBold =
+      allBold && !bullet && text.length <= 80 && !/[.;,]$/.test(text) && gap > bodyHeight * 1.65;
     let block: DocumentBlock;
     if (headingRatio >= 1.35 || standaloneBold) {
       const level = headingRatio >= 2 ? 1 : headingRatio >= 1.5 ? 2 : 3;
@@ -363,6 +448,40 @@ export const convertPdfTextLines = (items: unknown[]): PdfElement[] => {
     previousLine = line;
   }
   return elements;
+};
+
+/**
+ * Some PDFs (diagram tools, slide exports) draw shadows and soft edges as a separate grayscale
+ * layer meant to be a transparency mask. Without that mask applied it reads as a black box with a
+ * blurred white shape, and it carries no content: the shapes and text are vectors and text.
+ * Pattern: every pixel gray, the four corners black, the center white.
+ */
+export const isSoftMaskLayer = (image: PdfImage) => {
+  if (!image.data || image.width < 8 || image.height < 8) return false;
+  const channels =
+    image.kind === ImageKind.RGBA_32BPP ? 4 : image.kind === ImageKind.RGB_24BPP ? 3 : 0;
+  if (!channels) return false;
+  const data = image.data;
+  const luminance = (x: number, y: number) => {
+    const offset = (y * image.width + x) * channels;
+    return (data[offset]! + data[offset + 1]! + data[offset + 2]!) / 3;
+  };
+  const corners = [
+    luminance(0, 0),
+    luminance(image.width - 1, 0),
+    luminance(0, image.height - 1),
+    luminance(image.width - 1, image.height - 1),
+  ];
+  if (corners.some((value) => value > 16)) return false;
+  if (luminance(image.width >> 1, image.height >> 1) < 240) return false;
+  const pixels = image.width * image.height;
+  const step = Math.max(1, Math.floor(pixels / 4_000));
+  for (let index = 0; index < pixels; index += step) {
+    const offset = index * channels;
+    const [red, green, blue] = [data[offset]!, data[offset + 1]!, data[offset + 2]!];
+    if (Math.abs(red - green) > 6 || Math.abs(green - blue) > 6) return false;
+  }
+  return true;
 };
 
 const encodePdfImage = (image: PdfImage) => {
@@ -514,11 +633,18 @@ export const convertPdfDocument = async (
       skippedImages += visuals.skippedImages;
       const coloredItems = applyTextColors(content.items, visuals.operatorText, visuals.textColors);
       const structured = extractStructuredPdfTables(coloredItems, structure);
-      const elements = [...convertPdfTextLines(structured.remainingItems), ...structured.elements];
+      // Text keeps its reading order (columns included); tables and images are placed into it by height.
+      const textElements = convertPdfTextLines(structured.remainingItems);
+      const elements: PdfElement[] = [...structured.elements];
       for (const { global, image, name, y } of visuals.images) {
         const imageKey = global ? `global:${name}` : `page:${pageNumber}:${name}`;
         let id = importedImages.get(imageKey);
         if (id === undefined) {
+          // Decorative mask layers are dropped silently: they are not content the user lost.
+          if (image && isSoftMaskLayer(image)) {
+            importedImages.set(imageKey, null);
+            continue;
+          }
           const encoded = image ? encodePdfImage(image) : null;
           if (
             !encoded ||
@@ -545,7 +671,7 @@ export const convertPdfDocument = async (
           },
         });
       }
-      blocks.push(...elements.sort((left, right) => right.y - left.y).map(({ block }) => block));
+      blocks.push(...placeByPosition(textElements, elements).map(({ block }) => block));
       if (pageNumber < pdf.numPages)
         blocks.push({ id: crypto.randomUUID(), type: "divider", props: {}, children: [] });
       await onProgress(pageNumber, pdf.numPages);

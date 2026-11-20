@@ -1,6 +1,6 @@
 import type { CommercialLimitDetails, CommercialLimitResource } from "@lazuli/shared";
-import { FolderPlusIcon } from "@phosphor-icons/react/FolderPlus";
-import { HardDriveIcon } from "@phosphor-icons/react/HardDrive";
+import { FolderPlusIcon } from "@/components/icons.tsx";
+import { HardDriveIcon } from "@/components/icons.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -41,9 +41,8 @@ export const PlanLimitDialog = ({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
-          <span className="grid size-10 place-items-center rounded-[var(--radius)] bg-primary/10 text-primary">
-            <Icon className="size-5" weight="duotone" />
-          </span>
+          {/* A plain glyph, like every other dialog: no tinted tile. */}
+          <Icon aria-hidden="true" className="mb-1 size-6 text-muted-foreground" />
           <DialogTitle>
             {storage ? "Limite de armazenamento atingido" : "Limite de projetos atingido"}
           </DialogTitle>

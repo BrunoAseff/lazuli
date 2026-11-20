@@ -26,7 +26,7 @@ export const StudyCollectionIdentity = ({
       <OverflowTooltip text={title}>
         {(ref) => (
           <Link
-            className="block font-heading text-lg leading-snug font-medium [overflow-wrap:anywhere] underline-offset-4 hover:underline sm:truncate"
+            className="block text-[0.9375rem] leading-snug font-medium [overflow-wrap:anywhere] underline-offset-4 hover:underline sm:truncate"
             ref={ref as Ref<HTMLAnchorElement>}
             to={href}
           >
@@ -35,7 +35,18 @@ export const StudyCollectionIdentity = ({
         )}
       </OverflowTooltip>
     </div>
-    {metadata ? (
+    {typeof metadata === "string" ? (
+      <OverflowTooltip text={metadata}>
+        {(ref) => (
+          <p
+            ref={ref as Ref<HTMLParagraphElement>}
+            className="mt-0.5 min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere] outline-none focus-visible:ring-2 focus-visible:ring-ring sm:truncate"
+          >
+            {metadata}
+          </p>
+        )}
+      </OverflowTooltip>
+    ) : metadata ? (
       <p className="mt-0.5 min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere] sm:truncate">
         {metadata}
       </p>

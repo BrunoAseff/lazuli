@@ -1,10 +1,10 @@
+import { BackLink } from "@/components/nav-link.tsx";
 import { useEffect, useState } from "react";
 import { VERIFICATION_EMAIL_COOLDOWN_SECONDS } from "@lazuli/shared";
-import { ArrowLeftIcon } from "@phosphor-icons/react/ArrowLeft";
-import { EnvelopeSimpleOpenIcon } from "@phosphor-icons/react/EnvelopeSimpleOpen";
+import { EnvelopeSimpleOpenIcon } from "@/components/icons.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
 
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
@@ -68,8 +68,9 @@ export const VerifyEmailPage = () => {
 
   return (
     <AuthLayout>
-      <div className="mb-5 flex size-11 items-center justify-center rounded-[var(--radius)] border border-primary/25 bg-primary/5 text-primary">
-        <EnvelopeSimpleOpenIcon aria-hidden="true" className="size-6" weight="duotone" />
+      {/* A plain glyph, like the empty states: no tile around it. */}
+      <div className="mb-4 text-muted-foreground">
+        <EnvelopeSimpleOpenIcon aria-hidden="true" className="size-6" />
       </div>
       <AuthFormHeader
         description="Enviamos um link de confirmação para o seu e-mail. Abra a mensagem para ativar sua conta."
@@ -99,13 +100,9 @@ export const VerifyEmailPage = () => {
         </AuthSubmitButton>
       </form>
 
-      <Link
-        className="mt-5 inline-flex w-fit items-center gap-1.5 text-sm font-normal text-muted-foreground transition-colors hover:text-foreground"
-        to="/login"
-      >
-        <ArrowLeftIcon aria-hidden="true" className="size-3.5" />
+      <BackLink className="mt-5" to="/login">
         Voltar para entrar
-      </Link>
+      </BackLink>
     </AuthLayout>
   );
 };

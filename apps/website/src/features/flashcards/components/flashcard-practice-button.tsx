@@ -1,4 +1,4 @@
-import { PlayIcon } from "lucide-react";
+import { PlayIcon } from "@/components/icons.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
@@ -10,7 +10,9 @@ type FlashcardPracticeButtonProps = {
   dueCards: number;
   onClick: () => void;
   fullWidthOnMobile?: boolean;
-  size?: "sm" | "lg";
+  size?: "default" | "sm" | "lg";
+  /** Filled where it is the panel's main action; outline beside another filled one. */
+  variant?: "default" | "outline";
   title: string;
   totalCards: number;
 };
@@ -35,6 +37,7 @@ export const FlashcardPracticeButton = ({
   size = "sm",
   title,
   totalCards,
+  variant = "default",
 }: FlashcardPracticeButtonProps) => {
   const disabledReason = getDisabledReason({ archived, dueCards, totalCards });
   const button = (
@@ -44,6 +47,7 @@ export const FlashcardPracticeButton = ({
       disabled={Boolean(disabledReason)}
       onClick={onClick}
       size={size}
+      variant={variant}
     >
       <PlayIcon aria-hidden="true" className="-translate-y-px" />
       Praticar
@@ -55,7 +59,10 @@ export const FlashcardPracticeButton = ({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className={cn("inline-flex", fullWidthOnMobile && "w-full sm:w-auto")} tabIndex={0}>
+        <span
+          className={cn("inline-flex", fullWidthOnMobile && "w-full sm:w-auto", className)}
+          tabIndex={0}
+        >
           {button}
         </span>
       </TooltipTrigger>

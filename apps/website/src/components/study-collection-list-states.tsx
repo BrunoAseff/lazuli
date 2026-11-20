@@ -1,5 +1,5 @@
-import type { LucideIcon } from "lucide-react";
-import { ArchiveIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
+import { type AppIcon } from "@/components/icons.tsx";
+import { ArchiveIcon, SearchXIcon, TriangleAlertIcon } from "@/components/icons.tsx";
 
 import { EmptyState } from "@/components/empty-state.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -30,7 +30,7 @@ export const EmptyStudyCollections = ({
 }: {
   archived: boolean;
   description: string;
-  icon: LucideIcon;
+  icon: AppIcon;
   onCreate: () => void;
 }) => (
   <EmptyState

@@ -5,6 +5,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./apps/website/src", import.meta.url)),
+      "lucide-react": fileURLToPath(
+        new URL("./apps/website/src/components/icons.tsx", import.meta.url),
+      ),
+      "react-icons/ri": fileURLToPath(
+        new URL("./apps/website/src/components/editor-icons.tsx", import.meta.url),
+      ),
     },
   },
   staged: {

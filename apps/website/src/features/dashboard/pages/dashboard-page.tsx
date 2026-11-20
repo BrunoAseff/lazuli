@@ -5,33 +5,40 @@ import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { PracticeSetupDialog } from "@/features/flashcards/components/practice-setup-dialog.tsx";
-import { cn } from "@/lib/utils.ts";
 import { useDashboard } from "../api/dashboard-queries.ts";
-import {
-  DashboardContinuations,
-  DashboardRecentDocuments,
-} from "../components/dashboard-library.tsx";
+import { DashboardContinue } from "../components/dashboard-library.tsx";
 import { DashboardOnboarding } from "../components/dashboard-onboarding.tsx";
 import { DashboardReviewQueue } from "../components/dashboard-review-queue.tsx";
-import { DashboardWeeklyActivity } from "../components/dashboard-weekly-activity.tsx";
+import { StoneCard } from "@/features/stone/components/stone-card.tsx";
 import { getDashboardGreeting } from "../dashboard-copy.ts";
+
+const todayLabel = () =>
+  new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" })
+    .format(new Date())
+    .replace(/^./, (c) => c.toUpperCase());
+
+/** The greeting and the date share one baseline: a quiet header, not a headline. */
+const Greeting = ({ text }: { text: string }) => (
+  <header className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
+    <h1 className="page-title">{text}</h1>
+    <p className="text-[0.9375rem] text-muted-foreground">{todayLabel()}</p>
+  </header>
+);
 
 const DashboardSkeleton = () => (
   <ContentPage maxWidth="6xl">
-    <Skeleton className="h-12 w-72 max-w-full" />
-    <div className="mt-10 space-y-8">
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(18rem,5fr)] lg:gap-12">
-        <Skeleton className="h-80 rounded-xl" />
-        <Skeleton className="h-80 rounded-xl" />
-      </div>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(18rem,5fr)] lg:gap-12">
-        <Skeleton className="h-48 rounded-xl" />
-        <Skeleton className="h-48 rounded-xl" />
-      </div>
+    <Skeleton className="h-8 w-80 max-w-full" />
+    <div className="mt-6 grid gap-5" aria-label="Carregando seu início">
+      <Skeleton className="h-52 rounded-[var(--radius-panel)]" />
+      <Skeleton className="h-72 rounded-[var(--radius-panel)]" />
     </div>
   </ContentPage>
 );
 
+/**
+ * The home has two panels: today (what to study, beside the stone it moves) and what to pick up
+ * again. Detailed rhythm lives in Estatísticas; the stone already shows the week.
+ */
 export const DashboardPage = () => {
   const { data: session } = authClient.useSession();
   const dashboard = useDashboard();
@@ -60,8 +67,6 @@ export const DashboardPage = () => {
     ({ completed }) => completed,
   ).length;
   const onboardingFirst = data.onboarding.visible && completedOnboardingSteps === 0;
-  const hasContinuations = data.quizContinuations.length > 0;
-  const hasDocuments = data.recentDocuments.length > 0;
   const hasReviewQueue = Boolean(
     data.reviewQueue.collections.length ||
     data.reviewQueue.nextReviewAt ||
@@ -69,74 +74,35 @@ export const DashboardPage = () => {
     data.reviewQueue.totalNewCards,
   );
   const onboardingIsPrimary = data.onboarding.visible && (onboardingFirst || !hasReviewQueue);
-  const reviewIsPrimary = hasReviewQueue && !onboardingIsPrimary;
-  const continuationBesideActivity = !onboardingIsPrimary && !reviewIsPrimary && hasContinuations;
-  const hasTopCompanion = onboardingIsPrimary || reviewIsPrimary || continuationBesideActivity;
-  const continuationInLibrary = hasContinuations && !continuationBesideActivity;
 
   return (
     <ContentPage maxWidth="6xl">
-      <header>
-        <h1 className="page-title">
-          {getDashboardGreeting(session?.user.name ?? "", new Date().getHours())}
-        </h1>
-      </header>
+      <Greeting text={getDashboardGreeting(session?.user.name ?? "", new Date().getHours())} />
 
-      <div className="mt-6 space-y-6">
-        <div
-          className={cn(
-            "grid items-stretch gap-8 lg:gap-12",
-            hasTopCompanion &&
-              (reviewIsPrimary
-                ? "lg:grid-cols-[minmax(0,8fr)_minmax(18rem,4fr)]"
-                : "lg:grid-cols-[minmax(0,7fr)_minmax(18rem,5fr)]"),
-          )}
+      <div className="mt-6 grid gap-5">
+        {onboardingIsPrimary && <DashboardOnboarding onboarding={data.onboarding} />}
+
+        <section
+          aria-label="Hoje"
+          className="surface-panel grid lg:grid-cols-[minmax(0,1fr)_minmax(24rem,28rem)]"
         >
-          {onboardingIsPrimary && <DashboardOnboarding onboarding={data.onboarding} />}
-          {reviewIsPrimary && (
-            <DashboardReviewQueue
-              onStartPractice={setPracticeCollectionId}
-              queue={data.reviewQueue}
-            />
-          )}
-          <DashboardWeeklyActivity activity={data.weeklyActivity} />
-          {continuationBesideActivity && (
-            <DashboardContinuations quizzes={data.quizContinuations} />
-          )}
-        </div>
-
-        {onboardingIsPrimary && hasReviewQueue && (
           <DashboardReviewQueue
             onStartPractice={setPracticeCollectionId}
             queue={data.reviewQueue}
           />
-        )}
+          {/* Centred in its cell, so the stone never leaves a gap under itself. */}
+          <div className="flex items-center border-t border-[var(--line-subtle)] p-6 lg:border-t-0 lg:border-l">
+            <div className="w-full">
+              <StoneCard />
+            </div>
+          </div>
+        </section>
 
-        {reviewIsPrimary && data.onboarding.visible && (
+        {!onboardingIsPrimary && data.onboarding.visible && (
           <DashboardOnboarding onboarding={data.onboarding} />
         )}
 
-        {(hasDocuments || continuationInLibrary) && (
-          <div
-            className={cn(
-              "grid items-stretch gap-8 lg:gap-12",
-              hasDocuments &&
-                continuationInLibrary &&
-                "lg:grid-cols-[minmax(0,7fr)_minmax(18rem,5fr)]",
-            )}
-          >
-            {hasDocuments && (
-              <div className={cn("min-w-0", continuationInLibrary && "order-2 lg:order-1")}>
-                <DashboardRecentDocuments documents={data.recentDocuments} />
-              </div>
-            )}
-            {continuationInLibrary && (
-              <div className={cn("min-w-0", hasDocuments && "order-1 lg:order-2")}>
-                <DashboardContinuations quizzes={data.quizContinuations} />
-              </div>
-            )}
-          </div>
-        )}
+        <DashboardContinue documents={data.recentDocuments} quizzes={data.quizContinuations} />
       </div>
 
       {practiceCollectionId && (

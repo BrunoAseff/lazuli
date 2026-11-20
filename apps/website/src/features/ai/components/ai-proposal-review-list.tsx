@@ -1,33 +1,42 @@
-import { WarningCircleIcon } from "@phosphor-icons/react/WarningCircle";
+import { WarningCircleIcon } from "@/components/icons.tsx";
 import { AI_MAX_REFERENCES_PER_ITEM } from "@lazuli/shared";
-import { LinkSimpleIcon } from "@phosphor-icons/react/LinkSimple";
-import { PlusIcon, Trash2Icon } from "lucide-react";
-import { useState } from "react";
+import {
+  FileTextIcon,
+  MoreHorizontalIcon,
+  PencilSimpleIcon,
+  TextQuoteIcon,
+  Trash2Icon,
+} from "@/components/icons.tsx";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import {
-  Dialog,
-  DialogCancelButton,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog.tsx";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { documentLocation } from "@/features/documents/document-navigation.ts";
-import { ReferenceDocumentRow } from "@/features/references/components/reference-document-row.tsx";
-import { ConfirmReferenceRemovalButton } from "@/features/references/components/reference-delete-button.tsx";
+import { studyItemAgreement, studyItemCount } from "@/lib/text.ts";
 import { cn } from "@/lib/utils.ts";
+import { StudyIndexList, StudyIndexRow } from "@/components/study-index.tsx";
+import { useSourceReading } from "@/features/references/components/source-reading-context.ts";
+import "./proposal-review.css";
 import type { AiReviewSource } from "../ai-review-session.ts";
 import { AiQuizProposalEditor, type AiEditableQuizProposal } from "./ai-quiz-proposal-editor.tsx";
 
 export type AiDraftReference = {
   scope: "selection" | "document";
+  /** Another document of a generation over several; absent or null is the review's own. */
+  documentId: string | null;
   blockId: string | null;
   quote: string;
 };
@@ -54,6 +63,7 @@ export type AiReviewQuiz = AiEditableQuizProposal & {
 
 export const AiProposalReviewList = ({
   className,
+  indexFooter,
   flashcards,
   onFlashcardChange,
   onNavigateReference,
@@ -65,6 +75,8 @@ export const AiProposalReviewList = ({
   source,
 }: {
   className?: string;
+  /** Shown under the proposal index, e.g. the way to ask for more proposals. */
+  indexFooter?: ReactNode;
   flashcards: AiReviewFlashcard[];
   onFlashcardChange: (id: string, change: Partial<AiReviewFlashcard>) => void;
   onNavigateReference?: () => void;
@@ -79,124 +91,116 @@ export const AiProposalReviewList = ({
     id: string;
     kind: "flashcard" | "quizQuestion";
   } | null>(null);
+  const [activeProposal, setActiveProposal] = useState("");
+  const proposals = [
+    ...flashcards.map((item) => ({
+      value: `flashcard:${item.id}`,
+      selected: item.selected,
+      title: item.question.trim(),
+      attention: Boolean(item.warning || item.referenceWarning),
+    })),
+    ...quizQuestions.map((item) => ({
+      value: `quizQuestion:${item.id}`,
+      selected: item.selected,
+      title: item.prompt.trim(),
+      attention: Boolean(item.warning || item.referenceWarning),
+    })),
+  ];
+  const active = proposals.some(({ value }) => value === activeProposal)
+    ? activeProposal
+    : proposals[0]?.value;
+  const activeIndex = proposals.findIndex(({ value }) => value === active);
 
   return (
     <>
       <div className={cn("grid gap-4", className)}>
-        {flashcards.map((item, index) => (
-          <article
-            className={cn(
-              "grid gap-4 rounded-[var(--radius)] border p-4 transition-opacity",
-              !item.selected && "opacity-55",
-            )}
-            key={item.id}
-          >
-            <header className="flex items-center justify-between gap-3">
-              <label className="flex items-center gap-2 font-medium">
-                <Checkbox
-                  checked={item.selected}
-                  onCheckedChange={(checked) =>
-                    onFlashcardChange(item.id, { selected: checked === true })
-                  }
+        <ProposalIndex
+          activeIndex={activeIndex}
+          footer={indexFooter}
+          itemLabel={flashcards.length ? "Flashcard" : "Questão"}
+          onSelect={(index) => setActiveProposal(proposals[index]!.value)}
+          proposals={proposals}
+        />
+        {flashcards
+          .filter((item) => active === `flashcard:${item.id}`)
+          .map((item) => (
+            <article className="proposal" data-excluded={!item.selected || undefined} key={item.id}>
+              <ProposalHeader
+                included={item.selected}
+                label={`Flashcard ${flashcards.findIndex(({ id }) => id === item.id) + 1}`}
+                onDiscard={() => setDiscardTarget({ id: item.id, kind: "flashcard" })}
+                onIncludedChange={(selected) => onFlashcardChange(item.id, { selected })}
+                total={proposals.length}
+              />
+              <ProposalSource
+                kind="flashcard"
+                onChange={(references) => onFlashcardChange(item.id, { references })}
+                onNavigate={onNavigateReference}
+                operationId={operationId}
+                proposalId={item.id}
+                references={item.references}
+                returnTo={returnTo}
+                source={source}
+                warning={item.referenceWarning}
+              />
+              <div className="grid gap-2">
+                <Label htmlFor={`question-${item.id}`}>Pergunta</Label>
+                <Textarea
+                  id={`question-${item.id}`}
+                  onChange={(event) => onFlashcardChange(item.id, { question: event.target.value })}
+                  value={item.question}
                 />
-                Flashcard {index + 1}
-              </label>
-              <Button
-                aria-label="Descartar proposta"
-                onClick={() => setDiscardTarget({ id: item.id, kind: "flashcard" })}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <Trash2Icon />
-              </Button>
-            </header>
-            <div className="grid gap-2">
-              <Label htmlFor={`question-${item.id}`}>Pergunta</Label>
-              <Textarea
-                id={`question-${item.id}`}
-                onChange={(event) => onFlashcardChange(item.id, { question: event.target.value })}
-                value={item.question}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor={`answer-${item.id}`}>Resposta</Label>
-              <Textarea
-                id={`answer-${item.id}`}
-                onChange={(event) => onFlashcardChange(item.id, { answer: event.target.value })}
-                value={item.answer}
-              />
-            </div>
-            {item.warning && (
-              <p className="flex gap-2 text-xs text-warning-foreground">
-                <WarningCircleIcon className="size-4 shrink-0" /> {item.warning}
-              </p>
-            )}
-            <ProposalReferences
-              kind="flashcard"
-              onChange={(references) => onFlashcardChange(item.id, { references })}
-              onNavigate={onNavigateReference}
-              operationId={operationId}
-              proposalId={item.id}
-              references={item.references}
-              returnTo={returnTo}
-              source={source}
-              warning={item.referenceWarning}
-            />
-          </article>
-        ))}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`answer-${item.id}`}>Resposta</Label>
+                <Textarea
+                  id={`answer-${item.id}`}
+                  onChange={(event) => onFlashcardChange(item.id, { answer: event.target.value })}
+                  value={item.answer}
+                />
+              </div>
+              {item.warning && (
+                <p className="flex gap-2 text-xs text-warning">
+                  <WarningCircleIcon className="size-4 shrink-0" /> {item.warning}
+                </p>
+              )}
+            </article>
+          ))}
 
-        {quizQuestions.map((item, index) => (
-          <article
-            className={cn(
-              "grid gap-4 rounded-[var(--radius)] border p-4 transition-opacity",
-              !item.selected && "opacity-55",
-            )}
-            key={item.id}
-          >
-            <header className="flex items-center justify-between gap-3">
-              <label className="flex items-center gap-2 font-medium">
-                <Checkbox
-                  checked={item.selected}
-                  onCheckedChange={(checked) =>
-                    onQuizChange(item.id, { selected: checked === true })
-                  }
-                />
-                Questão {index + 1}
-              </label>
-              <Button
-                aria-label="Descartar proposta"
-                onClick={() => setDiscardTarget({ id: item.id, kind: "quizQuestion" })}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <Trash2Icon />
-              </Button>
-            </header>
-            <AiQuizProposalEditor
-              id={item.id}
-              onChange={(change) => onQuizChange(item.id, change)}
-              value={item}
-            />
-            {item.warning && (
-              <p className="flex gap-2 text-xs text-warning-foreground">
-                <WarningCircleIcon className="size-4 shrink-0" /> {item.warning}
-              </p>
-            )}
-            <ProposalReferences
-              kind="quizQuestion"
-              onChange={(references) => onQuizChange(item.id, { references })}
-              onNavigate={onNavigateReference}
-              operationId={operationId}
-              proposalId={item.id}
-              references={item.references}
-              returnTo={returnTo}
-              source={source}
-              warning={item.referenceWarning}
-            />
-          </article>
-        ))}
+        {quizQuestions
+          .filter((item) => active === `quizQuestion:${item.id}`)
+          .map((item) => (
+            <article className="proposal" data-excluded={!item.selected || undefined} key={item.id}>
+              <ProposalHeader
+                included={item.selected}
+                label={`Questão ${quizQuestions.findIndex(({ id }) => id === item.id) + 1}`}
+                onDiscard={() => setDiscardTarget({ id: item.id, kind: "quizQuestion" })}
+                onIncludedChange={(selected) => onQuizChange(item.id, { selected })}
+                total={proposals.length}
+              />
+              <ProposalSource
+                kind="quizQuestion"
+                onChange={(references) => onQuizChange(item.id, { references })}
+                onNavigate={onNavigateReference}
+                operationId={operationId}
+                proposalId={item.id}
+                references={item.references}
+                returnTo={returnTo}
+                source={source}
+                warning={item.referenceWarning}
+              />
+              <AiQuizProposalEditor
+                id={item.id}
+                onChange={(change) => onQuizChange(item.id, change)}
+                value={item}
+              />
+              {item.warning && (
+                <p className="flex gap-2 text-xs text-warning">
+                  <WarningCircleIcon className="size-4 shrink-0" /> {item.warning}
+                </p>
+              )}
+            </article>
+          ))}
       </div>
       <ConfirmationDialog
         actionLabel="Descartar proposta"
@@ -215,7 +219,129 @@ export const AiProposalReviewList = ({
   );
 };
 
-const ProposalReferences = ({
+/**
+ * The proposals as an index, with the anatomy of the workbench: number, the text itself and what
+ * will be kept. It occupies the workspace's left pane, so navigation reads as a list of questions.
+ */
+const ProposalIndex = ({
+  activeIndex,
+  footer,
+  itemLabel,
+  onSelect,
+  proposals,
+}: {
+  activeIndex: number;
+  /** Below the list: what adds to it ("Gerar mais"). */
+  footer?: ReactNode;
+  itemLabel: string;
+  onSelect: (index: number) => void;
+  proposals: { value: string; selected: boolean; title: string; attention: boolean }[];
+}) => {
+  const workspace = useSourceReading();
+  const kept = proposals.filter(({ selected }) => selected).length;
+  const flashcard = itemLabel === "Flashcard";
+  const kind = flashcard ? "flashcard" : "quizQuestion";
+  const name = studyItemCount(kind, proposals.length);
+  const claim = workspace?.claim;
+  useEffect(() => {
+    claim?.(name);
+  }, [claim, name]);
+  useEffect(() => () => claim?.(null), [claim]);
+  const content = (
+    <nav aria-label="Propostas geradas" className="proposal-index">
+      <header className="proposal-index-head">
+        <span>{name}</span>
+        <span>
+          {proposals.length === 1
+            ? kept
+              ? `será ${studyItemAgreement(kind, 1, "salv")}`
+              : `não será ${studyItemAgreement(kind, 1, "salv")}`
+            : kept === proposals.length
+              ? `${flashcard ? "todos" : "todas"} serão ${studyItemAgreement(kind, kept, "salv")}`
+              : `${kept} ${kept === 1 ? "será" : "serão"} ${studyItemAgreement(kind, kept, "salv")}`}
+        </span>
+      </header>
+      <StudyIndexList label="Propostas geradas" selecting={false}>
+        {proposals.map((proposal, index) => (
+          <StudyIndexRow
+            active={index === activeIndex}
+            key={proposal.value}
+            mark={<span className="study-index-ordinal">{index + 1}</span>}
+            /* Only what changes the decision: left out, or flagged by the generator. */
+            meta={
+              !proposal.selected ? (
+                "Fora da coleção"
+              ) : proposal.attention ? (
+                <span className="text-warning">Precisa de revisão</span>
+              ) : undefined
+            }
+            muted={!proposal.selected}
+            onOpen={() => {
+              onSelect(index);
+              workspace?.collapse();
+            }}
+            title={proposal.title || `${itemLabel} ${index + 1}`}
+            titleText={proposal.title || undefined}
+          />
+        ))}
+      </StudyIndexList>
+      {footer && <div className="proposal-index-foot">{footer}</div>}
+    </nav>
+  );
+  // Inside a workspace the index lives only in its pane; when that pane is collapsed, nothing renders.
+  if (!workspace) return content;
+  return workspace.slot ? createPortal(content, workspace.slot) : null;
+};
+
+/** One header for every proposal: position, inclusion as an explicit switch, discard. */
+const ProposalHeader = ({
+  included,
+  label,
+  onDiscard,
+  onIncludedChange,
+  total,
+}: {
+  included: boolean;
+  label: string;
+  onDiscard: () => void;
+  onIncludedChange: (included: boolean) => void;
+  total: number;
+}) => (
+  <>
+    <header className="proposal-head">
+      <h3>
+        {label}
+        {total > 1 && <span> de {total}</span>}
+      </h3>
+      <label className="proposal-include">
+        <Switch checked={included} onCheckedChange={onIncludedChange} />
+        Salvar na coleção
+      </label>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            aria-label="Descartar proposta"
+            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            onClick={onDiscard}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <Trash2Icon />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Descartar proposta</TooltipContent>
+      </Tooltip>
+    </header>
+  </>
+);
+
+/**
+ * The source pane of the workspace shows the origin of the proposal being reviewed:
+ * only the excerpt when there is one, the whole source when the proposal uses all of it.
+ * Its actions live there too, so the source never appears twice.
+ */
+const ProposalSource = ({
   kind,
   onChange,
   onNavigate,
@@ -236,19 +362,27 @@ const ProposalReferences = ({
   source: AiReviewSource;
   warning: string | null;
 }) => {
-  const [managerOpen, setManagerOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const count = references.length;
+  const [removing, setRemoving] = useState<number | null>(null);
+  const excerpts = references.filter(({ scope, quote }) => scope === "selection" && quote);
+  const showsExcerpt = excerpts.length > 0;
+  const documentOf = (reference?: AiDraftReference) => reference?.documentId || source.documentId;
+  const titleOf = (documentId: string) =>
+    documentId === source.documentId
+      ? source.documentTitle
+      : (source.documents?.find((item) => item.documentId === documentId)?.documentTitle ??
+        "Documento");
+  // A proposal that draws on more than one document says so: it links ideas across them.
+  const linkedDocuments = [...new Set(references.map((reference) => documentOf(reference)))];
   const documentHref = (reference: AiDraftReference) =>
     documentLocation({
       blockId: reference.scope === "selection" ? reference.blockId : null,
-      documentId: source.documentId,
+      documentId: documentOf(reference),
       projectId: source.projectId,
       returnTo,
     });
   const selectExcerptHref = (referenceIndex: number) =>
     documentLocation({
-      documentId: source.documentId,
+      documentId: documentOf(references[referenceIndex]),
       projectId: source.projectId,
       returnTo,
       params: {
@@ -259,139 +393,137 @@ const ProposalReferences = ({
         aiReferenceReturnTo: returnTo,
       },
     });
-  const addDocumentReference = () => {
-    if (references.some(({ scope }) => scope === "document")) return;
-    onChange([...references, { scope: "document", blockId: null, quote: "" }]);
-    setPickerOpen(false);
-  };
-
-  return (
-    <section className="border-t py-4" aria-label="Referências sugeridas">
-      <div className="flex min-h-8 items-center gap-2 text-xs text-muted-foreground">
-        <LinkSimpleIcon className="size-4 text-primary" />
-        <span className="flex-1">
-          {count ? `${count} ${count === 1 ? "referência" : "referências"}` : "Sem referências"}
-        </span>
-        <Button onClick={() => setManagerOpen(true)} size="xs" type="button" variant="ghost">
-          {count ? "Gerenciar" : "Adicionar"}
-        </Button>
-      </div>
+  const firstExcerpt = excerpts[0];
+  const content = (
+    // Named like the fields below it ("Fonte", "Pergunta", "Resposta"); only the excerpt takes the
+    // source's tinted block, as in the preparation step.
+    <section aria-labelledby={`${proposalId}-source`} className="proposal-source">
+      <p className="text-sm leading-none font-medium" id={`${proposalId}-source`}>
+        Fonte
+      </p>
+      <header className="proposal-source-head">
+        <FileTextIcon aria-hidden="true" className="proposal-source-icon" />
+        <p className="proposal-source-title">
+          {!references.length
+            ? "Sem fonte"
+            : linkedDocuments.length > 1
+              ? `${linkedDocuments.length} documentos`
+              : titleOf(linkedDocuments[0]!)}
+          {references.length > 0 && (
+            <span>
+              {showsExcerpt
+                ? excerpts.length === 1
+                  ? " · trecho"
+                  : ` · ${excerpts.length} trechos`
+                : " · documento inteiro"}
+            </span>
+          )}
+        </p>
+        {references[0] && (
+          <Button asChild className="proposal-source-open" size="xs" variant="outline">
+            <Link onClick={onNavigate} to={documentHref(references[0])}>
+              Ver no documento
+            </Link>
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button aria-label="Ações da fonte" size="icon-sm" variant="ghost">
+              <MoreHorizontalIcon />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-52">
+            {references.length < AI_MAX_REFERENCES_PER_ITEM && (
+              <DropdownMenuItem asChild>
+                <Link onClick={onNavigate} to={selectExcerptHref(references.length)}>
+                  <TextQuoteIcon /> {references.length ? "Adicionar trecho" : "Escolher trecho"}
+                </Link>
+              </DropdownMenuItem>
+            )}
+            {references.map((reference, index) =>
+              reference.scope === "selection" ? (
+                <DropdownMenuItem asChild key={`adjust:${index}`}>
+                  <Link onClick={onNavigate} to={selectExcerptHref(index)}>
+                    <PencilSimpleIcon />{" "}
+                    {excerpts.length > 1 ? `Ajustar trecho ${index + 1}` : "Ajustar trecho"}
+                  </Link>
+                </DropdownMenuItem>
+              ) : null,
+            )}
+            {!references.some(({ scope: referenceScope }) => referenceScope === "document") && (
+              <DropdownMenuItem
+                onSelect={() =>
+                  onChange([{ scope: "document", documentId: null, blockId: null, quote: "" }])
+                }
+              >
+                <FileTextIcon /> Usar o documento inteiro
+              </DropdownMenuItem>
+            )}
+            {references.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                {references.map((_, index) => (
+                  <DropdownMenuItem
+                    key={`remove:${index}`}
+                    onSelect={() => setRemoving(index)}
+                    variant="destructive"
+                  >
+                    <Trash2Icon />{" "}
+                    {references.length > 1 ? `Remover fonte ${index + 1}` : "Remover fonte"}
+                  </DropdownMenuItem>
+                ))}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </header>
+      {/* A pointer to the source, not the source itself: two lines at most, same height for every proposal. */}
+      {/* The clamp lives on the text, not on the padded block, so the cut ends in "…". */}
+      {linkedDocuments.length > 1 ? (
+        // From more than one document: each passage under its document's name, nothing repeated.
+        <div className="mt-1 grid gap-3">
+          {excerpts.map((excerpt, index) => (
+            <div className="grid gap-1.5" key={`${documentOf(excerpt)}:${index}`}>
+              <p className="truncate text-xs text-muted-foreground">
+                {titleOf(documentOf(excerpt))}
+              </p>
+              <div className="source-excerpt">
+                <p className="proposal-source-quote">{excerpt.quote}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="source-excerpt">
+          <p className="proposal-source-quote" data-empty={!firstExcerpt || undefined}>
+            {firstExcerpt
+              ? firstExcerpt.quote
+              : references.length
+                ? "A proposta foi gerada a partir do documento todo."
+                : "Esta proposta será salva sem ligação com a fonte."}
+          </p>
+        </div>
+      )}
       {warning && (
-        <p className="mt-1 flex gap-2 text-xs text-warning-foreground">
+        <p className="mt-2 flex gap-2 font-sans text-xs text-warning">
           <WarningCircleIcon className="size-4 shrink-0" /> {warning}
         </p>
       )}
-
-      <Dialog open={managerOpen} onOpenChange={setManagerOpen}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-lg">
-          <DialogHeader className="border-b px-6 py-5">
-            <DialogTitle className="pr-8 text-xl">Referências</DialogTitle>
-            <DialogDescription>Documentos conectados a este material.</DialogDescription>
-          </DialogHeader>
-          <div className="min-h-0 overflow-y-auto px-6 py-3 lazuli-thin-scrollbar">
-            {!count && (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                Nenhum documento vinculado.
-              </p>
-            )}
-            <div className="divide-y">
-              {references.map((reference, index) => (
-                <ReferenceDocumentRow
-                  documentTitle={source.documentTitle}
-                  href={documentHref(reference)}
-                  key={`${reference.scope}:${reference.blockId ?? "document"}:${index}`}
-                  onNavigate={onNavigate}
-                  projectTitle={source.projectTitle}
-                  scope={reference.scope}
-                  trailing={
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button asChild size="xs" type="button" variant="ghost">
-                        <Link onClick={onNavigate} to={selectExcerptHref(index)}>
-                          {reference.scope === "selection" ? "Ajustar trecho" : "Escolher trecho"}
-                        </Link>
-                      </Button>
-                      {reference.scope === "selection" && (
-                        <Button
-                          onClick={() =>
-                            onChange(
-                              references.map((candidate, candidateIndex) =>
-                                candidateIndex === index
-                                  ? { scope: "document", blockId: null, quote: "" }
-                                  : candidate,
-                              ),
-                            )
-                          }
-                          size="xs"
-                          type="button"
-                          variant="ghost"
-                        >
-                          Documento inteiro
-                        </Button>
-                      )}
-                      <ConfirmReferenceRemovalButton
-                        label={`Remover referência de ${source.documentTitle}`}
-                        onConfirm={() =>
-                          onChange(references.filter((_, candidate) => candidate !== index))
-                        }
-                      />
-                    </div>
-                  }
-                />
-              ))}
-            </div>
-          </div>
-          <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4">
-            <DialogCancelButton onClick={() => setManagerOpen(false)}>Fechar</DialogCancelButton>
-            <Button
-              disabled={references.length >= AI_MAX_REFERENCES_PER_ITEM}
-              onClick={() => {
-                setManagerOpen(false);
-                setPickerOpen(true);
-              }}
-              type="button"
-            >
-              <PlusIcon aria-hidden="true" /> Adicionar referência
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-xl">
-          <DialogHeader className="border-b px-6 py-5">
-            <DialogTitle className="pr-8 text-xl">Adicionar referência</DialogTitle>
-            <DialogDescription>Escolha como este documento será relacionado.</DialogDescription>
-          </DialogHeader>
-          <div className="px-6 py-3">
-            <ReferenceDocumentRow
-              documentTitle={source.documentTitle}
-              href={documentLocation({
-                documentId: source.documentId,
-                projectId: source.projectId,
-                returnTo,
-              })}
-              onNavigate={onNavigate}
-              projectTitle={source.projectTitle}
-              scope="document"
-            />
-          </div>
-          <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4 sm:flex-wrap">
-            <DialogCancelButton onClick={() => setPickerOpen(false)}>Cancelar</DialogCancelButton>
-            <Button asChild type="button" variant="outline">
-              <Link onClick={onNavigate} to={selectExcerptHref(references.length)}>
-                Escolher um trecho
-              </Link>
-            </Button>
-            <Button
-              disabled={references.some(({ scope }) => scope === "document")}
-              onClick={addDocumentReference}
-              type="button"
-            >
-              Vincular documento inteiro
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmationDialog
+        open={removing !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoving(null);
+        }}
+        title="Remover esta fonte?"
+        description="A proposta continuará na revisão, mas perderá esta conexão com o documento."
+        actionLabel="Remover fonte"
+        destructive
+        onConfirm={() => {
+          onChange(references.filter((_, index) => index !== removing));
+          setRemoving(null);
+        }}
+      />
     </section>
   );
+  return content;
 };

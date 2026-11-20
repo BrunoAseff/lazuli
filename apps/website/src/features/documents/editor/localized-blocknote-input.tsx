@@ -1,4 +1,4 @@
-import { CheckIcon } from "lucide-react";
+import { CheckIcon } from "@/components/icons.tsx";
 import { useState, type ComponentProps } from "react";
 
 import { Button } from "@/components/ui/button.tsx";

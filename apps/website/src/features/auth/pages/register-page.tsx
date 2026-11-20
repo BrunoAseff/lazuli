@@ -129,7 +129,7 @@ export const RegisterPage = () => {
               Termos de Uso
               <NewTabIndicator />
             </Link>
-            .
+            {"."}
           </label>
         </div>
 

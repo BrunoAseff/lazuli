@@ -8,7 +8,7 @@ describe("project cover processing", () => {
       prepareProjectCover(Buffer.from("not a JPEG"), { x: 50, y: 50, zoom: 1 }),
     ).rejects.toThrow("INVALID_COVER_IMAGE");
   });
-  it("produces bounded main and thumbnail WebP images without EXIF", async () => {
+  it("produces the source plus bounded main and thumbnail WebP images without EXIF", async () => {
     const source = await sharp({
       create: { width: 2000, height: 1500, channels: 3, background: "#007bb8" },
     })
@@ -16,7 +16,13 @@ describe("project cover processing", () => {
       .withMetadata({ orientation: 6 })
       .toBuffer();
     const outputs = await prepareProjectCover(source, { x: 0, y: 100, zoom: 2 });
-    const [main, thumbnail] = await Promise.all(outputs.map((buffer) => sharp(buffer).metadata()));
+    const [original, main, thumbnail] = await Promise.all(
+      outputs.map((buffer) => sharp(buffer).metadata()),
+    );
+    // The source keeps the whole image (oriented: 1500 × 2000), only bounded.
+    expect(original.format).toBe("webp");
+    expect(original.width).toBe(1500);
+    expect(original.height).toBe(2000);
     expect(main.format).toBe("webp");
     expect(main.width).toBeLessThanOrEqual(1600);
     expect(main.exif).toBeUndefined();

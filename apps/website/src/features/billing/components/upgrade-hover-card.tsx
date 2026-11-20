@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement, ReactNode } from "react";
-import { ArrowUpRightIcon } from "@phosphor-icons/react/ArrowUpRight";
+import { ArrowUpRightIcon } from "@/components/icons.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card.tsx";

@@ -1,3 +1,4 @@
+import { isNotFound, ResourceUnavailable } from "@/components/not-found-page.tsx";
 import {
   QUIZ_QUESTION_PAGE_SIZE,
   quizQuestionListQuerySchema,
@@ -8,7 +9,6 @@ import {
 import {
   ArchiveIcon,
   ArrowLeftIcon,
-  BarChart3Icon,
   CalendarPlusIcon,
   FilterIcon,
   HistoryIcon,
@@ -16,35 +16,32 @@ import {
   PlayIcon,
   PlusIcon,
   SquareCheckBig,
-  TrophyIcon,
-} from "lucide-react";
-import { useEffect, useState, type Ref } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+} from "@/components/icons.tsx";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { FilterSelect } from "@/components/filter-select.tsx";
 import { FilterCount } from "@/components/filter-count.tsx";
-import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { PaginationControls } from "@/components/pagination-controls.tsx";
 import { SearchInput } from "@/components/search-input.tsx";
 import { StudyItemSummaryBar } from "@/components/study-item-summary-bar.tsx";
+import { StudyWorkspaceSkeleton } from "@/components/study-workspace-skeleton.tsx";
 import { StudyItemListState } from "@/components/study-item-list-state.tsx";
-import { StudyItemTitle } from "@/components/study-item-title.tsx";
-import { StudySummaryMetric } from "@/components/study-summary-metric.tsx";
-import { AiCollectionGenerationAction } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
+import { HighlightText } from "@/components/highlight-text.tsx";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
+  StudyIndexHeader,
+  StudyIndexList,
+  StudyIndexRow,
+  StudyIndexScroll,
+  StudyIndexSkeleton,
+  StudyIndexTools,
+} from "@/components/study-index.tsx";
+import { resultCount } from "@/lib/text.ts";
+import { AiCollectionGenerationAction } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Checkbox } from "@/components/ui/checkbox.tsx";
+import { StudyCollectionStart } from "@/components/study-collection-start.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useIsMobile } from "@/hooks/use-mobile.ts";
@@ -60,7 +57,6 @@ import {
 } from "@/lib/study-editor.ts";
 import { useQuizCollection } from "../api/quiz-collection-queries.ts";
 import {
-  useCreateQuizAttempt,
   useDeleteQuizQuestion,
   usePatchQuizQuestion,
   useQuizAttemptAvailability,
@@ -68,8 +64,10 @@ import {
   useQuizQuestions,
 } from "../api/quiz-queries.ts";
 import { QuizQuestionPanel } from "../components/quiz-question-dialog.tsx";
+import { QuizStartDialog } from "../components/quiz-start-dialog.tsx";
 
-const quizQuestionListDefaults = { sort: "updated", status: "active" };
+// A quiz is read in its own order, so its index follows it by default (numbers ascend).
+const quizQuestionListDefaults = { sort: "position", status: "active" };
 
 export const QuizCollectionPage = () => {
   const { collectionId = "" } = useParams();
@@ -80,9 +78,9 @@ export const QuizCollectionPage = () => {
   const input = quizQuestionListQuerySchema.parse({
     query,
     status: params.get("status") === "archived" ? "archived" : "active",
-    sort: ["created", "position"].includes(params.get("sort") ?? "")
+    sort: ["created", "updated"].includes(params.get("sort") ?? "")
       ? params.get("sort")
-      : "updated",
+      : "position",
     page: parsePositivePage(params.get("page")),
     pageSize: QUIZ_QUESTION_PAGE_SIZE,
   });
@@ -118,7 +116,6 @@ export const QuizCollectionPage = () => {
   const detail = useQuizQuestion(collectionId, editor?.type === "edit" ? editor.id : null);
   const remove = useDeleteQuizQuestion(collectionId);
   const patchQuestion = usePatchQuizQuestion(collectionId);
-  const start = useCreateQuizAttempt(collectionId);
 
   useEffect(() => {
     if (linkedQuestionId)
@@ -170,21 +167,6 @@ export const QuizCollectionPage = () => {
     setEditor(null);
     updateParams({ question: undefined }, false, true);
   };
-  const begin = async (abandonActive = false) => {
-    const active = availability.data?.activeAttempt;
-    if (active && !abandonActive)
-      return void navigate(`/quizzes/${collectionId}/attempts/${active.id}`);
-    try {
-      const attempt = await start.mutateAsync({
-        id: crypto.randomUUID(),
-        abandonActive,
-      });
-      setStartOpen(false);
-      await navigate(`/quizzes/${collectionId}/attempts/${attempt.id}`);
-    } catch {
-      toast.error("Não foi possível iniciar o quiz.");
-    }
-  };
   const changeStatus = async (question: QuizQuestionSummary, archived: boolean) => {
     try {
       await patchQuestion.mutateAsync({
@@ -228,70 +210,72 @@ export const QuizCollectionPage = () => {
   };
 
   if (collection.isPending)
-    return (
-      <main className="h-[calc(100dvh-3.5rem)] p-5 md:h-dvh">
-        <Skeleton className="h-full w-full" />
-      </main>
-    );
+    return <StudyWorkspaceSkeleton editorOpen={Boolean(params.get("question"))} />;
   if (collection.isError)
     return (
-      <main className="mx-auto w-full max-w-5xl px-5 py-10">
-        <h1 className="page-title">Coleção não encontrada</h1>
-        <Button asChild className="mt-4" variant="outline">
-          <Link to="/quizzes">Voltar</Link>
-        </Button>
-      </main>
+      <ResourceUnavailable
+        backLabel="Voltar aos quizzes"
+        backTo="/quizzes"
+        notFound={isNotFound(collection.error)}
+        onRetry={() => void collection.refetch()}
+        title="Coleção não encontrada"
+      />
     );
   const summary = collection.data;
-  const appliedFilters = Number(input.sort !== "updated") + Number(input.status !== "active");
+  const appliedFilters = Number(input.sort !== "position") + Number(input.status !== "active");
+  const narrowed = Boolean(query) || input.status !== "active";
 
   return (
-    <main className="h-[calc(100dvh-3.5rem)] min-h-0 max-h-[calc(100dvh-3.5rem)] flex-none overflow-hidden md:h-[calc(100dvh-1rem)] md:max-h-[calc(100dvh-1rem)]">
-      <section className="grid h-full min-h-0 w-full md:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)]">
+    <main className="study-workspace">
+      <section className="study-workspace-columns">
         <aside className={cn("min-h-0 flex-col bg-background md:flex", editor ? "hidden" : "flex")}>
-          <header className="px-4 pt-4 pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <Link
-                className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
-                to="/quizzes"
-              >
-                <ArrowLeftIcon className="size-3.5" /> Coleções
-              </Link>
-            </div>
-            <div className="mt-3 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <OverflowTooltip text={summary.title}>
-                  {(ref) => (
-                    <h1
-                      className="line-clamp-2 font-heading text-lg leading-snug font-medium [overflow-wrap:anywhere]"
-                      ref={ref as Ref<HTMLHeadingElement>}
-                    >
-                      {summary.title}
-                    </h1>
-                  )}
-                </OverflowTooltip>
-              </div>
-              <Button
-                className="shrink-0"
-                disabled={Boolean(summary.archivedAt) || availability.data?.totalQuestions === 0}
-                onClick={() => setStartOpen(true)}
-                size="lg"
-              >
-                <PlayIcon /> {availability.data?.activeAttempt ? "Continuar" : "Iniciar"}
-              </Button>
-            </div>
-            <OverflowTooltip text={summary.project?.title ?? "Sem projeto"}>
-              {(ref) => (
-                <p
-                  ref={ref as Ref<HTMLParagraphElement>}
-                  className="mt-1 line-clamp-2 text-xs text-muted-foreground [overflow-wrap:anywhere]"
+          <StudyIndexHeader
+            actions={
+              <>
+                <Button
+                  disabled={Boolean(summary.archivedAt) || availability.data?.totalQuestions === 0}
+                  onClick={() => setStartOpen(true)}
                 >
-                  {summary.project?.title ?? "Sem projeto"}
-                </p>
-              )}
-            </OverflowTooltip>
-          </header>
-          <div className="flex items-center gap-2 px-5 py-3">
+                  <PlayIcon />
+                  {availability.data?.activeAttempt ? "Continuar" : "Iniciar"}
+                </Button>
+                <Button
+                  disabled={Boolean(summary.archivedAt)}
+                  onClick={() => changeEditor({ type: "create" })}
+                  variant="outline"
+                >
+                  <PlusIcon /> Adicionar
+                </Button>
+                <AiCollectionGenerationAction
+                  collectionId={collectionId}
+                  defaultProjectId={summary.project?.id}
+                  disabled={Boolean(summary.archivedAt)}
+                  iconOnly
+                  kind="quizQuestion"
+                />
+              </>
+            }
+            backTo="/quizzes"
+            meta={`${summary.totalQuestions} ${summary.totalQuestions === 1 ? "questão" : "questões"}`}
+            project={summary.project}
+            title={summary.title}
+          />
+          <StudyIndexTools
+            selecting={selected.size > 0}
+            selection={
+              <QuizSummary
+                selected={selected.size}
+                onClear={() => setSelected(new Set())}
+                onDelete={() => setBatchAction("delete")}
+                onToggleArchive={() =>
+                  input.status === "active"
+                    ? setBatchAction("archive")
+                    : void performBatch("restore")
+                }
+                status={input.status}
+              />
+            }
+          >
             <SearchInput
               aria-label="Pesquisar questões"
               containerClassName="flex-1"
@@ -304,7 +288,7 @@ export const QuizCollectionPage = () => {
                 updateParams({ query: undefined });
               }}
               onValueChange={setSearch}
-              placeholder="Buscar"
+              placeholder="Buscar questões"
               value={search}
             />
             <Popover>
@@ -315,11 +299,13 @@ export const QuizCollectionPage = () => {
                       ? `Filtrar e ordenar (${appliedFilters} ${appliedFilters === 1 ? "ativo" : "ativos"})`
                       : "Filtrar e ordenar"
                   }
-                  className="h-9 shrink-0 px-2.5"
+                  className="relative h-9 shrink-0 px-0"
                   variant="outline"
                 >
                   <FilterIcon />
-                  <FilterCount count={appliedFilters} />
+                  <span className="absolute -top-1.5 -right-1.5">
+                    <FilterCount count={appliedFilters} />
+                  </span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-[min(22rem,calc(100vw-2rem))] gap-4 p-4">
@@ -328,9 +314,9 @@ export const QuizCollectionPage = () => {
                   value={input.sort}
                   onChange={(value) => updateParams({ sort: value })}
                   options={[
+                    ["position", "Ordem do quiz", ListOrderedIcon],
                     ["updated", "Atualizadas", HistoryIcon],
                     ["created", "Criadas", CalendarPlusIcon],
-                    ["position", "Ordem do quiz", ListOrderedIcon],
                   ]}
                 />
                 <FilterSelect
@@ -345,7 +331,7 @@ export const QuizCollectionPage = () => {
                 {appliedFilters > 0 && (
                   <Button
                     className="w-full"
-                    onClick={() => updateParams({ sort: "updated", status: "active" })}
+                    onClick={() => updateParams({ sort: "position", status: "active" })}
                     variant="outline"
                   >
                     Limpar filtros
@@ -353,35 +339,24 @@ export const QuizCollectionPage = () => {
                 )}
               </PopoverContent>
             </Popover>
-            <AiCollectionGenerationAction
-              collectionId={collectionId}
-              disabled={Boolean(summary.archivedAt)}
-              iconOnly
-              kind="quizQuestion"
-            />
-            <Button
-              aria-label="Nova questão"
-              disabled={Boolean(summary.archivedAt)}
-              onClick={() => changeEditor({ type: "create" })}
-              size="icon"
+          </StudyIndexTools>
+          {narrowed && questions.data && (
+            /* With no match the empty state says it; the count stays for screen readers only. */
+            <p
+              aria-live="polite"
+              className={cn(
+                "study-index-results",
+                questions.data.pagination.totalItems === 0 && "sr-only",
+              )}
             >
-              <PlusIcon />
-            </Button>
-          </div>
-          <QuizSummary
-            selected={selected.size}
-            summary={summary}
-            onClear={() => setSelected(new Set())}
-            onDelete={() => setBatchAction("delete")}
-            onToggleArchive={() =>
-              input.status === "active" ? setBatchAction("archive") : void performBatch("restore")
-            }
-            status={input.status}
-          />
-          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2 lazuli-thin-scrollbar">
+              {resultCount(questions.data.pagination.totalItems, "questão", "questões")}
+            </p>
+          )}
+          <StudyIndexScroll>
             <StudyItemListState
               createLabel="Criar questão"
               emptyIcon={SquareCheckBig}
+              guidedElsewhere={input.status === "active"}
               emptyTitle={
                 input.status === "archived" ? "Nenhuma questão arquivada" : "Nenhuma questão ainda"
               }
@@ -392,33 +367,35 @@ export const QuizCollectionPage = () => {
               }
               onRetry={() => void questions.refetch()}
               query={query}
-              skeleton={<QuestionIndexSkeleton />}
+              skeleton={<StudyIndexSkeleton label="Carregando questões" />}
               totalItems={questions.data?.pagination.totalItems}
             >
-              {questions.data?.items.map((question) => (
-                <QuestionIndexItem
-                  active={activeId === question.id}
-                  key={question.id}
-                  onOpen={() => changeEditor({ type: "edit", id: question.id })}
-                  onSelect={(checked) =>
-                    setSelected((current) => {
-                      const next = new Set(current);
-                      if (checked) next.add(question.id);
-                      else next.delete(question.id);
-                      return next;
-                    })
-                  }
-                  query={query}
-                  question={question}
-                  selected={selected.has(question.id)}
-                />
-              ))}
+              <StudyIndexList label="Questões do quiz" selecting={selected.size > 0}>
+                {questions.data?.items.map((question) => (
+                  <QuestionIndexItem
+                    active={activeId === question.id}
+                    key={question.id}
+                    onOpen={() => changeEditor({ type: "edit", id: question.id })}
+                    onSelect={(checked) =>
+                      setSelected((current) => {
+                        const next = new Set(current);
+                        if (checked) next.add(question.id);
+                        else next.delete(question.id);
+                        return next;
+                      })
+                    }
+                    query={query}
+                    question={question}
+                    selected={selected.has(question.id)}
+                  />
+                ))}
+              </StudyIndexList>
             </StudyItemListState>
-          </div>
+          </StudyIndexScroll>
           {questions.data && questions.data.pagination.totalPages > 1 && (
-            <div className="border-t px-2">
+            <div className="border-t border-[var(--line-subtle)] px-2">
               <PaginationControls
-                className="mt-0 h-16"
+                className="mt-0 h-14"
                 label="Paginação de questões"
                 onPageChange={(page) =>
                   updateParams({ page: page > 1 ? String(page) : undefined }, false)
@@ -496,14 +473,25 @@ export const QuizCollectionPage = () => {
                 <Skeleton className="h-full w-full" />
               </div>
             )}
-            {!editor && !questions.isPending && (
-              <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                <div>
-                  <SquareCheckBig className="mx-auto mb-3 size-7" />
-                  <p>Selecione uma questão ou crie uma nova.</p>
+            {!editor &&
+              !questions.isPending &&
+              (input.status === "active" &&
+              !query &&
+              questions.data?.pagination.totalItems === 0 ? (
+                <StudyCollectionStart
+                  createLabel="Criar questão"
+                  icon={SquareCheckBig}
+                  noun="as primeiras questões"
+                  onCreate={() => changeEditor({ type: "create" })}
+                />
+              ) : (
+                <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                  <div>
+                    <SquareCheckBig className="mx-auto mb-3 size-7" />
+                    <p>Selecione uma questão ou crie uma nova.</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              ))}
           </div>
         </div>
       </section>
@@ -570,37 +558,7 @@ export const QuizCollectionPage = () => {
           if (batchAction) void performBatch(batchAction);
         }}
       />
-      <AlertDialog open={startOpen} onOpenChange={setStartOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {availability.data?.activeAttempt ? "Tentativa em andamento" : "Iniciar quiz?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {availability.data?.activeAttempt
-                ? "Continue de onde parou ou abandone as respostas atuais e comece novamente."
-                : `O quiz tem ${availability.data?.totalQuestions ?? 0} ${
-                    availability.data?.totalQuestions === 1 ? "questão" : "questões"
-                  }. A correção aparece após a conclusão.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="sm:flex-wrap">
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            {availability.data?.activeAttempt && (
-              <Button
-                disabled={start.isPending}
-                onClick={() => void begin(true)}
-                variant="destructive"
-              >
-                Abandonar e reiniciar
-              </Button>
-            )}
-            <AlertDialogAction disabled={start.isPending} onClick={() => void begin(false)}>
-              {availability.data?.activeAttempt ? "Continuar" : "Iniciar quiz"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <QuizStartDialog collectionId={collectionId} open={startOpen} onOpenChange={setStartOpen} />
       <ConfirmationDialog
         actionLabel="Descartar"
         cancelLabel="Continuar editando"
@@ -633,44 +591,24 @@ const QuizSummary = ({
   onToggleArchive,
   selected,
   status,
-  summary,
 }: {
   onClear: () => void;
   onDelete: () => void;
   onToggleArchive: () => void;
   selected: number;
   status: StudyCollectionStatus;
-  summary: {
-    totalQuestions: number;
-    totalAttempts: number;
-    bestScoreRate: number | null;
-    lastScore: { rate: number } | null;
-  };
 }) => (
   <StudyItemSummaryBar
     count={selected}
     itemLabel={{
-      singular: "questão selecionada",
-      plural: "questões selecionadas",
+      singular: "selecionada",
+      plural: "selecionadas",
     }}
     onClear={onClear}
     onDelete={onDelete}
     onToggleArchive={onToggleArchive}
     status={status}
-  >
-    <StudySummaryMetric icon={SquareCheckBig} strong>
-      {summary.totalQuestions} {summary.totalQuestions === 1 ? "questão" : "questões"}
-    </StudySummaryMetric>
-    <StudySummaryMetric icon={HistoryIcon}>
-      {summary.totalAttempts} {summary.totalAttempts === 1 ? "tentativa" : "tentativas"}
-    </StudySummaryMetric>
-    <StudySummaryMetric icon={BarChart3Icon}>
-      Última: {summary.lastScore ? `${Math.round(summary.lastScore.rate * 100)}%` : "—"}
-    </StudySummaryMetric>
-    <StudySummaryMetric icon={TrophyIcon}>
-      Melhor: {summary.bestScoreRate === null ? "—" : `${Math.round(summary.bestScoreRate * 100)}%`}
-    </StudySummaryMetric>
-  </StudyItemSummaryBar>
+  />
 );
 const QuestionIndexItem = ({
   active,
@@ -686,32 +624,29 @@ const QuestionIndexItem = ({
   query: string;
   question: QuizQuestionSummary;
   selected: boolean;
-}) => (
-  <article
-    className={cn(
-      "group flex items-start gap-2 rounded-lg px-2 py-2.5 transition-colors hover:bg-accent/50",
-      active && "bg-accent",
-    )}
-  >
-    <Checkbox
-      aria-label={`Selecionar ${question.contentText || "questão"}`}
-      checked={selected}
-      className="mt-1"
-      onCheckedChange={(checked) => onSelect(checked === true)}
+}) => {
+  const text = question.contentText.trim();
+  return (
+    <StudyIndexRow
+      active={active}
+      mark={<span className="study-index-ordinal">{question.position + 1}</span>}
+      meta={
+        // The answer itself stays out of the list: it could not be read here and it spoils practice.
+        question.archivedAt ? "Arquivada" : `${question.optionCount} alternativas`
+      }
+      onOpen={onOpen}
+      onSelect={onSelect}
+      selectLabel={`Selecionar ${text || "questão com imagem"}`}
+      selected={selected}
+      title={
+        text ? (
+          <HighlightText query={query} text={text} />
+        ) : (
+          <span className="text-muted-foreground italic">Questão com imagem</span>
+        )
+      }
+      titleText={text || undefined}
     />
-    <button className="min-w-0 flex-1 text-left" onClick={onOpen} type="button">
-      <StudyItemTitle query={query} text={question.contentText} />
-      <p className="mt-1 truncate text-[0.6875rem] text-muted-foreground">
-        {question.optionCount} alternativas · {question.archivedAt ? "Arquivada" : "Ativa"}
-      </p>
-    </button>
-  </article>
-);
-const QuestionIndexSkeleton = () => (
-  <div className="space-y-2 p-2">
-    {Array.from({ length: 7 }, (_, index) => (
-      <Skeleton className="h-14 w-full" key={index} />
-    ))}
-  </div>
-);
+  );
+};
 export default QuizCollectionPage;

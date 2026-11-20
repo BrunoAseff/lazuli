@@ -16,10 +16,12 @@ import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
 
 export const FlashcardCollectionDialog = ({
   collection,
+  defaultProjectId,
   onOpenChange,
   open,
 }: {
   collection?: FlashcardCollectionSummary;
+  defaultProjectId?: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => {
@@ -30,6 +32,7 @@ export const FlashcardCollectionDialog = ({
   return (
     <StudyCollectionDialog
       collection={collection}
+      defaultProjectId={defaultProjectId}
       createDescription="Agrupe flashcards relacionados a um mesmo assunto."
       onOpenChange={onOpenChange}
       onReset={() => mutation.reset()}

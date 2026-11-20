@@ -21,6 +21,7 @@ export * from "./quizzes/quiz-contracts.ts";
 export * from "./references/reference-contracts.ts";
 export * from "./references/reference-content.ts";
 export * from "./study-collections/study-collection-contracts.ts";
+export * from "./stone/stone-contracts.ts";
 
 export type ApiHealthResponse = {
   appName: typeof APP_NAME;

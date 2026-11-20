@@ -1,26 +1,47 @@
-import { calculateFlashcardProgress, type FlashcardCollectionSummary } from "@lazuli/shared";
-import { CalendarClockIcon, ChartNoAxesColumnIncreasingIcon, RotateCcwIcon } from "lucide-react";
+import type { FlashcardCollectionSummary } from "@lazuli/shared";
 
 import { FlashcardCollectionMark } from "@/components/flashcard-collection-mark.tsx";
 import { StudyCollectionActions } from "@/components/study-collection-actions.tsx";
-import { StudyCollectionCard, StudyCollectionMetric } from "@/components/study-collection-card.tsx";
+import {
+  StudyCollectionCard,
+  StudyCollectionNote,
+  StudyStrip,
+  type StudyStripSegment,
+} from "@/components/study-collection-card.tsx";
 import { StudyCollectionIdentity } from "@/components/study-collection-identity.tsx";
 import { StudyCollectionOpenAction } from "@/components/study-collection-open-action.tsx";
-import { Progress } from "@/components/ui/progress.tsx";
 import { formatMediumDateTime } from "@/lib/date-format.ts";
 import type { StudyCollectionAction } from "@/lib/study-actions.ts";
 import { FlashcardPracticeButton } from "./flashcard-practice-button.tsx";
 import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 
-const practiceLabel = (collection: FlashcardCollectionSummary) => {
-  if (collection.totalCards === 0) return "Sem prática agendada";
-  if (collection.dueCards > 0)
-    return `${collection.dueCards} ${
-      collection.dueCards === 1 ? "card disponível" : "cards disponíveis"
-    }`;
-  return collection.nextPracticeAt
-    ? `Próxima em ${formatMediumDateTime(collection.nextPracticeAt)}`
-    : "Sem prática agendada";
+/** New cards are always available, so reviews due now are the available cards that were studied before. */
+export const memorySegments = (collection: FlashcardCollectionSummary): StudyStripSegment[] => {
+  const due = Math.max(0, collection.dueCards - collection.newCards);
+  // Mastered cards leave "em dia" and come first, in gold.
+  const mastered = collection.masteredCards;
+  const rest = Math.max(0, collection.totalCards - collection.newCards - due - mastered);
+  return [
+    { count: mastered, label: mastered === 1 ? "dominado" : "dominados", tone: "mastered" },
+    { count: due, label: "para revisar", tone: "due" },
+    { count: rest, label: "em dia", tone: "rest" },
+    {
+      count: collection.newCards,
+      label: collection.newCards === 1 ? "novo" : "novos",
+      tone: "new",
+    },
+  ];
+};
+
+export const memoryLabel = (collection: FlashcardCollectionSummary) => {
+  const parts = memorySegments(collection)
+    .filter(({ count }) => count > 0)
+    .map(({ count, label }) => `${count} ${label}`);
+  const next =
+    collection.dueCards === 0 && collection.nextPracticeAt
+      ? `; próxima prática em ${formatMediumDateTime(collection.nextPracticeAt)}`
+      : "";
+  return `Estado dos flashcards: ${parts.join(", ") || "nenhum flashcard"}${next}`;
 };
 
 export const FlashcardCollectionList = ({
@@ -36,7 +57,6 @@ export const FlashcardCollectionList = ({
 }) => (
   <div className="space-y-2">
     {collections.map((collection) => {
-      const progress = calculateFlashcardProgress(collection.studiedCards, collection.totalCards);
       return (
         <StudyCollectionCard
           favorite={
@@ -80,39 +100,21 @@ export const FlashcardCollectionList = ({
           }
           key={collection.id}
         >
-          <StudyCollectionMetric
-            icon={<ChartNoAxesColumnIncreasingIcon aria-hidden="true" className="size-4" />}
-            label="Progresso"
-            value={
-              <span className="flex items-center justify-between gap-3">
-                <span>{progress}%</span>
-                <span className="font-normal text-muted-foreground">
-                  {collection.studiedCards} de {collection.totalCards} estudados
-                </span>
-              </span>
-            }
-          >
-            <Progress
-              aria-label={`${collection.studiedCards} de ${collection.totalCards} cards estudados`}
-              value={progress}
-            />
-          </StudyCollectionMetric>
-          <StudyCollectionMetric
-            icon={<CalendarClockIcon aria-hidden="true" className="size-4" />}
-            label="Próxima prática"
-            value={practiceLabel(collection)}
+          <StudyStrip
+            emptyLabel="Nenhum flashcard ainda"
+            label={memoryLabel(collection)}
+            noun={{ singular: "flashcard", plural: "flashcards" }}
+            segments={memorySegments(collection)}
           />
-          <StudyCollectionMetric
-            icon={<RotateCcwIcon aria-hidden="true" className="size-4" />}
-            label="Últimos 7 dias"
-            value={
-              collection.reviewsLastSevenDays === 0
-                ? "Sem revisões"
+          <StudyCollectionNote>
+            {collection.dueCards === 0 && collection.nextPracticeAt
+              ? `Próxima prática em ${formatMediumDateTime(collection.nextPracticeAt)}`
+              : collection.reviewsLastSevenDays === 0
+                ? "Sem revisões nos últimos 7 dias"
                 : `${collection.reviewsLastSevenDays} ${
                     collection.reviewsLastSevenDays === 1 ? "revisão" : "revisões"
-                  }`
-            }
-          />
+                  } nos últimos 7 dias`}
+          </StudyCollectionNote>
         </StudyCollectionCard>
       );
     })}

@@ -1,4 +1,4 @@
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon } from "@/components/icons.tsx";
 import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button.tsx";

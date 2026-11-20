@@ -25,49 +25,56 @@ export const ProjectCard = ({
   onRename,
   project,
   query,
-}: ProjectCardProps) => (
-  <Card className="group/project-card relative gap-0 overflow-hidden py-0 ring-border/50">
-    <Link
-      aria-label={`Abrir projeto ${project.title}`}
-      className="block overflow-hidden outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-      state={{ projectListLocation: listLocation }}
-      to={`/documents/${project.id}`}
-    >
-      <ProjectCover
-        coverKey={project.coverKey}
-        assetId={project.coverThumbnailAssetId ?? project.coverAssetId}
-      />
-    </Link>
-    <div className="flex flex-1 flex-col gap-3 p-4">
-      <div className="flex min-w-0 items-start gap-3">
-        <Link
-          className="min-w-0 flex-1 font-heading text-lg leading-snug font-medium [overflow-wrap:anywhere] underline-offset-4 outline-none hover:underline focus-visible:underline"
-          state={{ projectListLocation: listLocation }}
-          to={`/documents/${project.id}`}
-        >
-          <HighlightText query={query} text={project.title} />
-        </Link>
-        <FavoriteButton
-          kind="project"
-          id={project.id}
-          title={project.title}
-          className="-mt-2 -mr-2"
+}: ProjectCardProps) => {
+  return (
+    <Card className="group/project-card relative gap-0 overflow-hidden py-0 ring-border/50">
+      <Link
+        aria-label={`Abrir projeto ${project.title}`}
+        className="block overflow-hidden outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        state={{ projectListLocation: listLocation }}
+        to={`/documents/${project.id}`}
+      >
+        <ProjectCover
+          className="transition-transform duration-200 ease-out group-hover/project-card:scale-[1.025] motion-reduce:transition-none motion-reduce:transform-none"
+          coverKey={project.coverKey}
+          assetId={project.coverThumbnailAssetId ?? project.coverAssetId}
+          seed={project.id}
         />
+      </Link>
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <Link
+            className="min-w-0 flex-1 font-heading text-base leading-snug font-medium [overflow-wrap:anywhere] underline-offset-4 outline-none hover:underline focus-visible:underline"
+            state={{ projectListLocation: listLocation }}
+            to={`/documents/${project.id}`}
+          >
+            <HighlightText query={query} text={project.title} />
+          </Link>
+          <FavoriteButton
+            kind="project"
+            id={project.id}
+            title={project.title}
+            className="-mt-2 -mr-2"
+          />
+        </div>
+        <div className="mt-auto flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <DocumentDomainIcon aria-hidden="true" className="size-4" />
+            {project.documentCount} {project.documentCount === 1 ? "documento" : "documentos"}
+          </span>
+          <div className="flex items-center gap-2">
+            <time dateTime={project.updatedAt}>{formatProjectDate(project.updatedAt)}</time>
+            {/* Same optical inset as the favorite above, so both icons share one column. */}
+            <ProjectActionsMenu
+              className="-mr-2"
+              favorite={{ kind: "project", id: project.id }}
+              onChangeCover={onChangeCover}
+              onDelete={onDelete}
+              onRename={onRename}
+            />
+          </div>
+        </div>
       </div>
-      <div className="mt-auto flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <DocumentDomainIcon aria-hidden="true" className="size-4" weight="duotone" />
-          {project.documentCount} {project.documentCount === 1 ? "documento" : "documentos"}
-        </span>
-        <time dateTime={project.updatedAt}>{formatProjectDate(project.updatedAt)}</time>
-      </div>
-    </div>
-    <ProjectActionsMenu
-      favorite={{ kind: "project", id: project.id }}
-      className="absolute top-2 right-2 opacity-0 transition-opacity group-hover/project-card:opacity-100 group-focus-within/project-card:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
-      onChangeCover={onChangeCover}
-      onDelete={onDelete}
-      onRename={onRename}
-    />
-  </Card>
-);
+    </Card>
+  );
+};

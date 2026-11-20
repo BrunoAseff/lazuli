@@ -13,7 +13,7 @@ import {
   type CreateAiSelectionGenerationInput,
   type DocumentBlock,
 } from "@lazuli/shared";
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { isDeepStrictEqual } from "node:util";
 import { randomUUID } from "node:crypto";
 
@@ -271,13 +271,53 @@ export const prepareAiSelectionGeneration = async (
   };
 };
 
+/** A document's text blocks for generation: one section when given, else the whole document. */
+const generationBlocks = (content: DocumentBlock[], sourceBlockIds: string[]) => {
+  let blocks = sourceBlockIds.length
+    ? (() => {
+        const found = findBlocks(content, new Set(sourceBlockIds));
+        return sourceBlockIds
+          .map((id) => found.get(id))
+          .filter((block): block is DocumentBlock => Boolean(block))
+          .map((block) => ({ id: block.id, text: normalize(getDocumentBlockText(block)) }))
+          .filter(({ text }) => Boolean(text));
+      })()
+    : collectDocumentTextBlocks(content);
+  if (!blocks.length || (sourceBlockIds.length && blocks.length !== sourceBlockIds.length))
+    blocks = collectDocumentTextBlocks(content);
+  return blocks;
+};
+
+/*
+ * Several documents go to the model as one list of blocks. Their ids are prefixed with the
+ * document's position ("2::blockId"), so a reference names its document; a single document keeps
+ * its plain ids. Each block also carries its document's title, so the model knows which is which.
+ */
+const SOURCE_SEPARATOR = "::";
+export const splitSourceBlockId = (id: string) => {
+  const at = id.indexOf(SOURCE_SEPARATOR);
+  if (at === -1) return { sourceIndex: 0, blockId: id };
+  return {
+    sourceIndex: Number(id.slice(0, at)) - 1,
+    blockId: id.slice(at + SOURCE_SEPARATOR.length),
+  };
+};
+
 export const prepareAiCollectionGeneration = async (
   db: Database,
   userId: string,
-  input: CreateAiCollectionGenerationInput,
+  input: Pick<
+    CreateAiCollectionGenerationInput,
+    "collectionId" | "documentId" | "kind" | "sourceBlockIds"
+  > & { additionalSources?: CreateAiCollectionGenerationInput["additionalSources"] },
 ) => {
-  const [ownedDocument] = await db
+  const requested = [
+    { documentId: input.documentId, sourceBlockIds: input.sourceBlockIds },
+    ...(input.additionalSources ?? []),
+  ];
+  const owned = await db
     .select({
+      id: document.id,
       content: document.content,
       documentTitle: projectItem.title,
       projectId: project.id,
@@ -287,9 +327,18 @@ export const prepareAiCollectionGeneration = async (
     .from(document)
     .innerJoin(projectItem, eq(projectItem.id, document.id))
     .innerJoin(project, eq(project.id, projectItem.projectId))
-    .where(and(eq(document.id, input.documentId), eq(project.userId, userId)))
-    .limit(1);
-  if (!ownedDocument) return { kind: "not-found" as const };
+    .where(
+      and(
+        inArray(
+          document.id,
+          requested.map(({ documentId }) => documentId),
+        ),
+        eq(project.userId, userId),
+      ),
+    );
+  const byId = new Map(owned.map((row) => [row.id, row]));
+  const primary = byId.get(input.documentId);
+  if (!primary) return { kind: "not-found" as const };
   const collectionTable = input.kind === "flashcard" ? flashcardCollection : quizCollection;
   const [collection] = await db
     .select({ id: collectionTable.id })
@@ -303,33 +352,44 @@ export const prepareAiCollectionGeneration = async (
     )
     .limit(1);
   if (!collection) return { kind: "collection-not-found" as const };
-  const content = ownedDocument.content as DocumentBlock[];
-  let blocks = input.sourceBlockIds.length
-    ? (() => {
-        const found = findBlocks(content, new Set(input.sourceBlockIds));
-        return input.sourceBlockIds
-          .map((id) => found.get(id))
-          .filter((block): block is DocumentBlock => Boolean(block))
-          .map((block) => ({ id: block.id, text: normalize(getDocumentBlockText(block)) }))
-          .filter(({ text }) => Boolean(text));
-      })()
-    : collectDocumentTextBlocks(content);
-  if (
-    !blocks.length ||
-    (input.sourceBlockIds.length && blocks.length !== input.sourceBlockIds.length)
-  )
-    blocks = collectDocumentTextBlocks(content);
-  if (!blocks.length) return { kind: "not-found" as const };
-  const sourceText = normalize(blocks.map(({ text }) => text).join(" "));
-  if (blocks.length > AI_DOCUMENT_MAX_BLOCKS || sourceText.length > AI_DOCUMENT_MAX_TEXT_LENGTH)
+  const sources = [];
+  for (const { documentId, sourceBlockIds } of requested) {
+    const row = byId.get(documentId);
+    // Only documents of the first document's project can be combined.
+    if (!row || row.projectId !== primary.projectId) return { kind: "not-found" as const };
+    const blocks = generationBlocks(row.content as DocumentBlock[], sourceBlockIds);
+    if (!blocks.length) return { kind: "not-found" as const };
+    sources.push({
+      documentId,
+      documentTitle: row.documentTitle,
+      documentRevision: row.revision,
+      blocks,
+      sourceText: blocks.map(({ text }) => text).join(" "),
+    });
+  }
+  const several = sources.length > 1;
+  const blocks = sources.flatMap((source, index) =>
+    source.blocks.map((block) =>
+      several
+        ? {
+            id: `${index + 1}${SOURCE_SEPARATOR}${block.id}`,
+            text: block.text,
+            document: source.documentTitle,
+          }
+        : block,
+    ),
+  );
+  const totalText = normalize(sources.map(({ sourceText }) => sourceText).join(" "));
+  if (blocks.length > AI_DOCUMENT_MAX_BLOCKS || totalText.length > AI_DOCUMENT_MAX_TEXT_LENGTH)
     return { kind: "source-too-large" as const };
   return {
     kind: "ok" as const,
     blocks,
-    documentTitle: ownedDocument.documentTitle,
-    documentRevision: ownedDocument.revision,
-    projectId: ownedDocument.projectId,
-    projectTitle: ownedDocument.projectTitle,
+    sources,
+    documentTitle: primary.documentTitle,
+    documentRevision: primary.revision,
+    projectId: primary.projectId,
+    projectTitle: primary.projectTitle,
   };
 };
 
@@ -460,8 +520,38 @@ export const approveAiSelectionGeneration = async (
     // autosave, so approval rebuilds anchors over the current owned document
     // instead of rejecting an otherwise valid generation.
     let anchoredContent = ownedDocument.content as DocumentBlock[];
-    const referenceAnchors = new Map<string, Array<string | null>>();
+    const referenceAnchors = new Map<
+      string,
+      Array<{ documentId: string; anchorId: string | null }>
+    >();
     let draftAnchorUsed = false;
+    /*
+     * A generation over several documents may point a reference at one of its other documents
+     * (always of the same project). Those are loaded, locked and anchored on their own content,
+     * the same way: an untouched quote that can no longer be anchored keeps a document link.
+     */
+    const otherSourceIds = new Set(
+      "additionalSources" in draft
+        ? draft.additionalSources.map(({ documentId }) => documentId)
+        : [],
+    );
+    const otherContents = new Map<string, { original: unknown; content: DocumentBlock[] }>();
+    const otherContent = async (documentId: string) => {
+      const loaded = otherContents.get(documentId);
+      if (loaded) return loaded;
+      const [row] = await tx
+        .select({ content: document.content, projectId: projectItem.projectId })
+        .from(document)
+        .innerJoin(projectItem, eq(projectItem.id, document.id))
+        .innerJoin(project, eq(project.id, projectItem.projectId))
+        .where(and(eq(document.id, documentId), eq(project.userId, userId)))
+        .limit(1)
+        .for("update", { of: document });
+      if (!row || row.projectId !== ownedDocument.projectId) return null;
+      const entry = { original: row.content, content: row.content as DocumentBlock[] };
+      otherContents.set(documentId, entry);
+      return entry;
+    };
     for (const item of submittedItems) {
       if (!item.references.length) continue;
       const proposal = proposalById.get(item.id);
@@ -469,10 +559,40 @@ export const approveAiSelectionGeneration = async (
       const originalReferences = new Set(
         proposal.references.map(({ blockId, quote }) => `${blockId}:${normalize(quote)}`),
       );
-      const anchors: Array<string | null> = [];
+      const anchors: Array<{ documentId: string; anchorId: string | null }> = [];
+      const own = (anchorId: string | null) => ({ documentId: draft.documentId, anchorId });
       for (const reference of item.references) {
+        const otherId =
+          reference.documentId && reference.documentId !== draft.documentId
+            ? reference.documentId
+            : null;
+        if (otherId) {
+          if (!otherSourceIds.has(otherId)) return { kind: "invalid-items" as const };
+          const other = await otherContent(otherId);
+          if (!other) return { kind: "not-found" as const };
+          if (reference.scope === "document" || !reference.blockId || !reference.quote) {
+            anchors.push({ documentId: otherId, anchorId: null });
+            continue;
+          }
+          const unchanged = originalReferences.has(
+            `${reference.blockId}:${normalize(reference.quote)}`,
+          );
+          const applied = addSourceAnchorToQuote(other.content, {
+            blockId: reference.blockId,
+            quote: reference.quote,
+            anchorId: randomUUID(),
+          });
+          if (applied.kind !== "ok") {
+            if (!unchanged) return { kind: "reference-unanchorable" as const, itemId: item.id };
+            anchors.push({ documentId: otherId, anchorId: null });
+            continue;
+          }
+          other.content = applied.content;
+          anchors.push({ documentId: otherId, anchorId: applied.anchorId });
+          continue;
+        }
         if (reference.scope === "document") {
-          anchors.push(null);
+          anchors.push(own(null));
           continue;
         }
         const isUnchangedProposalReference = originalReferences.has(
@@ -486,7 +606,7 @@ export const approveAiSelectionGeneration = async (
             getReferenceSourcePreview(anchoredContent, draft.anchorId, Number.MAX_SAFE_INTEGER),
           );
           if (!anchoredText) return { kind: "reference-unanchorable" as const, itemId: item.id };
-          anchors.push(draft.anchorId);
+          anchors.push(own(draft.anchorId));
           draftAnchorUsed = true;
           continue;
         }
@@ -496,12 +616,12 @@ export const approveAiSelectionGeneration = async (
           draft.anchorId &&
           findBlock(anchoredContent, draft.anchorId)?.type === "image"
         ) {
-          anchors.push(draft.anchorId);
+          anchors.push(own(draft.anchorId));
           draftAnchorUsed = true;
           continue;
         }
         if (!reference.blockId || !reference.quote) {
-          anchors.push(null);
+          anchors.push(own(null));
           continue;
         }
         const applied = addSourceAnchorToQuote(anchoredContent, {
@@ -513,7 +633,7 @@ export const approveAiSelectionGeneration = async (
           // A generated document/section quote may overlap anchors owned by other
           // materials. Keep the approved material linked to its document instead
           // of making an untouched proposal impossible to save.
-          anchors.push(null);
+          anchors.push(own(null));
           continue;
         }
         if (applied.kind !== "ok")
@@ -529,9 +649,18 @@ export const approveAiSelectionGeneration = async (
           draftAnchorUsed = true;
         }
         anchoredContent = applied.content;
-        anchors.push(applied.anchorId);
+        anchors.push(own(applied.anchorId));
       }
-      referenceAnchors.set(item.id, [...new Set(anchors)]);
+      const seen = new Set<string>();
+      referenceAnchors.set(
+        item.id,
+        anchors.filter(({ documentId, anchorId }) => {
+          const key = `${documentId}:${anchorId}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }),
+      );
     }
     if (draft.sourceScope === "selection" && draft.anchorId && !draftAnchorUsed) {
       const [sharedReference] = await tx
@@ -568,6 +697,19 @@ export const approveAiSelectionGeneration = async (
         .set({ updatedAt: now })
         .where(eq(projectItem.id, draft.documentId));
     }
+    for (const [documentId, other] of otherContents) {
+      if (isDeepStrictEqual(other.original, other.content)) continue;
+      await tx
+        .update(document)
+        .set({
+          content: other.content,
+          contentByteSize: Buffer.byteLength(JSON.stringify(other.content)),
+          revision: sql`${document.revision} + 1`,
+          updatedAt: now,
+        })
+        .where(eq(document.id, documentId));
+      await tx.update(projectItem).set({ updatedAt: now }).where(eq(projectItem.id, documentId));
+    }
 
     if (draft.kind === "flashcard") {
       for (const item of input.flashcards) {
@@ -599,10 +741,10 @@ export const approveAiSelectionGeneration = async (
     }
 
     const references = submittedIds.flatMap((id) =>
-      (referenceAnchors.get(id) ?? []).map((anchorId) => ({
+      (referenceAnchors.get(id) ?? []).map(({ documentId, anchorId }) => ({
         id: randomUUID(),
         userId,
-        documentId: draft.documentId,
+        documentId,
         anchorId,
         flashcardId: draft.kind === "flashcard" ? id : null,
         quizQuestionId: draft.kind === "quizQuestion" ? id : null,

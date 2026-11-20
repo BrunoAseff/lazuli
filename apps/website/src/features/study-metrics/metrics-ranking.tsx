@@ -1,12 +1,13 @@
+import { formatRecent } from "@/lib/date-format.ts";
 import { useRef } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { StudyMetricsQuery } from "@lazuli/shared";
-import { ChartBarIcon } from "@phosphor-icons/react/ChartBar";
-import { SlidersHorizontalIcon, XIcon } from "lucide-react";
+import { ChartBarIcon } from "@/components/icons.tsx";
+import { SlidersHorizontalIcon, XIcon } from "@/components/icons.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { EmptyState } from "@/components/empty-state.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
+import { ViewSelector } from "@/components/view-selector.tsx";
 import {
   Collapsible,
   CollapsibleContent,
@@ -95,8 +96,8 @@ export function MetricsRanking({
     view === "flashcards"
       ? "Flashcards com dificuldade"
       : order === "correct"
-        ? "Perguntas com mais acertos"
-        : "Perguntas com mais erros";
+        ? "Questões com mais acertos"
+        : "Questões com mais erros";
   const reason = result.data?.emptyReason;
   const emptyTitle =
     reason === "outOfRange"
@@ -120,11 +121,11 @@ export function MetricsRanking({
     <section
       ref={section}
       aria-label={title}
-      className="order-2 min-w-0 scroll-mt-20 rounded-xl bg-card/50 p-4 sm:p-5"
+      className="order-2 min-w-0 scroll-mt-20 surface-panel p-4 sm:p-5"
     >
       <div className="mb-4 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="font-heading text-xl leading-snug">{title}</h2>
+          <h2 className="text-sm leading-snug font-semibold">{title}</h2>
           {archived && (
             <Button
               variant="ghost"
@@ -159,20 +160,18 @@ export function MetricsRanking({
         </DropdownMenu>
       </div>
       {view === "quizzes" && (
-        <Tabs
-          value={order}
-          onValueChange={(value) => update({ Order: value, Page: undefined })}
-          className="mb-4"
-        >
-          <TabsList aria-label="Ordenar perguntas" className="w-full">
-            <TabsTrigger value="errors" className="min-h-11 sm:min-h-9">
-              Mais erros
-            </TabsTrigger>
-            <TabsTrigger value="correct" className="min-h-11 sm:min-h-9">
-              Mais acertos
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="mb-4">
+          <ViewSelector
+            fullWidth
+            label="Ordenar perguntas"
+            value={order}
+            options={[
+              { value: "errors", label: "Mais erros" },
+              { value: "correct", label: "Mais acertos" },
+            ]}
+            onChange={(value) => update({ Order: value, Page: undefined })}
+          />
+        </div>
       )}
       {result.isPending ? (
         <Skeleton className="h-48" />
@@ -183,6 +182,7 @@ export function MetricsRanking({
         />
       ) : !result.data.items.length ? (
         <EmptyState
+          surface="inline"
           compact
           minHeight="sm"
           icon={ChartBarIcon}
@@ -310,9 +310,9 @@ export function MetricsAttempts({ input }: { input: StudyMetricsQuery }) {
       { replace: true },
     );
   return (
-    <section className="rounded-xl bg-card/50 p-4 sm:p-5">
+    <section className="surface-panel p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-heading text-xl">
+        <h2 className="text-sm leading-snug font-semibold">
           {full ? "Histórico de quizzes" : "Últimos quizzes"}
         </h2>
         {(full || result.data?.hasMore) && (
@@ -334,6 +334,7 @@ export function MetricsAttempts({ input }: { input: StudyMetricsQuery }) {
         />
       ) : !result.data.items.length ? (
         <EmptyState
+          surface="inline"
           compact
           minHeight="sm"
           icon={ChartBarIcon}
@@ -359,11 +360,7 @@ export function MetricsAttempts({ input }: { input: StudyMetricsQuery }) {
                   {!input.collectionId && <p className="break-words text-sm">{item.collection}</p>}
                   <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
                     <span>
-                      {new Date(item.completedAt).toLocaleDateString("pt-BR", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {formatRecent(item.completedAt)}
                       {(dayCounts.get(completedDay(item.completedAt)) ?? 0) > 1 &&
                         ` · ${new Date(item.completedAt).toLocaleTimeString("pt-BR", {
                           hour: "2-digit",

@@ -35,8 +35,8 @@ const response = {
     steps: [
       { id: "create-document", completed: true, href: "/documents" },
       { id: "generate-material", completed: false, href: "/documents/one/document/two" },
-      { id: "approve-material", completed: false, href: "/documents/one/document/two" },
-      { id: "complete-practice", completed: false, href: "/flashcards" },
+      { id: "set-goal", completed: false, href: "/stone?meta=editar" },
+      { id: "practice-example", completed: false, href: "/flashcards" },
     ],
   },
   weeklyActivity: {

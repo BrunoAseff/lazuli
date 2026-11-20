@@ -3,7 +3,7 @@ import {
   quizCollectionListQuerySchema,
   type QuizCollectionSummary,
 } from "@lazuli/shared";
-import { SquareCheckBig } from "lucide-react";
+import { SquareCheckBig } from "@/components/icons.tsx";
 import { useState } from "react";
 
 import { StudyCollectionListPage } from "@/components/study-collection-list-page.tsx";

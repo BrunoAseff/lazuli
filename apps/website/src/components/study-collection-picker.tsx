@@ -1,5 +1,5 @@
-import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { CheckIcon, ChevronsUpDownIcon } from "@/components/icons.tsx";
+import type { ReactNode, Ref } from "react";
 
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { SearchInput } from "@/components/search-input.tsx";
@@ -22,6 +22,8 @@ export const StudyCollectionPicker = ({
   query,
   selectedTitle,
   value,
+  label = "Coleção",
+  triggerRef,
 }: {
   disabled?: boolean;
   empty: string;
@@ -35,12 +37,22 @@ export const StudyCollectionPicker = ({
   query: string;
   selectedTitle?: string;
   value: string;
+  label?: string;
+  triggerRef?: Ref<HTMLButtonElement>;
 }) => (
   <div>
-    <label className="mb-2 block text-sm font-medium">Coleção</label>
+    <span className="mb-2 block text-sm font-medium" data-field-label>
+      {label}
+    </span>
     <Popover onOpenChange={onOpenChange} open={open}>
       <PopoverTrigger asChild>
-        <Button className="w-full justify-between" disabled={disabled} variant="outline">
+        <Button
+          ref={triggerRef}
+          aria-label={`${label}: ${selectedTitle ?? "Selecionar"}`}
+          className="w-full justify-between"
+          disabled={disabled}
+          variant="outline"
+        >
           <OverflowTooltip text={selectedTitle ?? "Selecionar coleção"}>
             {(ref) => (
               <span
@@ -69,7 +81,7 @@ export const StudyCollectionPicker = ({
           {items.map((collection) => (
             <button
               className={cn(
-                "flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted",
+                "flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-[var(--row-hover)]",
                 collection.id === value && "bg-muted",
               )}
               key={collection.id}

@@ -29,6 +29,7 @@ import {
   quizCollection,
   quizQuestion,
   userDashboardOnboarding,
+  userStudyGoal,
 } from "../database/schema/index.ts";
 
 const RECENT_DOCUMENT_LIMIT = 4;
@@ -91,7 +92,7 @@ type DailyMetric = {
 
 const utcDay = (value: Date) => value.toISOString().slice(0, 10);
 
-const dateKeyInTimeZone = (value: Date, timeZone: string) => {
+export const dateKeyInTimeZone = (value: Date, timeZone: string) => {
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "2-digit",
@@ -103,7 +104,7 @@ const dateKeyInTimeZone = (value: Date, timeZone: string) => {
   return `${part("year")}-${part("month")}-${part("day")}`;
 };
 
-const shiftDateKey = (date: string, days: number) => {
+export const shiftDateKey = (date: string, days: number) => {
   const [year, month, day] = date.split("-").map(Number);
   return utcDay(new Date(Date.UTC(year!, month! - 1, day!) + days * DAY_MS));
 };
@@ -257,6 +258,30 @@ export const getDashboard = async (
   const newCard = and(isNull(flashcard.lastReviewedAt), availableCard);
   const futureReview = and(isNotNull(flashcard.lastReviewedAt), gt(flashcard.dueAt, now));
 
+  // Until the person has flashcards of their own, the example's are on the home page to practise.
+  const [ownCard] = await database
+    .select({ id: flashcard.id })
+    .from(flashcard)
+    .innerJoin(
+      flashcardCollection,
+      and(
+        eq(flashcardCollection.id, flashcard.collectionId),
+        eq(flashcardCollection.userId, userId),
+        isNull(flashcardCollection.archivedAt),
+      ),
+    )
+    .leftJoin(project, eq(project.id, flashcardCollection.projectId))
+    .where(
+      and(
+        isNull(flashcard.archivedAt),
+        or(isNull(flashcardCollection.projectId), eq(project.quotaExempt, false)),
+      ),
+    )
+    .limit(1);
+  const libraryScope = ownCard
+    ? or(isNull(flashcardCollection.projectId), eq(project.quotaExempt, false))
+    : undefined;
+
   const [
     recentDocuments,
     activeFlashcardSessions,
@@ -303,7 +328,7 @@ export const getDashboard = async (
         and(
           eq(flashcardPracticeSession.userId, userId),
           eq(flashcardPracticeSession.status, "active"),
-          or(isNull(flashcardCollection.projectId), eq(project.quotaExempt, false)),
+          libraryScope,
         ),
       )
       .orderBy(desc(flashcardPracticeSession.lastActivityAt), desc(flashcardPracticeSession.id))
@@ -338,7 +363,7 @@ export const getDashboard = async (
         and(
           eq(flashcardCollection.userId, userId),
           isNull(flashcardCollection.archivedAt),
-          or(isNull(flashcardCollection.projectId), eq(project.quotaExempt, false)),
+          libraryScope,
         ),
       )
       .groupBy(flashcardCollection.id)
@@ -373,7 +398,7 @@ export const getDashboard = async (
         and(
           eq(flashcardCollection.userId, userId),
           isNull(flashcardCollection.archivedAt),
-          or(isNull(flashcardCollection.projectId), eq(project.quotaExempt, false)),
+          libraryScope,
         ),
       ),
     database
@@ -473,89 +498,114 @@ export const getDashboard = async (
       .groupBy(sql`1`),
   ]);
 
-  const [ownDocument, generationProgress, flashcardPractice, quizPractice, onboardingDismissal] =
-    await Promise.all([
-      database
-        .select({ documentId: projectItem.id, projectId: project.id })
-        .from(projectItem)
-        .innerJoin(
-          project,
-          and(
-            eq(project.id, projectItem.projectId),
-            eq(project.userId, userId),
-            eq(project.quotaExempt, false),
-          ),
-        )
-        .where(eq(projectItem.type, "document"))
-        .orderBy(desc(projectItem.updatedAt), desc(projectItem.id))
-        .limit(1),
-      database
-        .select({
-          approved:
-            sql<boolean>`coalesce(bool_or(${aiGeneration.approvedItems} > 0), false)`.mapWith(
-              Boolean,
-            ),
-          generated: sql<boolean>`coalesce(bool_or(${aiGeneration.validItems} > 0), false)`.mapWith(
-            Boolean,
-          ),
-        })
-        .from(aiGeneration)
-        .innerJoin(projectItem, sql`${aiGeneration.sourceIds}->>0 = ${projectItem.id}`)
-        .innerJoin(
-          project,
-          and(
-            eq(project.id, projectItem.projectId),
-            eq(project.userId, userId),
-            eq(project.quotaExempt, false),
-          ),
-        )
-        .where(
-          and(
-            eq(aiGeneration.userId, userId),
-            eq(aiGeneration.status, "succeeded"),
-            inArray(aiGeneration.type, relevantGenerationTypes),
-          ),
+  const [
+    ownDocument,
+    generationProgress,
+    flashcardPractice,
+    quizPractice,
+    onboardingDismissal,
+    exampleCollection,
+    savedGoal,
+  ] = await Promise.all([
+    database
+      .select({ documentId: projectItem.id, projectId: project.id })
+      .from(projectItem)
+      .innerJoin(
+        project,
+        and(
+          eq(project.id, projectItem.projectId),
+          eq(project.userId, userId),
+          eq(project.quotaExempt, false),
         ),
-      database
-        .select({ id: flashcardPracticeSession.id })
-        .from(flashcardPracticeSession)
-        .innerJoin(
-          flashcardCollection,
-          and(
-            eq(flashcardCollection.id, flashcardPracticeSession.collectionId),
-            eq(flashcardCollection.userId, userId),
-          ),
-        )
-        .leftJoin(project, eq(project.id, flashcardCollection.projectId))
-        .where(
-          and(
-            eq(flashcardPracticeSession.userId, userId),
-            eq(flashcardPracticeSession.status, "completed"),
-            or(isNull(flashcardCollection.projectId), eq(project.quotaExempt, false)),
-          ),
-        )
-        .limit(1),
-      database
-        .select({ id: quizAttempt.id })
-        .from(quizAttempt)
-        .innerJoin(
-          quizCollection,
-          and(eq(quizCollection.id, quizAttempt.collectionId), eq(quizCollection.userId, userId)),
-        )
-        .leftJoin(project, eq(project.id, quizCollection.projectId))
-        .where(
-          and(
-            eq(quizAttempt.userId, userId),
-            eq(quizAttempt.status, "completed"),
-            or(isNull(quizCollection.projectId), eq(project.quotaExempt, false)),
-          ),
-        )
-        .limit(1),
-      database.query.userDashboardOnboarding.findFirst({
-        columns: { dismissedAt: true },
-        where: eq(userDashboardOnboarding.userId, userId),
-      }),
-    ]);
+      )
+      .where(eq(projectItem.type, "document"))
+      .orderBy(desc(projectItem.updatedAt), desc(projectItem.id))
+      .limit(1),
+    database
+      .select({
+        approved: sql<boolean>`coalesce(bool_or(${aiGeneration.approvedItems} > 0), false)`.mapWith(
+          Boolean,
+        ),
+        generated: sql<boolean>`coalesce(bool_or(${aiGeneration.validItems} > 0), false)`.mapWith(
+          Boolean,
+        ),
+      })
+      .from(aiGeneration)
+      .innerJoin(projectItem, sql`${aiGeneration.sourceIds}->>0 = ${projectItem.id}`)
+      .innerJoin(
+        project,
+        and(
+          eq(project.id, projectItem.projectId),
+          eq(project.userId, userId),
+          eq(project.quotaExempt, false),
+        ),
+      )
+      .where(
+        and(
+          eq(aiGeneration.userId, userId),
+          eq(aiGeneration.status, "succeeded"),
+          inArray(aiGeneration.type, relevantGenerationTypes),
+        ),
+      ),
+    // A finished practice of the example, over one of its collections or the whole project.
+    database
+      .select({ id: flashcardPracticeSession.id })
+      .from(flashcardPracticeSession)
+      .leftJoin(
+        flashcardCollection,
+        eq(flashcardCollection.id, flashcardPracticeSession.collectionId),
+      )
+      .innerJoin(
+        project,
+        and(
+          sql`${project.id} = coalesce(${flashcardPracticeSession.projectId}, ${flashcardCollection.projectId})`,
+          eq(project.userId, userId),
+          eq(project.quotaExempt, true),
+        ),
+      )
+      .where(
+        and(
+          eq(flashcardPracticeSession.userId, userId),
+          eq(flashcardPracticeSession.status, "completed"),
+        ),
+      )
+      .limit(1),
+    database
+      .select({ id: quizAttempt.id })
+      .from(quizAttempt)
+      .innerJoin(
+        quizCollection,
+        and(eq(quizCollection.id, quizAttempt.collectionId), eq(quizCollection.userId, userId)),
+      )
+      .innerJoin(
+        project,
+        and(eq(project.id, quizCollection.projectId), eq(project.quotaExempt, true)),
+      )
+      .where(and(eq(quizAttempt.userId, userId), eq(quizAttempt.status, "completed")))
+      .limit(1),
+    database.query.userDashboardOnboarding.findFirst({
+      columns: { dismissedAt: true },
+      where: eq(userDashboardOnboarding.userId, userId),
+    }),
+    database
+      .select({ id: flashcardCollection.id })
+      .from(flashcardCollection)
+      .innerJoin(
+        project,
+        and(
+          eq(project.id, flashcardCollection.projectId),
+          eq(project.userId, userId),
+          eq(project.quotaExempt, true),
+        ),
+      )
+      .where(isNull(flashcardCollection.archivedAt))
+      .limit(1),
+    database
+      .select({ userId: userStudyGoal.userId })
+      .from(userStudyGoal)
+      .where(eq(userStudyGoal.userId, userId))
+      .limit(1),
+  ]);
 
   const content = selectDashboardContent({
     activeQuizAttempts,
@@ -573,31 +623,23 @@ export const getDashboard = async (
     },
   });
   const generation = generationProgress[0];
+  const weeklyActivity = buildWeeklyActivity(flashcardDays, quizDays, now, timeZone);
   const ownDocumentTarget = ownDocument[0];
-  const generated = generation?.generated ?? false;
   const approved = generation?.approved ?? false;
-  const practiced = Boolean(flashcardPractice[0] || quizPractice[0]);
+  const example = exampleCollection[0];
+  const ownDocumentHref = ownDocumentTarget
+    ? `/documents/${ownDocumentTarget.projectId}/document/${ownDocumentTarget.documentId}`
+    : "/documents";
   const steps: DashboardResponse["onboarding"]["steps"] = [
+    {
+      id: "practice-example",
+      // Without the example (deleted), the step has nothing to ask.
+      completed: Boolean(flashcardPractice[0] || quizPractice[0] || !example),
+      href: example ? `/flashcards/${example.id}` : "/flashcards",
+    },
     { id: "create-document", completed: Boolean(ownDocumentTarget), href: "/documents" },
-    {
-      id: "generate-material",
-      completed: generated,
-      href: ownDocumentTarget
-        ? `/documents/${ownDocumentTarget.projectId}/document/${ownDocumentTarget.documentId}`
-        : "/documents",
-    },
-    {
-      id: "approve-material",
-      completed: approved,
-      href: ownDocumentTarget
-        ? `/documents/${ownDocumentTarget.projectId}/document/${ownDocumentTarget.documentId}`
-        : "/documents",
-    },
-    {
-      id: "complete-practice",
-      completed: practiced,
-      href: reviewQueue.collections.length ? "/flashcards" : "/quizzes",
-    },
+    { id: "generate-material", completed: approved, href: ownDocumentHref },
+    { id: "set-goal", completed: Boolean(savedGoal[0]), href: "/stone?meta=editar" },
   ];
   return {
     ...content,
@@ -607,6 +649,6 @@ export const getDashboard = async (
       visible: !onboardingDismissal && steps.some(({ completed }) => !completed),
       steps,
     },
-    weeklyActivity: buildWeeklyActivity(flashcardDays, quizDays, now, timeZone),
+    weeklyActivity,
   };
 };

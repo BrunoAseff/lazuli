@@ -30,7 +30,7 @@ const exportCategoryLabels: Record<string, string> = {
   projects: "projetos e documentos",
   flashcards: "flashcards",
   quizzes: "quizzes",
-  references: "referências",
+  references: "fontes",
 };
 
 export const createLifecycleEmail = (

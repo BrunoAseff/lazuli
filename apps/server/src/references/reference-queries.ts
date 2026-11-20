@@ -401,3 +401,35 @@ export const deleteReference = async (db: Database, userId: string, referenceId:
     );
     return { kind: "ok" as const };
   });
+
+/**
+ * How many distinct flashcards and questions use each document of a project, counting only
+ * materials that still exist (archived collections included: the material is still there).
+ */
+export const countProjectDocumentMaterials = async (
+  db: Database,
+  userId: string,
+  projectId: string,
+) => {
+  const [owned] = await db
+    .select({ id: project.id })
+    .from(project)
+    .where(and(eq(project.id, projectId), eq(project.userId, userId)))
+    .limit(1);
+  if (!owned) return null;
+  const rows = await db
+    .select({
+      documentId: studyMaterialReference.documentId,
+      flashcards: sql<number>`count(distinct ${studyMaterialReference.flashcardId})`.mapWith(
+        Number,
+      ),
+      questions: sql<number>`count(distinct ${studyMaterialReference.quizQuestionId})`.mapWith(
+        Number,
+      ),
+    })
+    .from(studyMaterialReference)
+    .innerJoin(projectItem, eq(projectItem.id, studyMaterialReference.documentId))
+    .where(and(eq(studyMaterialReference.userId, userId), eq(projectItem.projectId, projectId)))
+    .groupBy(studyMaterialReference.documentId);
+  return rows;
+};

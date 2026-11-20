@@ -1,3 +1,4 @@
+import { ChoiceSeal } from "@/components/study-answer-choice.tsx";
 import {
   AI_CREDITS_PER_ITEM,
   collectDocumentTextBlocks,
@@ -9,12 +10,12 @@ import {
   type QuizQuestionDetail,
 } from "@lazuli/shared";
 import { AiCreditCost } from "./ai-credit-cost.tsx";
-import { MagicWandIcon } from "@phosphor-icons/react/MagicWand";
-import { CircleNotchIcon } from "@phosphor-icons/react/CircleNotch";
-import { ArrowClockwiseIcon } from "@phosphor-icons/react/ArrowClockwise";
-import { CheckIcon } from "@phosphor-icons/react/Check";
-import { Trash2Icon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { MagicWandIcon } from "@/components/icons.tsx";
+import { CircleNotchIcon } from "@/components/icons.tsx";
+import { ArrowClockwiseIcon } from "@/components/icons.tsx";
+import { CheckIcon } from "@/components/icons.tsx";
+import { Trash2Icon } from "@/components/icons.tsx";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
@@ -30,6 +31,8 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
+import { RadioCard, RadioGroup } from "@/components/ui/radio-group.tsx";
+import { CreationWorkspace } from "./creation-workspace.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { CreditUpgradeGuard } from "@/features/billing/components/credit-upgrade-guard.tsx";
 import {
@@ -70,6 +73,70 @@ const richText = (content: unknown) =>
 type Material =
   | { kind: "flashcard"; value: FlashcardDetail }
   | { kind: "quizQuestion"; value: QuizQuestionDetail };
+
+/** "Antes" reads at the size of the fields it is compared with, not in the reading voice. */
+const valueClass = "font-sans text-sm leading-relaxed text-foreground";
+
+/** Beside a field's name in "Depois": whether the suggestion changed it. */
+const ChangeMark = ({ changed }: { changed: boolean }) => (
+  <span className="font-normal text-muted-foreground">{changed ? " · alterada" : " · igual"}</span>
+);
+
+/**
+ * "Antes": the material as it is, laid out field by field like the suggestion beside it
+ * (Pergunta, Resposta or Alternativas), so each field reads against its counterpart.
+ */
+const CurrentMaterial = ({
+  draft,
+  material,
+}: {
+  draft: AiMaterialImprovementDraft | null;
+  material: Material;
+}) => {
+  const field = (label: string, children: ReactNode) => (
+    <div className="grid gap-1.5">
+      <p className="font-sans text-sm font-medium text-foreground">{label}</p>
+      {children}
+    </div>
+  );
+  if (material.kind === "flashcard") {
+    const current = draft?.kind === "flashcard" ? draft.current : material.value;
+    return (
+      <div className="grid gap-5">
+        {field("Pergunta", <p className={valueClass}>{richText(current.question)}</p>)}
+        {field("Resposta", <p className={valueClass}>{richText(current.answer)}</p>)}
+      </div>
+    );
+  }
+  const content = draft?.kind === "quizQuestion" ? draft.current.content : material.value.content;
+  const options = draft?.kind === "quizQuestion" ? draft.current.options : material.value.options;
+  return (
+    <div className="grid gap-5">
+      {field("Pergunta", <p className={valueClass}>{richText(content)}</p>)}
+      {field(
+        "Alternativas",
+        <ol className="grid gap-3 font-sans text-sm">
+          {options.map((option, index) => (
+            // Same anatomy as the quiz: letter seal, the correct one sealed in green.
+            <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3" key={index}>
+              <ChoiceSeal
+                filled={false}
+                index={index}
+                outcome={option.isCorrect ? "correct" : undefined}
+              />
+              <span
+                className={option.isCorrect ? "pt-1 text-foreground" : "pt-1 text-muted-foreground"}
+              >
+                {option.text}
+                {option.isCorrect && <span className="sr-only"> (resposta correta)</span>}
+              </span>
+            </li>
+          ))}
+        </ol>,
+      )}
+    </div>
+  );
+};
 
 export const AiMaterialImprovementDialog = ({
   material,
@@ -234,145 +301,135 @@ export const AiMaterialImprovementDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && requestClose()}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-4xl">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
         <DialogHeader className="border-b px-6 py-5">
-          <DialogTitle className="pr-8">Melhorar com IA</DialogTitle>
+          <DialogTitle className="pr-8">
+            Refinar {material.kind === "flashcard" ? "flashcard" : "questão"}
+          </DialogTitle>
           <DialogDescription>
             Revise a sugestão antes de alterar o material original.
           </DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar">
-          {!draft ? (
-            <div className="grid gap-6">
-              <fieldset className="grid gap-2">
-                <legend className="mb-2 text-sm font-medium">Objetivo</legend>
-                <div className="flex flex-wrap gap-2">
-                  {availableIntents.map((value) => (
-                    <Button
-                      key={value}
-                      onClick={() => setIntent(value)}
-                      type="button"
-                      variant={intent === value ? "default" : "outline"}
-                    >
-                      {intentLabels[value]}
-                    </Button>
-                  ))}
+        <div className="min-h-0 overflow-y-auto px-6 py-6 lazuli-thin-scrollbar md:overflow-hidden">
+          <CreationWorkspace
+            reviewing={Boolean(draft)}
+            sourceLabel={draft ? "Antes" : "Material atual"}
+            source={<CurrentMaterial draft={draft} material={material} />}
+          >
+            {!draft ? (
+              <div className="grid items-start gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="ai-improvement-intent">Como melhorar?</Label>
+                  <RadioGroup
+                    aria-label="Como melhorar?"
+                    value={intent}
+                    onValueChange={(value) => {
+                      if (availableIntents.includes(value as AiImprovementIntent))
+                        setIntent(value as AiImprovementIntent);
+                    }}
+                  >
+                    {availableIntents.map((value) => (
+                      <RadioCard key={value} title={intentLabels[value]} value={value} />
+                    ))}
+                  </RadioGroup>
                 </div>
-              </fieldset>
-              <div className="grid gap-2">
-                <Label htmlFor="ai-improvement-guidance">Orientação (opcional)</Label>
-                <Textarea
-                  id="ai-improvement-guidance"
-                  maxLength={500}
-                  onChange={(event) => setGuidance(event.target.value)}
-                  placeholder="Ex.: preserve os termos técnicos e reduza a resposta."
-                  value={guidance}
-                />
+                <div className="grid gap-2">
+                  <Label htmlFor="ai-improvement-guidance">Orientação (opcional)</Label>
+                  <Textarea
+                    id="ai-improvement-guidance"
+                    maxLength={500}
+                    onChange={(event) => setGuidance(event.target.value)}
+                    placeholder="Ex.: preserve os termos técnicos e reduza a resposta."
+                    value={guidance}
+                  />
+                </div>
               </div>
+            ) : (
+              <div className="grid gap-7">
+                <div>
+                  <section className="grid gap-4">
+                    {/* Named like the source pane ("Antes"), with what was asked of the AI. */}
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Depois · {intentLabels[draft.intent]}
+                    </p>
+                    {draft.kind === "flashcard" ? (
+                      <>
+                        <div className="grid gap-2">
+                          <Label htmlFor="improved-question">
+                            Pergunta
+                            <ChangeMark
+                              changed={question.trim() !== richText(draft.current.question)}
+                            />
+                          </Label>
+                          <Textarea
+                            id="improved-question"
+                            onChange={(event) => setQuestion(event.target.value)}
+                            value={question}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="improved-answer">
+                            Resposta
+                            <ChangeMark
+                              changed={answer.trim() !== richText(draft.current.answer)}
+                            />
+                          </Label>
+                          <Textarea
+                            id="improved-answer"
+                            onChange={(event) => setAnswer(event.target.value)}
+                            value={answer}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="grid gap-2">
+                          <Label htmlFor="improved-prompt">
+                            Pergunta
+                            <ChangeMark
+                              changed={quizPrompt.trim() !== richText(draft.current.content)}
+                            />
+                          </Label>
+                          <Textarea
+                            id="improved-prompt"
+                            onChange={(event) => setQuizPrompt(event.target.value)}
+                            value={quizPrompt}
+                          />
+                        </div>
+                        <QuizAlternativesField onChange={setQuizOptions} options={quizOptions} />
+                      </>
+                    )}
+                  </section>
+                </div>
+                {draft.warning && <p className="text-sm text-muted-foreground">{draft.warning}</p>}
+                <section>
+                  <ReferenceManager
+                    appearance="review"
+                    returnTo={
+                      draft.kind === "flashcard"
+                        ? `/flashcards/${draft.collectionId}?card=${draft.materialId}`
+                        : `/quizzes/${draft.collectionId}?question=${draft.materialId}`
+                    }
+                    target={{
+                      type: draft.kind === "flashcard" ? "flashcard" : "quizQuestion",
+                      id: draft.materialId,
+                    }}
+                  />
+                </section>
+              </div>
+            )}
+          </CreationWorkspace>
+        </div>
+        <DialogFooter className="mx-0 mb-0 flex-col border-t px-6 py-4 sm:items-center">
+          {!draft && (
+            <div className="w-full sm:mr-auto sm:w-auto">
               <AiCreditCost cost={AI_CREDITS_PER_ITEM} available={balance.data?.available} />
             </div>
-          ) : (
-            <div className="grid gap-7">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <section className="grid content-start gap-4 rounded-md border p-4">
-                  <p className="text-xs tracking-wide text-muted-foreground uppercase">Atual</p>
-                  {draft.kind === "flashcard" ? (
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="current-question">Pergunta</Label>
-                        <Textarea
-                          id="current-question"
-                          readOnly
-                          value={richText(draft.current.question)}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="current-answer">Resposta</Label>
-                        <Textarea
-                          id="current-answer"
-                          readOnly
-                          value={richText(draft.current.answer)}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="grid gap-2">
-                        <Label htmlFor="current-prompt">Pergunta</Label>
-                        <Textarea
-                          id="current-prompt"
-                          readOnly
-                          value={richText(draft.current.content)}
-                        />
-                      </div>
-                      <QuizAlternativesField
-                        onChange={() => undefined}
-                        options={draft.current.options}
-                        readOnly
-                      />
-                    </>
-                  )}
-                </section>
-                <section className="grid gap-4 rounded-md border p-4">
-                  <p className="text-xs tracking-wide text-muted-foreground uppercase">
-                    Sugestão editável
-                  </p>
-                  {draft.kind === "flashcard" ? (
-                    <>
-                      <div className="grid gap-2">
-                        <Label htmlFor="improved-question">Pergunta</Label>
-                        <Textarea
-                          id="improved-question"
-                          onChange={(event) => setQuestion(event.target.value)}
-                          value={question}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="improved-answer">Resposta</Label>
-                        <Textarea
-                          id="improved-answer"
-                          onChange={(event) => setAnswer(event.target.value)}
-                          value={answer}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="grid gap-2">
-                        <Label htmlFor="improved-prompt">Pergunta</Label>
-                        <Textarea
-                          id="improved-prompt"
-                          onChange={(event) => setQuizPrompt(event.target.value)}
-                          value={quizPrompt}
-                        />
-                      </div>
-                      <QuizAlternativesField onChange={setQuizOptions} options={quizOptions} />
-                    </>
-                  )}
-                </section>
-              </div>
-              {draft.warning && <p className="text-sm text-muted-foreground">{draft.warning}</p>}
-              <section>
-                <ReferenceManager
-                  returnTo={
-                    draft.kind === "flashcard"
-                      ? `/flashcards/${draft.collectionId}?card=${draft.materialId}`
-                      : `/quizzes/${draft.collectionId}?question=${draft.materialId}`
-                  }
-                  target={{
-                    type: draft.kind === "flashcard" ? "flashcard" : "quizQuestion",
-                    id: draft.materialId,
-                  }}
-                />
-              </section>
-            </div>
           )}
-        </div>
-        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
           {draft ? (
             <>
               <Button
-                className="text-destructive hover:text-destructive sm:mr-auto"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
                 disabled={discard.isPending || apply.isPending}
                 onClick={() => {
                   setCloseAfterDiscard(false);

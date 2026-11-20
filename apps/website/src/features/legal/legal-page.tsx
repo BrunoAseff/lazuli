@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { Link, useLocation, useParams } from "react-router";
-import { ArrowLeft, Printer, ChevronDown } from "lucide-react";
+import { ArrowLeft, Printer, ChevronDown } from "@/components/icons.tsx";
 import { LEGAL_CONTACT } from "@lazuli/shared";
 import { getLegalDocument, LEGAL_DOCUMENTS } from "@lazuli/shared/legal/documents";
 import { Button } from "@/components/ui/button.tsx";
 import { LegalLinks } from "./legal-links.tsx";
 import { useActiveLegalSection } from "./use-active-legal-section.ts";
 import { cn } from "@/lib/utils.ts";
+import { LazuliWordmark } from "@/components/brand-mark.tsx";
 import "./legal-print.css";
 import {
   DropdownMenu,
@@ -45,8 +46,11 @@ export default function LegalPage() {
   return (
     <div className="lazuli-legal-page min-h-svh bg-background text-foreground">
       <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5 sm:px-8 print:hidden">
-        <Link to="/" className="font-heading text-2xl font-semibold tracking-tight">
-          Lazúli
+        <Link
+          to="/"
+          className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <LazuliWordmark />
         </Link>
         <Button variant="ghost" asChild>
           <Link to="/">

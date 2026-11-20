@@ -1,3 +1,4 @@
+import { NotFoundPage } from "@/components/not-found-page.tsx";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
 
@@ -7,9 +8,22 @@ import { PrivateRoute } from "@/features/auth/routes/private-route.tsx";
 import { PublicOnlyRoute } from "@/features/auth/routes/public-only-route.tsx";
 
 const AppShell = lazy(() => import("@/app/layouts/app-shell.tsx"));
+const DesignSystemPage = import.meta.env.DEV
+  ? lazy(() => import("@/features/design-system/design-system-page.tsx"))
+  : null;
+const IdentityPage = import.meta.env.DEV
+  ? lazy(() => import("@/features/design-system/identity-page.tsx"))
+  : null;
+const ProposalsPage = import.meta.env.DEV
+  ? lazy(() => import("@/features/design-system/proposals-page.tsx"))
+  : null;
+const PublicPagePreview = import.meta.env.DEV
+  ? lazy(() => import("@/features/landing/landing-page.tsx"))
+  : null;
 const LegalPage = lazy(() => import("@/features/legal/legal-page.tsx"));
 const AccountOptionsPage = lazy(() => import("@/features/legal/account-options-page.tsx"));
 const DashboardPage = lazy(() => import("@/features/dashboard/pages/dashboard-page.tsx"));
+const StonePage = lazy(() => import("@/features/stone/pages/stone-page.tsx"));
 const StudyMetricsPage = lazy(() => import("@/features/study-metrics/study-metrics-page.tsx"));
 const LoginPage = lazy(() => import("@/features/auth/pages/login-page.tsx"));
 const RegisterPage = lazy(() => import("@/features/auth/pages/register-page.tsx"));
@@ -37,9 +51,6 @@ const ProjectWorkspaceLayout = lazy(
 );
 const DocumentEditorPage = lazy(
   () => import("@/features/documents/pages/document-editor-page.tsx"),
-);
-const EditorialDesignPreviewPage = lazy(
-  () => import("@/features/design-preview/pages/editorial-design-preview-page.tsx"),
 );
 const AccountSettingsLayout = lazy(
   () => import("@/features/account-settings/pages/account-settings-layout.tsx"),
@@ -80,10 +91,16 @@ export const App = () => (
       <Route element={<ResetPasswordPage />} path="reset-password" />
       <Route element={<SessionEnding />} path="signing-out" />
       <Route element={<PrivateRoute />}>
+        {PublicPagePreview && <Route element={<PublicPagePreview />} path="system/public" />}
+        {IdentityPage && <Route element={<IdentityPage />} path="system/identidade" />}
+        {DesignSystemPage && <Route element={<LoginPage />} path="system/login" />}
+        {DesignSystemPage && <Route element={<RegisterPage />} path="system/register" />}
         <Route element={<AccountOptionsPage />} path="account-options" />
-        <Route element={<EditorialDesignPreviewPage />} path="design-preview" />
         <Route element={<AppShell />}>
+          {DesignSystemPage && <Route element={<DesignSystemPage />} path="system" />}
+          {ProposalsPage && <Route element={<ProposalsPage />} path="system/propostas" />}
           <Route element={<DashboardPage />} path="dashboard" />
+          <Route element={<StonePage />} path="stone" />
           <Route element={<StudyMetricsPage />} path="statistics" />
           <Route element={<ProjectListPage />} path="documents" />
           <Route element={<FlashcardCollectionListPage />} path="flashcards" />
@@ -104,13 +121,18 @@ export const App = () => (
             element={<FlashcardPracticePage />}
             path="flashcards/:collectionId/practice/:sessionId"
           />
+          <Route
+            element={<FlashcardPracticePage />}
+            path="documents/:projectId/practice/:sessionId"
+          />
           <Route element={<ProjectWorkspaceLayout />} path="documents/:projectId">
             <Route element={<ProjectDetailPage />} index />
             <Route element={<DocumentEditorPage />} path="document/:documentId" />
           </Route>
+          {/* Unknown addresses explain themselves instead of silently landing on the home page. */}
+          <Route element={<NotFoundPage />} path="*" />
         </Route>
       </Route>
-      <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
   </Suspense>
 );

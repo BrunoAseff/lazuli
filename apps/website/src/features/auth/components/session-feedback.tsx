@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
+import { GemLoader } from "@/components/brand-mark.tsx";
 import { finishSignOut, readPendingSignOut } from "@/features/auth/sign-out.ts";
 
 export const SessionLoading = () => (
   <main className="grid min-h-svh place-items-center bg-background" role="status">
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Spinner aria-hidden="true" />
+    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+      <GemLoader size={24} />
       Verificando sua sessão…
     </div>
   </main>
@@ -64,8 +64,8 @@ export const SessionEnding = () => {
 
   return (
     <main className="grid min-h-svh place-items-center bg-background" role="status">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Spinner aria-hidden="true" />
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <GemLoader size={24} />
         Encerrando sua sessão…
       </div>
     </main>

@@ -1,5 +1,5 @@
 import { REFERENCE_MAX_PAGE_SIZE, type ReferenceTarget } from "@lazuli/shared";
-import { FileTextIcon, Link2Icon, LoaderCircleIcon } from "lucide-react";
+import { FileTextIcon, Link2Icon, LoaderCircleIcon } from "@/components/icons.tsx";
 import type { Ref } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 
@@ -14,10 +14,11 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { useReferences } from "../api/reference-queries.ts";
 import { documentLocation } from "@/features/documents/document-navigation.ts";
+import { SourceReading } from "./source-reading.tsx";
 
 export const MaterialReferencesButton = ({
   count,
-  label = "Ver referências",
+  label = "Ver fontes",
   target,
 }: {
   count: number;
@@ -51,27 +52,32 @@ export const MaterialReferencesButton = ({
   if (!count) return null;
   return (
     <>
-      <Button onClick={() => setOpen(true)} size="sm" variant="outline">
-        <Link2Icon aria-hidden="true" className="size-4 text-primary" />
-        {label} ({count})
+      <Button aria-label={`${label} (${count})`} onClick={() => setOpen(true)} variant="outline">
+        <Link2Icon aria-hidden="true" />
+        <span className="hidden sm:inline">{label}</span>
+        <span className="sm:hidden">{count === 1 ? "Fonte" : "Fontes"}</span>
+        <span className="text-muted-foreground tabular-nums">{count}</span>
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-lg">
           <DialogHeader className="border-b px-6 py-5">
-            <DialogTitle className="pr-8 text-xl">Referências deste material</DialogTitle>
+            <DialogTitle className="pr-8">Fontes deste material</DialogTitle>
             <DialogDescription>
               Consulte as fontes sem sair da revisão ou abra o documento completo.
             </DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 divide-y overflow-y-auto px-6 py-3 lazuli-thin-scrollbar">
+          <div className="grid min-h-0 content-start gap-6 overflow-y-auto px-6 py-5 lazuli-thin-scrollbar">
             {references.isPending && (
               <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
                 <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" /> Carregando…
               </p>
             )}
             {references.data?.items.map((reference) => (
-              <article className="flex min-w-0 gap-3 py-4" key={reference.id}>
-                <FileTextIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+              <article className="flex min-w-0 gap-3" key={reference.id}>
+                <FileTextIcon
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                />
                 <div className="min-w-0 flex-1">
                   <OverflowTooltip text={reference.documentTitle}>
                     {(ref) => (
@@ -85,8 +91,12 @@ export const MaterialReferencesButton = ({
                     {reference.anchorId ? "Trecho vinculado" : "Documento inteiro"}
                   </p>
                   {reference.sourcePreview && (
-                    <blockquote className="mt-3 border-l-2 border-primary/50 pl-3 text-sm leading-relaxed text-muted-foreground">
-                      {reference.sourcePreview}
+                    <blockquote className="source-excerpt mt-3">
+                      <SourceReading
+                        text={reference.sourcePreview}
+                        label="Trecho da fonte"
+                        expandLabel="Expandir trecho"
+                      />
                     </blockquote>
                   )}
                   <Button asChild className="mt-3" size="sm" variant="outline">
@@ -98,16 +108,25 @@ export const MaterialReferencesButton = ({
                         returnTo: `${location.pathname}${location.search}`,
                       })}
                     >
-                      Abrir no documento
+                      Ver no documento
                     </Link>
                   </Button>
                 </div>
               </article>
             ))}
             {references.isError && (
-              <p className="py-6 text-sm text-destructive">
-                Não foi possível carregar as referências.
-              </p>
+              <div className="py-6">
+                <p role="alert" className="text-sm text-destructive">
+                  Não foi possível carregar as fontes.
+                </p>
+                <Button
+                  className="mt-3"
+                  variant="outline"
+                  onClick={() => void references.refetch()}
+                >
+                  Tentar novamente
+                </Button>
+              </div>
             )}
           </div>
         </DialogContent>

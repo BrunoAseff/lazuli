@@ -4,8 +4,8 @@ import * as React from "react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
-import { menuItem, overlayMotion, overlaySurface } from "./ui-styles.ts";
-import { CheckIcon, ChevronRightIcon } from "lucide-react";
+import { menuItem, overlayMotion, floatSurface } from "./ui-styles.ts";
+import { CheckIcon, ChevronRightIcon } from "@/components/icons.tsx";
 
 function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
@@ -36,7 +36,7 @@ function DropdownMenuContent({
         sideOffset={sideOffset}
         align={align}
         className={cn(
-          `z-50 max-h-(--radix-dropdown-menu-content-available-height) w-max min-w-36 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto p-1.5 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden ${overlaySurface} ${overlayMotion}`,
+          `z-50 max-h-(--radix-dropdown-menu-content-available-height) w-max min-w-36 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto p-1.5 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden ${floatSurface} ${overlayMotion}`,
           className,
         )}
         {...props}
@@ -218,7 +218,7 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        `z-50 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden p-1.5 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ${overlaySurface} ${overlayMotion}`,
+        `z-50 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden p-1.5 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ${floatSurface} ${overlayMotion}`,
         className,
       )}
       {...props}
