@@ -105,7 +105,7 @@ export function StudyCollectionDestination({
         value={value}
         labelAction={
           <Button
-            className="h-auto px-0"
+            className="h-auto px-0 text-muted-foreground hover:text-foreground"
             disabled={disabled}
             onClick={() => setCreating(true)}
             size="xs"
