@@ -193,10 +193,11 @@ export const ReferenceManager = ({
         </h3>
         {!disabled && (
           <Button
+            className="h-auto px-0 text-muted-foreground hover:text-foreground"
             onClick={() => (count ? setManagerOpen(true) : setPickerOpen(true))}
             size="xs"
             type="button"
-            variant="outline"
+            variant="link"
           >
             {count ? (
               <>
