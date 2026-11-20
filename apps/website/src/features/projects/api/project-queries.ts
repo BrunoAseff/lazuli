@@ -1,5 +1,6 @@
 import { PROJECT_PAGE_SIZE, type ProjectListQuery, type UpdateProjectInput } from "@lazuli/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { refreshNavigation } from "@/lib/refresh-navigation.ts";
 
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import { captureAnalyticsEvent } from "@/features/analytics/analytics-client.ts";
@@ -77,6 +78,7 @@ export const useUpdateProject = (projectId: string) => {
         queryClient.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcardCollections }),
         queryClient.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.studyMetrics }),
         queryClient.invalidateQueries({ queryKey: billingKeys.summary() }),
+        refreshNavigation(queryClient),
       ]);
     },
   });

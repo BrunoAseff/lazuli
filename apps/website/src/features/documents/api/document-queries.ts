@@ -6,6 +6,7 @@ import type {
   UpdateProjectItemInput,
 } from "@lazuli/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { refreshNavigation } from "@/lib/refresh-navigation.ts";
 
 import { projectKeys } from "@/features/projects/api/project-queries.ts";
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
@@ -79,6 +80,7 @@ export const useRenameProjectItem = (projectId: string) => {
         );
       }
       void client.invalidateQueries({ queryKey: projectKeys.projectDocuments(projectId) });
+      void refreshNavigation(client);
     },
   });
 };
