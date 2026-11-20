@@ -177,6 +177,10 @@ export const quizAttemptItem = pgTable(
   (table) => [
     uniqueIndex("quiz_attempt_item_attempt_position_idx").on(table.attemptId, table.position),
     index("quiz_attempt_item_attempt_answered_idx").on(table.attemptId, table.answeredAt),
+    // Mastery reads every answer to a question ("Sua pedra", session summaries).
+    index("quiz_attempt_item_question_answered_idx")
+      .on(table.questionId, table.answeredAt)
+      .where(sql`${table.questionId} is not null`),
     check("quiz_attempt_item_position_check", sql`${table.position} >= 0`),
     check(
       "quiz_attempt_item_answer_check",

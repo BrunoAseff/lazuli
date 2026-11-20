@@ -274,6 +274,13 @@
       "when": 1795136675906,
       "tag": "0038_stone",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1795209540560,
+      "tag": "0039_quiz_answers_by_question",
+      "breakpoints": true
     }
   ]
 }
