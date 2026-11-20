@@ -43,11 +43,8 @@
   }
 }
 
-/* Outcome, on the text: green pigment under the right answer, a red strike through a wrong pick. */
-.choice[data-outcome="correct"] .choice-ink {
-  --pigment-tone: var(--success);
-  background-size: 100% 70%;
-}
+/* Outcome: the right answer is told by its green check and its note, with the text left plain to
+   read; a wrong pick is struck through in red. */
 .choice[data-outcome="incorrect"] .choice-ink {
   color: var(--muted-foreground);
   text-decoration: line-through;
@@ -134,13 +131,8 @@
   }
 }
 
-/* Revealed outcome, once, as the question opens: the pigment sweeps in under the right answer; a
-   wrong pick gives a short, small shake. Neither moves the text within its card. */
-@keyframes choice-pigment-in {
-  from {
-    background-size: 0% 70%;
-  }
-}
+/* Revealed outcome, once, as the question opens: a wrong pick gives a short, small shake, without
+   moving the text within its card. */
 @keyframes choice-shake {
   0%,
   100% {
@@ -160,9 +152,6 @@
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .choice[data-reveal][data-outcome="correct"] .choice-ink {
-    animation: choice-pigment-in 520ms var(--ease-out) 120ms both;
-  }
   .choice[data-reveal][data-outcome="incorrect"] {
     animation: choice-shake 380ms var(--ease-out) 80ms both;
   }
