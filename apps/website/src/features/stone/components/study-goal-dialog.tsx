@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label.tsx";
 import { RadioCard, RadioGroup } from "@/components/ui/radio-group.tsx";
 import { ViewSelector } from "@/components/view-selector.tsx";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
+import { cn } from "@/lib/utils.ts";
 import { useSaveStudyGoal } from "../api/stone-queries.ts";
 import { goalUnit, weekdays } from "./stone-parts.tsx";
 
@@ -41,6 +42,7 @@ export const StudyGoalFields = ({
     () => !suggestions.some(({ value }) => value === goal.practices),
   );
   // The custom number lives in its own card, so choosing it never adds a field to the dialog.
+  const [needsDay, setNeedsDay] = useState(false);
   const [customValue, setCustomValue] = useState(() => (custom ? goal.practices : 4));
   const preset = custom
     ? "custom"
@@ -122,15 +124,17 @@ export const StudyGoalFields = ({
             <Button
               aria-pressed={goal.days[index]}
               className="px-0"
-              // At least one study day: the last one cannot be turned off.
-              disabled={goal.days[index] && goal.days.filter(Boolean).length === 1}
               key={day}
-              onClick={() =>
-                onChange({
-                  ...goal,
-                  days: goal.days.map((value, at) => (at === index ? !value : value)),
-                })
-              }
+              onClick={() => {
+                // The last study day stays on, and the line below says why.
+                const last = goal.days[index] && goal.days.filter(Boolean).length === 1;
+                setNeedsDay(last);
+                if (!last)
+                  onChange({
+                    ...goal,
+                    days: goal.days.map((value, at) => (at === index ? !value : value)),
+                  });
+              }}
               size="sm"
               type="button"
               variant={goal.days[index] ? "default" : "outline"}
@@ -139,13 +143,17 @@ export const StudyGoalFields = ({
             </Button>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">
-          Os dias de folga não contam contra a sua semana.
+        <p
+          aria-live="polite"
+          className={cn("text-xs", needsDay ? "text-foreground" : "text-muted-foreground")}
+        >
+          {needsDay
+            ? "Escolha pelo menos um dia de estudo."
+            : "O brilho conta só os dias de estudo."}
         </p>
       </div>
       <p className="rounded-[var(--radius)] bg-muted/60 px-3 py-2.5 text-xs text-muted-foreground">
-        Uma prática conta ao terminar ou depois de 20 respostas, o que vier primeiro. Um dia sem
-        nada para praticar conta como cumprido.
+        Uma prática conta ao terminar ou na 20ª resposta.
       </p>
     </div>
   );
@@ -173,9 +181,7 @@ export const StudyGoalDialog = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Editar meta diária</DialogTitle>
-          <DialogDescription>
-            O que conta como um dia estudado para a sua pedra. Vale de hoje em diante.
-          </DialogDescription>
+          <DialogDescription>O que conta como um dia estudado para a sua pedra.</DialogDescription>
         </DialogHeader>
         <StudyGoalFields goal={draft} onChange={setDraft} />
         <DialogFooter>

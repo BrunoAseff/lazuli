@@ -1,9 +1,7 @@
 import {
   STONE_LEVELS,
-  STONE_SHINE_DAYS,
   nextStoneLevel,
   stoneLevelByNumber,
-  stoneShine,
   type StoneDay,
   type StoneResponse,
 } from "@lazuli/shared";
@@ -27,6 +25,7 @@ import {
   goalDaysText,
   goalText,
   goldBar,
+  keptText,
   levelTitle,
   MasteryLine,
   StoneGem,
@@ -299,42 +298,44 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
 /* Goal ----------------------------------------------------------------------------------------- */
 
 /**
- * The shine, made visible: four facets, one lit per studied day of the last seven, dashed for the
- * ones a chosen day off excuses, and one short line with the rule.
+ * The shine is the goal kept: one facet per study day of the last seven, lit when the goal was
+ * kept. The count beside it is all the text it needs.
  */
 const ShineMeter = ({ stone }: { stone: StoneResponse }) => {
-  const shine = stoneShine(stone.week);
-  const lit = Math.min(shine.studied, shine.needed);
-  const missing = shine.needed - lit;
-  const state = stone.paused ? "pausado" : !missing ? "total" : lit ? "parcial" : "fosco";
+  const days = stone.week.filter(
+    ({ status, studyDay }) => studyDay && ["met", "free", "missed"].includes(status),
+  );
   return (
     <div className="grid gap-2.5">
-      <div className="flex items-baseline justify-between gap-3 text-xs">
-        <span className="text-foreground">Brilho da pedra</span>
-        <span className="text-muted-foreground">{state}</span>
-      </div>
-      <div className="flex items-center gap-4">
-        <ol
-          aria-label={`${lit} de ${shine.needed} dias para o brilho total`}
-          className="flex gap-1.5"
-        >
-          {Array.from({ length: STONE_SHINE_DAYS }, (_, index) => (
-            <li className="grid size-5 place-items-center" key={index}>
-              {index >= shine.needed ? (
-                <span className="size-2.5 rounded-full border border-dashed border-muted-foreground/45" />
-              ) : (
-                <Facet
-                  state={index < lit ? "active" : "idle"}
-                  style={{ "--facet-size": "0.875rem" } as CSSProperties}
-                />
-              )}
-            </li>
-          ))}
-        </ol>
+      <p className="text-xs text-foreground">Brilho da pedra</p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {days.length > 0 && (
+          <ol className="flex gap-1.5">
+            {days.map((day) => {
+              const tip = dayTip(day);
+              return (
+                <li key={day.date}>
+                  <Tip detail={tip.detail} title={tip.title}>
+                    <button
+                      aria-label={`${tip.title}: ${tip.detail}`}
+                      className="grid size-5 place-items-center rounded-[0.3125rem] outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      type="button"
+                    >
+                      <Facet
+                        state={studied(day) ? "active" : "idle"}
+                        style={{ "--facet-size": "0.875rem" } as CSSProperties}
+                      />
+                    </button>
+                  </Tip>
+                </li>
+              );
+            })}
+          </ol>
+        )}
         <p className="text-xs text-muted-foreground">
           {stone.paused
             ? "Volta a contar quando você tiver flashcards ou questões."
-            : `Brilho total com ${shine.needed} ${shine.needed === 1 ? "dia estudado" : "dias estudados"} em 7${missing ? ` · ${missing === 1 ? "falta 1" : `faltam ${missing}`}` : ""}${shine.excused ? " (folgas contam a menos)" : ""}`}
+            : `${keptText(stone)}.`}
         </p>
       </div>
     </div>
@@ -397,7 +398,7 @@ const History = ({ days }: { days: StoneDay[] }) => {
 
       {/* Room around the grid, so a day growing under the pointer never makes it scroll. */}
       <div className="-m-1.5 max-w-full min-w-0 overflow-x-auto p-1.5 xl:max-w-none xl:min-w-max xl:overflow-visible">
-        <div className="flex w-max gap-1.5">
+        <div className="flex w-max min-w-full justify-between gap-1.5">
           <div className="grid grid-rows-[0.875rem_repeat(7,1rem)] gap-1 pr-1 text-[0.6875rem] text-muted-foreground">
             <span />
             {initials.map((initial, index) => (

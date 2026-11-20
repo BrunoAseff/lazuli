@@ -23,8 +23,8 @@ export const StudyGoalSettings = () => {
       title="Meta diária"
     >
       <p className="max-w-xl text-sm text-muted-foreground">
-        O que conta como um dia estudado para a sua pedra. Com menos de 4 dias estudados na semana,
-        ela perde o brilho; os dias de folga não contam.
+        O que conta como um dia estudado. A pedra brilha conforme você cumpre a meta nos seus dias
+        de estudo.
       </p>
       <StudyGoalDialog goal={stone.data.goal} onOpenChange={setEditing} open={editing} />
     </SettingsSurface>

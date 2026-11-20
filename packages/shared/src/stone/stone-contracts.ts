@@ -32,8 +32,6 @@ export const MASTERED_FLASHCARD_DAYS = 21;
 export const MASTERED_QUESTION_DAYS = 2;
 /** A practice counts for the goal when it ends, or after this many answers. */
 export const GOAL_PRACTICE_ANSWERS = 20;
-/** Fewer studied days than this in the last seven dull the stone (days off excepted). */
-export const STONE_SHINE_DAYS = 4;
 
 export const STUDY_GOAL_MIN = 1;
 export const STUDY_GOAL_MAX = 10;
@@ -69,6 +67,8 @@ export const stoneDayStatusSchema = z.enum(["met", "missed", "off", "free", "ope
 
 export const stoneDaySchema = z.object({
   date: z.iso.date(),
+  /** A study day of the goal (not a day off), whatever happened on it. */
+  studyDay: z.boolean(),
   practices: z.number().int().nonnegative(),
   status: stoneDayStatusSchema,
 });
@@ -90,7 +90,9 @@ export const stoneResponseSchema = z.object({
   paused: z.boolean(),
   /** 0 (full shine) to 1 (dull), from the studied days of the last seven. */
   dull: z.number().min(0).max(1),
-  studiedDays: z.number().int().min(0).max(7),
+  /** Study days of the last seven that kept the goal, out of the study days that are over. */
+  keptDays: z.number().int().min(0).max(7),
+  plannedDays: z.number().int().min(0).max(7),
   goal: studyGoalSchema,
   today: stoneDaySchema,
   week: z.array(stoneDaySchema).length(7),
@@ -134,14 +136,14 @@ export const DEFAULT_STUDY_GOAL: StudyGoal = {
 };
 
 /**
- * The shine of the last seven days: the stone shines with STONE_SHINE_DAYS studied days, and each
- * day off the person chose excuses one. Days before the account are not excused: one rule, said
- * the same way everywhere. Today counts once it is studied.
+ * The shine is the goal itself: of the study days in the last seven (today once it is kept), how
+ * many kept the goal. Days off (even studied ones) and days before the account do not count.
  */
-export const stoneShine = (week: Array<Pick<StoneDay, "status">>) => {
-  const studied = week.filter(({ status }) => status === "met" || status === "free").length;
-  const daysOff = week.filter(({ status }) => status === "off").length;
-  const needed = Math.max(0, Math.min(STONE_SHINE_DAYS, week.length - daysOff));
-  const dull = needed ? Math.max(0, Math.min(1, (needed - studied) / needed)) : 0;
-  return { studied, needed, excused: STONE_SHINE_DAYS - needed, dull };
+export const stoneShine = (week: Array<Pick<StoneDay, "status" | "studyDay">>) => {
+  const days = week.filter(
+    ({ status, studyDay }) => studyDay && ["met", "free", "missed"].includes(status),
+  );
+  const kept = days.filter(({ status }) => status === "met" || status === "free").length;
+  const planned = days.length;
+  return { kept, planned, dull: planned ? 1 - kept / planned : 0 };
 };

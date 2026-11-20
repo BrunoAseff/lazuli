@@ -46,6 +46,7 @@ const exampleWeek = [
   date: date as string,
   practices: practices as number,
   status: status as StoneDay["status"],
+  studyDay: status !== "off",
 }));
 const exampleStone: StoneResponse = {
   level: 3,
@@ -53,7 +54,8 @@ const exampleStone: StoneResponse = {
   notMastered: 40,
   paused: false,
   dull: 0,
-  studiedDays: 4,
+  keptDays: 4,
+  plannedDays: 5,
   goal: { counts: "both", practices: 2, days: [true, true, true, true, true, false, true] },
   today: exampleWeek.at(-1)!,
   week: exampleWeek,

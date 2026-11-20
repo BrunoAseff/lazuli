@@ -43,8 +43,9 @@ const counts = (goal: StudyGoal, kind: PracticeEvent["kind"]) =>
   goal.counts === "both" || goal.counts === kind;
 
 /**
- * Every day from `from` to `today` with its status, each judged by the goal in force that day:
- * met with enough practices, free when there was nothing to practice, off on a day off.
+ * Every day from `from` to `today` with its status, all judged by the current goal, so editing the
+ * goal shows at once: met with enough practices, free when there was nothing to practice, off on
+ * a day off.
  */
 export const buildStoneDays = ({
   accountDay,
@@ -63,8 +64,8 @@ export const buildStoneDays = ({
 }): StoneDay[] => {
   const available = new Map(availability.map((item) => [item.date, item]));
   const days: StoneDay[] = [];
+  const goal = goalOn(goals, today);
   for (let date = from; date <= today; date = shiftDateKey(date, 1)) {
-    const goal = goalOn(goals, date);
     const practices = events.filter(
       (event) => event.day === date && counts(goal, event.kind),
     ).length;
@@ -85,16 +86,13 @@ export const buildStoneDays = ({
               : date === today
                 ? "open"
                 : "missed";
-    days.push({ date, practices, status });
+    days.push({ date, practices, status, studyDay: goal.days[weekdayOf(date)] ?? true });
   }
   return days;
 };
 
 /** Studied days of the last seven, and the days that could have been studied. */
-export const weekShine = (week: StoneDay[]) => {
-  const { dull, studied } = stoneShine(week);
-  return { studied, dull };
-};
+export const weekShine = (week: StoneDay[]) => stoneShine(week);
 
 const readGoals = async (database: Database, userId: string): Promise<GoalVersion[]> => {
   const rows = await database
@@ -289,7 +287,7 @@ export const getStone = async (
   const levels = await syncLevels(database, userId, everMastered, now);
   const history = buildStoneDays({ accountDay, availability, events, from, goals, today });
   const week = history.slice(-7);
-  const { dull, studied } = weekShine(week);
+  const { dull, kept, planned } = weekShine(week);
   const goal = goalOn(goals, today);
   const level = Math.max(1, ...levels.map((item) => item.level));
   const totals = current.reduce(
@@ -318,7 +316,8 @@ export const getStone = async (
     notMastered: totals.total - totals.mastered,
     paused,
     dull,
-    studiedDays: studied,
+    keptDays: kept,
+    plannedDays: planned,
     goal,
     today: history.at(-1)!,
     week,

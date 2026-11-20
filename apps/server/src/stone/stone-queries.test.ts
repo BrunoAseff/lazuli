@@ -55,16 +55,23 @@ describe("buildStoneDays", () => {
       ],
       today: "2026-11-17",
     });
-    expect(day).toEqual({ date: "2026-11-16", practices: 0, status: "missed" });
+    expect(day).toEqual({ date: "2026-11-16", practices: 0, status: "missed", studyDay: true });
   });
 
-  it("keeps past days under the goal they had", () => {
+  it("judges every day by the current goal, so an edit shows at once", () => {
     const goals = [
-      { effectiveFrom: "2026-11-01", ...DEFAULT_STUDY_GOAL, practices: 1 },
-      { effectiveFrom: "2026-11-17", ...DEFAULT_STUDY_GOAL, practices: 3 },
+      { effectiveFrom: "2026-11-01", ...DEFAULT_STUDY_GOAL, practices: 3 },
+      { effectiveFrom: "2026-11-17", ...DEFAULT_STUDY_GOAL, practices: 1 },
     ];
-    expect(goalOn(goals, "2026-11-16").practices).toBe(1);
-    expect(goalOn(goals, "2026-11-17").practices).toBe(3);
+    const [day] = buildStoneDays({
+      accountDay: "2026-01-01",
+      availability: [available("2026-11-16")],
+      events: [{ day: "2026-11-16", kind: "flashcards" }],
+      from: "2026-11-16",
+      goals,
+      today: "2026-11-17",
+    });
+    expect(day?.status).toBe("met");
     expect(goalOn([], "2026-11-17")).toEqual(DEFAULT_STUDY_GOAL);
   });
 });
@@ -74,35 +81,30 @@ describe("weekShine", () => {
     date: "2026-11-16",
     practices: 0,
     status,
+    studyDay: status !== "off",
+  });
+  const week = (statuses: StoneDayStatus[]) => weekShine(statuses.map(day));
+
+  it("is the share of study days that kept the goal", () => {
+    expect(week(["met", "met", "free", "missed", "off", "off", "open"])).toEqual({
+      kept: 3,
+      planned: 4,
+      dull: 0.25,
+    });
   });
 
-  it("shines with four studied days and dulls with fewer", () => {
-    expect(
-      weekShine(
-        (["met", "met", "free", "met", "missed", "missed", "open"] as StoneDayStatus[]).map(day),
-      ),
-    ).toEqual({
-      studied: 4,
+  it("counts neither days off, days before the account nor today while open", () => {
+    expect(week(["none", "none", "off", "met", "off", "off", "open"])).toEqual({
+      kept: 1,
+      planned: 1,
       dull: 0,
     });
-    expect(
-      weekShine(
-        (["met", "missed", "missed", "missed", "missed", "missed", "open"] as StoneDayStatus[]).map(
-          day,
-        ),
-      ),
-    ).toEqual({ studied: 1, dull: 0.75 });
-  });
-
-  it("asks fewer days when most are days off, and the same of a new account", () => {
-    expect(
-      weekShine((["off", "off", "off", "off", "met", "met", "off"] as StoneDayStatus[]).map(day))
-        .dull,
-    ).toBe(0);
-    expect(
-      weekShine(
-        (["none", "none", "none", "none", "none", "none", "open"] as StoneDayStatus[]).map(day),
-      ).dull,
-    ).toBe(1);
+    expect(week(["none", "none", "none", "none", "none", "none", "open"]).dull).toBe(0);
+    // Studying on a day off shows as studied, but does not add a study day.
+    expect(weekShine([{ ...day("met"), studyDay: false }, day("missed")])).toEqual({
+      kept: 0,
+      planned: 1,
+      dull: 1,
+    });
   });
 });

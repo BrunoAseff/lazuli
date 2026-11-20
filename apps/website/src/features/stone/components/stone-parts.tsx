@@ -60,22 +60,30 @@ export const goalDaysText = (goal: StudyGoal) =>
     ? "todos os dias"
     : weekdays.filter((_, index) => goal.days[index]).join(", ");
 
+/** The study days of the last seven: lit when the goal was kept. */
 export const WeekFacets = ({ week }: { week: StoneDay[] }) => (
   <span aria-hidden="true" className="flex items-center gap-1">
-    {week.map((day) => (
-      <Facet
-        key={day.date}
-        state={day.status === "met" || day.status === "free" ? "active" : "idle"}
-        style={{ "--facet-size": "0.4375rem" } as CSSProperties}
-      />
-    ))}
+    {week
+      .filter(({ status, studyDay }) => studyDay && ["met", "free", "missed"].includes(status))
+      .map((day) => (
+        <Facet
+          key={day.date}
+          state={day.status === "missed" ? "idle" : "active"}
+          style={{ "--facet-size": "0.4375rem" } as CSSProperties}
+        />
+      ))}
   </span>
 );
+
+export const keptText = (stone: StoneResponse) =>
+  stone.plannedDays
+    ? `${stone.keptDays} de ${stone.plannedDays} ${stone.plannedDays === 1 ? "dia de estudo" : "dias de estudo"} nos últimos 7`
+    : "Nenhum dia de estudo nos últimos 7";
 
 export const WeekLine = ({ stone }: { stone: StoneResponse }) => (
   <div className="flex items-center gap-2 text-xs whitespace-nowrap text-foreground">
     <WeekFacets week={stone.week} />
-    {stone.studiedDays} {stone.studiedDays === 1 ? "dia estudado" : "dias estudados"} nos últimos 7
+    {keptText(stone)}
   </div>
 );
 
