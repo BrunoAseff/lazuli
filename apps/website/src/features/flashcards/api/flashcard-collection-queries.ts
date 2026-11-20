@@ -3,7 +3,8 @@ import type {
   FlashcardCollectionListQuery,
   UpdateFlashcardCollectionInput,
 } from "@lazuli/shared";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { refreshNavigation } from "@/lib/refresh-navigation.ts";
 
 import { useInvalidateQueryKey } from "@/hooks/use-invalidate-query-key.ts";
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
@@ -31,7 +32,8 @@ export const useFlashcardCollections = (input: FlashcardCollectionListQuery, ena
 const useInvalidateCollections = () => {
   const collections = useInvalidateQueryKey(flashcardCollectionKeys.lists());
   const metrics = useInvalidateQueryKey(QUERY_KEY_ROOTS.studyMetrics);
-  return () => Promise.all([collections(), metrics()]);
+  const client = useQueryClient();
+  return () => Promise.all([collections(), metrics(), refreshNavigation(client)]);
 };
 
 export const useCreateFlashcardCollection = () => {

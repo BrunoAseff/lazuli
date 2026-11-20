@@ -186,10 +186,30 @@ export const ReferenceManager = ({
   }
   return (
     <section className="grid grid-cols-[minmax(0,1fr)] gap-2 pt-4 pb-2">
-      {/* Laid out like the collection field above: label, current state, then the action. */}
-      <h3 className="text-sm font-medium" data-field-label>
-        {count ? `Fontes · ${count}` : "Fontes"}
-      </h3>
+      {/* Laid out like the collection field above: the label with its action on the right. */}
+      <div className="flex min-h-6 items-center justify-between gap-3">
+        <h3 className="text-sm font-medium" data-field-label>
+          {count ? `Fontes · ${count}` : "Fontes"}
+        </h3>
+        {!disabled && (
+          <Button
+            onClick={() => (count ? setManagerOpen(true) : setPickerOpen(true))}
+            size="xs"
+            type="button"
+            variant="outline"
+          >
+            {count ? (
+              <>
+                <PencilIcon aria-hidden="true" /> Editar
+              </>
+            ) : (
+              <>
+                <PlusIcon aria-hidden="true" /> Conectar
+              </>
+            )}
+          </Button>
+        )}
+      </div>
       {references.isPending ? (
         <p className="text-sm text-muted-foreground">Carregando fontes…</p>
       ) : count ? (
@@ -213,29 +233,8 @@ export const ReferenceManager = ({
       ) : (
         <p className="text-sm text-muted-foreground">Nenhum documento conectado.</p>
       )}
-      {/* Unsaved material: the reason takes the action's place, where it would be looked for. */}
-      {disabled ? (
-        <p className="text-xs text-muted-foreground">Salve para conectar documentos.</p>
-      ) : (
-        // A bordered small button, like "Ver no documento": clearly an action, never loose text.
-        <Button
-          className="w-fit"
-          onClick={() => (count ? setManagerOpen(true) : setPickerOpen(true))}
-          size="xs"
-          type="button"
-          variant="outline"
-        >
-          {count ? (
-            <>
-              <PencilIcon aria-hidden="true" /> Editar fontes
-            </>
-          ) : (
-            <>
-              <PlusIcon aria-hidden="true" /> Conectar documento
-            </>
-          )}
-        </Button>
-      )}
+      {/* Unsaved material: the reason, under the label where the action would be. */}
+      {disabled && <p className="text-xs text-muted-foreground">Salve para conectar documentos.</p>}
       {references.isError && (
         <p className="text-xs text-destructive">Não foi possível carregar as fontes.</p>
       )}

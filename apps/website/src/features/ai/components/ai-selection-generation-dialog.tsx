@@ -763,12 +763,11 @@ export const AiSelectionGenerationDialog = ({
                 <Button
                   className="w-full min-w-0 shrink sm:w-auto"
                   disabled={
-                    createGeneration.isPending ||
-                    !collectionId ||
-                    balance.data === undefined ||
-                    balance.data.available < cost
+                    !collectionId || balance.data === undefined || balance.data.available < cost
                   }
                   onClick={() => void requestGeneration()}
+                  pending={createGeneration.isPending}
+                  pendingLabel="Iniciando"
                 >
                   Gerar propostas
                 </Button>
