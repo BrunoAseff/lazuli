@@ -130,6 +130,12 @@ const FlashcardEditor = ({
     };
   }, []);
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  // A new flashcard starts with the cursor in its question, once the dialog or panel has rendered.
+  useEffect(() => {
+    if (!open || card || readOnly) return;
+    const timer = window.setTimeout(() => question.focus(), 60);
+    return () => window.clearTimeout(timer);
+  }, [card, open, question, readOnly]);
 
   const isPending = create.isPending || update.isPending;
   const requestClose = () => {

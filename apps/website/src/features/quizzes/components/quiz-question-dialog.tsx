@@ -127,6 +127,12 @@ const QuizQuestionEditor = ({
     [],
   );
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  // A new question starts with the cursor in it, once the dialog or panel has rendered.
+  useEffect(() => {
+    if (!open || question || readOnly) return;
+    const timer = window.setTimeout(() => editor.focus(), 60);
+    return () => window.clearTimeout(timer);
+  }, [editor, open, question, readOnly]);
   const optionsValid = useMemo(() => quizOptionsAreValid(options), [options]);
   const requestClose = () => {
     if (presentation === "panel") return;
