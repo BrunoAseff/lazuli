@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useLocation } from "react-router";
 
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 import {
@@ -87,16 +86,13 @@ export const VerifyEmailPage = () => {
         {feedback && <AuthFeedback kind={feedback.kind}>{feedback.message}</AuthFeedback>}
 
         <AuthSubmitButton
-          disabled={!form.formState.isValid || form.formState.isSubmitting || cooldown > 0}
+          disabled={!form.formState.isValid || cooldown > 0}
+          pending={form.formState.isSubmitting}
+          pendingLabel="Enviando"
           type="submit"
           variant="outline"
         >
-          {form.formState.isSubmitting && <Spinner aria-hidden="true" />}
-          {form.formState.isSubmitting
-            ? "Enviando…"
-            : cooldown > 0
-              ? `Reenviar em ${cooldown}s`
-              : "Reenviar e-mail"}
+          {cooldown > 0 ? `Reenviar em ${cooldown}s` : "Reenviar e-mail"}
         </AuthSubmitButton>
       </form>
 

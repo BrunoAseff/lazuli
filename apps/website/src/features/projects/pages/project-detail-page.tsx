@@ -150,8 +150,8 @@ export const ProjectDetailPage = () => {
                         Importar documento
                       </Button>
                       <Button
-                        disabled={createItem.isPending}
                         onClick={() => void createBlankDocument()}
+                        pending={createItem.isPending}
                       >
                         <FilePlus2Icon />
                         Criar documento em branco

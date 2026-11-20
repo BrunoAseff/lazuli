@@ -81,8 +81,8 @@ export function StudyAnswerChoice({
   );
 }
 
-/** The same anatomy after the attempt, marked on the text itself: the right answer takes a green
- * stroke of pigment, a wrong pick is struck through in red, each with its glyph in the seal's place. */
+/** The same anatomy after the attempt: the right answer takes a green check and its note, its text
+ * left plain to read; a wrong pick is struck through in red. Each glyph sits in the seal's place. */
 export function StudyAnswerOutcome({
   text,
   index,
@@ -94,7 +94,7 @@ export function StudyAnswerOutcome({
   index: number;
   correct: boolean;
   selected: boolean;
-  /** Play the one-time outcome motion (the pigment sweeps in on the right answer, a wrong pick shakes). */
+  /** Play the one-time outcome motion (a wrong pick shakes). */
   reveal?: boolean;
 }) {
   const outcome: Outcome | undefined = correct ? "correct" : selected ? "incorrect" : undefined;

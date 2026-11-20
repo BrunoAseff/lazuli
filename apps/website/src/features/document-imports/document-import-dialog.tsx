@@ -152,7 +152,9 @@ export const DocumentImportDialog = ({
             Cancelar
           </DialogCancelButton>
           <Button
-            disabled={submitting || !files.length || files.some((item) => !item.title.trim())}
+            disabled={!files.length || files.some((item) => !item.title.trim())}
+            pending={submitting}
+            pendingLabel="Enviando"
             onClick={async () => {
               setSubmitting(true);
               try {
@@ -169,11 +171,9 @@ export const DocumentImportDialog = ({
             }}
           >
             <UploadCloudIcon />
-            {submitting
-              ? "Enviando…"
-              : files.length
-                ? `Importar ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}`
-                : "Importar arquivos"}
+            {files.length
+              ? `Importar ${files.length} ${files.length === 1 ? "arquivo" : "arquivos"}`
+              : "Importar arquivos"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -169,6 +169,7 @@ export const LegalGate = ({ children, userId }: { children: ReactNode; userId: s
               </Button>
               <Button
                 pending={mutation.isPending}
+                pendingLabel="Salvando"
                 disabled={
                   !checked || status.isError || Boolean(versionChanged) || mutation.isPending
                 }

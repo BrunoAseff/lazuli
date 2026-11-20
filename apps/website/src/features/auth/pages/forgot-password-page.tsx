@@ -5,7 +5,6 @@ import { EnvelopeSimpleIcon } from "@/components/icons.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { forgotPasswordSchema, type ForgotPasswordValues } from "@/features/auth/auth-schemas.ts";
 import { AuthFormHeader } from "@/features/auth/components/auth-form-header.tsx";
@@ -72,15 +71,12 @@ export const ForgotPasswordPage = () => {
         {errorMessage && <AuthFeedback kind="error">{errorMessage}</AuthFeedback>}
 
         <AuthSubmitButton
-          disabled={!form.formState.isValid || form.formState.isSubmitting || cooldown > 0}
+          disabled={!form.formState.isValid || cooldown > 0}
+          pending={form.formState.isSubmitting}
+          pendingLabel="Enviando"
           type="submit"
         >
-          {form.formState.isSubmitting && <Spinner aria-hidden="true" />}
-          {form.formState.isSubmitting
-            ? "Enviando…"
-            : cooldown > 0
-              ? `Enviar novamente em ${cooldown}s`
-              : "Enviar link"}
+          {cooldown > 0 ? `Enviar novamente em ${cooldown}s` : "Enviar link"}
         </AuthSubmitButton>
       </form>
 

@@ -1,5 +1,5 @@
 import type { CreateAccountExportInput, DeleteAccountInput } from "@lazuli/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import {
@@ -86,3 +86,27 @@ export const useRequestAccountExport = () =>
 
 export const useDeleteAccount = () =>
   useMutation({ mutationFn: (input: DeleteAccountInput) => deleteAccount(input) });
+
+/**
+ * Everything the settings sections read, fetched as soon as Settings opens, so switching tabs
+ * shows the section instead of waiting for it.
+ */
+export const prefetchAccountSettings = (client: QueryClient) =>
+  Promise.allSettled([
+    client.prefetchQuery({
+      queryKey: accountSettingsKeys.profile(),
+      queryFn: ({ signal }) => fetchAccountProfile(signal),
+    }),
+    client.prefetchQuery({
+      queryKey: accountSettingsKeys.capabilities(),
+      queryFn: ({ signal }) => fetchAuthCapabilities(signal),
+    }),
+    client.prefetchQuery({
+      queryKey: accountSettingsKeys.study(),
+      queryFn: ({ signal }) => fetchStudyPreference(signal),
+    }),
+    client.prefetchQuery({
+      queryKey: accountSettingsKeys.sessions(),
+      queryFn: ({ signal }) => fetchAccountSessions(signal),
+    }),
+  ]);

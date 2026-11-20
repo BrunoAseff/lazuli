@@ -7,8 +7,20 @@ import { spring } from "@/lib/motion.ts";
  * that differ rise from a soft blur, shared ones stay put, and the width follows on a spring.
  * Screen readers get the plain text once; the letters are decoration.
  */
-export const MorphText = ({ text, className }: { text: string; className?: string }) => {
-  const reduced = useReducedMotion();
+export const MorphText = ({
+  appear = false,
+  className,
+  force = false,
+  text,
+}: {
+  /** Morphs even with reduced motion on (for reviewing a moment). */
+  force?: boolean;
+  /** Letters rise in on mount too (for a label that replaces other content). */
+  appear?: boolean;
+  className?: string;
+  text: string;
+}) => {
+  const reduced = useReducedMotion() && !force;
   // Keyed by character and its occurrence, so a letter present before and after keeps its node.
   const seen = new Map<string, number>();
   // Grapheme-safe split, so accented letters and emoji stay whole.
@@ -23,7 +35,7 @@ export const MorphText = ({ text, className }: { text: string; className?: strin
     <motion.span layout="size" transition={spring.snap} className={className}>
       <span className="sr-only">{text}</span>
       <span aria-hidden="true" className="inline-flex whitespace-pre">
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence initial={appear} mode="popLayout">
           {letters.map(({ char, key }) => (
             <motion.span
               key={key}

@@ -47,8 +47,13 @@ export default function AccountOptionsPage() {
         <DataSectionPage />
         <SettingsSurface className="mt-4" title="Assinatura e suporte">
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" disabled={pending} onClick={() => void openPortal()}>
-              {pending ? "Abrindo…" : "Gerenciar assinatura"}
+            <Button
+              onClick={() => void openPortal()}
+              pending={pending}
+              pendingLabel="Abrindo"
+              variant="outline"
+            >
+              Gerenciar assinatura
             </Button>
             <Button variant="outline" asChild>
               <a href={`mailto:${LEGAL_CONTACT.email}`}>Falar com suporte</a>

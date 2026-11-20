@@ -1,8 +1,7 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -11,6 +10,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
+import { Button } from "@/components/ui/button.tsx";
 
 export const ConfirmationDialog = ({
   actionLabel,
@@ -24,6 +24,7 @@ export const ConfirmationDialog = ({
   onConfirm,
   onOpenChange,
   open,
+  pending = false,
   title,
 }: {
   actionLabel: ReactNode;
@@ -37,29 +38,40 @@ export const ConfirmationDialog = ({
   onConfirm: () => void | Promise<void>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  /** The action runs outside `onConfirm`'s promise (a mutation fired and left). */
+  pending?: boolean;
   title: ReactNode;
-}) => (
-  <AlertDialog open={open} onOpenChange={onOpenChange}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        {media && <AlertDialogMedia className={mediaClassName}>{media}</AlertDialogMedia>}
-        <AlertDialogTitle>{title}</AlertDialogTitle>
-        <AlertDialogDescription>{description}</AlertDialogDescription>
-      </AlertDialogHeader>
-      {children}
-      <AlertDialogFooter>
-        <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
-        <AlertDialogAction
-          disabled={disabled}
-          onClick={(event) => {
-            event.preventDefault();
-            void onConfirm();
-          }}
-          variant={destructive ? "destructive" : "default"}
-        >
-          {actionLabel}
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
-);
+}) => {
+  // While the confirmed action runs, its button says so ("Excluindo") instead of greying out.
+  const [running, setRunning] = useState(false);
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          {media && <AlertDialogMedia className={mediaClassName}>{media}</AlertDialogMedia>}
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        {children}
+        <AlertDialogFooter>
+          <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
+          <Button
+            disabled={disabled}
+            onClick={async () => {
+              setRunning(true);
+              try {
+                await onConfirm();
+              } finally {
+                setRunning(false);
+              }
+            }}
+            pending={running || pending}
+            variant={destructive ? "destructive" : "default"}
+          >
+            {actionLabel}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};

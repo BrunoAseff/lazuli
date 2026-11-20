@@ -39,8 +39,9 @@ export const BillingStatusNotice = () => {
         </p>
       </div>
       <Button
-        disabled={portal.isPending}
         onClick={() => portal.mutate()}
+        pending={portal.isPending}
+        pendingLabel="Abrindo"
         size="sm"
         variant="outline"
       >

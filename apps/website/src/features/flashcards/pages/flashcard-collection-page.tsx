@@ -739,7 +739,7 @@ const ArchiveConfirmation = ({
   <ConfirmationDialog
     actionLabel="Arquivar"
     description={description}
-    disabled={disabled}
+    pending={disabled}
     media={<ArchiveIcon />}
     onConfirm={onConfirm}
     onOpenChange={onOpenChange}
@@ -772,7 +772,7 @@ const DeleteDialogs = ({
       actionLabel="Excluir"
       description="O conteúdo e todo o histórico deste card serão excluídos definitivamente."
       destructive
-      disabled={batchPending}
+      pending={batchPending}
       media={<Trash2Icon />}
       open={Boolean(pendingDelete)}
       onOpenChange={(open) => !open && onPendingDeleteChange(null)}
@@ -783,7 +783,7 @@ const DeleteDialogs = ({
       actionLabel="Excluir"
       description="Os conteúdos e históricos selecionados serão excluídos definitivamente."
       destructive
-      disabled={batchPending}
+      pending={batchPending}
       media={<Trash2Icon />}
       onConfirm={onDeleteBatch}
       onOpenChange={onBatchDeleteOpenChange}

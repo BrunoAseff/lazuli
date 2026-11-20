@@ -112,9 +112,15 @@ const GenerateMore = ({
   return (
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger asChild>
-        <Button className="w-full" disabled={pending} size="sm" variant="outline">
-          {pending ? <CircleNotchIcon className="animate-spin" /> : <PlusIcon aria-hidden="true" />}
-          {pending ? `Gerando mais ${plural}…` : `Gerar mais ${plural}`}
+        <Button
+          className="w-full"
+          pending={pending}
+          pendingLabel={`Gerando mais ${plural}`}
+          size="sm"
+          variant="outline"
+        >
+          <PlusIcon aria-hidden="true" />
+          Gerar mais {plural}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -1034,8 +1040,9 @@ export const AiCollectionGenerationDialog = ({
           </Button>
           {draft ? (
             <Button
-              disabled={!selectedCount || invalid || approve.isPending}
+              disabled={!selectedCount || invalid}
               onClick={() => void save()}
+              pending={approve.isPending}
             >
               Salvar {studyItemCount(kind, selectedCount)}
             </Button>
@@ -1066,7 +1073,7 @@ export const AiCollectionGenerationDialog = ({
         actionLabel="Descartar"
         description="As propostas serão removidas. Os créditos já consumidos pela geração não serão devolvidos."
         destructive
-        disabled={discard.isPending}
+        pending={discard.isPending}
         onConfirm={async () => void (await discardDraft())}
         onOpenChange={setDiscardOpen}
         open={discardOpen}

@@ -1,6 +1,7 @@
 import type {
   CreateQuizAttemptInput,
   CreateQuizQuestionInput,
+  QuizAttempt,
   QuizQuestionListQuery,
   UpdateQuizQuestionInput,
 } from "@lazuli/shared";
@@ -110,12 +111,41 @@ export const useQuizAttempt = (attemptId: string) =>
     queryFn: ({ signal }) => fetchQuizAttempt(attemptId, signal),
     enabled: Boolean(attemptId),
   });
+/**
+ * Choosing an alternative shows at once: the cache takes the choice before the server answers,
+ * and goes back if it fails. Answers to one attempt are sent in order, and only the last one to
+ * settle writes the server's copy, so a quick change of mind never flickers.
+ */
 export const useAnswerQuizAttempt = (attemptId: string) => {
   const client = useQueryClient();
+  const key = quizKeys.attempt(attemptId);
+  const mutationKey = ["quiz-answer", attemptId];
   return useMutation({
+    mutationKey,
+    scope: { id: `quiz-answer:${attemptId}` },
     mutationFn: ({ itemId, optionId }: { itemId: string; optionId: string }) =>
       putQuizAnswer(attemptId, itemId, { optionId }),
-    onSuccess: (attempt) => client.setQueryData(quizKeys.attempt(attemptId), attempt),
+    onMutate: async ({ itemId, optionId }) => {
+      await client.cancelQueries({ queryKey: key });
+      const previous = client.getQueryData<QuizAttempt>(key);
+      if (previous?.status === "active")
+        client.setQueryData<QuizAttempt>(key, {
+          ...previous,
+          items: previous.items.map((item) =>
+            item.id === itemId ? { ...item, selectedOptionId: optionId } : item,
+          ),
+          answeredQuestions: previous.items.filter((item) =>
+            item.id === itemId ? true : Boolean(item.selectedOptionId),
+          ).length,
+        });
+      return { previous };
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previous) client.setQueryData(key, context.previous);
+    },
+    onSuccess: (attempt) => {
+      if (client.isMutating({ mutationKey }) <= 1) client.setQueryData(key, attempt);
+    },
   });
 };
 export const useCompleteQuizAttempt = (attemptId: string) => {

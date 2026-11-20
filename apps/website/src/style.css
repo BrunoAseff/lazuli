@@ -963,8 +963,9 @@
   --toast-tone: var(--warning);
 }
 /* The icon slot only places the facet; it is not a positioning box, so the time hairline spans
-   the whole toast. */
-[data-sonner-toast].lz-toast .lz-toast-icon {
+   the whole toast. Sonner's own rule for the slot has the same weight and, in a production
+   build, comes later: the toaster prefix makes ours win in any order. */
+[data-sonner-toaster] [data-sonner-toast].lz-toast .lz-toast-icon {
   position: static;
   width: auto;
   height: auto;

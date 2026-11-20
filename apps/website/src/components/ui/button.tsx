@@ -5,6 +5,7 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { buttonTransition } from "@/components/ui/ui-styles.ts";
 import { LoaderCircleIcon } from "@/components/icons.tsx";
+import { MorphText } from "@/components/motion/morph-text.tsx";
 
 const buttonVariants = cva(
   `group/button inline-flex shrink-0 items-center justify-center rounded-[var(--radius)] border border-transparent bg-clip-padding text-sm font-normal whitespace-nowrap outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/35 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45 aria-invalid:border-destructive aria-invalid:ring-2 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 ${buttonTransition}`,
@@ -44,19 +45,46 @@ const buttonVariants = cva(
   },
 );
 
+/** The plain text of a label, through icons and fragments. */
+const textOf = (node: React.ReactNode): string => {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join("");
+  if (React.isValidElement<{ children?: React.ReactNode }>(node))
+    return textOf(node.props.children);
+  return "";
+};
+
+/**
+ * The running form of an action label: labels start with a verb in the infinitive ("Salvar
+ * meta", "Excluir"), so "Salvando", "Excluindo". Nothing when the label does not start that way.
+ */
+export const pendingLabelFor = (label: string) => {
+  const verb = label.trim().split(/\s+/)[0] ?? "";
+  const match = /^(\p{L}{2,})([aei])r$/iu.exec(verb);
+  return match ? `${match[1]}${match[2]}ndo` : undefined;
+};
+
 function Button({
   className,
   variant = "default",
   size = "default",
   asChild = false,
   pending = false,
+  pendingLabel,
   children,
+  disabled,
+  onClick,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
-    /** Shows a spinner over the label without changing the button's width. */
+    /**
+     * The action is running. The button says so in words (`pendingLabel`, "Salvando"), keeps its
+     * focus and ignores further presses instead of greying out. Icon buttons show a spinner.
+     */
     pending?: boolean;
+    /** What the button is doing while pending, as a gerund: "Salvando", "Criando". */
+    pendingLabel?: string;
   }) {
   const Comp = asChild ? Slot.Root : "button";
 
@@ -67,27 +95,57 @@ function Button({
         data-variant={variant}
         data-size={size}
         className={cn(buttonVariants({ variant, size, className }))}
+        disabled={disabled}
+        onClick={onClick}
         {...props}
       >
         {children}
       </Comp>
     );
 
+  const iconOnly = typeof size === "string" && size.startsWith("icon");
+  pendingLabel ??= pendingLabelFor(textOf(children));
+  // While pending the label becomes the running verb, its letters rising in; idle, it is the
+  // plain label (no per-letter markup on every button).
+  const label =
+    pending && pendingLabel && !iconOnly ? <MorphText appear text={pendingLabel} /> : children;
+
   return (
     <Comp
       aria-busy={pending || undefined}
+      aria-disabled={pending || undefined}
+      data-pending={pending || undefined}
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }), pending && "relative")}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        pending && "cursor-progress",
+        pending && (iconOnly || !pendingLabel) && "relative",
+      )}
+      // While pending the button stays focusable and readable; presses are simply ignored.
+      disabled={pending ? false : disabled}
+      onClick={(event) => {
+        if (pending) {
+          event.preventDefault();
+          return;
+        }
+        onClick?.(event);
+      }}
       {...props}
     >
-      {/* display: contents keeps the original layout; hidden content still reserves its width. */}
-      <span style={{ display: "contents", visibility: pending ? "hidden" : undefined }}>
-        {children}
-      </span>
-      {pending && (
-        <LoaderCircleIcon aria-hidden="true" className="absolute inset-0 m-auto animate-spin" />
+      {iconOnly || !pendingLabel ? (
+        <>
+          {/* display: contents keeps the layout; hidden content still reserves its width. */}
+          <span style={{ display: "contents", visibility: pending ? "hidden" : undefined }}>
+            {children}
+          </span>
+          {pending && (
+            <LoaderCircleIcon aria-hidden="true" className="absolute inset-0 m-auto animate-spin" />
+          )}
+        </>
+      ) : (
+        label
       )}
     </Comp>
   );

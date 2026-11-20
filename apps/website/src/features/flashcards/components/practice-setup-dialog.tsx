@@ -163,6 +163,7 @@ export const PracticeSetupDialog = ({
                 </DialogCancelButton>
                 <Button
                   pending={create.isPending}
+                  pendingLabel="Preparando"
                   disabled={
                     availability.data?.archived ||
                     !availability.data?.totalAvailable ||
@@ -184,8 +185,8 @@ export const PracticeSetupDialog = ({
         onOpenChange={setConfirmRestart}
         title="Iniciar outra prática?"
         description="A prática atual será encerrada e não poderá ser retomada. As revisões já enviadas continuam no seu histórico."
-        actionLabel={create.isPending ? "Preparando…" : "Encerrar e iniciar outra"}
-        disabled={create.isPending}
+        actionLabel="Encerrar e iniciar outra"
+        pending={create.isPending}
         destructive
         onConfirm={() => start(true)}
       />

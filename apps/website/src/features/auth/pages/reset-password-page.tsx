@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useSearchParams } from "react-router";
 
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 import { resetPasswordSchema, type ResetPasswordValues } from "@/features/auth/auth-schemas.ts";
@@ -102,11 +101,12 @@ export const ResetPasswordPage = () => {
             {formError && <AuthFeedback kind="error">{formError}</AuthFeedback>}
 
             <AuthSubmitButton
-              disabled={!form.formState.isValid || form.formState.isSubmitting}
+              disabled={!form.formState.isValid}
+              pending={form.formState.isSubmitting}
+              pendingLabel="Salvando"
               type="submit"
             >
-              {form.formState.isSubmitting && <Spinner aria-hidden="true" />}
-              {form.formState.isSubmitting ? "Salvando…" : "Redefinir senha"}
+              Redefinir senha
             </AuthSubmitButton>
           </form>
         </>

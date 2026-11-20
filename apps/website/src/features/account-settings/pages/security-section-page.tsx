@@ -13,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 import { PasswordInput } from "@/features/auth/components/password-input.tsx";
@@ -399,22 +398,14 @@ export const SecuritySectionPage = () => {
       </Dialog>
 
       <ConfirmationDialog
-        actionLabel={
-          revokeSession.isPending || revokeOthers.isPending ? (
-            <>
-              <Spinner aria-hidden="true" /> Encerrando…
-            </>
-          ) : (
-            "Encerrar"
-          )
-        }
+        actionLabel="Encerrar"
         description={
           pendingSession === "others"
             ? "Todos os outros dispositivos precisarão entrar novamente. Esta sessão continuará ativa."
             : "Este dispositivo perderá o acesso à sua conta e precisará entrar novamente."
         }
         destructive
-        disabled={revokeSession.isPending || revokeOthers.isPending}
+        pending={revokeSession.isPending || revokeOthers.isPending}
         onConfirm={confirmSessionRevocation}
         onOpenChange={(open) => !open && setPendingSession(null)}
         open={Boolean(pendingSession)}

@@ -5,7 +5,6 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 import { loginSchema, type LoginValues } from "@/features/auth/auth-schemas.ts";
@@ -135,11 +134,11 @@ export const LoginPage = () => {
         )}
 
         <AuthSubmitButton
-          disabled={!form.formState.isValid || form.formState.isSubmitting}
+          disabled={!form.formState.isValid}
+          pending={form.formState.isSubmitting}
           type="submit"
         >
-          {form.formState.isSubmitting && <Spinner aria-hidden="true" />}
-          {form.formState.isSubmitting ? "Entrando…" : "Entrar"}
+          Entrar
         </AuthSubmitButton>
       </form>
 

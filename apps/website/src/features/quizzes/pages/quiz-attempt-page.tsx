@@ -250,7 +250,6 @@ export const QuizAttemptPage = () => {
                   text={option.text}
                   index={optionIndex}
                   selected={item.selectedOptionId === option.id}
-                  disabled={answer.isPending}
                   key={option.id}
                   onSelect={() => void select(option.id)}
                 />
@@ -411,7 +410,8 @@ const QuizResult = ({ attempt }: { attempt: Extract<QuizAttempt, { status: "comp
               <Link to={`/quizzes/${attempt.collectionId}`}>Voltar à coleção</Link>
             </Button>
             <Button
-              disabled={restart.isPending}
+              pending={restart.isPending}
+              pendingLabel="Iniciando"
               onClick={async () => {
                 const next = await restart.mutateAsync({
                   id: crypto.randomUUID(),

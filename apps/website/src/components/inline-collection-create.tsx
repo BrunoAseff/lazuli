@@ -77,10 +77,11 @@ export function InlineCollectionCreate({
         <Button
           size="sm"
           className="whitespace-normal"
-          disabled={!parsed.success || pending}
+          disabled={!parsed.success}
           onClick={() => void create()}
+          pending={pending}
         >
-          {pending ? "Criando…" : "Criar e selecionar"}
+          Criar e selecionar
         </Button>
       </div>
     </motion.div>

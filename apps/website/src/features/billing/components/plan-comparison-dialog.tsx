@@ -154,6 +154,7 @@ const PlanCard = ({
       </ul>
       <Button
         pending={loading}
+        pendingLabel="Abrindo"
         className="mt-auto w-full"
         disabled={disabled || !canSelectPlan(plan.code, summary)}
         onClick={() => onSelect(plan.code)}

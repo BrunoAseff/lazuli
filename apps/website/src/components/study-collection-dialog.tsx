@@ -146,7 +146,7 @@ export const StudyCollectionDialog = ({
               disabled={!form.formState.isValid || !changed || pending}
               type="submit"
             >
-              {pending ? "Salvando..." : collection ? "Salvar" : "Criar coleção"}
+              {collection ? "Salvar" : "Criar coleção"}
             </Button>
           </DialogFooter>
         </form>

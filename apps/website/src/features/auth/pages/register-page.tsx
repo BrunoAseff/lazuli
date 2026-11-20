@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { NewTabIndicator } from "@/components/new-tab-indicator.tsx";
 import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from "@lazuli/shared";
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { getAuthErrorMessage } from "@/features/auth/auth-messages.ts";
 import { registerSchema, type RegisterValues } from "@/features/auth/auth-schemas.ts";
@@ -135,11 +134,12 @@ export const RegisterPage = () => {
 
         <AuthSubmitButton
           className="mt-1"
-          disabled={!form.formState.isValid || form.formState.isSubmitting}
+          disabled={!form.formState.isValid}
+          pending={form.formState.isSubmitting}
+          pendingLabel="Criando conta"
           type="submit"
         >
-          {form.formState.isSubmitting && <Spinner aria-hidden="true" />}
-          {form.formState.isSubmitting ? "Criando conta…" : "Criar conta"}
+          Criar conta
         </AuthSubmitButton>
       </form>
 

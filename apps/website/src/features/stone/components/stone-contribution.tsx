@@ -5,57 +5,50 @@ import {
   type StoneSessionKind,
 } from "@lazuli/shared";
 import { motion, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { motionTokens } from "@/components/arc/motion-tokens.ts";
 
-import { CutGem } from "@/components/brand/cut-gem.tsx";
 import { ForwardLink } from "@/components/nav-link.tsx";
 import { useStoneContribution } from "../api/stone-queries.ts";
-import { FillingProgress, goldBar, levelTitle } from "./stone-parts.tsx";
+import { LevelUpDialog } from "./level-up-dialog.tsx";
+import { FillingProgress, goldBar } from "./stone-parts.tsx";
 
 /* What a practice or quiz added, shown in its summary: the goal of today and the mastery. */
 
-const useTween = (from: number, to: number, duration = 1100, delay = 250) => {
-  const [value, setValue] = useState(from);
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setValue(to);
-      return;
-    }
-    let frame = 0;
-    const start = performance.now() + delay;
-    const step = (now: number) => {
-      const t = Math.min(1, Math.max(0, (now - start) / duration));
-      setValue(from + (to - from) * (1 - (1 - t) ** 3));
-      if (t < 1) frame = requestAnimationFrame(step);
-    };
-    frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
-  }, [delay, duration, from, to]);
-  return value;
-};
+const shownKey = (kind: StoneSessionKind, id: string) => `lazuli:level-up:${kind}:${id}`;
 
-const RisingStone = ({ from, to }: { from: number; to: number }) => {
-  const cut = useTween(stoneLevelByNumber(from).cut, stoneLevelByNumber(to).cut);
-  return <CutGem cut={cut} size={72} />;
-};
-
-/** The level-up notice, at the top of the summary: the stone takes its new cut. */
+/**
+ * The level-up moment, over the summary of the session that raised the level: it opens by itself,
+ * once per session (coming back to the summary does not replay it).
+ */
 export const StoneLevelUp = ({ id, kind }: { id: string; kind: StoneSessionKind }) => {
   const contribution = useStoneContribution(kind, id);
   const data = contribution.data;
-  if (!data || data.level <= data.levelBefore) return null;
+  const [closed, setClosed] = useState(() => {
+    try {
+      return window.sessionStorage.getItem(shownKey(kind, id)) === "1";
+    } catch {
+      return false;
+    }
+  });
+  if (!data || data.level <= data.levelBefore || closed) return null;
   return (
-    <div className="mb-6 flex items-center gap-5 border-b pb-6" role="status">
-      <RisingStone from={data.levelBefore} to={data.level} />
-      <div className="min-w-0">
-        <p className="font-heading text-xl leading-snug">{levelTitle(data.level)}</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {data.mastered} itens dominados. A pedra ganhou mais um corte.
-        </p>
-      </div>
-    </div>
+    <LevelUpDialog
+      from={data.levelBefore}
+      mastered={data.mastered}
+      onOpenChange={(open) => {
+        if (open) return;
+        try {
+          window.sessionStorage.setItem(shownKey(kind, id), "1");
+        } catch {
+          // Without storage, it could show again on a later visit to this summary.
+        }
+        setClosed(true);
+      }}
+      open
+      to={data.level}
+    />
   );
 };
 

@@ -4,6 +4,8 @@ import { ShieldCheckIcon } from "@/components/icons.tsx";
 import { UserCircleIcon } from "@/components/icons.tsx";
 import { PaletteIcon } from "@/components/icons.tsx";
 import { HardDriveIcon } from "@/components/icons.tsx";
+import { useQueryClient } from "@tanstack/react-query";
+import { Suspense, useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 
 import { ContentPage } from "@/components/content-page.tsx";
@@ -15,6 +17,19 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { cn } from "@/lib/utils.ts";
+import { prefetchAccountSettings } from "../api/account-settings-queries.ts";
+import { SettingsLoading } from "../components/settings-ui.tsx";
+
+/** The sections' code, loaded together when Settings opens (the same modules the routes use). */
+const preloadSections = () =>
+  Promise.allSettled([
+    import("./account-section-page.tsx"),
+    import("./security-section-page.tsx"),
+    import("./study-section-page.tsx"),
+    import("./appearance-section-page.tsx"),
+    import("./usage-section-page.tsx"),
+    import("./data-section-page.tsx"),
+  ]);
 
 const sections = [
   { Icon: UserCircleIcon, label: "Conta", path: "/settings/account" },
@@ -29,6 +44,11 @@ export const AccountSettingsLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const current = sections.find(({ path }) => location.pathname === path) ?? sections[0];
+  const client = useQueryClient();
+  useEffect(() => {
+    void preloadSections();
+    void prefetchAccountSettings(client);
+  }, [client]);
 
   return (
     <ContentPage maxWidth="5xl">
@@ -71,7 +91,9 @@ export const AccountSettingsLayout = () => {
         </nav>
 
         <main className="min-w-0 max-w-2xl">
-          <Outlet />
+          <Suspense fallback={<SettingsLoading />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </ContentPage>
