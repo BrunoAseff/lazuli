@@ -1,5 +1,6 @@
 import type { DashboardResponse, DashboardWeeklyDay } from "@lazuli/shared";
 import {
+  type AnyColumn,
   and,
   count,
   desc,
@@ -89,6 +90,12 @@ type DailyMetric = {
   successful: number;
   total: number;
 };
+
+/**
+ * A collection of the person's own library: outside any project, or in a project that is not the
+ * example (the example project is the one exempt from quotas). Joins `project` on the collection.
+ */
+const ownLibrary = (projectId: AnyColumn) => or(isNull(projectId), eq(project.quotaExempt, false));
 
 const utcDay = (value: Date) => value.toISOString().slice(0, 10);
 
@@ -271,16 +278,25 @@ export const getDashboard = async (
       ),
     )
     .leftJoin(project, eq(project.id, flashcardCollection.projectId))
-    .where(
+    .where(and(isNull(flashcard.archivedAt), ownLibrary(flashcardCollection.projectId)))
+    .limit(1);
+  const libraryScope = ownCard ? ownLibrary(flashcardCollection.projectId) : undefined;
+  // Quizzes follow the same rule: the example's leave the home page once the person has their own.
+  const [ownQuestion] = await database
+    .select({ id: quizQuestion.id })
+    .from(quizQuestion)
+    .innerJoin(
+      quizCollection,
       and(
-        isNull(flashcard.archivedAt),
-        or(isNull(flashcardCollection.projectId), eq(project.quotaExempt, false)),
+        eq(quizCollection.id, quizQuestion.collectionId),
+        eq(quizCollection.userId, userId),
+        isNull(quizCollection.archivedAt),
       ),
     )
+    .leftJoin(project, eq(project.id, quizCollection.projectId))
+    .where(and(isNull(quizQuestion.archivedAt), ownLibrary(quizCollection.projectId)))
     .limit(1);
-  const libraryScope = ownCard
-    ? or(isNull(flashcardCollection.projectId), eq(project.quotaExempt, false))
-    : undefined;
+  const quizScope = ownCard || ownQuestion ? ownLibrary(quizCollection.projectId) : undefined;
 
   const [
     recentDocuments,
@@ -443,7 +459,8 @@ export const getDashboard = async (
           eq(quizAttempt.status, "completed"),
         ),
       )
-      .where(and(eq(quizCollection.userId, userId), isNull(quizCollection.archivedAt)))
+      .leftJoin(project, eq(project.id, quizCollection.projectId))
+      .where(and(eq(quizCollection.userId, userId), isNull(quizCollection.archivedAt), quizScope))
       .groupBy(quizCollection.id)
       .orderBy(
         sql`max(${quizAttempt.completedAt}) is null desc`,
