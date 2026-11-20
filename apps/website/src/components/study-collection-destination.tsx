@@ -103,6 +103,11 @@ export function StudyCollectionDestination({
           (created?.id === value ? created.title : undefined)
         }
         value={value}
+        labelAction={
+          <Button size="xs" disabled={disabled} variant="outline" onClick={() => setCreating(true)}>
+            <PlusIcon aria-hidden="true" /> Nova coleção
+          </Button>
+        }
         footer={
           result.isError ? (
             <Button variant="ghost" onClick={() => void result.refetch()}>
@@ -111,16 +116,6 @@ export function StudyCollectionDestination({
           ) : undefined
         }
       />
-      {/* A secondary add action, drawn as a button so it reads as one (as text it went unseen). */}
-      <Button
-        className="mt-1 w-fit"
-        size="xs"
-        disabled={disabled}
-        variant="outline"
-        onClick={() => setCreating(true)}
-      >
-        <PlusIcon aria-hidden="true" /> Nova coleção
-      </Button>
     </div>
   );
   // The new-collection field takes the picker's place; only the height changes, continuously.

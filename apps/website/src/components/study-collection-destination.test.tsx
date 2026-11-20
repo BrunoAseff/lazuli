@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 // @vitest-environment jsdom
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -17,12 +18,19 @@ vi.mock("@/features/quizzes/api/quiz-collection-queries.ts", () => ({
 }));
 vi.mock("./study-collection-picker.tsx", () => ({
   StudyCollectionPicker: ({
+    labelAction,
     selectedTitle,
     onQueryChange,
   }: {
+    labelAction?: ReactNode;
     selectedTitle?: string;
     onQueryChange: (query: string) => void;
-  }) => <button onClick={() => onQueryChange("outra")}>{selectedTitle ?? "Selecionar"}</button>,
+  }) => (
+    <>
+      <button onClick={() => onQueryChange("outra")}>{selectedTitle ?? "Selecionar"}</button>
+      {labelAction}
+    </>
+  ),
 }));
 vi.mock("./inline-collection-create.tsx", () => ({
   InlineCollectionCreate: ({

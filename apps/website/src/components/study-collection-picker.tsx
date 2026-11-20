@@ -23,6 +23,7 @@ export const StudyCollectionPicker = ({
   selectedTitle,
   value,
   label = "Coleção",
+  labelAction,
   triggerRef,
 }: {
   disabled?: boolean;
@@ -38,12 +39,17 @@ export const StudyCollectionPicker = ({
   selectedTitle?: string;
   value: string;
   label?: string;
+  /** The field's own action (e.g. "Nova coleção"), on the label's line at the right. */
+  labelAction?: ReactNode;
   triggerRef?: Ref<HTMLButtonElement>;
 }) => (
   <div>
-    <span className="mb-2 block text-sm font-medium" data-field-label>
-      {label}
-    </span>
+    <div className="mb-2 flex min-h-6 items-center justify-between gap-3">
+      <span className="text-sm font-medium" data-field-label>
+        {label}
+      </span>
+      {labelAction}
+    </div>
     <Popover onOpenChange={onOpenChange} open={open}>
       <PopoverTrigger asChild>
         <Button
