@@ -1,3 +1,4 @@
+import { Spinner } from "@/components/ui/spinner.tsx";
 import { isNotFound, ResourceUnavailable } from "@/components/not-found-page.tsx";
 import { Trash2Icon } from "@/components/icons.tsx";
 import { useCreateBlockNote } from "@blocknote/react";
@@ -8,7 +9,6 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   ChevronDownIcon,
-  LoaderCircleIcon,
   RotateCcwIcon,
 } from "@/components/icons.tsx";
 import { useEffect, useState, Fragment } from "react";
@@ -112,7 +112,7 @@ export const QuizAttemptPage = () => {
   if (attemptQuery.isPending)
     return (
       <main className="grid min-h-full place-items-center">
-        <LoaderCircleIcon className="animate-spin" />
+        <Spinner aria-hidden="true" role="presentation" />
       </main>
     );
   if (!attempt)

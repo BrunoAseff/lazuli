@@ -1,6 +1,6 @@
+import { Spinner } from "@/components/ui/spinner.tsx";
 import { useTheme } from "next-themes";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
-import { Loader2Icon } from "@/components/icons.tsx";
 
 const ToastMark = () => (
   <>
@@ -24,7 +24,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         info: <ToastMark />,
         warning: <ToastMark />,
         error: <ToastMark />,
-        loading: <Loader2Icon className="animate-spin" />,
+        loading: <Spinner aria-hidden="true" role="presentation" />,
       }}
       style={
         {

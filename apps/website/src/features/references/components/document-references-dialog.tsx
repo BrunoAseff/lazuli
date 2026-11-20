@@ -1,12 +1,7 @@
+import { Spinner } from "@/components/ui/spinner.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import { REFERENCE_PAGE_SIZE } from "@lazuli/shared";
-import {
-  Layers3Icon,
-  Link2Icon,
-  LoaderCircleIcon,
-  PlusIcon,
-  SquareCheckBigIcon,
-} from "@/components/icons.tsx";
+import { Layers3Icon, Link2Icon, PlusIcon, SquareCheckBigIcon } from "@/components/icons.tsx";
 import { Link } from "react-router";
 import { useEffect, useState, type Ref } from "react";
 
@@ -82,7 +77,7 @@ export const DocumentReferencesDialog = ({
         <div className="max-h-[min(60vh,32rem)] overflow-y-auto px-3 py-4 lazuli-thin-scrollbar">
           {references.isPending && (
             <p className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-              <LoaderCircleIcon aria-hidden="true" className="animate-spin" /> Carregando...
+              <Spinner aria-hidden="true" role="presentation" /> Carregando...
             </p>
           )}
           {references.isError && (

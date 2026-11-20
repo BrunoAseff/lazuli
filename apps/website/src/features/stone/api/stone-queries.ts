@@ -40,6 +40,11 @@ export const useSaveStudyGoal = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: saveStudyGoal,
-    onSuccess: () => client.invalidateQueries({ queryKey: stoneKeys.all }),
+    // The home page shows the goal too, and its first steps end with setting it.
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: stoneKeys.all }),
+        client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.dashboard }),
+      ]),
   });
 };

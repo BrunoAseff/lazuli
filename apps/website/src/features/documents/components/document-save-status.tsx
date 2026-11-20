@@ -1,11 +1,7 @@
-import {
-  CircleAlertIcon,
-  CloudCheckIcon,
-  CloudUploadIcon,
-  LoaderCircleIcon,
-} from "@/components/icons.tsx";
+import { CircleAlertIcon, CloudCheckIcon, CloudUploadIcon } from "@/components/icons.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
+import { Spinner } from "@/components/ui/spinner.tsx";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 export type DocumentSaveState = "saved" | "pending" | "saving" | "error" | "conflict";
@@ -27,15 +23,18 @@ export const DocumentSaveStatus = ({
     error: "Erro ao salvar · Tentar novamente",
     conflict: "Conflito de edição",
   };
-  const Icon =
-    state === "saved" ? CloudCheckIcon : state === "saving" ? LoaderCircleIcon : CloudUploadIcon;
+  const Icon = state === "saved" ? CloudCheckIcon : CloudUploadIcon;
   const content =
     state === "saved" || state === "saving" || state === "pending" ? (
       <>
-        <Icon
-          aria-hidden="true"
-          className={`size-4 shrink-0 ${state === "saved" ? "text-success" : state === "saving" ? "animate-spin motion-reduce:animate-none" : ""}`}
-        />
+        {state === "saving" ? (
+          <Spinner aria-hidden="true" role="presentation" />
+        ) : (
+          <Icon
+            aria-hidden="true"
+            className={`size-4 shrink-0 ${state === "saved" ? "text-success" : ""}`}
+          />
+        )}
         <span className="sr-only sm:not-sr-only">{labels[state]}</span>
       </>
     ) : (

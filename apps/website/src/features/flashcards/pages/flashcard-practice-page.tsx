@@ -1,9 +1,9 @@
+import { Spinner } from "@/components/ui/spinner.tsx";
 import { isNotFound, ResourceUnavailable } from "@/components/not-found-page.tsx";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BackLink } from "@/components/nav-link.tsx";
 import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
 import type { FlashcardPracticeSession, FlashcardRating } from "@lazuli/shared";
-import { LoaderCircleIcon } from "@/components/icons.tsx";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "sonner";
@@ -181,7 +181,7 @@ export default function FlashcardPracticePage() {
   if (practice.isPending)
     return (
       <main className="flex min-h-[70vh] items-center justify-center">
-        <LoaderCircleIcon className="size-6 animate-spin" />
+        <Spinner aria-hidden="true" role="presentation" className="size-6" />
       </main>
     );
   if (practice.isError || !practice.data)
