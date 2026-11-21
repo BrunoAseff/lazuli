@@ -78,7 +78,7 @@ export const QuizStartDialog = ({
             pending={start.isPending && !restarting}
             pendingLabel={active ? "Abrindo" : "Iniciando"}
           >
-            {active ? "Continuar" : "Iniciar quiz"}
+            {active ? "Continuar quiz" : "Iniciar quiz"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

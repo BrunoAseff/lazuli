@@ -118,7 +118,7 @@ export const ProjectFilter = ({
             </div>
           )}
           {projects.isPending && (
-            <p className="px-2 py-3 text-xs text-muted-foreground">Carregando projetos...</p>
+            <p className="px-2 py-3 text-xs text-muted-foreground">Carregando projetos…</p>
           )}
           {projects.isError && (
             <p className="px-2 py-3 text-xs text-destructive">
@@ -126,9 +126,7 @@ export const ProjectFilter = ({
             </p>
           )}
           {!query && Boolean(projects.data?.items.length) && (
-            <p className="px-2 pt-1.5 pb-1 text-[0.6875rem] font-medium tracking-wide text-muted-foreground uppercase">
-              Projetos
-            </p>
+            <p className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">Projetos</p>
           )}
           <div className="space-y-1">
             {projects.data?.items.map((project) => (
@@ -166,7 +164,7 @@ const ProjectOption = ({
 }) => (
   <button
     className={cn(
-      "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-[var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-[var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
       active && "bg-muted",
     )}
     onClick={onSelect}

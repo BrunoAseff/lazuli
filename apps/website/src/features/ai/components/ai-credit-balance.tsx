@@ -43,7 +43,7 @@ export const AiCreditBalance = () => {
         <Link
           to="/settings/usage"
           aria-label="Ver uso e materiais"
-          className="flex min-h-7 items-center gap-2 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-h-7 items-center gap-2 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <span
             className={cn("shrink-0 text-muted-foreground", creditsCritical && "text-destructive")}
@@ -105,7 +105,7 @@ export const AiCreditBalance = () => {
           title="Armazenamento próximo do limite"
         >
           <button
-            className="grid gap-2 rounded-md bg-muted/60 px-2.5 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+            className="grid gap-2 rounded-md bg-muted/60 px-2.5 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             onClick={openPlans}
             type="button"
           >

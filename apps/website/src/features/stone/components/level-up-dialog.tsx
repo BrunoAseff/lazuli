@@ -142,7 +142,7 @@ export const LevelUpDialog = ({
           </motion.div>
 
           <DialogTitle asChild>
-            <h2 className="mt-7 font-heading text-[2rem] leading-tight font-normal">
+            <h2 className="mt-7 font-reading text-[2rem] leading-tight font-normal">
               <MorphText text={shown("cut") ? after.name : before.name} />
             </h2>
           </DialogTitle>

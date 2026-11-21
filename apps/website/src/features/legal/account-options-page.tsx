@@ -29,7 +29,7 @@ export default function AccountOptionsPage() {
       <header className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-5">
         <Link
           to="/"
-          className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <LazuliWordmark />
         </Link>

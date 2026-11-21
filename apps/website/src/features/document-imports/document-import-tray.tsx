@@ -130,7 +130,7 @@ export const DocumentImportTray = ({
                   className={cn(
                     "group flex gap-3 rounded-lg px-2 py-2.5",
                     canOpen &&
-                      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                   )}
                   key={item.id}
                   onClick={canOpen ? openDocument : undefined}
@@ -152,7 +152,7 @@ export const DocumentImportTray = ({
                       {(ref) => (
                         <p
                           className={cn(
-                            "truncate text-sm font-medium underline-offset-4",
+                            "truncate text-[0.9375rem] font-medium underline-offset-4",
                             canOpen && "group-hover:underline",
                           )}
                           ref={ref as React.RefObject<HTMLParagraphElement>}

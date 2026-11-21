@@ -363,7 +363,7 @@ const QuizQuestionEditor = ({
         </Dialog>
       ) : (
         <div className="grid min-h-0 min-w-0 flex-1 bg-background @min-[960px]/study-workspace:grid-cols-[minmax(0,1fr)_16rem]">
-          <section className="@container/editor m-2 flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-xl bg-card px-5 py-4 ring-1 ring-border/45 lazuli-thin-scrollbar sm:px-6 lg:px-8">
+          <section className="@container/editor m-2 flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-[var(--radius-panel)] bg-card px-5 py-4 ring-1 ring-border/45 lazuli-thin-scrollbar sm:px-6 lg:px-8">
             <header className="sticky top-0 z-10 mx-auto flex min-h-10 w-full max-w-3xl flex-wrap items-center justify-end gap-1.5 bg-card py-2 sm:gap-2">
               <StudyDetailsButton onClick={() => setDetailsSheetOpen(true)} />
               {!readOnly && (

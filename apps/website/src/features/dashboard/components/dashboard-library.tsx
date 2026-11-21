@@ -46,7 +46,7 @@ export const DashboardContinue = ({
           quiz.kind === "active"
             ? `Quiz · ${quiz.answeredQuestions} de ${quiz.totalQuestions} respondidas`
             : quiz.kind === "untried"
-              ? `Quiz · ${studyItemCount("quizQuestion", quiz.totalQuestions)} · ainda não praticado`
+              ? `Quiz · ${studyItemCount("quizQuestion", quiz.totalQuestions)} · ainda não realizado`
               : `Quiz · ${studyItemCount("quizQuestion", quiz.totalQuestions)}`,
         when: quiz.kind === "active" ? null : quiz.lastAttemptAt,
         inProgress: quiz.kind === "active",

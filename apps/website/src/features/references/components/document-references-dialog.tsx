@@ -113,7 +113,7 @@ export const DocumentReferencesDialog = ({
                     >
                       {(ref) => (
                         <Link
-                          className="block truncate text-sm font-medium underline-offset-4 outline-none group-hover:underline after:absolute after:inset-0 after:rounded-lg"
+                          className="block truncate text-[0.9375rem] font-medium underline-offset-4 outline-none group-hover:underline after:absolute after:inset-0 after:rounded-lg"
                           ref={ref as Ref<HTMLAnchorElement>}
                           to={href}
                         >

@@ -61,11 +61,11 @@ export const ProjectDetailPage = () => {
 
   if (project.isPending) {
     return (
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-5 pt-7 pb-8 sm:px-8 lg:px-12 lg:pt-7 lg:pb-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-5 pt-7 pb-8 sm:px-8 lg:px-10 lg:pt-7 lg:pb-10">
         <Skeleton className="h-5 w-28" />
-        <Skeleton className="aspect-[3/1] w-full rounded-xl" />
+        <Skeleton className="aspect-[3/1] w-full rounded-[var(--radius-panel)]" />
         <Skeleton className="h-12 w-1/2" />
-        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-[var(--radius-panel)]" />
       </div>
     );
   }
@@ -85,7 +85,7 @@ export const ProjectDetailPage = () => {
   const currentProject = project.data;
 
   return (
-    <div className="mr-1 flex h-full min-h-0 flex-col overflow-y-auto px-5 pt-5 pb-8 sm:px-8 sm:pt-7 lg:px-12 lg:pb-10 lazuli-thin-scrollbar">
+    <div className="mr-1 flex h-full min-h-0 flex-col overflow-y-auto px-5 pt-5 pb-8 sm:px-8 sm:pt-7 lg:px-10 lg:pb-10 lazuli-thin-scrollbar">
       <div className="mx-auto w-full max-w-6xl">
         <BackLink className="project-home-back mb-4 sm:mb-6" to={backLocation}>
           Projetos

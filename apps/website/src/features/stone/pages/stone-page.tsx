@@ -250,7 +250,7 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
         </motion.div>
         <div className="grid min-w-0 flex-1 gap-4">
           <div>
-            <h2 className="font-heading text-2xl leading-snug" id="stone-level-title">
+            <h2 className="font-reading text-2xl leading-snug font-normal" id="stone-level-title">
               {levelTitle(stone.level)}
             </h2>
             <p className="mt-1 text-[0.8125rem] text-muted-foreground">

@@ -48,7 +48,7 @@ export default function LegalPage() {
       <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5 sm:px-8 print:hidden">
         <Link
           to="/"
-          className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           <LazuliWordmark />
         </Link>
@@ -61,7 +61,7 @@ export default function LegalPage() {
       </header>
       {!document ? (
         <main className="mx-auto max-w-2xl px-5 py-16">
-          <h1 className="font-heading text-3xl">Versão não encontrada</h1>
+          <h1 className="font-reading text-3xl font-normal">Versão não encontrada</h1>
           <p className="mt-3 text-muted-foreground">
             Consulte a versão disponível deste documento.
           </p>
@@ -139,7 +139,7 @@ export default function LegalPage() {
             <article className="min-w-0 max-w-[70ch] space-y-9 print:max-w-none">
               {document.sections.map((section) => (
                 <section className="scroll-mt-8" id={section.id} key={section.id}>
-                  <h2 className="font-heading text-xl leading-snug">{section.title}</h2>
+                  <h2 className="font-reading text-xl leading-snug font-normal">{section.title}</h2>
                   <div className="mt-3 space-y-3 text-base leading-7 text-foreground/90">
                     {section.paragraphs.map((paragraph) => (
                       <p key={paragraph}>{paragraph}</p>
@@ -148,7 +148,7 @@ export default function LegalPage() {
                 </section>
               ))}
               <section className="border-t pt-6" aria-labelledby="legal-contact">
-                <h2 id="legal-contact" className="font-heading text-xl">
+                <h2 id="legal-contact" className="font-reading text-xl font-normal">
                   Contato
                 </h2>
                 <a
@@ -159,7 +159,7 @@ export default function LegalPage() {
                 </a>
               </section>
               <nav aria-label="Versões publicadas" className="border-t pt-6 print:hidden">
-                <h2 className="font-heading text-xl">Versões publicadas</h2>
+                <h2 className="font-reading text-xl font-normal">Versões publicadas</h2>
                 <ul className="mt-3 space-y-2 text-sm">
                   {LEGAL_DOCUMENTS.filter((edition) => edition.kind === kind).map((edition) => (
                     <li key={edition.version}>

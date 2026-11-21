@@ -40,7 +40,7 @@ export const StudyCollectionIdentity = ({
         {(ref) => (
           <p
             ref={ref as Ref<HTMLParagraphElement>}
-            className="mt-0.5 min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere] outline-none focus-visible:ring-2 focus-visible:ring-ring sm:truncate"
+            className="mt-0.5 min-w-0 text-xs text-muted-foreground [overflow-wrap:anywhere] outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:truncate"
           >
             {metadata}
           </p>

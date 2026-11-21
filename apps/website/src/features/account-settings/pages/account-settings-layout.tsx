@@ -78,7 +78,7 @@ export const AccountSettingsLayout = () => {
                 <NavLink
                   className={({ isActive }) =>
                     cn(
-                      "flex min-h-10 items-center gap-2.5 rounded-[var(--radius)] px-3 py-2 text-sm text-muted-foreground transition-colors outline-none hover:bg-muted/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/35",
+                      "flex min-h-10 items-center gap-2.5 rounded-[var(--radius)] px-3 py-2 text-sm text-muted-foreground transition-colors outline-none hover:bg-muted/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
                       isActive && "bg-muted text-foreground",
                     )
                   }

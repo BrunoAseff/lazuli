@@ -33,7 +33,10 @@ export const ProjectListSkeleton = ({ view }: { view: ViewMode }) => {
     >
       {Array.from({ length: 6 }, (_, index) => (
         // The card: cover, title, then documents and date on one line.
-        <div className="overflow-hidden rounded-xl bg-card ring-1 ring-border/50" key={index}>
+        <div
+          className="overflow-hidden rounded-[var(--radius-panel)] bg-card ring-1 ring-border/50"
+          key={index}
+        >
           <Skeleton className="aspect-video w-full rounded-none" />
           <div className="grid gap-3 p-4">
             <Skeleton className="h-5 w-2/3" />

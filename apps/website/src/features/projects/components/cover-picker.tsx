@@ -41,7 +41,7 @@ export const CoverPicker = ({ disabled, onChange, value }: CoverPickerProps) => 
             return (
               <RadioGroupItem
                 className={cn(
-                  "group relative block h-auto w-full cursor-pointer rounded-xl border bg-card text-left text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring/40 data-[state=checked]:bg-card",
+                  "group relative block h-auto w-full cursor-pointer rounded-[var(--radius-panel)] border bg-card text-left text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 data-[state=checked]:bg-card",
                   // Hover strengthens the edge, as on outline buttons; the selection is drawn above.
                   !selected &&
                     "hover:border-[color-mix(in_oklab,var(--foreground)_26%,transparent)]",
@@ -74,7 +74,7 @@ export const CoverPicker = ({ disabled, onChange, value }: CoverPickerProps) => 
                 {selected && (
                   <motion.span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -inset-px rounded-xl border-2 border-primary"
+                    className="pointer-events-none absolute -inset-px rounded-[var(--radius-panel)] border-2 border-primary"
                     layoutId="cover-picker-selection"
                     transition={reduced ? { duration: 0 } : spring.morph}
                   />

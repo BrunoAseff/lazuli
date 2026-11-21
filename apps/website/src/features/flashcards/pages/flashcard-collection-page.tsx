@@ -740,7 +740,7 @@ const FlashcardEditorSkeleton = ({ className }: { className?: string }) => (
         <Skeleton className="mt-3 h-6 w-[52%]" />
       </div>
     </div>
-    <span className="sr-only">Carregando conteúdo...</span>
+    <span className="sr-only">Carregando conteúdo…</span>
   </div>
 );
 

@@ -104,7 +104,7 @@ export const PracticeSetupDialog = ({
             </div>
           ) : active ? (
             <div className="space-y-5">
-              <div className="rounded-xl border bg-muted/35 p-4">
+              <div className="rounded-[var(--radius)] border bg-muted/35 p-4">
                 <p className="font-medium">Há uma prática em andamento</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {active.reviewedCards} de {active.totalCards} flashcards revisados.
