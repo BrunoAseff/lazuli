@@ -39,7 +39,7 @@ const normalizedTextWithOffsets = (value: string) => {
   return { offsets, text };
 };
 
-export type AddSourceAnchorResult =
+type AddSourceAnchorResult =
   | { anchorId: string; changed: boolean; content: DocumentBlock[]; kind: "ok" }
   | { kind: "ambiguous" | "block-not-found" | "overlap" | "quote-not-found" };
 

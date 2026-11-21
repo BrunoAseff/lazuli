@@ -2,7 +2,7 @@ import { authClient } from "./auth-client.ts";
 
 const pendingSignOutKey = "lazuli-pending-sign-out";
 
-export type PendingSignOut = {
+type PendingSignOut = {
   returnTo: string;
   userId?: string;
 };

@@ -9,7 +9,7 @@ export type AiReviewSource = {
   documents?: Array<{ documentId: string; documentTitle: string }>;
 };
 
-export type AiReviewSession = {
+type AiReviewSession = {
   flashcards: AiReviewFlashcard[];
   quizQuestions: AiReviewQuiz[];
   source: AiReviewSource;

@@ -39,7 +39,7 @@ type BulkAdminService = {
   }): Promise<unknown>;
 };
 
-export type BulkAdminCommand = "credits:add-all" | "credits:reset-all" | "plan:grant-all";
+type BulkAdminCommand = "credits:add-all" | "credits:reset-all" | "plan:grant-all";
 
 export const isBulkAdminCommand = (command: string | undefined): command is BulkAdminCommand =>
   command === "credits:add-all" || command === "credits:reset-all" || command === "plan:grant-all";

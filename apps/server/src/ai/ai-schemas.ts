@@ -84,8 +84,6 @@ export const selectionProviderDraftSchema = z
     "The generation must contain at least one material",
   );
 
-export type SelectionProviderDraft = z.infer<typeof selectionProviderDraftSchema>;
-
 export const collectionProviderDraftSchema = z
   .object({
     flashcards: z

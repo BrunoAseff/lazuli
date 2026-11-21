@@ -593,5 +593,3 @@ export const createAccountExportWorker = (
     },
   };
 };
-
-export type AccountExportWorker = ReturnType<typeof createAccountExportWorker>;

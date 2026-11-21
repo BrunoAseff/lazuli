@@ -536,20 +536,3 @@ export const submitPracticeReview = async (
       session: result,
     };
   });
-
-export const abandonPracticeSession = async (
-  db: Database,
-  userId: string,
-  sessionId: string,
-  now = new Date(),
-) =>
-  db.transaction(async (tx) => {
-    const session = await ownedSession(tx, userId, sessionId, true);
-    if (!session) return false;
-    if (session.status === "active")
-      await tx
-        .update(flashcardPracticeSession)
-        .set({ status: "abandoned", finishedAt: now, lastActivityAt: now })
-        .where(eq(flashcardPracticeSession.id, sessionId));
-    return true;
-  });

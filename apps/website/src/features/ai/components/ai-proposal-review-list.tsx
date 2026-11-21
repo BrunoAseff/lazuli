@@ -33,7 +33,7 @@ import "./proposal-review.css";
 import type { AiReviewSource } from "../ai-review-session.ts";
 import { AiQuizProposalEditor, type AiEditableQuizProposal } from "./ai-quiz-proposal-editor.tsx";
 
-export type AiDraftReference = {
+type AiDraftReference = {
   scope: "selection" | "document";
   /** Another document of a generation over several; absent or null is the review's own. */
   documentId: string | null;

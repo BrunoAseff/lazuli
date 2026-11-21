@@ -256,7 +256,6 @@ export const flashcardCollectionListResponseSchema = z.object({
 });
 
 export type FlashcardCollectionListQuery = z.infer<typeof flashcardCollectionListQuerySchema>;
-export type FlashcardCollectionStatus = z.infer<typeof flashcardCollectionStatusSchema>;
 export type CreateFlashcardCollectionInput = z.infer<typeof createFlashcardCollectionSchema>;
 export type UpdateFlashcardCollectionInput = z.infer<typeof updateFlashcardCollectionSchema>;
 export type FlashcardCollectionSummary = z.infer<typeof flashcardCollectionSummarySchema>;
@@ -273,7 +272,6 @@ export type CreateFlashcardInput = z.infer<typeof createFlashcardSchema>;
 export type UpdateFlashcardInput = z.infer<typeof updateFlashcardSchema>;
 export type FlashcardBatchInput = z.infer<typeof flashcardBatchSchema>;
 export type FlashcardSrsState = z.infer<typeof flashcardSrsStateSchema>;
-export type FlashcardPracticeStatus = z.infer<typeof flashcardPracticeStatusSchema>;
 export type CreateFlashcardPracticeSessionInput = z.infer<
   typeof createFlashcardPracticeSessionSchema
 >;

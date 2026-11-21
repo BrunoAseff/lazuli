@@ -1,4 +1,4 @@
-export type ArchiveAction = "archive" | "restore";
+type ArchiveAction = "archive" | "restore";
 
 export type StudyItemBatchAction = ArchiveAction | "delete";
 

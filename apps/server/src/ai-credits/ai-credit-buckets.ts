@@ -3,11 +3,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, gt, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 
 import type { Transaction } from "../database/client.ts";
-import {
-  aiCreditAccount,
-  aiCreditBucket,
-  aiCreditReservationAllocation,
-} from "../database/schema/index.ts";
+import { aiCreditBucket, aiCreditReservationAllocation } from "../database/schema/index.ts";
 import { appendAiCreditLedgerEntry, updateAiCreditAccount } from "./ai-credit-transactions.ts";
 
 export const grantCreditBucket = async (
@@ -230,24 +226,4 @@ export const settleCreditBuckets = async (
     .delete(aiCreditReservationAllocation)
     .where(eq(aiCreditReservationAllocation.generationId, input.generationId));
   return restored;
-};
-
-export const getBucketBalance = async (tx: Transaction, userId: string) => {
-  const now = new Date();
-  const [result] = await tx
-    .select({ value: sql<number>`coalesce(sum(${aiCreditBucket.remainingCredits}), 0)::int` })
-    .from(aiCreditBucket)
-    .where(
-      and(
-        eq(aiCreditBucket.userId, userId),
-        gt(aiCreditBucket.remainingCredits, 0),
-        lte(aiCreditBucket.startsAt, now),
-        or(isNull(aiCreditBucket.expiresAt), gt(aiCreditBucket.expiresAt, now)),
-      ),
-    );
-  const [account] = await tx
-    .select()
-    .from(aiCreditAccount)
-    .where(eq(aiCreditAccount.userId, userId));
-  return { bucketAvailable: result?.value ?? 0, account };
 };

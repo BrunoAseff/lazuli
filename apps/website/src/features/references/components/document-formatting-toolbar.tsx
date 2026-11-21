@@ -28,7 +28,7 @@ export type DocumentMaterialAction = {
   selectedText: string;
 };
 
-export type DocumentAiAction = Omit<DocumentMaterialAction, "kind"> & {
+type DocumentAiAction = Omit<DocumentMaterialAction, "kind"> & {
   selectedPreview: string;
   selectedPreviewParts: AiSelectionPreviewPart[];
   sourceScope: "image" | "selection";

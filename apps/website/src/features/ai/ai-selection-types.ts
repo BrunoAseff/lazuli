@@ -1,6 +1,6 @@
 import type { DocumentBlock, DocumentInlineContent } from "@lazuli/shared";
 
-export type AiSelectionPreviewCell = {
+type AiSelectionPreviewCell = {
   content: DocumentInlineContent[];
   text: string;
 };

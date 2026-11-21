@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 
-export type FilterSelectOption = readonly [
+type FilterSelectOption = readonly [
   value: string,
   label: string,
   icon: ComponentType<{ className?: string }>,

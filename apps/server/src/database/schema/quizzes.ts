@@ -152,7 +152,7 @@ export const quizAttempt = pgTable(
   ],
 );
 
-export type QuizAttemptOptionSnapshot = { id: string; text: string; position: number };
+type QuizAttemptOptionSnapshot = { id: string; text: string; position: number };
 
 export const quizAttemptItem = pgTable(
   "quiz_attempt_item",

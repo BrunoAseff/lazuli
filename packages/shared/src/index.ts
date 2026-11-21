@@ -15,7 +15,6 @@ export * from "./dashboard/dashboard-contracts.ts";
 export * from "./documents/document-contracts.ts";
 export * from "./documents/source-anchor.ts";
 export * from "./flashcards/flashcard-contracts.ts";
-export * from "./flashcards/flashcard-metrics.ts";
 export * from "./projects/project-contracts.ts";
 export * from "./quizzes/quiz-contracts.ts";
 export * from "./references/reference-contracts.ts";

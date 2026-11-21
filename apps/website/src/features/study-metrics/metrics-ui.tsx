@@ -1,3 +1,4 @@
+import { STUDY_METRICS_MIN_SAMPLE } from "@lazuli/shared";
 import { TickingText } from "@/components/motion/number-ticker.tsx";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button.tsx";
@@ -59,10 +60,11 @@ export function MetricValue({
     </div>
   );
 }
+// Below the minimum sample a rate would overstate a few answers, so the count shows instead.
 export const rateValue = (success: number, total: number) =>
   !total
     ? "—"
-    : total < 20
+    : total < STUDY_METRICS_MIN_SAMPLE
       ? `${formatCount(success)}/${formatCount(total)}`
       : formatRate(success, total);
 

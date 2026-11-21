@@ -4,7 +4,7 @@ import { createContext, useContext } from "react";
  * Shared by a creation workspace and what is reviewed inside it. The workspace owns one source pane;
  * what is reviewed can take that pane over (e.g. the list of proposals) through the slot.
  */
-export type SourceReadingContextValue = {
+type SourceReadingContextValue = {
   /** Fill the available column with an inner scroll instead of a "read more" toggle. */
   fill: boolean;
   /** Mount point inside the source pane. */

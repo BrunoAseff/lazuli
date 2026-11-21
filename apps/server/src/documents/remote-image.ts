@@ -40,7 +40,7 @@ for (const [network, prefix] of [
 ] as const)
   blockedAddresses.addSubnet(network, prefix, "ipv6");
 
-export type RemoteImageErrorCode =
+type RemoteImageErrorCode =
   | "BLOCKED_ADDRESS"
   | "INVALID_URL"
   | "SOURCE_REJECTED"

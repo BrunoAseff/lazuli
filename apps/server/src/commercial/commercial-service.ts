@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 
 import {
   AI_CREDITS_PER_ITEM,
-  COMMERCIAL_PLAN_CATALOG,
   type BillingSubscriptionStatus,
   type CommercialPlan,
   type CommercialSummary,
@@ -149,8 +148,6 @@ export const getCommercialSummary = async (
 
 export const getStorageLimitBytes = async (database: QueryExecutor, userId: string) =>
   (await resolveEffectiveEntitlement(database, userId)).storageLimitBytes;
-
-export const getPlanDefinition = (plan: CommercialPlan) => COMMERCIAL_PLAN_CATALOG[plan];
 
 export const createCommercialAudit = async (
   database: QueryExecutor,

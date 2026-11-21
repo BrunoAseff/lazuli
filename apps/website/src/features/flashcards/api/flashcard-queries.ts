@@ -17,7 +17,6 @@ import {
   fetchPracticeAvailability,
   fetchPracticeSession,
   patchFlashcard,
-  postAbandonPracticeSession,
   postFlashcard,
   postFlashcardBatch,
   postFlashcardImport,
@@ -103,17 +102,6 @@ export const useSubmitPracticeReview = (sessionId: string, target: PracticeTarge
       void client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.studyMetrics });
       client.setQueryData(flashcardKeys.practiceSession(sessionId), session);
       if (session.status === "completed") await refreshAfterPractice(client, target);
-    },
-  });
-};
-
-export const useAbandonPracticeSession = (target: PracticeTarget, sessionId: string) => {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => postAbandonPracticeSession(sessionId),
-    onSuccess: async () => {
-      client.removeQueries({ queryKey: flashcardKeys.practiceSession(sessionId) });
-      await refreshAfterPractice(client, target);
     },
   });
 };

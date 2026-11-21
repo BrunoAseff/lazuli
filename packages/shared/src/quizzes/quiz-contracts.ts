@@ -230,7 +230,6 @@ export const quizCollectionListResponseSchema = z.object({
 });
 
 export type QuizCollectionListQuery = z.infer<typeof quizCollectionListQuerySchema>;
-export type QuizCollectionStatus = z.infer<typeof quizCollectionStatusSchema>;
 export type CreateQuizCollectionInput = z.infer<typeof createQuizCollectionSchema>;
 export type UpdateQuizCollectionInput = z.infer<typeof updateQuizCollectionSchema>;
 export type QuizCollectionSummary = z.infer<typeof quizCollectionSummarySchema>;

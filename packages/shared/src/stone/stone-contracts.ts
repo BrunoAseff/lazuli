@@ -15,7 +15,7 @@ export const STONE_LEVELS = [
   { level: 5, name: "Polida", from: 400, cut: 1 },
 ] as const;
 
-export type StoneLevel = (typeof STONE_LEVELS)[number];
+type StoneLevel = (typeof STONE_LEVELS)[number];
 
 export const stoneLevelFor = (mastered: number): StoneLevel =>
   [...STONE_LEVELS].reverse().find(({ from }) => mastered >= from) ?? STONE_LEVELS[0];
@@ -120,9 +120,7 @@ export const stoneContributionSchema = z.object({
   level: z.number().int().min(1).max(5),
 });
 
-export type UpdateStudyGoalInput = z.infer<typeof updateStudyGoalSchema>;
 export type StudyGoal = z.infer<typeof studyGoalSchema>;
-export type StudyGoalCounts = z.infer<typeof studyGoalCountsSchema>;
 export type StoneDay = z.infer<typeof stoneDaySchema>;
 export type StoneDayStatus = z.infer<typeof stoneDayStatusSchema>;
 export type StoneResponse = z.infer<typeof stoneResponseSchema>;

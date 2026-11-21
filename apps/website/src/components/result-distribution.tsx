@@ -1,6 +1,6 @@
 import "./study-collection-card.css";
 
-export type ResultTone = "again" | "hard" | "good" | "easy" | "correct" | "incorrect";
+type ResultTone = "again" | "hard" | "good" | "easy" | "correct" | "incorrect";
 
 /**
  * How a session or attempt went, as one proportional bar with its key: the same reading as the

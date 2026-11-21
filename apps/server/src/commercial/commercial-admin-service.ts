@@ -417,5 +417,3 @@ export const createCommercialAdminService = (database: Database, environment: st
     return { result, user: target };
   },
 });
-
-export type CommercialAdminService = ReturnType<typeof createCommercialAdminService>;
