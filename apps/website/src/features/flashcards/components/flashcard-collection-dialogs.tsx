@@ -90,8 +90,10 @@ export const ArchiveFlashcardCollectionDialog = ({
       description={
         <>
           Seus {collection.totalCards}{" "}
-          {collection.totalCards === 1 ? "card será preservado" : "cards serão preservados"}. Você
-          poderá restaurar a coleção depois.
+          {collection.totalCards === 1
+            ? "flashcard será preservado"
+            : "flashcards serão preservados"}
+          . Você poderá restaurar a coleção depois.
         </>
       }
       mode="archive"
@@ -131,8 +133,8 @@ export const DeleteFlashcardCollectionDialog = ({
       description={
         <>
           {collection.totalCards === 0
-            ? "A coleção ainda não possui cards."
-            : `${collection.totalCards} ${collection.totalCards === 1 ? "card e seu histórico serão excluídos" : "cards e seus históricos serão excluídos"}.`}{" "}
+            ? "A coleção ainda não possui flashcards."
+            : `${collection.totalCards} ${collection.totalCards === 1 ? "flashcard e seu histórico serão excluídos" : "flashcards e seus históricos serão excluídos"}.`}{" "}
           Esta ação não pode ser desfeita.
         </>
       }

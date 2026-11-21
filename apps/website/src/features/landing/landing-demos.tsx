@@ -2,7 +2,6 @@ import type { StoneDay, StoneResponse } from "@lazuli/shared";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useReducer, useRef, useState } from "react";
 
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { AutoHeight } from "@/components/auto-height.tsx";
 import { CheckIcon } from "@/components/icons.tsx";
 import { DocumentDomainIcon, ProjectOpenIcon } from "@/components/domain-icons.ts";
@@ -15,7 +14,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { StoneCardView } from "@/features/stone/components/stone-card.tsx";
-import { GenerationPending } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
+import { GenerationPending } from "@/features/ai/components/generation-pending.tsx";
 import { cn } from "@/lib/utils.ts";
 import "@/components/study-practice.css";
 
@@ -31,6 +30,7 @@ import {
   flashcardReducer,
   quizReducer,
 } from "./practice-state.ts";
+import { ease } from "@/lib/motion.ts";
 
 /** Example days for the stone: dates only matter for their weekday names. */
 /** An example stone: Facetada, a good week, today's goal half done. */
@@ -57,8 +57,6 @@ const exampleStone: StoneResponse = {
   keptDays: 4,
   plannedDays: 5,
   goal: { counts: "both", practices: 2, days: [true, true, true, true, true, false, true] },
-  today: exampleWeek.at(-1)!,
-  week: exampleWeek,
   history: exampleWeek,
   levels: [],
   projects: [],
@@ -222,7 +220,7 @@ const FlashcardDemo = () => {
             exit={reduced ? { opacity: 0 } : "leave"}
             initial={reduced ? { opacity: 0 } : card ? { opacity: 0, x: 20 } : { opacity: 0, y: 6 }}
             key={card ? `${card.id}-${step}` : "done"}
-            transition={{ duration: 0.18, ease: motionTokens.ease.standard }}
+            transition={{ duration: 0.18, ease: ease.standard }}
             variants={{ leave: cardExit }}
           >
             {!card ? (
@@ -355,7 +353,7 @@ const QuizDemo = () => {
 
 /** Keep: the stone as it appears on the home page, with example days. */
 export const StoneDemo = () => (
-  <div className="surface-panel p-6">
+  <div className="surface-panel p-6 sm:p-8">
     <StoneCardView stone={exampleStone} />
   </div>
 );

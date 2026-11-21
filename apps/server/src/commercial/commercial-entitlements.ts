@@ -11,7 +11,7 @@ import { adminPlanGrant, billingSubscription } from "../database/schema/index.ts
 const PLAN_RANK: Record<CommercialPlan, number> = { basic: 0, essential: 1, specialist: 2 };
 const PAID_ENTITLEMENT_STATUSES = ["active", "trialing", "past_due"] as const;
 
-export type EffectiveEntitlement = CommercialPlanDefinition & {
+type EffectiveEntitlement = CommercialPlanDefinition & {
   source: "admin" | "basic" | "stripe";
   periodAnchor: Date | null;
 };
@@ -70,5 +70,3 @@ export const resolveEffectiveEntitlement = async (
 
   return { ...COMMERCIAL_PLAN_CATALOG[plan], periodAnchor, source };
 };
-
-export const planRank = (plan: CommercialPlan) => PLAN_RANK[plan];

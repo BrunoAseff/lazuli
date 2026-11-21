@@ -6,12 +6,21 @@ import {
   escapeEmailHtml,
 } from "./transactional-email.ts";
 
-export const createChangeEmailConfirmation = ({ name, url }: { name: string; url: string }) => {
+export const createChangeEmailConfirmation = ({
+  name,
+  url,
+  websiteUrl,
+}: {
+  name: string;
+  url: string;
+  websiteUrl?: string;
+}) => {
   const safeName = escapeEmailHtml(name);
   return {
     subject: `Confirme a alteração do seu e-mail no ${APP_NAME}`,
     text: `Olá, ${name}. Confirme a alteração do endereço de e-mail da sua conta: ${url}\n\nSe você não solicitou esta alteração, não use o link.`,
     html: createTransactionalEmailHtml({
+      websiteUrl,
       action: { href: url, label: "Confirmar alteração" },
       childrenHtml: `${emailParagraph(`Olá, ${safeName}. Recebemos uma solicitação para alterar o endereço de e-mail da sua conta.`)}`,
       footerHtml:

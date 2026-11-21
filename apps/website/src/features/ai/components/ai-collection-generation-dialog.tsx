@@ -61,7 +61,7 @@ import { hasDuplicateQuizOptionTexts } from "@/features/quizzes/components/quiz-
 import { studyItemAgreement, studyItemCount } from "@/lib/text.ts";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
 import { AutoHeight } from "@/components/auto-height.tsx";
-import { GemLoader } from "@/components/brand-mark.tsx";
+import { GenerationPending } from "./generation-pending.tsx";
 import { MorphText } from "@/components/motion/morph-text.tsx";
 import { cn } from "@/lib/utils.ts";
 import {
@@ -80,6 +80,8 @@ import {
   useDiscardAiCollectionGeneration,
   useLatestAiCollectionGeneration,
 } from "../api/ai-queries.ts";
+import { textContent } from "../text-content.ts";
+import { GenerationQuantityField, suggestedQuantity } from "./generation-quantity-field.tsx";
 
 /** `origin` is the generation a proposal came from when it is not the draft's own ("Gerar mais"). */
 type EditableFlashcard = AiCollectionDraft["flashcards"][number] & {
@@ -164,14 +166,6 @@ const GenerateMore = ({
   );
 };
 
-const textContent = (text: string): DocumentBlock[] => [
-  {
-    id: crypto.randomUUID(),
-    type: "paragraph",
-    content: [{ type: "text", text: text.trim(), styles: {} }],
-  },
-];
-
 const sectionOptions = (content: DocumentBlock[]) =>
   content.flatMap((block, index) => {
     if (block.type !== "heading") return [];
@@ -211,10 +205,6 @@ const fitsOneGeneration = (blocks: Array<{ text: string }>) =>
 
 const wordCount = (blocks: Array<{ text: string }>) =>
   blocks.reduce((total, { text }) => total + (text.match(/\S+/g)?.length ?? 0), 0);
-
-/** One proposal per ~300 words, between 1 and the most a generation makes. */
-const suggestedQuantity = (words: number) =>
-  Math.max(1, Math.min(AI_COLLECTION_MAX_ITEMS, Math.round(words / 300)));
 
 /**
  * What a marked document contributes: the whole of it when it fits one generation, else one of its
@@ -784,15 +774,15 @@ export const AiCollectionGenerationDialog = ({
           draft ? "sm:max-w-5xl" : "sm:max-w-lg",
         )}
       >
-        <DialogHeader className={draft ? "border-b px-6 py-5" : "px-6 pt-6"}>
+        <DialogHeader className={draft ? "px-6 py-5" : "px-6 pt-6"}>
           <DialogTitle>
             {draft
               ? "Revisar propostas"
               : !fixedKind
-                ? "Criar materiais com IA"
+                ? "Gerar materiais com IA"
                 : fixedKind === "flashcard"
-                  ? "Criar flashcards com IA"
-                  : "Criar questões com IA"}
+                  ? "Gerar flashcards com IA"
+                  : "Gerar questões com IA"}
           </DialogTitle>
           <DialogDescription>
             {draft
@@ -955,30 +945,15 @@ export const AiCollectionGenerationDialog = ({
                     />
                   </div>
                 )}
-                <div className="grid gap-2">
-                  <Label asChild>
-                    <p>{kind === "flashcard" ? "Quantos?" : "Quantas?"}</p>
-                  </Label>
-                  <QuantitySelector
-                    label="Quantidade de propostas"
-                    onChange={(value) => {
-                      setQuantity(value);
-                      setQuantityTouched(true);
-                    }}
-                    options={Array.from(
-                      { length: AI_COLLECTION_MAX_ITEMS },
-                      (_, index) => index + 1,
-                    )}
-                    value={quantity}
-                  />
-                  {words > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {suggestion} {suggestion === 1 ? "sugerido" : "sugeridos"} para cerca de{" "}
-                      {words.toLocaleString("pt-BR")} palavras. Depois de revisar, dá para gerar
-                      mais.
-                    </p>
-                  )}
-                </div>
+                <GenerationQuantityField
+                  kind={kind}
+                  onChange={(value) => {
+                    setQuantity(value);
+                    setQuantityTouched(true);
+                  }}
+                  value={quantity}
+                  words={words}
+                />
                 {!fixedCollectionId && (
                   <StudyCollectionDestination
                     key={kind}
@@ -1007,11 +982,11 @@ export const AiCollectionGenerationDialog = ({
                   </div>
                 ) : (
                   <Button
-                    className="h-auto w-fit px-0 py-0.5 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                    className="w-fit py-0.5"
                     onClick={() => setGuidanceOpen(true)}
                     size="xs"
                     type="button"
-                    variant="ghost"
+                    variant="field-link"
                   >
                     <PlusIcon aria-hidden="true" /> Adicionar orientação para a IA
                   </Button>
@@ -1020,7 +995,7 @@ export const AiCollectionGenerationDialog = ({
             </AutoHeight>
           )}
         </div>
-        <DialogFooter className="m-0 flex-col rounded-none border-t px-6 py-4 sm:items-center">
+        <DialogFooter className="m-0 flex-col rounded-none px-6 py-4 sm:items-center">
           {!draft && (
             <div className="w-full sm:mr-auto sm:w-auto">
               <AiCreditCost cost={cost} available={balance.data?.available} />
@@ -1028,9 +1003,9 @@ export const AiCollectionGenerationDialog = ({
           )}
           {draft && (
             <Button
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+              className="sm:mr-auto"
               onClick={() => setDiscardOpen(true)}
-              variant="ghost"
+              variant="destructive-ghost"
             >
               <Trash2Icon /> Descartar propostas
             </Button>
@@ -1067,7 +1042,7 @@ export const AiCollectionGenerationDialog = ({
         </DialogFooter>
       </DialogContent>
       <ConfirmationDialog
-        actionLabel="Descartar"
+        actionLabel="Descartar propostas"
         description="As propostas serão removidas. Os créditos já consumidos pela geração não serão devolvidos."
         destructive
         pending={discard.isPending}
@@ -1102,7 +1077,7 @@ export const AiCollectionGenerationAction = ({
   const busy = latest.data?.status === "queued" || latest.data?.status === "processing";
   const ready = latest.data?.status === "completed";
   const material = kind === "flashcard" ? "flashcards" : "questões";
-  const label = busy ? "Gerando…" : ready ? "Revisar propostas" : "Gerar com IA";
+  const label = busy ? "Gerando…" : ready ? "Revisar propostas" : `Gerar ${material} com IA`;
   useEffect(() => {
     if (requestedOperationId) setOpen(true);
   }, [requestedOperationId]);
@@ -1186,7 +1161,7 @@ const writePending = (projectId: string, operationId: string | null) => {
 };
 
 /**
- * "Criar materiais" from a document or a project. Like the collections' AI action, it keeps
+ * "Gerar materiais com IA" from a document or a project. Like the collections' AI action, it keeps
  * showing a generation started here after the dialog closes: generating, then proposals waiting
  * for review, which reopening goes back to.
  */
@@ -1283,37 +1258,3 @@ export const CreateMaterialsButton = ({
 
 /** A source list stays within its field's column; long titles wrap instead of spilling over. */
 const fieldListClass = "min-w-0 [&_[data-slot=select-item]_span]:whitespace-normal";
-
-/**
- * While the material is cut into proposals: the gem catches light and the proposals take shape as
- * outlines, so the wait shows what is coming instead of a spinner.
- */
-export const GenerationPending = () => (
-  <div
-    className="grid min-h-72 content-center justify-items-center gap-8 text-center"
-    role="status"
-  >
-    <div>
-      <GemLoader className="mx-auto mb-4" size={32} />
-      <p className="font-medium">Gerando propostas…</p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Você pode fechar esta janela e voltar depois.
-      </p>
-    </div>
-    <div aria-hidden="true" className="grid w-full max-w-md gap-2">
-      {[0.92, 0.74, 0.84].map((width, index) => (
-        <div
-          className="generation-ghost rounded-[var(--radius)] border border-border bg-card px-4 py-3"
-          key={index}
-          style={{ animationDelay: `${index * 180}ms` }}
-        >
-          <span
-            className="block h-2.5 rounded-full bg-muted"
-            style={{ width: `${width * 100}%` }}
-          />
-          <span className="mt-2 block h-2.5 w-1/2 rounded-full bg-muted" />
-        </div>
-      ))}
-    </div>
-  </div>
-);

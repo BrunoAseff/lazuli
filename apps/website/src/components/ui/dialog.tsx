@@ -9,6 +9,7 @@ import { overlayMotion, overlaySurface } from "./ui-styles.ts";
 import { XIcon } from "@/components/icons.tsx";
 import { useOverlayFocusReturn } from "./use-overlay-focus-return.ts";
 import { preserveLocalEscape } from "./preserve-local-escape.ts";
+import { useAnimatedSize, useMergedRef } from "./use-animated-size.ts";
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -34,7 +35,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-foreground/18 duration-150 supports-backdrop-filter:backdrop-blur-[2px] data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-foreground/18 duration-150 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className,
       )}
       {...props}
@@ -50,12 +51,16 @@ function DialogContent({
   onOpenAutoFocus,
   onCloseAutoFocus,
   onEscapeKeyDown,
+  ref,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
   animated?: boolean;
 }) {
   const focusReturn = useOverlayFocusReturn({ onOpenAutoFocus, onCloseAutoFocus });
+  // Every dialog grows and shrinks with its content instead of jumping to the new size.
+  const sizeRef = useAnimatedSize<HTMLDivElement>(animated);
+  const contentRef = useMergedRef(sizeRef, ref);
   return (
     <DialogPortal>
       <DialogOverlay
@@ -63,6 +68,7 @@ function DialogContent({
       />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        ref={contentRef}
         {...focusReturn}
         onEscapeKeyDown={(event) => {
           onEscapeKeyDown?.(event);

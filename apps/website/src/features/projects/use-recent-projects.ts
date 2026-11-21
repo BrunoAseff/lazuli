@@ -11,6 +11,7 @@ import {
   type RecentProject,
   writeRecentProjects,
 } from "@/features/projects/recent-projects.ts";
+import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 
 const projectIdFromPathname = (pathname: string) =>
   pathname.match(/^\/documents\/([^/]+)/)?.[1] ?? "";
@@ -22,7 +23,7 @@ export const useRecentProjects = (userId: string) => {
   const [projects, setProjects] = useState<RecentProject[]>([]);
   const ids = projects.map(({ id }) => id).sort();
   const visible = useQuery({
-    queryKey: ["projects", "recent", userId, ids],
+    queryKey: [...QUERY_KEY_ROOTS.projects, "recent", userId, ids],
     enabled: Boolean(userId) && ids.length > 0,
     queryFn: ({ signal }) =>
       apiRequest("/api/projects/recent", recentProjectsResponseSchema, {

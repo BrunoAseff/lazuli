@@ -32,7 +32,6 @@ import {
 import { RichContentField } from "@/components/rich-content-field.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
-import { MaterialSourcesAction } from "@/features/references/components/material-sources-action.tsx";
 import { CreationWorkspace } from "@/features/ai/components/creation-workspace.tsx";
 import { AiMaterialImprovementDialog } from "@/features/ai/components/ai-material-improvement-dialog.tsx";
 import type { StudyItemAction } from "@/lib/study-actions.ts";
@@ -44,6 +43,9 @@ import {
   quizOptionsAreValid,
   type QuizOptionDraft,
 } from "./quiz-alternatives-field.tsx";
+import { SelectionPreview } from "@/features/ai/components/selection-preview.tsx";
+import type { AiSelectionPreviewPart } from "@/features/ai/ai-selection-types.ts";
+import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
 const newOptions = (): QuizOptionDraft[] => [
   { id: crypto.randomUUID(), text: "", isCorrect: true },
@@ -64,6 +66,8 @@ type QuizQuestionEditorProps = {
   question?: QuizQuestionDetail;
   readOnly?: boolean;
   sourcePreview?: string;
+  /** The selection block by block; without it the plain text is shown. */
+  sourcePreviewParts?: AiSelectionPreviewPart[];
 };
 
 const QuizQuestionEditor = ({
@@ -80,6 +84,7 @@ const QuizQuestionEditor = ({
   question,
   readOnly = false,
   sourcePreview,
+  sourcePreviewParts,
 }: QuizQuestionEditorProps) => {
   const [targetCollectionId, setTargetCollectionId] = useState(
     question?.collectionId ?? collectionId ?? "",
@@ -127,6 +132,12 @@ const QuizQuestionEditor = ({
     [],
   );
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  // A new question starts with the cursor in it, once the dialog or panel has rendered.
+  useEffect(() => {
+    if (!open || question || readOnly) return;
+    const timer = window.setTimeout(() => editor.focus(), 60);
+    return () => window.clearTimeout(timer);
+  }, [editor, open, question, readOnly]);
   const optionsValid = useMemo(() => quizOptionsAreValid(options), [options]);
   const requestClose = () => {
     if (presentation === "panel") return;
@@ -196,8 +207,8 @@ const QuizQuestionEditor = ({
         return;
       }
       if (presentation === "dialog") onOpenChange(false);
-    } catch {
-      toast.error("Não foi possível salvar a questão.");
+    } catch (error) {
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível salvar a questão."));
     }
   };
   const isPending = create.isPending || update.isPending;
@@ -294,7 +305,7 @@ const QuizQuestionEditor = ({
       {presentation === "dialog" ? (
         <Dialog open={open} onOpenChange={(next) => !next && requestClose()}>
           <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-            <DialogHeader className="border-b px-6 py-5">
+            <DialogHeader className="px-6 py-5">
               <DialogTitle className="pr-8">
                 {question ? "Editar questão" : "Nova questão"}
               </DialogTitle>
@@ -311,7 +322,11 @@ const QuizQuestionEditor = ({
                 sourceLabel={sourcePreview ? "Trecho de origem" : "Destino"}
                 source={
                   sourcePreview ? (
-                    <blockquote>{sourcePreview}</blockquote>
+                    sourcePreviewParts?.length ? (
+                      <SelectionPreview parts={sourcePreviewParts} />
+                    ) : (
+                      <blockquote>{sourcePreview}</blockquote>
+                    )
                   ) : (
                     <div className="font-sans text-sm">{collectionPicker}</div>
                   )
@@ -328,7 +343,7 @@ const QuizQuestionEditor = ({
                 )}
               </CreationWorkspace>
             </div>
-            <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+            <DialogFooter className="mx-0 mb-0 px-6 py-4">
               <DialogCancelButton disabled={isPending} onClick={requestClose}>
                 Cancelar
               </DialogCancelButton>
@@ -348,11 +363,8 @@ const QuizQuestionEditor = ({
         </Dialog>
       ) : (
         <div className="grid min-h-0 min-w-0 flex-1 bg-background @min-[960px]/study-workspace:grid-cols-[minmax(0,1fr)_16rem]">
-          <section className="@container/editor m-2 flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-xl bg-card px-5 py-4 ring-1 ring-border/45 lazuli-thin-scrollbar sm:px-6 lg:px-8">
-            <header className="sticky top-0 z-10 mx-auto flex min-h-10 w-full max-w-3xl flex-wrap items-center justify-end gap-1.5 bg-card/95 py-2 backdrop-blur-sm sm:gap-2">
-              {question && (
-                <MaterialSourcesAction target={{ type: "quizQuestion", id: question.id }} />
-              )}
+          <section className="@container/editor m-2 flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-[var(--radius-panel)] bg-card px-5 py-4 ring-1 ring-border/45 lazuli-thin-scrollbar sm:px-6 lg:px-8">
+            <header className="sticky top-0 z-10 mx-auto flex min-h-10 w-full max-w-3xl flex-wrap items-center justify-end gap-1.5 bg-card py-2 sm:gap-2">
               <StudyDetailsButton onClick={() => setDetailsSheetOpen(true)} />
               {!readOnly && (
                 <>

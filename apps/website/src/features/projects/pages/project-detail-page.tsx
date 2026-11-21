@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button.tsx";
 import { CreateMaterialsButton } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import { DocumentDomainIcon } from "@/components/domain-icons.ts";
-import { EmptyState } from "@/components/empty-state.tsx";
+import { EmptyState, LoadError } from "@/components/empty-state.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useDocumentImports } from "@/features/document-imports/document-import-context.ts";
 import { useCreateProjectItem } from "@/features/documents/api/document-queries.ts";
@@ -61,11 +61,11 @@ export const ProjectDetailPage = () => {
 
   if (project.isPending) {
     return (
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-5 pt-7 pb-8 sm:px-8 lg:px-12 lg:pt-7 lg:pb-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-5 pt-7 pb-8 sm:px-8 lg:px-10 lg:pt-7 lg:pb-10">
         <Skeleton className="h-5 w-28" />
-        <Skeleton className="aspect-[3/1] w-full rounded-xl" />
+        <Skeleton className="aspect-[3/1] w-full rounded-[var(--radius-panel)]" />
         <Skeleton className="h-12 w-1/2" />
-        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-[var(--radius-panel)]" />
       </div>
     );
   }
@@ -85,14 +85,14 @@ export const ProjectDetailPage = () => {
   const currentProject = project.data;
 
   return (
-    <div className="mr-1 flex h-full min-h-0 flex-col overflow-y-auto px-5 pt-5 pb-8 sm:px-8 sm:pt-7 lg:px-12 lg:pb-10 lazuli-thin-scrollbar">
+    <div className="mr-1 flex h-full min-h-0 flex-col overflow-y-auto px-5 pt-5 pb-8 sm:px-8 sm:pt-7 lg:px-10 lg:pb-10 lazuli-thin-scrollbar">
       <div className="mx-auto w-full max-w-6xl">
         <BackLink className="project-home-back mb-4 sm:mb-6" to={backLocation}>
           Projetos
         </BackLink>
 
         {(currentProject.coverKey || currentProject.coverAssetId) && (
-          <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card">
+          <div className="surface-panel relative overflow-hidden">
             <ProjectCover
               className="max-h-72 min-h-32 sm:min-h-44"
               coverKey={currentProject.coverKey}
@@ -109,7 +109,11 @@ export const ProjectDetailPage = () => {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <CreateMaterialsButton label="Criar materiais" projectId={projectId} />
+            <CreateMaterialsButton
+              compactLabel="Gerar materiais"
+              label="Gerar materiais com IA"
+              projectId={projectId}
+            />
             <ProjectActionsMenu
               onChangeCover={() => setAction("cover")}
               onDelete={() => setAction("delete")}
@@ -127,14 +131,10 @@ export const ProjectDetailPage = () => {
           )}
 
           {documents.isError && (
-            <div className="rounded-xl border border-dashed p-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                Não foi possível carregar os documentos.
-              </p>
-              <Button className="mt-4" onClick={() => void documents.refetch()} variant="outline">
-                Tentar novamente
-              </Button>
-            </div>
+            <LoadError
+              onRetry={() => void documents.refetch()}
+              title="Não foi possível carregar os documentos"
+            />
           )}
 
           {documents.data && (
@@ -154,7 +154,7 @@ export const ProjectDetailPage = () => {
                         pending={createItem.isPending}
                       >
                         <FilePlus2Icon />
-                        Criar documento em branco
+                        Novo documento
                       </Button>
                     </div>
                   }

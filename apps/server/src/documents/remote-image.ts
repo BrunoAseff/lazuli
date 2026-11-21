@@ -34,10 +34,13 @@ for (const [network, prefix] of [
   ["fe80::", 10],
   ["ff00::", 8],
   ["2001:db8::", 32],
+  // Translation prefixes that can carry an internal IPv4 address (NAT64 and 6to4).
+  ["64:ff9b::", 96],
+  ["2002::", 16],
 ] as const)
   blockedAddresses.addSubnet(network, prefix, "ipv6");
 
-export type RemoteImageErrorCode =
+type RemoteImageErrorCode =
   | "BLOCKED_ADDRESS"
   | "INVALID_URL"
   | "SOURCE_REJECTED"

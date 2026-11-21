@@ -75,6 +75,7 @@ export const FlashcardCollectionList = ({
                   onClick={() => onPractice(collection)}
                   title={collection.title}
                   totalCards={collection.totalCards}
+                  variant="outline"
                 />
               )}
               <StudyCollectionActions

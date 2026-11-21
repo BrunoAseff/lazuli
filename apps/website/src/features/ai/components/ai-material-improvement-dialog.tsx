@@ -45,6 +45,7 @@ import {
   useCreateAiMaterialImprovement,
   useDiscardAiMaterialImprovement,
 } from "../api/ai-queries.ts";
+import { textContent } from "../text-content.ts";
 
 const intentLabels: Record<AiImprovementIntent, string> = {
   clarify: "Deixar mais claro",
@@ -54,14 +55,6 @@ const intentLabels: Record<AiImprovementIntent, string> = {
   improveOptions: "Melhorar alternativas",
   reviewFromSource: "Revisar pelas fontes",
 };
-
-const textContent = (text: string): DocumentBlock[] => [
-  {
-    id: crypto.randomUUID(),
-    type: "paragraph",
-    content: [{ type: "text", text: text.trim(), styles: {} }],
-  },
-];
 
 const richText = (content: unknown) =>
   collectDocumentTextBlocks(content as DocumentBlock[])
@@ -301,7 +294,7 @@ export const AiMaterialImprovementDialog = ({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && requestClose()}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        <DialogHeader className="border-b px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <DialogTitle className="pr-8">
             Refinar {material.kind === "flashcard" ? "flashcard" : "questão"}
           </DialogTitle>
@@ -419,7 +412,7 @@ export const AiMaterialImprovementDialog = ({
             )}
           </CreationWorkspace>
         </div>
-        <DialogFooter className="mx-0 mb-0 flex-col border-t px-6 py-4 sm:items-center">
+        <DialogFooter className="mx-0 mb-0 flex-col px-6 py-4 sm:items-center">
           {!draft && (
             <div className="w-full sm:mr-auto sm:w-auto">
               <AiCreditCost cost={AI_CREDITS_PER_ITEM} available={balance.data?.available} />
@@ -428,13 +421,13 @@ export const AiMaterialImprovementDialog = ({
           {draft ? (
             <>
               <Button
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+                className="sm:mr-auto"
                 disabled={discard.isPending || apply.isPending}
                 onClick={() => {
                   setCloseAfterDiscard(false);
                   setDiscardConfirmationOpen(true);
                 }}
-                variant="ghost"
+                variant="destructive-ghost"
               >
                 <Trash2Icon /> Descartar proposta
               </Button>

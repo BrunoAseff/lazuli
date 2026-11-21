@@ -144,7 +144,7 @@ const paragraph = (text: string): DocumentBlock => ({
   children: [],
 });
 
-export type ConversionProgress = (current: number, total: number) => Promise<void>;
+type ConversionProgress = (current: number, total: number) => Promise<void>;
 
 export const convertDocument = async (
   mimeType: string,

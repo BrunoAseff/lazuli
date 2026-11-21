@@ -11,7 +11,7 @@ export const ReferenceSourcePreview = ({ text }: { text: string }) => (
       {(ref) => (
         <p
           ref={ref as Ref<HTMLParagraphElement>}
-          className="mt-1 line-clamp-3 text-sm leading-relaxed text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-1 line-clamp-3 text-sm leading-relaxed text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           “{text}”
         </p>

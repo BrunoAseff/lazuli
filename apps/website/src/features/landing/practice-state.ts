@@ -1,7 +1,7 @@
 import { practiceFlashcards, practiceQuizQuestions, practiceRatings } from "./practice-content.ts";
 
 export type PracticeRating = (typeof practiceRatings)[number]["value"];
-export type PracticeCardId = (typeof practiceFlashcards)[number]["id"];
+type PracticeCardId = (typeof practiceFlashcards)[number]["id"];
 
 export type FlashcardState = {
   queue: PracticeCardId[];
@@ -10,7 +10,7 @@ export type FlashcardState = {
   lastRating: PracticeRating | null;
 };
 
-export type FlashcardAction =
+type FlashcardAction =
   | { type: "reveal"; cardId: PracticeCardId }
   | { type: "rate"; cardId: PracticeCardId; rating: PracticeRating }
   | { type: "restart" };
@@ -47,7 +47,7 @@ export type QuizState = {
   answers: Array<number | null>;
 };
 
-export type QuizAction =
+type QuizAction =
   | { type: "select"; questionId: string; optionIndex: number }
   | { type: "navigate"; index: number }
   | { type: "review" }
@@ -103,7 +103,7 @@ export const quizScore = (state: QuizState): number | null =>
       ).length
     : null;
 
-export type QuizFeedback = {
+type QuizFeedback = {
   selectedOptionIndex: number;
   correctOptionIndex: number;
   correct: boolean;

@@ -14,10 +14,10 @@ import {
 } from "react";
 import { Link } from "react-router";
 
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import "./study-index.css";
+import { spring, ease } from "@/lib/motion.ts";
 
 /** Identity of the collection with the actions that act on it as a whole. */
 export const StudyIndexHeader = ({
@@ -247,7 +247,7 @@ export const StudyIndexRow = ({
           aria-hidden="true"
           className="study-index-marker"
           layoutId="study-index-marker"
-          transition={reduced ? { duration: 0 } : motionTokens.spring.morph}
+          transition={reduced ? { duration: 0 } : spring.morph}
         />
       )}
       <span className="study-index-lead">
@@ -345,9 +345,7 @@ export const StudyIndexTools = ({
   selecting: boolean;
 }) => {
   const reduced = useReducedMotion();
-  const transition = reduced
-    ? { duration: 0 }
-    : { duration: 0.16, ease: motionTokens.ease.standard };
+  const transition = reduced ? { duration: 0 } : { duration: 0.16, ease: ease.standard };
   return (
     <div className="study-index-tools">
       <AnimatePresence initial={false} mode="popLayout">

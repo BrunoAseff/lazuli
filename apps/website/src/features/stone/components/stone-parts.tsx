@@ -1,9 +1,12 @@
+import type { ReactNode } from "react";
 import {
   nextStoneLevel,
   stoneLevelByNumber,
   type StoneDay,
   type StoneResponse,
   type StudyGoal,
+  stoneToday,
+  stoneWeek,
 } from "@lazuli/shared";
 import { useEffect, useState, type ComponentProps, type CSSProperties } from "react";
 
@@ -59,7 +62,7 @@ export const goalDaysText = (goal: StudyGoal) =>
 
 /** The study days of the last seven: lit when the goal was kept. */
 export const WeekFacets = ({ week }: { week: StoneDay[] }) => (
-  <span aria-hidden="true" className="flex items-center gap-1">
+  <span aria-hidden="true" className="flex shrink-0 items-center gap-1">
     {week
       .filter(({ status, studyDay }) => studyDay && ["met", "free", "missed"].includes(status))
       .map((day) => (
@@ -78,23 +81,38 @@ export const keptText = (stone: StoneResponse) =>
     : "Nenhum dia de estudo nos últimos 7";
 
 export const WeekLine = ({ stone }: { stone: StoneResponse }) => (
-  <div className="flex items-center gap-2 text-xs whitespace-nowrap text-foreground">
-    <WeekFacets week={stone.week} />
+  <div className="flex items-center gap-2 text-xs text-foreground">
+    <WeekFacets week={stoneWeek(stone)} />
     {keptText(stone)}
   </div>
 );
 
-/** The mastered count on its way to the next level, in gold. */
-export const MasteryLine = ({ level, mastered }: { level: number; mastered: number }) => {
+/**
+ * The mastered count on its way to the next level, in gold. `label` replaces the count on the left
+ * (a session summary says what it added instead).
+ */
+export const MasteryLine = ({
+  label,
+  level,
+  mastered,
+}: {
+  label?: ReactNode;
+  level: number;
+  mastered: number;
+}) => {
   const current = stoneLevelByNumber(level);
   const next = nextStoneLevel(level);
   const from = Math.min(current.from, mastered);
   return (
     <div className="grid gap-1.5">
-      <div className="flex justify-between gap-3 text-xs">
+      <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-xs">
         <span className="text-foreground">
-          <span className="tabular-nums">{mastered}</span>{" "}
-          {mastered === 1 ? "item dominado" : "itens dominados"}
+          {label ?? (
+            <>
+              <span className="tabular-nums">{mastered}</span>{" "}
+              {mastered === 1 ? "item dominado" : "itens dominados"}
+            </>
+          )}
         </span>
         <span className="whitespace-nowrap text-muted-foreground tabular-nums">
           {next
@@ -113,7 +131,8 @@ export const MasteryLine = ({ level, mastered }: { level: number; mastered: numb
 };
 
 export const GoalLine = ({ stone }: { stone: StoneResponse }) => {
-  const { goal, paused, today } = stone;
+  const { goal, paused } = stone;
+  const today = stoneToday(stone);
   const done = today.status === "met" || today.status === "free";
   const label = paused
     ? "pausada até você ter materiais"
@@ -126,7 +145,7 @@ export const GoalLine = ({ stone }: { stone: StoneResponse }) => {
           : `${today.practices} de ${goalText(goal)}`;
   return (
     <div className="grid gap-1.5">
-      <div className="flex justify-between gap-3 text-xs">
+      <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-xs">
         <span className="text-foreground">Meta de hoje</span>
         <span className="whitespace-nowrap text-muted-foreground tabular-nums">{label}</span>
       </div>

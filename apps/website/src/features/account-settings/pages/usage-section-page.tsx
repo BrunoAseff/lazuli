@@ -1,8 +1,7 @@
-import { accountUsageSchema } from "@lazuli/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import type { ReactNode } from "react";
-import { apiRequest } from "@/lib/api-client.ts";
+import { accountUsageQuery } from "../api/account-settings-queries.ts";
 import { formatBytes } from "@/features/billing/billing-formatters.ts";
 import { Progress } from "@/components/ui/progress.tsx";
 import {
@@ -25,11 +24,7 @@ const UsageLine = ({ label, children }: { label: ReactNode; children: ReactNode 
 );
 
 export default function UsageSectionPage() {
-  const usage = useQuery({
-    queryKey: ["account-settings", "usage"],
-    queryFn: ({ signal }) =>
-      apiRequest("/api/account-settings/usage", accountUsageSchema, { signal }),
-  });
+  const usage = useQuery(accountUsageQuery());
   if (usage.isPending) return <SettingsLoading />;
   if (usage.isError || !usage.data) return <SettingsError onRetry={() => void usage.refetch()} />;
   const { commercial, library, cycle } = usage.data;

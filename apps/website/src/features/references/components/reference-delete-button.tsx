@@ -3,16 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
+import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useDeleteReference } from "../api/reference-queries.ts";
 
@@ -73,29 +64,18 @@ export const ConfirmReferenceRemovalButton = ({
         </TooltipTrigger>
         <TooltipContent>Desconectar</TooltipContent>
       </Tooltip>
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Desconectar fonte?</AlertDialogTitle>
-            <AlertDialogDescription>
-              O material continuará existindo, mas deixará de estar conectado a este documento.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={disabled}
-              onClick={async () => {
-                await onConfirm();
-                setOpen(false);
-              }}
-              variant="destructive"
-            >
-              Desconectar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmationDialog
+        actionLabel="Desconectar fonte"
+        description="O material continuará existindo, mas deixará de estar conectado a este documento."
+        destructive
+        onConfirm={async () => {
+          await onConfirm();
+          setOpen(false);
+        }}
+        onOpenChange={setOpen}
+        open={open}
+        title="Desconectar fonte?"
+      />
     </>
   );
 };

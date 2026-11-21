@@ -64,7 +64,7 @@
   --destructive-foreground: #ffffff;
   --success: #0f7a62; /* 4.8:1 on the page, 5.3:1 on white */
   --success-foreground: #ffffff;
-  --warning: #916015;
+  --warning: #a3520f; /* amber, apart from the pyrite of mastery: 5.6:1 on white */
   --warning-foreground: #ffffff;
   --border: rgb(20 26 46 / 12%);
   --input: rgb(20 26 46 / 22%);
@@ -82,6 +82,8 @@
   --shadow-overlay: 0 16px 48px rgb(20 26 46 / 12%), 0 2px 8px rgb(20 26 46 / 6%);
   /* Small floating surfaces (menus, popovers, selects): a short shadow; the big one is for dialogs. */
   --shadow-float: 0 4px 14px rgb(20 26 46 / 8%), 0 1px 3px rgb(20 26 46 / 6%);
+  /* Tooltips and chart hints: the lightest lift. */
+  --shadow-hint: 0 2px 6px rgb(14 19 48 / 8%);
   --sidebar: #eceef2;
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -106,11 +108,12 @@
    ultramarine lives in actions, markers and the stone. Borders recede. */
 .dark,
 [data-identity="dark"] {
-  --background: #121420;
-  --foreground: #eceef6; /* 14.5:1 on cards */
-  --card: #1a1d2a;
+  /* Neutral grays: the blue stays in actions, markers and the stone. */
+  --background: #131315;
+  --foreground: #ececee; /* 14.5:1 on cards */
+  --card: #1b1b1e;
   --card-foreground: var(--foreground);
-  --popover: #1f2231;
+  --popover: #212124;
   --popover-foreground: var(--foreground);
   --primary: var(--lapis-light); /* text, borders, markers: 8.6:1 on cards */
   --primary-hover: #c5cffb;
@@ -121,28 +124,29 @@
   --action-foreground: #ffffff;
   --page-hover: var(--muted);
   --card-hover: color-mix(in oklab, var(--foreground) 5%, var(--card));
-  --secondary: #232737;
+  --secondary: #26262a;
   --secondary-foreground: var(--foreground);
-  --muted: #232737;
-  --muted-foreground: #a0a6ba; /* 6.9:1 on cards: a clear step below the text */
-  --accent: #282c3d;
+  --muted: #26262a;
+  --muted-foreground: #a3a3ab; /* 6.9:1 on cards: a clear step below the text */
+  --accent: #2b2b30;
   --accent-foreground: var(--foreground);
   --destructive: #f29b88; /* 7.8:1 on cards */
   --destructive-foreground: #3a150d;
   --success: #7dd3b8; /* 9.5:1 on cards */
   --success-foreground: #0e2f26;
-  --warning: #e2b974;
-  --warning-foreground: #332610;
-  --border: rgb(220 226 255 / 9%);
-  --input: rgb(220 226 255 / 18%);
-  --line-subtle: rgb(220 226 255 / 6%);
+  --warning: #f0a060; /* amber, apart from the bright pyrite: 7.9:1 on cards */
+  --warning-foreground: #3a1f08;
+  --border: rgb(255 255 255 / 9%);
+  --input: rgb(255 255 255 / 18%);
+  --line-subtle: rgb(255 255 255 / 6%);
   --gold: var(--pyrite-bright);
   --gold-ink: var(--pyrite-bright); /* 9.2:1 on cards */
   --chart-3: #8ac6c2;
   --shadow-overlay: 0 16px 48px rgb(0 0 0 / 34%), 0 2px 8px rgb(0 0 0 / 18%);
   --shadow-float: 0 4px 14px rgb(0 0 0 / 28%), 0 1px 3px rgb(0 0 0 / 18%);
-  --sidebar: #0f111a;
-  --sidebar-accent: #232737;
+  --shadow-hint: 0 2px 6px rgb(0 0 0 / 24%);
+  --sidebar: #0f0f11;
+  --sidebar-accent: #26262a;
   --gem-rough: #5466b0;
   --gem-rough-light: #7486c8;
   --gem-rough-dark: #3d4d92;

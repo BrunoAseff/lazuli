@@ -1,4 +1,3 @@
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { REFERENCE_MAX_PAGE_SIZE, type ReferenceTarget } from "@lazuli/shared";
 import { FileTextIcon, Link2Icon } from "@/components/icons.tsx";
 import type { Ref } from "react";
@@ -16,6 +15,7 @@ import {
 import { useReferences } from "../api/reference-queries.ts";
 import { documentLocation } from "@/features/documents/document-navigation.ts";
 import { SourceReading } from "./source-reading.tsx";
+import { ReferenceRowsSkeleton } from "./reference-document-row.tsx";
 
 export const MaterialReferencesButton = ({
   count,
@@ -61,18 +61,14 @@ export const MaterialReferencesButton = ({
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-lg">
-          <DialogHeader className="border-b px-6 py-5">
+          <DialogHeader className="px-6 py-5">
             <DialogTitle className="pr-8">Fontes deste material</DialogTitle>
             <DialogDescription>
               Consulte as fontes sem sair da revisão ou abra o documento completo.
             </DialogDescription>
           </DialogHeader>
           <div className="grid min-h-0 content-start gap-6 overflow-y-auto px-6 py-5 lazuli-thin-scrollbar">
-            {references.isPending && (
-              <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-                <Spinner aria-hidden="true" role="presentation" className="size-4" /> Carregando…
-              </p>
-            )}
+            {references.isPending && <ReferenceRowsSkeleton rows={2} />}
             {references.data?.items.map((reference) => (
               <article className="flex min-w-0 gap-3" key={reference.id}>
                 <FileTextIcon
@@ -89,7 +85,7 @@ export const MaterialReferencesButton = ({
                   </OverflowTooltip>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {reference.projectTitle} ·{" "}
-                    {reference.anchorId ? "Trecho vinculado" : "Documento inteiro"}
+                    {reference.anchorId ? "Trecho conectado" : "Documento inteiro"}
                   </p>
                   {reference.sourcePreview && (
                     <blockquote className="source-excerpt mt-3">

@@ -33,7 +33,7 @@ export function FileDropzone({
   return (
     <div
       className={cn(
-        "file-drop-target group/drop relative grid min-h-40 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed bg-card p-5 text-center sm:min-h-48 sm:p-7",
+        "file-drop-target group/drop relative grid min-h-40 cursor-pointer place-items-center overflow-hidden rounded-[var(--radius-panel)] border border-dashed bg-card p-5 text-center sm:min-h-48 sm:p-7",
         disabled && "cursor-not-allowed opacity-50",
       )}
       aria-disabled={disabled}

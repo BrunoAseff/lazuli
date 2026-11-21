@@ -81,9 +81,6 @@ export const deleteAccountSchema = z.object({
 });
 
 export type AccountExportCategory = z.infer<typeof accountExportCategorySchema>;
-export type AccountSession = z.infer<typeof accountSessionSchema>;
-export type AccountSettingsProfile = z.infer<typeof accountSettingsProfileSchema>;
 export type CreateAccountExportInput = z.input<typeof createAccountExportSchema>;
 export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
-export type StudyPreference = z.infer<typeof studyPreferenceSchema>;
 export type UpdateStudyPreferenceInput = z.infer<typeof updateStudyPreferenceSchema>;

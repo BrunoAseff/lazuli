@@ -7,6 +7,7 @@ import { DocumentDomainIcon, QuizDomainIcon } from "@/components/domain-icons.ts
 import type { AppIcon } from "@/components/icons.tsx";
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { QuizStartDialog } from "@/features/quizzes/components/quiz-start-dialog.tsx";
+import { studyItemCount } from "@/lib/text.ts";
 
 type Item = {
   key: string;
@@ -19,8 +20,6 @@ type Item = {
   href?: string;
   onSelect?: () => void;
 };
-
-const questionCount = (count: number) => `${count} ${count === 1 ? "questão" : "questões"}`;
 
 const timeOf = (item: Item) => (item.when ? new Date(item.when).getTime() : 0);
 
@@ -47,8 +46,8 @@ export const DashboardContinue = ({
           quiz.kind === "active"
             ? `Quiz · ${quiz.answeredQuestions} de ${quiz.totalQuestions} respondidas`
             : quiz.kind === "untried"
-              ? `Quiz · ${questionCount(quiz.totalQuestions)} · ainda não praticado`
-              : `Quiz · ${questionCount(quiz.totalQuestions)}`,
+              ? `Quiz · ${studyItemCount("quizQuestion", quiz.totalQuestions)} · ainda não realizado`
+              : `Quiz · ${studyItemCount("quizQuestion", quiz.totalQuestions)}`,
         when: quiz.kind === "active" ? null : quiz.lastAttemptAt,
         inProgress: quiz.kind === "active",
         href:
@@ -74,11 +73,11 @@ export const DashboardContinue = ({
     .slice(0, 5);
   if (!items.length) return null;
   return (
-    <section aria-labelledby="dashboard-continue-title" className="surface-panel p-6">
+    <section aria-labelledby="dashboard-continue-title" className="surface-panel p-5 sm:p-6">
       <h2 className="text-sm leading-snug font-semibold" id="dashboard-continue-title">
         Continuar de onde parou
       </h2>
-      <ul className="mt-2 grid">
+      <ul className="mt-2 grid grid-cols-[minmax(0,1fr)]">
         {items.map((item) => (
           <li key={item.key}>
             <ContinueRow item={item} />

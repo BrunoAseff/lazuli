@@ -123,7 +123,7 @@ function TabsTrigger({
       data-slot="tabs-trigger"
       value={value}
       className={cn(
-        "relative inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-normal whitespace-nowrap text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+        "relative inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-normal whitespace-nowrap text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
         "group-data-[variant=default]/tabs-list:hover:bg-card/50 group-data-[variant=default]/tabs-list:data-[state=active]:text-foreground",
         "group-data-[variant=line]/tabs-list:rounded-none group-data-[variant=line]/tabs-list:px-0 group-data-[variant=line]/tabs-list:data-[state=active]:text-foreground",
         className,

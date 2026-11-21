@@ -5,15 +5,18 @@ import { Button } from "@/components/ui/button.tsx";
 
 /**
  * The one guide for an empty collection, in the work area: the two ways to start, side by side.
- * "Gerar com IA" opens the collection's own generation button, so there is one dialog.
+ * The AI one opens the collection's own generation button, so there is one dialog.
  */
 export const StudyCollectionStart = ({
   createLabel,
+  generateLabel,
   icon: Icon,
   noun,
   onCreate,
 }: {
   createLabel: string;
+  /** "Gerar flashcards com IA": the same words as the collection's AI button. */
+  generateLabel: string;
   icon: ComponentType<{ className?: string }>;
   noun: string;
   onCreate: () => void;
@@ -36,7 +39,7 @@ export const StudyCollectionStart = ({
           }
           variant="outline"
         >
-          <MagicWandIcon /> Gerar com IA
+          <MagicWandIcon /> {generateLabel}
         </Button>
       </div>
     </div>

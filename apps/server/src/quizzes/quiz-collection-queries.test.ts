@@ -11,7 +11,6 @@ import {
 const userId = "user-1";
 const collectionId = "2a36ca27-f1e7-4b07-bd5a-bf831fee8f62";
 const projectId = "8a9c628c-b222-42d9-a507-d8528f5015c0";
-const now = new Date("2026-08-25T12:00:00.000Z");
 
 type Builder = ReturnType<typeof createBuilder>;
 
@@ -77,7 +76,6 @@ describe("quiz collection queries", () => {
         {
           collectionId,
           totalAttempts: 3,
-          attemptsLastSevenDays: 2,
           bestScoreRate: 1,
         },
       ],
@@ -91,12 +89,13 @@ describe("quiz collection queries", () => {
       ],
     ]);
 
-    const result = await listQuizCollections(
-      executor as unknown as Database,
-      userId,
-      { page: 1, pageSize: 12, project: "none", query: "100%_", status: "archived" },
-      now,
-    );
+    const result = await listQuizCollections(executor as unknown as Database, userId, {
+      page: 1,
+      pageSize: 12,
+      project: "none",
+      query: "100%_",
+      status: "archived",
+    });
 
     expect(executor.select).toHaveBeenCalledTimes(4);
     expect(executor.selectDistinctOn).toHaveBeenCalledOnce();
@@ -106,7 +105,6 @@ describe("quiz collection queries", () => {
     expect(result.items[0]).toMatchObject({
       totalQuestions: 6,
       totalAttempts: 3,
-      attemptsLastSevenDays: 2,
       lastScore: { correctAnswers: 4, totalQuestions: 5, rate: 0.8 },
       bestScoreRate: 1,
     });

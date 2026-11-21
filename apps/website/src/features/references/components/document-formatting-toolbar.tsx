@@ -1,8 +1,11 @@
 import {
+  blockTypeSelectItems,
   FormattingToolbar,
   getFormattingToolbarItems,
   useBlockNoteEditor,
   useComponentsContext,
+  useEditorState,
+  type BlockTypeSelectItem,
   type FormattingToolbarProps,
 } from "@blocknote/react";
 import {
@@ -16,19 +19,79 @@ import { Link2Icon } from "@/components/icons.tsx";
 import { toast } from "sonner";
 
 import { MagicWandIcon } from "@/components/icons.tsx";
+import {
+  RiH1,
+  RiH2,
+  RiH3,
+  RiH4,
+  RiH5,
+  RiH6,
+  RiListCheck3,
+  RiListOrdered,
+  RiListUnordered,
+  RiPlayList2Fill,
+  RiQuoteText,
+  RiText,
+} from "@/components/editor-icons.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { FlashcardDomainIcon, QuizDomainIcon } from "@/components/domain-icons.ts";
 import type { AiSelectionPreviewPart } from "@/features/ai/ai-selection-types.ts";
 import { documentSchema } from "@/features/documents/editor/document-schema.tsx";
+
+/*
+ * The block types offered when changing a block: the everyday ones. A rarer type (a level-5 title
+ * from an imported file) joins the list only while it is the current block, so the menu always
+ * shows what the block is without listing seventeen options.
+ */
+const everydayBlockTypes = new Set([
+  "paragraph",
+  "heading:1",
+  "heading:2",
+  "heading:3",
+  "quote",
+  "bulletListItem",
+  "numberedListItem",
+  "checkListItem",
+  "toggleListItem",
+]);
+
+// BlockNote renders an icon as a component taking `size`, which the app's icons accept.
+const asIcon = (icon: unknown) => icon as BlockTypeSelectItem["icon"];
+
+/** The app's own stroke icons for each type (BlockNote's bundled set is a different family). */
+const blockTypeIcons: Record<string, BlockTypeSelectItem["icon"]> = {
+  paragraph: asIcon(RiText),
+  "heading:1": asIcon(RiH1),
+  "heading:2": asIcon(RiH2),
+  "heading:3": asIcon(RiH3),
+  "heading:4": asIcon(RiH4),
+  "heading:5": asIcon(RiH5),
+  "heading:6": asIcon(RiH6),
+  "heading:1:toggle": asIcon(RiH1),
+  "heading:2:toggle": asIcon(RiH2),
+  "heading:3:toggle": asIcon(RiH3),
+  quote: asIcon(RiQuoteText),
+  bulletListItem: asIcon(RiListUnordered),
+  numberedListItem: asIcon(RiListOrdered),
+  checkListItem: asIcon(RiListCheck3),
+  toggleListItem: asIcon(RiPlayList2Fill),
+};
+
+const blockTypeKey = (type: string, props?: Record<string, unknown>) =>
+  type === "heading"
+    ? `heading:${String(props?.level)}${props?.isToggleable ? ":toggle" : ""}`
+    : type;
 
 export type DocumentMaterialAction = {
   anchorId: string;
   anchorCreated: boolean;
   kind: "flashcard" | "quizQuestion";
   selectedText: string;
+  /** The selection block by block, so the editor shows it as it reads in the document. */
+  selectedPreviewParts?: AiSelectionPreviewPart[];
 };
 
-export type DocumentAiAction = Omit<DocumentMaterialAction, "kind"> & {
+type DocumentAiAction = Omit<DocumentMaterialAction, "kind"> & {
   selectedPreview: string;
   selectedPreviewParts: AiSelectionPreviewPart[];
   sourceScope: "image" | "selection";
@@ -352,6 +415,22 @@ export const createDocumentFormattingToolbar = (
 ) => {
   const DocumentFormattingToolbar = (props: FormattingToolbarProps) => {
     const editor = useBlockNoteEditor(documentSchema);
+    const currentBlockType = useEditorState({
+      editor,
+      selector: ({ editor: current }) => {
+        const block = current.getTextCursorPosition().block;
+        return blockTypeKey(block.type, block.props as Record<string, unknown>);
+      },
+    });
+    const blockTypes: BlockTypeSelectItem[] = blockTypeSelectItems(editor.dictionary)
+      .filter((item) => {
+        const key = blockTypeKey(item.type, item.props);
+        return everydayBlockTypes.has(key) || key === currentBlockType;
+      })
+      .map((item) => ({
+        ...item,
+        icon: blockTypeIcons[blockTypeKey(item.type, item.props)] ?? item.icon,
+      }));
     const components = useComponentsContext();
     if (!components) return null;
     // File-block toolbars may clear the editor selection on pointer down. Capture
@@ -390,7 +469,12 @@ export const createDocumentFormattingToolbar = (
       if (!selection) return;
       const anchor = getAnchorId(selection.imageBlockId);
       if (!anchor) return;
-      onCreate({ ...anchor, kind, selectedText: selection.selectedText });
+      onCreate({
+        ...anchor,
+        kind,
+        selectedPreviewParts: selection.selectedPreviewParts,
+        selectedText: selection.selectedText,
+      });
     };
     const link = () => {
       const selection = renderedSelection ?? getDocumentReferenceSelection(editor);
@@ -428,7 +512,7 @@ export const createDocumentFormattingToolbar = (
 
     return (
       <FormattingToolbar {...props}>
-        {getFormattingToolbarItems(props.blockTypeSelectItems)}
+        {getFormattingToolbarItems(props.blockTypeSelectItems ?? blockTypes)}
         {!adjustment && (
           <>
             {/* Study actions are a group of their own, apart from text formatting. */}
@@ -436,24 +520,24 @@ export const createDocumentFormattingToolbar = (
             <span className="contents" onMouseDown={(event) => event.preventDefault()}>
               <components.FormattingToolbar.Button
                 icon={<FlashcardDomainIcon className="size-4" />}
-                label="Criar flashcard"
-                mainTooltip="Criar flashcard deste trecho"
+                label="Novo flashcard"
+                mainTooltip="Novo flashcard deste trecho"
                 onClick={() => create("flashcard")}
               />
             </span>
             <span className="contents" onMouseDown={(event) => event.preventDefault()}>
               <components.FormattingToolbar.Button
                 icon={<QuizDomainIcon className="size-4" />}
-                label="Criar questão"
-                mainTooltip="Criar questão deste trecho"
+                label="Nova questão"
+                mainTooltip="Nova questão deste trecho"
                 onClick={() => create("quizQuestion")}
               />
             </span>
             <span className="contents" onMouseDown={(event) => event.preventDefault()}>
               <components.FormattingToolbar.Button
                 icon={<Link2Icon className="size-4" />}
-                label="Ligar a flashcard ou questão"
-                mainTooltip="Ligar este trecho a um flashcard ou questão que já existe"
+                label="Conectar a flashcard ou questão"
+                mainTooltip="Conectar este trecho a um flashcard ou questão que já existe"
                 onClick={link}
               />
             </span>
@@ -464,6 +548,7 @@ export const createDocumentFormattingToolbar = (
               size="sm"
               type="button"
             >
+              {/* Short on purpose: the floating bar is tight, and the selection is the object. */}
               <MagicWandIcon aria-hidden="true" />
               Gerar com IA
             </Button>

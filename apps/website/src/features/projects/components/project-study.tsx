@@ -46,14 +46,12 @@ import { useProjectDocumentMaterials } from "@/features/references/api/reference
 import { Progress } from "@/components/ui/progress.tsx";
 import { useStone } from "@/features/stone/api/stone-queries.ts";
 import { goldBar } from "@/features/stone/components/stone-parts.tsx";
+import { countOf } from "@/lib/text.ts";
 
 /*
  * The project's home: what to study now and the project's collections on top, then its documents,
  * each saying what came out of it.
  */
-
-const count = (value: number, singular: string, plural: string) =>
-  `${value} ${value === 1 ? singular : plural}`;
 
 type Collection =
   | { kind: "flashcard"; item: FlashcardCollectionSummary }
@@ -84,7 +82,7 @@ const useProjectCollections = (projectId: string) => {
 };
 
 export const projectStudyMeta = (documentCount: number, collectionCount: number) =>
-  `${count(documentCount, "documento", "documentos")} · ${count(collectionCount, "coleção", "coleções")}`;
+  `${countOf(documentCount, "documento", "documentos")} · ${countOf(collectionCount, "coleção", "coleções")}`;
 
 export const useProjectCollectionCount = (projectId: string) =>
   useProjectCollections(projectId).total;
@@ -117,13 +115,13 @@ const StudySummary = ({
         : availability.isPending
           ? null
           : active
-            ? `Prática em andamento: ${active.reviewedCards} de ${count(active.totalCards, "flashcard", "flashcards")}`
+            ? `Prática em andamento: ${active.reviewedCards} de ${countOf(active.totalCards, "flashcard", "flashcards")}`
             : reviews && fresh
-              ? `${count(reviews, "flashcard", "flashcards")} para revisar e ${count(fresh, "novo", "novos")}`
+              ? `${countOf(reviews, "flashcard", "flashcards")} para revisar e ${countOf(fresh, "novo", "novos")}`
               : reviews
-                ? `${count(reviews, "flashcard", "flashcards")} para revisar`
+                ? `${countOf(reviews, "flashcard", "flashcards")} para revisar`
                 : fresh
-                  ? count(fresh, "flashcard novo", "flashcards novos")
+                  ? countOf(fresh, "flashcard novo", "flashcards novos")
                   : "Todos os flashcards em dia.";
   return (
     <>
@@ -258,8 +256,8 @@ const CollectionAction = ({
 
 const collectionMeta = (collection: Collection) =>
   collection.kind === "flashcard"
-    ? `Flashcards · ${count(collection.item.totalCards, "flashcard", "flashcards")}`
-    : `Quiz · ${count(collection.item.totalQuestions, "questão", "questões")}`;
+    ? `Flashcards · ${countOf(collection.item.totalCards, "flashcard", "flashcards")}`
+    : `Quiz · ${countOf(collection.item.totalQuestions, "questão", "questões")}`;
 
 const NewCollection = ({ projectId }: { projectId: string }) => {
   const [creating, setCreating] = useState<"flashcard" | "quiz" | null>(null);
@@ -357,8 +355,8 @@ const useMaterialsByDocument = (projectId: string) => {
     const found = materials.data.items.find((item) => item.documentId === documentId);
     if (!found || found.flashcards + found.questions === 0) return "Nenhum material";
     return [
-      found.flashcards && count(found.flashcards, "flashcard", "flashcards"),
-      found.questions && count(found.questions, "questão", "questões"),
+      found.flashcards && countOf(found.flashcards, "flashcard", "flashcards"),
+      found.questions && countOf(found.questions, "questão", "questões"),
     ]
       .filter(Boolean)
       .join(" · ");
@@ -445,7 +443,7 @@ export const ProjectStudy = ({
   const collections = useProjectCollections(projectId);
   return (
     <>
-      <section aria-label="Estudo deste projeto" className="surface-panel grid gap-6 p-6">
+      <section aria-label="Estudo deste projeto" className="surface-panel grid gap-6 p-5 sm:p-6">
         <StudySummary collections={collections} projectId={projectId} />
         {(collections.pending || collections.total > 0) && (
           <CollectionsBody collections={collections} />

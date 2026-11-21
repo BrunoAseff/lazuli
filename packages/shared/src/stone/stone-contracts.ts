@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { timeZoneSchema } from "../calendar.ts";
 
 /*
  * "Sua pedra": the person's gamification. Mastery gives the level (the stone's cut) and never
@@ -15,7 +16,7 @@ export const STONE_LEVELS = [
   { level: 5, name: "Polida", from: 400, cut: 1 },
 ] as const;
 
-export type StoneLevel = (typeof STONE_LEVELS)[number];
+type StoneLevel = (typeof STONE_LEVELS)[number];
 
 export const stoneLevelFor = (mastered: number): StoneLevel =>
   [...STONE_LEVELS].reverse().find(({ from }) => mastered >= from) ?? STONE_LEVELS[0];
@@ -51,13 +52,9 @@ export const studyGoalSchema = z
   })
   .strict();
 
-export const updateStudyGoalSchema = z
-  .object({ goal: studyGoalSchema, tz: z.string().trim().min(1).max(100).optional() })
-  .strict();
+export const updateStudyGoalSchema = z.object({ goal: studyGoalSchema }).strict();
 
-export const stoneQuerySchema = z
-  .object({ tz: z.string().trim().min(1).max(100).optional() })
-  .strict();
+export const stoneQuerySchema = z.object({ tz: timeZoneSchema.optional() }).strict();
 
 /**
  * A day: met (the goal, or more), missed, off (a day off with no goal), free (nothing to practice,
@@ -88,16 +85,14 @@ export const stoneResponseSchema = z.object({
   notMastered: z.number().int().nonnegative(),
   /** True when the person has nothing at all to practice for their goal: the goal is paused. */
   paused: z.boolean(),
-  /** 0 (full shine) to 1 (dull), from the studied days of the last seven. */
+  /** 0 (full shine) to 1 (dull): study days kept out of those planned in the last seven. */
   dull: z.number().min(0).max(1),
   /** Study days of the last seven that kept the goal, out of the study days that are over. */
   keptDays: z.number().int().min(0).max(7),
   plannedDays: z.number().int().min(0).max(7),
   goal: studyGoalSchema,
-  today: stoneDaySchema,
-  week: z.array(stoneDaySchema).length(7),
-  /** From the Monday eleven weeks back to today, in order. */
-  history: z.array(stoneDaySchema).max(84),
+  /** From the Monday eleven weeks back to today, in order; stoneToday and stoneWeek read it. */
+  history: z.array(stoneDaySchema).min(7).max(84),
   levels: z.array(
     z.object({ level: z.number().int().min(1).max(5), reachedAt: z.iso.datetime().nullable() }),
   ),
@@ -109,6 +104,8 @@ export const stoneSessionKindSchema = z.enum(["flashcards", "quiz"]);
 /** What one practice or quiz added: the goal of today, new mastered items and the level. */
 export const stoneContributionSchema = z.object({
   counted: z.boolean(),
+  /** The session ended moments ago: only then does its summary play the level-up. */
+  fresh: z.boolean(),
   goal: z.object({
     before: z.number().int().nonnegative(),
     after: z.number().int().nonnegative(),
@@ -120,9 +117,7 @@ export const stoneContributionSchema = z.object({
   level: z.number().int().min(1).max(5),
 });
 
-export type UpdateStudyGoalInput = z.infer<typeof updateStudyGoalSchema>;
 export type StudyGoal = z.infer<typeof studyGoalSchema>;
-export type StudyGoalCounts = z.infer<typeof studyGoalCountsSchema>;
 export type StoneDay = z.infer<typeof stoneDaySchema>;
 export type StoneDayStatus = z.infer<typeof stoneDayStatusSchema>;
 export type StoneResponse = z.infer<typeof stoneResponseSchema>;
@@ -147,3 +142,9 @@ export const stoneShine = (week: Array<Pick<StoneDay, "status" | "studyDay">>) =
   const planned = days.length;
   return { kept, planned, dull: planned ? 1 - kept / planned : 0 };
 };
+
+/** Today, the last day of the history (it always ends on today). */
+export const stoneToday = (stone: Pick<StoneResponse, "history">) => stone.history.at(-1)!;
+
+/** The last seven days of the history, today included. */
+export const stoneWeek = (stone: Pick<StoneResponse, "history">) => stone.history.slice(-7);

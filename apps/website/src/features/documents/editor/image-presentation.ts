@@ -1,9 +1,9 @@
-export type ImageResolution =
+type ImageResolution =
   | { loadingState: "error" }
   | { loadingState: "loading" }
   | { downloadUrl: string; loadingState: "loaded" };
 
-export type ImagePresentation =
+type ImagePresentation =
   | { kind: "error" }
   | { kind: "loading" }
   | { kind: "ready"; source: string }

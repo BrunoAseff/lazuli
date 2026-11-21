@@ -9,8 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
-import { motionTokens } from "../lib/motion-tokens";
 import styles from "./segmented-control.module.css";
+import { spring } from "@/lib/motion.ts";
 
 export interface Segment {
   value: string;
@@ -147,9 +147,7 @@ export default function SegmentedControl({
                   className={styles.selection}
                   layoutId="selection"
                   layoutDependency={value}
-                  transition={
-                    reduced || keyboard.current ? { duration: 0 } : motionTokens.spring.morph
-                  }
+                  transition={reduced || keyboard.current ? { duration: 0 } : spring.morph}
                   aria-hidden="true"
                 />
               )}

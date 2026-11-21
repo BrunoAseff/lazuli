@@ -50,11 +50,7 @@ import { cn } from "@/lib/utils.ts";
 import { parsePositivePage } from "@/lib/pagination.ts";
 import { mergeSearchParams } from "@/lib/search-params.ts";
 import type { StudyItemBatchAction } from "@/lib/study-actions.ts";
-import {
-  findReplacementStudyItemId,
-  type PendingStudyEditorState,
-  type StudyEditorState,
-} from "@/lib/study-editor.ts";
+import { findReplacementStudyItemId } from "@/lib/study-editor.ts";
 import { useQuizCollection } from "../api/quiz-collection-queries.ts";
 import {
   useDeleteQuizQuestion,
@@ -65,6 +61,8 @@ import {
 } from "../api/quiz-queries.ts";
 import { QuizQuestionPanel } from "../components/quiz-question-dialog.tsx";
 import { QuizStartDialog } from "../components/quiz-start-dialog.tsx";
+import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
+import { useStudyItemEditor } from "@/lib/use-study-item-editor.ts";
 
 // A quiz is read in its own order, so its index follows it by default (numbers ascend).
 const quizQuestionListDefaults = { sort: "position", status: "active" };
@@ -101,10 +99,14 @@ export const QuizCollectionPage = () => {
     updateParams({ query: value || undefined }),
   );
   const [selected, setSelected] = useState(new Set<string>());
-  const [editor, setEditor] = useState<StudyEditorState>(null);
   const [duplicateSource, setDuplicateSource] = useState<QuizQuestionDetail | null>(null);
-  const [editorDirty, setEditorDirty] = useState(false);
-  const [pendingEditor, setPendingEditor] = useState<PendingStudyEditorState>(null);
+  const itemEditor = useStudyItemEditor({
+    linkedId: linkedQuestionId,
+    onChange: () => setDuplicateSource(null),
+    param: "question",
+    updateParams,
+  });
+  const { activeId, editor } = itemEditor;
   const [pendingDelete, setPendingDelete] = useState<QuizQuestionSummary | null>(null);
   const [pendingArchive, setPendingArchive] = useState<QuizQuestionSummary | null>(null);
   const [batchAction, setBatchAction] = useState<StudyItemBatchAction | null>(null);
@@ -117,12 +119,6 @@ export const QuizCollectionPage = () => {
   const remove = useDeleteQuizQuestion(collectionId);
   const patchQuestion = usePatchQuizQuestion(collectionId);
 
-  useEffect(() => {
-    if (linkedQuestionId)
-      setEditor(
-        linkedQuestionId === "new" ? { type: "create" } : { type: "edit", id: linkedQuestionId },
-      );
-  }, [linkedQuestionId]);
   useEffect(() => setSelected(new Set()), [input.page, input.query, input.status]);
   useEffect(() => {
     const totalPages = questions.data?.pagination.totalPages;
@@ -133,40 +129,19 @@ export const QuizCollectionPage = () => {
     if (compact || editor || linkedQuestionId || !questions.data?.items.length) return;
     const first = questions.data.items[0];
     if (!first) return;
-    setEditor({ type: "edit", id: first.id });
-    updateParams({ question: first.id }, false, true);
+    itemEditor.show({ type: "edit", id: first.id }, true);
   }, [compact, editor, linkedQuestionId, questions.data?.items]);
 
-  const activeId = editor?.type === "edit" ? editor.id : undefined;
-  const changeEditor = (next: Exclude<StudyEditorState, null>) => {
-    if (editorDirty) return setPendingEditor(next);
-    setDuplicateSource(null);
-    setEditor(next);
-    updateParams({ question: next.type === "create" ? "new" : next.id }, false);
-  };
+  const changeEditor = itemEditor.change;
   const openDuplicateDraft = (question: QuizQuestionDetail) => {
     setDuplicateSource(question);
-    setEditor({ type: "create" });
-    updateParams({ question: "new" }, false);
+    itemEditor.show({ type: "create" });
   };
   const replacementQuestionId = (excluded: Set<string>) => {
     const visible = questions.data?.items ?? [];
     return findReplacementStudyItemId(visible, activeId, excluded);
   };
-  const showReplacement = (replacementId?: string) => {
-    if (replacementId) {
-      setEditor({ type: "edit", id: replacementId });
-      updateParams({ question: replacementId }, false, true);
-    } else {
-      setEditor(null);
-      updateParams({ question: undefined }, false, true);
-    }
-  };
-  const closeEditor = () => {
-    if (editorDirty) return setPendingEditor("close");
-    setEditor(null);
-    updateParams({ question: undefined }, false, true);
-  };
+  const { close: closeEditor, showReplacement } = itemEditor;
   const changeStatus = async (question: QuizQuestionSummary, archived: boolean) => {
     try {
       await patchQuestion.mutateAsync({
@@ -175,8 +150,8 @@ export const QuizCollectionPage = () => {
       });
       if (activeId === question.id) closeEditor();
       toast.success(archived ? "Questão arquivada." : "Questão restaurada.");
-    } catch {
-      toast.error("Não foi possível atualizar a questão.");
+    } catch (error) {
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível atualizar a questão."));
     }
   };
   const performBatch = async (action: StudyItemBatchAction) => {
@@ -204,8 +179,10 @@ export const QuizCollectionPage = () => {
             ? "Questões restauradas."
             : "Questões excluídas.",
       );
-    } catch {
-      toast.error("Não foi possível alterar as questões selecionadas.");
+    } catch (error) {
+      toast.error(
+        getQuizCollectionErrorMessage(error, "Não foi possível alterar as questões selecionadas."),
+      );
     }
   };
 
@@ -354,7 +331,7 @@ export const QuizCollectionPage = () => {
           )}
           <StudyIndexScroll>
             <StudyItemListState
-              createLabel="Criar questão"
+              createLabel="Nova questão"
               emptyIcon={SquareCheckBig}
               guidedElsewhere={input.status === "active"}
               emptyTitle={
@@ -429,17 +406,14 @@ export const QuizCollectionPage = () => {
                   text,
                 }))}
                 key={duplicateSource ? `duplicate-${duplicateSource.id}` : "new"}
-                onDirtyChange={setEditorDirty}
+                onDirtyChange={itemEditor.setDirty}
                 onOpenChange={() => undefined}
                 onSaved={(id, savedCollectionId) => {
-                  setEditorDirty(false);
+                  itemEditor.setDirty(false);
                   setDuplicateSource(null);
                   if (savedCollectionId !== collectionId)
                     void navigate(`/quizzes/${savedCollectionId}?question=${id}`);
-                  else {
-                    setEditor({ type: "edit", id });
-                    updateParams({ question: id }, false, true);
-                  }
+                  else itemEditor.show({ type: "edit", id }, true);
                 }}
                 open
                 readOnly={Boolean(summary.archivedAt || detail.data?.archivedAt)}
@@ -455,10 +429,10 @@ export const QuizCollectionPage = () => {
                   else if (action === "restore") void changeStatus(detail.data, false);
                   else if (action === "duplicate") openDuplicateDraft(detail.data);
                 }}
-                onDirtyChange={setEditorDirty}
+                onDirtyChange={itemEditor.setDirty}
                 onOpenChange={() => undefined}
                 onSaved={(id, savedCollectionId) => {
-                  setEditorDirty(false);
+                  itemEditor.setDirty(false);
                   if (savedCollectionId !== collectionId)
                     void navigate(`/quizzes/${savedCollectionId}?question=${id}`);
                   else updateParams({ question: id }, false, true);
@@ -479,7 +453,8 @@ export const QuizCollectionPage = () => {
               !query &&
               questions.data?.pagination.totalItems === 0 ? (
                 <StudyCollectionStart
-                  createLabel="Criar questão"
+                  createLabel="Nova questão"
+                  generateLabel="Gerar questões com IA"
                   icon={SquareCheckBig}
                   noun="as primeiras questões"
                   onCreate={() => changeEditor({ type: "create" })}
@@ -496,20 +471,19 @@ export const QuizCollectionPage = () => {
         </div>
       </section>
       <ConfirmationDialog
-        actionLabel="Arquivar"
+        actionLabel="Arquivar questão"
         open={Boolean(pendingArchive)}
         title="Arquivar questão?"
         description="A questão deixará de aparecer entre os materiais ativos, mas poderá ser restaurada."
         onOpenChange={(open) => !open && setPendingArchive(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pendingArchive) return;
-          const question = pendingArchive;
+          await changeStatus(pendingArchive, true);
           setPendingArchive(null);
-          void changeStatus(question, true);
         }}
       />
       <ConfirmationDialog
-        actionLabel="Excluir"
+        actionLabel="Excluir questão"
         destructive
         open={Boolean(pendingDelete)}
         title="Excluir questão?"
@@ -524,19 +498,21 @@ export const QuizCollectionPage = () => {
             if (activeId === id) showReplacement(replacementId);
             setPendingDelete(null);
             toast.success("Questão excluída.");
-          } catch {
-            toast.error("Não foi possível excluir a questão.");
+          } catch (error) {
+            toast.error(
+              getQuizCollectionErrorMessage(error, "Não foi possível excluir a questão."),
+            );
           }
         }}
       />
       <ConfirmationDialog
-        actionLabel={
+        actionLabel={`${
           batchAction === "delete"
             ? "Excluir"
             : batchAction === "restore"
               ? "Restaurar"
               : "Arquivar"
-        }
+        } questões`}
         destructive={batchAction === "delete"}
         open={Boolean(batchAction)}
         title={`${
@@ -554,32 +530,18 @@ export const QuizCollectionPage = () => {
               : "As questões poderão ser restauradas depois."
         }
         onOpenChange={(open) => !open && setBatchAction(null)}
-        onConfirm={() => {
-          if (batchAction) void performBatch(batchAction);
+        onConfirm={async () => {
+          if (batchAction) await performBatch(batchAction);
         }}
       />
       <QuizStartDialog collectionId={collectionId} open={startOpen} onOpenChange={setStartOpen} />
       <ConfirmationDialog
-        actionLabel="Descartar"
+        actionLabel="Descartar alterações"
         cancelLabel="Continuar editando"
         destructive
-        open={Boolean(pendingEditor)}
         title="Descartar alterações?"
         description="A questão atual ainda não foi salva."
-        onOpenChange={(open) => !open && setPendingEditor(null)}
-        onConfirm={() => {
-          if (!pendingEditor) return;
-          const next = pendingEditor;
-          setPendingEditor(null);
-          setEditorDirty(false);
-          if (next === "close") {
-            setEditor(null);
-            updateParams({ question: undefined }, false, true);
-          } else {
-            setEditor(next);
-            updateParams({ question: next.type === "create" ? "new" : next.id }, false);
-          }
-        }}
+        {...itemEditor.discard}
       />
     </main>
   );

@@ -1,22 +1,12 @@
 import { createProjectSchema, type ProjectSummary, projectTitleSchema } from "@lazuli/shared";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangleIcon } from "@/components/icons.tsx";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
+import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { FormFieldError } from "@/components/form-field-error.tsx";
 import {
@@ -46,6 +36,7 @@ import {
 import { getCommercialLimit } from "@/features/billing/billing-errors.ts";
 import type { CommercialLimitDetails } from "@lazuli/shared";
 import { createProjectWithCover } from "../create-project-with-cover.ts";
+import { accountSettingsKeys } from "@/features/account-settings/api/account-settings-queries.ts";
 
 const renameProjectSchema = z.object({ title: projectTitleSchema });
 type RenameProjectValues = z.input<typeof renameProjectSchema>;
@@ -107,7 +98,7 @@ export const CreateProjectDialog = ({
       });
       await Promise.all([
         client.invalidateQueries({ queryKey: projectKeys.lists() }),
-        client.invalidateQueries({ queryKey: ["account-settings", "usage"] }),
+        client.invalidateQueries({ queryKey: accountSettingsKeys.usage() }),
       ]);
       toast.success("Projeto criado.");
       close(true);
@@ -322,31 +313,15 @@ export const DeleteProjectDialog = ({
       : `${project.documentCount} ${project.documentCount === 1 ? "documento será excluído" : "documentos serão excluídos"} junto com ele.`;
 
   return (
-    <AlertDialog
+    <ConfirmationDialog
+      actionLabel="Excluir projeto"
+      description={`${documentMessage} Esta ação não pode ser desfeita.`}
+      destructive
+      onConfirm={deleteProject}
+      onOpenChange={onOpenChange}
       open={open}
-      onOpenChange={(nextOpen) => !mutation.isPending && onOpenChange(nextOpen)}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogMedia className="bg-destructive/10 text-destructive">
-            <AlertTriangleIcon aria-hidden="true" />
-          </AlertDialogMedia>
-          <AlertDialogTitle>Excluir “{project.title}”?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {documentMessage} Esta ação não pode ser desfeita.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={mutation.isPending}>Cancelar</AlertDialogCancel>
-          <Button
-            onClick={() => void deleteProject()}
-            pending={mutation.isPending}
-            variant="destructive"
-          >
-            Excluir projeto
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      pending={mutation.isPending}
+      title={`Excluir “${project.title}”?`}
+    />
   );
 };

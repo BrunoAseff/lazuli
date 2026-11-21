@@ -64,6 +64,7 @@ export const DocumentMaterialFlow = ({
         onOpenChange={(open) => !open && !completed.current && onCancel()}
         open
         sourcePreview={action.selectedText}
+        sourcePreviewParts={action.selectedPreviewParts}
       />
     );
   return (
@@ -73,6 +74,7 @@ export const DocumentMaterialFlow = ({
       onOpenChange={(open) => !open && !completed.current && onCancel()}
       open
       sourcePreview={action.selectedText}
+      sourcePreviewParts={action.selectedPreviewParts}
     />
   );
 };

@@ -73,10 +73,12 @@ export const QuizAlternativesField = ({
             onClick={() =>
               onChange([...options, { id: crypto.randomUUID(), text: "", isCorrect: false }])
             }
+            className="w-fit"
+            size="xs"
             type="button"
-            variant="ghost"
+            variant="field-link"
           >
-            <PlusIcon /> Adicionar
+            <PlusIcon aria-hidden="true" /> Nova alternativa
           </Button>
         )}
       </div>

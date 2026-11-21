@@ -11,6 +11,7 @@ import {
 import type { Logger } from "pino";
 
 import { AiGenerationError, aiErrorCodes, normalizeAiError } from "./ai-errors.ts";
+import { splitSourceBlockId } from "./ai-source-blocks.ts";
 import type { AiGenerationRecord, AiGenerationStore } from "./ai-generation-store.ts";
 import {
   AI_DRAFT_TTL_MS,
@@ -131,12 +132,11 @@ const resolveSourceReferences = <
     ? {
         ...item,
         references: item.references.map((reference) => {
-          const at = reference.blockId.indexOf("::");
-          const index = at === -1 ? 0 : Number(reference.blockId.slice(0, at)) - 1;
+          const { blockId, sourceIndex } = splitSourceBlockId(reference.blockId);
           return {
             ...reference,
-            blockId: at === -1 ? reference.blockId : reference.blockId.slice(at + 2),
-            documentId: index > 0 ? (sources[index]?.documentId ?? null) : null,
+            blockId,
+            documentId: sourceIndex > 0 ? (sources[sourceIndex]?.documentId ?? null) : null,
           };
         }),
       }
@@ -147,11 +147,11 @@ type CollectionGenerationInput = CollectionGenerationJob & {
   userId: string;
 };
 
-export type FoundationGenerationResult =
+type FoundationGenerationResult =
   | { draft: FoundationDraft; kind: "completed"; operationId: string; reused: boolean }
   | { kind: "in-progress"; operationId: string };
 
-export type SelectionGenerationResult =
+type SelectionGenerationResult =
   | { draft: AiSelectionDraft; kind: "completed"; operationId: string; reused: boolean }
   | { kind: "in-progress"; operationId: string };
 

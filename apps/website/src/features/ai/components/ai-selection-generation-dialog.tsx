@@ -1,7 +1,5 @@
-import { Spinner } from "@/components/ui/spinner.tsx";
 import {
   AI_CREDITS_PER_ITEM,
-  AI_SELECTION_MAX_ITEMS,
   type AiMaterialKind,
   type AiSelectionDraft,
   type DocumentBlock,
@@ -13,7 +11,6 @@ import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
-import { NewTabIndicator } from "@/components/new-tab-indicator.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Dialog,
@@ -30,7 +27,6 @@ import { ViewSelector } from "@/components/view-selector.tsx";
 import { PlusIcon } from "@/components/icons.tsx";
 import { PrepareSource } from "./prepare-source.tsx";
 import { StudyCollectionDestination } from "@/components/study-collection-destination.tsx";
-import { QuantitySelector } from "@/components/quantity-selector.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { CreditUpgradeGuard } from "@/features/billing/components/credit-upgrade-guard.tsx";
 import { hasDuplicateQuizOptionTexts } from "@/features/quizzes/components/quiz-alternatives-field.tsx";
@@ -38,6 +34,7 @@ import type { AiEditableQuizProposal } from "./ai-quiz-proposal-editor.tsx";
 import { AiProposalReviewList } from "./ai-proposal-review-list.tsx";
 import { studyItemAgreement, studyItemCount } from "@/lib/text.ts";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
+import { GenerationPending } from "./generation-pending.tsx";
 import { cn } from "@/lib/utils.ts";
 import { AssetImage } from "@/components/asset-image.tsx";
 import {
@@ -52,18 +49,13 @@ import {
   useApproveAiGeneration,
   useCreateAiSelectionGeneration,
 } from "../api/ai-queries.ts";
+import { textContent } from "../text-content.ts";
+import { GenerationQuantityField, wordsIn } from "./generation-quantity-field.tsx";
+import { SelectionInlineContent, SelectionPreview } from "./selection-preview.tsx";
 
 type EditableFlashcard = AiSelectionDraft["flashcards"][number] & { selected: boolean };
 type EditableQuiz = AiSelectionDraft["quizQuestions"][number] &
   AiEditableQuizProposal & { selected: boolean };
-const textContent = (text: string): DocumentBlock[] => [
-  {
-    id: crypto.randomUUID(),
-    type: "paragraph",
-    content: [{ type: "text", text: text.trim(), styles: {} }],
-  },
-];
-
 const generationMessages = {
   AI_INPUT_TOO_LARGE:
     "Este documento é grande demais para uma única geração. Selecione um trecho menor.",
@@ -71,47 +63,6 @@ const generationMessages = {
   AI_RATE_LIMITED: "Muitas gerações foram solicitadas. Aguarde um pouco e tente novamente.",
   AI_REGENERATION_LIMIT: "O limite de três novas tentativas foi atingido.",
 } as const;
-
-const SelectionInlineContent = ({ content }: { content: DocumentBlock["content"] }) => {
-  if (!Array.isArray(content)) return null;
-  return content.map((item, itemIndex) => {
-    const texts = item.type === "text" ? [item] : item.content;
-    const rendered = texts.map((text, textIndex) => (
-      <span
-        className={cn(
-          text.styles.bold && "font-semibold",
-          text.styles.italic && "italic",
-          text.styles.underline && "underline",
-          text.styles.strike && "line-through",
-        )}
-        key={`${itemIndex}:${textIndex}`}
-        style={{
-          backgroundColor:
-            typeof text.styles.backgroundColor === "string"
-              ? text.styles.backgroundColor
-              : undefined,
-          color: typeof text.styles.textColor === "string" ? text.styles.textColor : undefined,
-        }}
-      >
-        {text.text}
-      </span>
-    ));
-    return item.type === "link" ? (
-      <a
-        className="text-primary underline underline-offset-2"
-        href={item.href}
-        key={itemIndex}
-        rel="noreferrer"
-        target="_blank"
-      >
-        {rendered}
-        <NewTabIndicator />
-      </a>
-    ) : (
-      rendered
-    );
-  });
-};
 
 const SelectionSourceBlocks = ({ blocks }: { blocks: DocumentBlock[] }) => (
   <div className="space-y-4">
@@ -438,42 +389,7 @@ export const AiSelectionGenerationDialog = ({
   // What the material is made from, as text: the selected parts, the whole document or the
   // plain selection. An image is shown as itself.
   const sourceText = action?.selectedPreviewParts?.length ? (
-    <div className="space-y-2 whitespace-normal">
-      {action.selectedPreviewParts.map((part, index) =>
-        part.kind === "table" ? (
-          <div className="overflow-x-auto lazuli-thin-scrollbar" key={index}>
-            <table className="w-full border-collapse text-sm">
-              <tbody>
-                {part.rows.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {row.map((cell, cellIndex) => (
-                      <td className="border border-border px-2.5 py-1.5 align-top" key={cellIndex}>
-                        <SelectionInlineContent content={cell.content} />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p
-            className={cn(
-              "whitespace-pre-wrap",
-              part.blockType === "heading" && "font-semibold text-foreground",
-              part.blockType === "quote" && "border-l-2 border-border pl-3 italic",
-            )}
-            key={index}
-          >
-            {part.text.startsWith("• ") && "• "}
-            {part.text.startsWith("☐ ") && "☐ "}
-            {/^\d+\. /.exec(part.text)?.[0]}
-            {part.text.startsWith("> ") && "> "}
-            <SelectionInlineContent content={part.content} />
-          </p>
-        ),
-      )}
-    </div>
+    <SelectionPreview parts={action.selectedPreviewParts} />
   ) : action?.sourceScope === "document" ? (
     <SelectionSourceBlocks blocks={getDocumentContent()} />
   ) : (
@@ -532,13 +448,13 @@ export const AiSelectionGenerationDialog = ({
             draft ? "sm:max-w-5xl" : "sm:max-w-lg",
           )}
         >
-          <DialogHeader className={draft ? "border-b px-6 py-5" : "px-6 pt-6"}>
+          <DialogHeader className={draft ? "px-6 py-5" : "px-6 pt-6"}>
             <DialogTitle>
               {draft
                 ? "Revisar propostas"
                 : kind === "flashcard"
-                  ? "Criar flashcards com IA"
-                  : "Criar questões com IA"}
+                  ? "Gerar flashcards com IA"
+                  : "Gerar questões com IA"}
             </DialogTitle>
             <DialogDescription>
               {draft
@@ -614,6 +530,8 @@ export const AiSelectionGenerationDialog = ({
                   />
                 </div>
               </CreationWorkspace>
+            ) : createGeneration.isPending || generation.data?.status === "running" ? (
+              <GenerationPending />
             ) : (
               <div className="grid gap-5">
                 <PrepareSource
@@ -642,18 +560,12 @@ export const AiSelectionGenerationDialog = ({
                     />
                   </div>
 
-                  <div className="grid gap-2">
-                    <Label>{kind === "flashcard" ? "Quantos?" : "Quantas?"}</Label>
-                    <QuantitySelector
-                      label="Quantidade de propostas"
-                      value={quantity}
-                      options={Array.from(
-                        { length: AI_SELECTION_MAX_ITEMS },
-                        (_, index) => index + 1,
-                      )}
-                      onChange={setQuantity}
-                    />
-                  </div>
+                  <GenerationQuantityField
+                    kind={kind}
+                    onChange={setQuantity}
+                    value={quantity}
+                    words={wordsIn(action?.selectedText ?? "")}
+                  />
 
                   <StudyCollectionDestination
                     key={kind}
@@ -683,11 +595,11 @@ export const AiSelectionGenerationDialog = ({
                     </div>
                   ) : (
                     <Button
-                      className="h-auto w-fit px-0 py-0.5 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                      className="w-fit py-0.5"
                       onClick={() => setGuidanceOpen(true)}
                       size="xs"
                       type="button"
-                      variant="ghost"
+                      variant="field-link"
                     >
                       <PlusIcon aria-hidden="true" /> Adicionar orientação para a IA
                     </Button>
@@ -695,24 +607,9 @@ export const AiSelectionGenerationDialog = ({
                 </div>
               </div>
             )}
-            {(createGeneration.isPending || generation.data?.status === "running") && (
-              <div className="absolute inset-0 grid place-items-center bg-background/80 backdrop-blur-sm">
-                <div className="text-center">
-                  <Spinner
-                    aria-hidden="true"
-                    role="presentation"
-                    className="mx-auto mb-3 size-7 text-muted-foreground"
-                  />
-                  <p className="font-medium">Criando propostas…</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Você pode fechar e continuar depois.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
 
-          <DialogFooter className="mx-0 mb-0 shrink-0 flex-col rounded-none border-t px-6 py-4 sm:items-center">
+          <DialogFooter className="mx-0 mb-0 shrink-0 flex-col rounded-none px-6 py-4 sm:items-center">
             {!draft && (
               <div className="w-full sm:mr-auto sm:w-auto">
                 <AiCreditCost cost={cost} available={balance.data?.available} />
@@ -720,11 +617,11 @@ export const AiSelectionGenerationDialog = ({
             )}
             {draft && (
               <Button
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+                className="sm:mr-auto"
                 disabled={approve.isPending}
                 onClick={() => setDiscardOpen(true)}
                 type="button"
-                variant="ghost"
+                variant="destructive-ghost"
               >
                 <Trash2Icon /> Descartar propostas
               </Button>
@@ -777,7 +674,7 @@ export const AiSelectionGenerationDialog = ({
         </DialogContent>
       </Dialog>
       <ConfirmationDialog
-        actionLabel="Descartar"
+        actionLabel="Descartar propostas"
         description="As propostas serão removidas. Os créditos já consumidos pela geração não serão devolvidos."
         destructive
         onConfirm={() => {

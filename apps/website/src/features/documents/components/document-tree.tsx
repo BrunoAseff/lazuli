@@ -628,15 +628,16 @@ export const DocumentTree = ({
       </div>
       <ProjectItemDeleteDialog
         item={deleting}
-        onConfirm={(item) => {
+        onConfirm={async (item) => {
           const goHome = descendantsContainActive(item.id);
-          void deleteItem
-            .mutateAsync(item.id)
-            .then(() => {
-              if (goHome) void navigate(`/documents/${projectId}`);
-              toast.success(DOCUMENT_MESSAGES.deleteSuccess);
-            })
-            .catch(() => toast.error(DOCUMENT_MESSAGES.deleteError));
+          try {
+            await deleteItem.mutateAsync(item.id);
+            setDeleting(null);
+            if (goHome) void navigate(`/documents/${projectId}`);
+            toast.success(DOCUMENT_MESSAGES.deleteSuccess);
+          } catch {
+            toast.error(DOCUMENT_MESSAGES.deleteError);
+          }
         }}
         onOpenChange={(open) => !open && setDeleting(null)}
       />

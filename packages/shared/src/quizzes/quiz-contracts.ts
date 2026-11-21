@@ -12,9 +12,6 @@ import {
   STUDY_COLLECTION_PAGE_SIZE,
   studyCollectionIdSchema,
   studyCollectionListQueryShape,
-  studyCollectionProjectFilterSchema,
-  studyCollectionStatusSchema,
-  studyCollectionTitleSchema,
   updateStudyCollectionSchema,
 } from "../study-collections/study-collection-contracts.ts";
 
@@ -26,9 +23,6 @@ export const QUIZ_MAX_CONTENT_BYTES = 256 * 1024;
 export const QUIZ_ATTEMPT_MAX_QUESTIONS = 200;
 
 export const quizCollectionIdSchema = studyCollectionIdSchema;
-export const quizCollectionTitleSchema = studyCollectionTitleSchema;
-export const quizCollectionStatusSchema = studyCollectionStatusSchema;
-export const quizCollectionProjectFilterSchema = studyCollectionProjectFilterSchema;
 export const quizCollectionListQuerySchema = z.object(studyCollectionListQueryShape).strict();
 export const createQuizCollectionSchema = createStudyCollectionSchema;
 export const updateQuizCollectionSchema = updateStudyCollectionSchema;
@@ -218,10 +212,8 @@ export const quizCollectionSummarySchema = z.object({
   archivedAt: z.iso.datetime().nullable(),
   totalQuestions: metricSchema,
   totalAttempts: metricSchema,
-  attemptsLastSevenDays: metricSchema,
   lastScore: scoreSchema.nullable(),
   bestScoreRate: z.number().min(0).max(1).nullable(),
-  lastAttemptAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -232,7 +224,6 @@ export const quizCollectionListResponseSchema = z.object({
 });
 
 export type QuizCollectionListQuery = z.infer<typeof quizCollectionListQuerySchema>;
-export type QuizCollectionStatus = z.infer<typeof quizCollectionStatusSchema>;
 export type CreateQuizCollectionInput = z.infer<typeof createQuizCollectionSchema>;
 export type UpdateQuizCollectionInput = z.infer<typeof updateQuizCollectionSchema>;
 export type QuizCollectionSummary = z.infer<typeof quizCollectionSummarySchema>;

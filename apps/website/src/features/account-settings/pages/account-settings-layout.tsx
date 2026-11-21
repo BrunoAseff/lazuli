@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { cn } from "@/lib/utils.ts";
+import { authClient } from "@/features/auth/auth-client.ts";
 import { prefetchAccountSettings } from "../api/account-settings-queries.ts";
 import { SettingsLoading } from "../components/settings-ui.tsx";
 
@@ -45,10 +46,11 @@ export const AccountSettingsLayout = () => {
   const navigate = useNavigate();
   const current = sections.find(({ path }) => location.pathname === path) ?? sections[0];
   const client = useQueryClient();
+  const userId = authClient.useSession().data?.user.id ?? "";
   useEffect(() => {
     void preloadSections();
-    void prefetchAccountSettings(client);
-  }, [client]);
+    void prefetchAccountSettings(client, userId);
+  }, [client, userId]);
 
   return (
     <ContentPage maxWidth="5xl">
@@ -76,7 +78,7 @@ export const AccountSettingsLayout = () => {
                 <NavLink
                   className={({ isActive }) =>
                     cn(
-                      "flex min-h-10 items-center gap-2.5 rounded-[var(--radius)] px-3 py-2 text-sm text-muted-foreground transition-colors outline-none hover:bg-muted/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/35",
+                      "flex min-h-10 items-center gap-2.5 rounded-[var(--radius)] px-3 py-2 text-sm text-muted-foreground transition-colors outline-none hover:bg-muted/55 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
                       isActive && "bg-muted text-foreground",
                     )
                   }

@@ -29,6 +29,7 @@ import { asset, flashcard, flashcardCollection } from "../database/schema/index.
 import { releaseStoredObjects } from "../storage/storage-cleanup.ts";
 import { deleteReferencesForTargets } from "../references/reference-queries.ts";
 import { plainTextFlashcardContent } from "./flashcard-import.ts";
+import { pageOffset, paginationOf } from "../database/pagination.ts";
 
 const selection = {
   id: flashcard.id,
@@ -129,17 +130,12 @@ export const listFlashcards = async (
       .where(where)
       .orderBy(...order)
       .limit(input.pageSize)
-      .offset((input.page - 1) * input.pageSize),
+      .offset(pageOffset(input)),
   ]);
   const totalItems = total?.value ?? 0;
   return {
     items: rows.map(serializeRow),
-    pagination: {
-      page: input.page,
-      pageSize: input.pageSize,
-      totalItems,
-      totalPages: totalItems ? Math.ceil(totalItems / input.pageSize) : 0,
-    },
+    pagination: paginationOf(input, totalItems),
   };
 };
 

@@ -79,7 +79,7 @@ export const createPortalSessionSchema = z
   .object({ returnTo: billingReturnPathSchema.optional() })
   .default({});
 
-export type CommercialSeverity = "at_limit" | "near_limit" | "normal" | "over_limit";
+type CommercialSeverity = "at_limit" | "near_limit" | "normal" | "over_limit";
 
 export type BillingSubscriptionStatus =
   | "active"

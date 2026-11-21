@@ -1,7 +1,7 @@
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import rawBody from "fastify-raw-body";
-import Fastify from "fastify";
+import Fastify, { LogController } from "fastify";
 
 import { createAiCreditReconciler } from "./ai-credits/ai-credit-reconciler.ts";
 import { createAccountDeletionLifecycle } from "./account-settings/account-deletion.ts";
@@ -34,7 +34,7 @@ import { createDocumentImportWorker } from "./document-imports/document-import-w
 import { createFlashcardCollectionRoutes } from "./flashcards/flashcard-collection-routes.ts";
 import { createFlashcardRoutes } from "./flashcards/flashcard-routes.ts";
 import { createFlashcardPracticeRoutes } from "./flashcards/flashcard-practice-routes.ts";
-import { createLogger } from "./logger.ts";
+import { createLogger, logRequest } from "./logger.ts";
 import { createProjectRoutes } from "./projects/project-routes.ts";
 import { createProjectCoverRoutes } from "./projects/project-cover-routes.ts";
 import { createQuizCollectionRoutes } from "./quizzes/quiz-collection-routes.ts";
@@ -52,9 +52,12 @@ import { getLegalStatus } from "./legal/legal-service.ts";
 
 export const buildApp = (env: ServerEnv) => {
   const app = Fastify({
+    // Requests are logged by route pattern (see logRequest), never by URL.
+    logController: new LogController({ disableRequestLogging: true }),
     loggerInstance: createLogger(env),
     trustProxy: env.TRUST_PROXY,
   });
+  app.addHook("onResponse", logRequest);
   const database = createDatabase(env.DATABASE_URL);
   const analytics = createAnalyticsService(env, database.db, app.log);
   const storage = createObjectStorage(env);

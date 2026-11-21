@@ -57,12 +57,12 @@ const linkContentSchema = z.object({
 });
 const inlineContentSchema = z.union([textContentSchema, linkContentSchema]);
 export type DocumentInlineContent = z.infer<typeof inlineContentSchema>;
-export type DocumentTableCell = {
+type DocumentTableCell = {
   type: "tableCell";
   props: Record<string, string | number | boolean | null>;
   content: DocumentInlineContent[];
 };
-export type DocumentTableContent = {
+type DocumentTableContent = {
   type: "tableContent";
   columnWidths: Array<number | null | undefined>;
   headerRows?: number;
@@ -338,11 +338,8 @@ export type CreateProjectItemInput = z.infer<typeof createProjectItemSchema>;
 export type UpdateProjectItemInput = z.infer<typeof updateProjectItemSchema>;
 export type DocumentResponse = z.infer<typeof documentResponseSchema>;
 export type SaveDocumentContentInput = z.infer<typeof saveDocumentContentSchema>;
-export type ImportDocumentImageInput = z.infer<typeof importDocumentImageSchema>;
 export type AssetResponse = z.infer<typeof assetResponseSchema>;
 export type CreateDocumentImportInput = z.infer<typeof createDocumentImportSchema>;
 export type DocumentImport = z.infer<typeof documentImportSchema>;
-export type DocumentImportList = z.infer<typeof documentImportListSchema>;
 export type DocumentImportPhase = z.infer<typeof documentImportPhaseSchema>;
-export type DocumentImportStatus = z.infer<typeof documentImportStatusSchema>;
 export type StorageUsage = z.infer<typeof storageUsageSchema>;

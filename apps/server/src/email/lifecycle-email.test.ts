@@ -31,6 +31,6 @@ describe("lifecycle emails", () => {
   it("confirms export delivery as an attachment rather than a download link", () => {
     const message = createLifecycleEmail("export_ready", { name: "Ana" }, "https://lazuli.example");
     expect(message.text).toContain("anexada");
-    expect(message.html).not.toContain("https://lazuli.example");
+    expect(message.html).not.toContain('href="https://lazuli.example');
   });
 });

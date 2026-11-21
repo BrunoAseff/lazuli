@@ -129,7 +129,7 @@ export const createLifecycleEmailWorker = (
           }
         });
         logger.info({ emailId: job.id, kind: job.kind }, "lifecycle email accepted");
-      } catch {
+      } catch (error) {
         const requiresReview =
           job.attempts >= 6 || Date.now() - job.createdAt.getTime() >= 23 * 60 * 60_000;
         await database
@@ -142,14 +142,14 @@ export const createLifecycleEmailWorker = (
           })
           .where(owned);
         logger.error(
-          { emailId: job.id, kind: job.kind, requiresReview },
+          { err: error, emailId: job.id, kind: job.kind, requiresReview },
           "lifecycle email delivery failed",
         );
       } finally {
         clearInterval(heartbeat);
       }
-    } catch {
-      logger.error("lifecycle email worker iteration failed");
+    } catch (error) {
+      logger.error({ err: error }, "lifecycle email worker iteration failed");
     }
   };
   const launch = () => {

@@ -12,9 +12,6 @@ import {
   STUDY_COLLECTION_PAGE_SIZE,
   studyCollectionIdSchema,
   studyCollectionListQueryShape,
-  studyCollectionProjectFilterSchema,
-  studyCollectionStatusSchema,
-  studyCollectionTitleSchema,
   updateStudyCollectionSchema,
 } from "../study-collections/study-collection-contracts.ts";
 
@@ -30,9 +27,6 @@ export const FLASHCARD_IMPORT_MAX_ROWS = 1_000;
 export const FLASHCARD_IMPORT_TEXT_MAX_LENGTH = 10_000;
 
 export const flashcardCollectionIdSchema = studyCollectionIdSchema;
-export const flashcardCollectionTitleSchema = studyCollectionTitleSchema;
-export const flashcardCollectionStatusSchema = studyCollectionStatusSchema;
-export const flashcardCollectionProjectFilterSchema = studyCollectionProjectFilterSchema;
 export const flashcardRatingSchema = z.enum(["again", "hard", "good", "easy"]);
 export const flashcardIdSchema = z.uuid();
 export const flashcardPracticeSessionIdSchema = z.uuid();
@@ -235,20 +229,15 @@ export const flashcardCollectionSummarySchema = z
     archivedAt: z.iso.datetime().nullable(),
     totalCards: flashcardMetricSchema,
     newCards: flashcardMetricSchema,
-    studiedCards: flashcardMetricSchema,
     dueCards: flashcardMetricSchema,
     /** Reviewed into a long interval and not due: the gold of the strip. */
     masteredCards: flashcardMetricSchema.default(0),
     nextPracticeAt: z.iso.datetime().nullable(),
     reviewsLastSevenDays: flashcardMetricSchema,
-    successRateLastSevenDays: z.number().min(0).max(1).nullable(),
-    lastReviewedAt: z.iso.datetime().nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
-  .superRefine(({ dueCards, newCards, studiedCards, totalCards }, context) => {
-    if (studiedCards > totalCards)
-      context.addIssue({ code: "custom", message: "A contagem de cards estudados é inválida." });
+  .superRefine(({ dueCards, newCards, totalCards }, context) => {
     if (dueCards > totalCards)
       context.addIssue({ code: "custom", message: "A contagem de cards disponíveis é inválida." });
     if (newCards > totalCards)
@@ -261,7 +250,6 @@ export const flashcardCollectionListResponseSchema = z.object({
 });
 
 export type FlashcardCollectionListQuery = z.infer<typeof flashcardCollectionListQuerySchema>;
-export type FlashcardCollectionStatus = z.infer<typeof flashcardCollectionStatusSchema>;
 export type CreateFlashcardCollectionInput = z.infer<typeof createFlashcardCollectionSchema>;
 export type UpdateFlashcardCollectionInput = z.infer<typeof updateFlashcardCollectionSchema>;
 export type FlashcardCollectionSummary = z.infer<typeof flashcardCollectionSummarySchema>;
@@ -278,7 +266,6 @@ export type CreateFlashcardInput = z.infer<typeof createFlashcardSchema>;
 export type UpdateFlashcardInput = z.infer<typeof updateFlashcardSchema>;
 export type FlashcardBatchInput = z.infer<typeof flashcardBatchSchema>;
 export type FlashcardSrsState = z.infer<typeof flashcardSrsStateSchema>;
-export type FlashcardPracticeStatus = z.infer<typeof flashcardPracticeStatusSchema>;
 export type CreateFlashcardPracticeSessionInput = z.infer<
   typeof createFlashcardPracticeSessionSchema
 >;

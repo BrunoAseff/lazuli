@@ -1,4 +1,3 @@
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import { REFERENCE_PAGE_SIZE } from "@lazuli/shared";
 import { Layers3Icon, Link2Icon, PlusIcon, SquareCheckBigIcon } from "@/components/icons.tsx";
@@ -25,6 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
+import { ReferenceRowsSkeleton } from "./reference-document-row.tsx";
 
 export const DocumentReferencesDialog = ({
   anchorId,
@@ -60,11 +60,11 @@ export const DocumentReferencesDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-xl">
-        <DialogHeader className="border-b px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <div className="pr-8">
             <div>
               <DialogTitle>
-                {anchorId ? "Este trecho no seu estudo" : "Materiais ligados"}
+                {anchorId ? "Este trecho no seu estudo" : "Materiais conectados"}
               </DialogTitle>
               <DialogDescription>
                 {anchorId
@@ -75,15 +75,11 @@ export const DocumentReferencesDialog = ({
           </div>
         </DialogHeader>
         <div className="max-h-[min(60vh,32rem)] overflow-y-auto px-3 py-4 lazuli-thin-scrollbar">
-          {references.isPending && (
-            <p className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-              <Spinner aria-hidden="true" role="presentation" /> Carregando...
-            </p>
-          )}
+          {references.isPending && <ReferenceRowsSkeleton />}
           {references.isError && (
             <div className="px-3 py-4">
               <p className="text-sm text-destructive">
-                Não foi possível carregar os materiais ligados.
+                Não foi possível carregar os materiais conectados.
               </p>
               <Button variant="outline" className="mt-3" onClick={() => void references.refetch()}>
                 Tentar novamente
@@ -107,7 +103,7 @@ export const DocumentReferencesDialog = ({
                 : `/quizzes/${reference.material.collectionId}?question=${reference.material.id}`;
               return (
                 <div
-                  className="relative flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[var(--row-hover)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/50"
+                  className="group relative flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/50"
                   key={reference.id}
                 >
                   <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
@@ -117,7 +113,7 @@ export const DocumentReferencesDialog = ({
                     >
                       {(ref) => (
                         <Link
-                          className="block truncate text-sm font-medium outline-none after:absolute after:inset-0 after:rounded-lg"
+                          className="block truncate text-[0.9375rem] font-medium underline-offset-4 outline-none group-hover:underline after:absolute after:inset-0 after:rounded-lg"
                           ref={ref as Ref<HTMLAnchorElement>}
                           to={href}
                         >
@@ -146,7 +142,7 @@ export const DocumentReferencesDialog = ({
           </div>
           {references.data && (
             <PaginationControls
-              label="Paginação dos materiais ligados"
+              label="Paginação dos materiais conectados"
               onPageChange={setPage}
               pagination={references.data.pagination}
             />
@@ -157,11 +153,11 @@ export const DocumentReferencesDialog = ({
           onCreateFlashcard ||
           onCreateQuiz ||
           (onAdjust && Boolean(references.data?.items.length))) && (
-          <div className="flex flex-wrap justify-end gap-2 border-t px-6 py-4">
+          <div className="flex flex-wrap justify-end gap-2 px-6 py-4">
             {showAnchorsOption && (
               <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-sm sm:mr-auto">
                 <Switch checked={anchorsShown} onCheckedChange={setSourceAnchorsShown} />
-                Sublinhar trechos ligados
+                Sublinhar trechos conectados
               </label>
             )}
             {onAdjust && Boolean(references.data?.items.length) && (
@@ -171,7 +167,7 @@ export const DocumentReferencesDialog = ({
             )}
             {onAdd && (
               <Button onClick={onAdd} variant="outline">
-                <Link2Icon aria-hidden="true" /> Ligar flashcard ou questão
+                <Link2Icon aria-hidden="true" /> Conectar flashcard ou questão
               </Button>
             )}
             {(onCreateFlashcard || onCreateQuiz) && (
@@ -214,19 +210,19 @@ export const DocumentReferencesButton = ({
   const count = references.data?.pagination.totalItems;
   const name =
     count === undefined
-      ? "Materiais ligados"
+      ? "Materiais conectados"
       : count === 0
-        ? "Nenhum material ligado"
+        ? "Nenhum material conectado"
         : count === 1
-          ? "1 material ligado"
-          : `${count} materiais ligados`;
+          ? "1 material conectado"
+          : `${count} materiais conectados`;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button aria-label={name} onClick={onClick} size="sm" variant="ghost">
           <Link2Icon aria-hidden="true" />
           {/* Where the toolbar is narrow the label yields, so the toolbar never wraps into two rows. */}
-          <span className="hidden @xl/toolbar:inline">Materiais ligados</span>
+          <span className="hidden @xl/toolbar:inline">Materiais conectados</span>
           {Boolean(count) && <span className="text-muted-foreground tabular-nums">{count}</span>}
         </Button>
       </TooltipTrigger>

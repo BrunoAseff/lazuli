@@ -29,6 +29,7 @@ import {
 import { releaseStoredObjects } from "../storage/storage-cleanup.ts";
 import { summarizeRichContent } from "../documents/rich-content-summary.ts";
 import { deleteReferencesForTargets } from "../references/reference-queries.ts";
+import { pageOffset, paginationOf } from "../database/pagination.ts";
 
 const ownedCollection = async (db: QueryExecutor, userId: string, collectionId: string) => {
   const [row] = await db
@@ -171,17 +172,12 @@ export const listQuizQuestions = async (
       .groupBy(quizQuestion.id)
       .orderBy(...order)
       .limit(input.pageSize)
-      .offset((input.page - 1) * input.pageSize),
+      .offset(pageOffset(input)),
   ]);
   const totalItems = total?.value ?? 0;
   return {
     items: rows.map(serialize),
-    pagination: {
-      page: input.page,
-      pageSize: input.pageSize,
-      totalItems,
-      totalPages: totalItems ? Math.ceil(totalItems / input.pageSize) : 0,
-    },
+    pagination: paginationOf(input, totalItems),
   };
 };
 

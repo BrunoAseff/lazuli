@@ -7,19 +7,19 @@ import { Link } from "react-router";
 
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { studyItemCount } from "@/lib/text.ts";
 
 type ReviewCollection = DashboardResponse["reviewQueue"]["collections"][number];
 
-const flashcardCount = (count: number) => `${count} ${count === 1 ? "flashcard" : "flashcards"}`;
-
 const reviewProgress = (reviewedCards: number, totalCards: number) =>
-  `${reviewedCards} de ${flashcardCount(totalCards)} ${totalCards === 1 ? "revisado" : "revisados"}`;
+  `${reviewedCards} de ${studyItemCount("flashcard", totalCards)} ${totalCards === 1 ? "revisado" : "revisados"}`;
 
 const collectionStatus = (collection: ReviewCollection) => {
   const session = collection.activeSession;
   if (session) return reviewProgress(session.reviewedCards, session.totalCards);
-  if (collection.dueReviews) return `${flashcardCount(collection.dueReviews)} para revisar`;
-  return `${flashcardCount(collection.newCards)} ${collection.newCards === 1 ? "novo" : "novos"}`;
+  if (collection.dueReviews)
+    return `${studyItemCount("flashcard", collection.dueReviews)} para revisar`;
+  return `${studyItemCount("flashcard", collection.newCards)} ${collection.newCards === 1 ? "novo" : "novos"}`;
 };
 
 const collectionAction = (collection: ReviewCollection) =>
@@ -40,9 +40,9 @@ export const DashboardReviewQueue = ({
 }) => {
   const summary =
     queue.totalDueReviews > 0
-      ? `${flashcardCount(queue.totalDueReviews)} para revisar hoje`
+      ? `${studyItemCount("flashcard", queue.totalDueReviews)} para revisar hoje`
       : queue.totalNewCards > 0
-        ? `${flashcardCount(queue.totalNewCards)} para conhecer`
+        ? `${studyItemCount("flashcard", queue.totalNewCards)} para conhecer`
         : null;
   return (
     <section aria-labelledby="dashboard-reviews-title" className="min-w-0 p-6">
@@ -68,18 +68,19 @@ export const DashboardReviewQueue = ({
             const variant = index === 0 ? "default" : "outline";
             const label = collectionAction(collection);
             return (
-              // The name reads as text; the action is a real button, with every button's hover,
-              // press and focus.
+              // The name opens the collection and underlines on hover, like the rows below; the
+              // action is a real button, with every button's hover, press and focus.
               <li key={collection.collectionId} className="flex min-w-0 items-center gap-4 py-2">
                 <span className="min-w-0 flex-1">
                   <OverflowTooltip text={collection.collectionTitle}>
                     {(ref) => (
-                      <span
-                        className="block truncate text-[0.9375rem] font-medium"
-                        ref={ref as Ref<HTMLSpanElement>}
+                      <Link
+                        className="block truncate rounded-sm text-[0.9375rem] font-medium underline-offset-4 outline-none hover:underline focus-visible:underline"
+                        ref={ref as Ref<HTMLAnchorElement>}
+                        to={`/flashcards/${collection.collectionId}`}
                       >
                         {collection.collectionTitle}
-                      </span>
+                      </Link>
                     )}
                   </OverflowTooltip>
                   <span className="mt-0.5 block text-xs text-muted-foreground">

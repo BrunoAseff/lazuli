@@ -398,7 +398,7 @@ export const SecuritySectionPage = () => {
       </Dialog>
 
       <ConfirmationDialog
-        actionLabel="Encerrar"
+        actionLabel={pendingSession === "others" ? "Encerrar sessões" : "Encerrar sessão"}
         description={
           pendingSession === "others"
             ? "Todos os outros dispositivos precisarão entrar novamente. Esta sessão continuará ativa."

@@ -15,7 +15,6 @@ import type { Database } from "../database/client.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import { sendValidationError } from "../routes/route-helpers.ts";
 import {
-  abandonPracticeSession,
   createPracticeSession,
   getPracticeAvailability,
   getPracticeSession,
@@ -217,19 +216,5 @@ export const createFlashcardPracticeRoutes = ({
           kind: "flashcard",
         });
       return serializeSession(reviewed);
-    });
-
-    app.post("/api/flashcard-practice-sessions/:sessionId/abandon", async (request, reply) => {
-      const session = await authorizeMutation(request, reply);
-      if (!session) return;
-      const parsed = flashcardPracticeSessionIdSchema.safeParse(
-        (request.params as { sessionId?: unknown }).sessionId,
-      );
-      if (!parsed.success) return sendValidationError(reply);
-      if (!(await abandonPracticeSession(database, session.user.id, parsed.data)))
-        return reply
-          .status(404)
-          .send({ code: "PRACTICE_SESSION_NOT_FOUND", message: "Esta prática não existe." });
-      return reply.status(204).send();
     });
   };

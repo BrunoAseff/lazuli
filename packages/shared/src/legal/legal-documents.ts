@@ -1,6 +1,6 @@
 import { LEGAL_CONTACT } from "./legal-constants.ts";
 
-export type LegalSection = { id: string; title: string; paragraphs: string[] };
+type LegalSection = { id: string; title: string; paragraphs: string[] };
 export type LegalDocument = {
   kind: "terms" | "privacy";
   title: string;

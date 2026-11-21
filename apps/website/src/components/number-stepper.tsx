@@ -1,9 +1,9 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { MinusIcon, PlusIcon } from "@/components/icons.tsx";
 import { cn } from "@/lib/utils.ts";
+import { spring } from "@/lib/motion.ts";
 
 /**
  * A small number with − and +. The number rolls the way it changed (up for more, down for less),
@@ -114,7 +114,7 @@ export const NumberStepper = ({
                 initial="enter"
                 key={value}
                 variants={variants}
-                transition={motionTokens.spring.snappy}
+                transition={spring.snap}
               >
                 {value}
               </motion.span>

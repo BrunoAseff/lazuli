@@ -44,7 +44,7 @@ export function Slider({
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb
         aria-label={props["aria-label"]}
-        className="slider-thumb block size-4 rounded-full border border-primary/50 bg-card shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none"
+        className="slider-thumb block size-4 rounded-full border border-primary/50 bg-card shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none"
       />
     </SliderPrimitive.Root>
   );

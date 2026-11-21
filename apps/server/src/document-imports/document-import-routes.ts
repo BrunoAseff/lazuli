@@ -16,6 +16,8 @@ import { z } from "zod";
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
+import { createMutationAuthorizer } from "../routes/route-helpers.ts";
+import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import type { Database } from "../database/client.ts";
 import { sendCommercialLimitError } from "../commercial/commercial-limit-errors.ts";
 import { storageObjectDeletion } from "../database/schema/index.ts";
@@ -86,9 +88,19 @@ export const createDocumentImportRoutes = ({
   websiteUrl,
 }: Options): FastifyPluginAsync =>
   async function documentImportRoutes(app) {
+    // Starting an import and sending its file are limited per person, so storage and the
+    // conversion workers cannot be driven in a loop.
+    const authorizeImport = createMutationAuthorizer(
+      auth,
+      websiteUrl,
+      createRequestRateLimiter({ limit: 60, windowMs: 10 * 60 * 1_000 }),
+      {
+        code: "RATE_LIMITED",
+        message: "Muitas importações em pouco tempo. Aguarde alguns minutos e tente novamente.",
+      },
+    );
     app.post("/api/projects/:projectId/document-imports", async (request, reply) => {
-      if (!requireTrustedOrigin(websiteUrl, request, reply)) return;
-      const session = await requireSession(auth, request, reply);
+      const session = await authorizeImport(request, reply);
       if (!session) return;
       const projectId = projectIdSchema.safeParse(
         (request.params as { projectId?: unknown }).projectId,
@@ -141,8 +153,7 @@ export const createDocumentImportRoutes = ({
       "/api/projects/:projectId/document-imports/:importId/file",
       { bodyLimit: DOCUMENT_IMPORT_BINARY_MAX_BYTES + 1024 * 1024 },
       async (request, reply) => {
-        if (!requireTrustedOrigin(websiteUrl, request, reply)) return;
-        const session = await requireSession(auth, request, reply);
+        const session = await authorizeImport(request, reply);
         if (!session) return;
         const params = paramsSchema.safeParse(request.params);
         if (!params.success)

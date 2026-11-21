@@ -13,4 +13,6 @@ export const QUERY_KEY_ROOTS = {
   projects: ["projects"] as const,
   quizCollections: ["quiz-collections"] as const,
   references: ["references"] as const,
+  favorites: ["favorites"] as const,
+  globalSearch: ["global-search"] as const,
 };

@@ -1,0 +1,1 @@
+CREATE INDEX "quiz_attempt_item_question_answered_idx" ON "quiz_attempt_item" USING btree ("question_id","answered_at") WHERE "quiz_attempt_item"."question_id" is not null;

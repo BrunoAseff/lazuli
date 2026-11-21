@@ -3,7 +3,6 @@ import { z } from "zod";
 export const ANALYTICS_CONSENT_VERSION = 1;
 
 export const analyticsConsentStatusSchema = z.enum(["undecided", "granted", "denied"]);
-export type AnalyticsConsentStatus = z.infer<typeof analyticsConsentStatusSchema>;
 
 export const analyticsPreferenceSchema = z.object({
   status: analyticsConsentStatusSchema,

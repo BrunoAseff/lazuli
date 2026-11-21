@@ -11,16 +11,19 @@ import {
   type StoneResponse,
   type StoneSessionKind,
   type StudyGoal,
+  dateKeyIn,
+  shiftDateKey,
 } from "@lazuli/shared";
 import { eq, sql } from "drizzle-orm";
 
-import { dateKeyInTimeZone, shiftDateKey } from "../dashboard/dashboard-queries.ts";
+import { flashcardMasteredAs } from "./mastery-sql.ts";
 import type { Database } from "../database/client.ts";
 import { user, userStoneLevel, userStudyGoal } from "../database/schema/index.ts";
 
 const HISTORY_WEEKS = 12;
+/** A session counts as just ended for this long: its summary may still celebrate. */
+const FRESH_SESSION_MS = 30 * 60 * 1_000;
 
-type GoalVersion = StudyGoal & { effectiveFrom: string };
 type PracticeEvent = { day: string; kind: "flashcards" | "quizzes" };
 type Availability = { date: string; flashcards: boolean; quizzes: boolean };
 
@@ -31,13 +34,6 @@ const daysToBits = (days: boolean[]) =>
   days.reduce((bits, on, index) => (on ? bits | (1 << index) : bits), 0);
 const bitsToDays = (bits: number) =>
   Array.from({ length: 7 }, (_, index) => Boolean(bits & (1 << index)));
-
-/** The goal in force on a day: the latest change made on or before it. */
-export const goalOn = (versions: GoalVersion[], date: string): StudyGoal => {
-  let goal: StudyGoal = DEFAULT_STUDY_GOAL;
-  for (const version of versions) if (version.effectiveFrom <= date) goal = version;
-  return { counts: goal.counts, practices: goal.practices, days: goal.days };
-};
 
 const counts = (goal: StudyGoal, kind: PracticeEvent["kind"]) =>
   goal.counts === "both" || goal.counts === kind;
@@ -52,19 +48,18 @@ export const buildStoneDays = ({
   availability,
   events,
   from,
-  goals,
+  goal,
   today,
 }: {
   accountDay: string;
   availability: Availability[];
   events: PracticeEvent[];
   from: string;
-  goals: GoalVersion[];
+  goal: StudyGoal;
   today: string;
 }): StoneDay[] => {
   const available = new Map(availability.map((item) => [item.date, item]));
   const days: StoneDay[] = [];
-  const goal = goalOn(goals, today);
   for (let date = from; date <= today; date = shiftDateKey(date, 1)) {
     const practices = events.filter(
       (event) => event.day === date && counts(goal, event.kind),
@@ -94,27 +89,35 @@ export const buildStoneDays = ({
 /** Studied days of the last seven, and the days that could have been studied. */
 export const weekShine = (week: StoneDay[]) => stoneShine(week);
 
-const readGoals = async (database: Database, userId: string): Promise<GoalVersion[]> => {
-  const rows = await database
+/** The person's goal, or the default one until they set theirs. */
+const readGoal = async (database: Database, userId: string): Promise<StudyGoal> => {
+  const [row] = await database
     .select()
     .from(userStudyGoal)
     .where(eq(userStudyGoal.userId, userId))
-    .orderBy(userStudyGoal.effectiveFrom);
-  return rows.map((row) => ({
-    effectiveFrom: row.effectiveFrom,
-    counts: row.counts,
-    practices: row.practices,
-    days: bitsToDays(row.days),
-  }));
+    .limit(1);
+  return row
+    ? { counts: row.counts, practices: row.practices, days: bitsToDays(row.days) }
+    : DEFAULT_STUDY_GOAL;
 };
 
 const dayStart = (date: string, timeZone: string) =>
   sql`(${date}::date::timestamp at time zone ${timeZone})`;
 
-/**
- * Practices that count for the goal, each on the day it counted: when it ended, or at its
- * GOAL_PRACTICE_ANSWERS-th answer if it stopped before the end.
+/*
+ * When a practice counted for the goal: when it ended, or at its GOAL_PRACTICE_ANSWERS-th answer
+ * if it stopped before the end. Written over the aliases `s` (flashcard_practice_session) and `a`
+ * (quiz_attempt).
  */
+const flashcardCountedAt = sql`case when s.status = 'completed' and s.reviewed_cards > 0 then s.finished_at
+  else (select fr.reviewed_at from flashcard_review fr where fr.session_id = s.id
+    order by fr.reviewed_at, fr.id offset ${GOAL_PRACTICE_ANSWERS - 1} limit 1) end`;
+const quizCountedAt = sql`case when a.status = 'completed' then a.completed_at
+  else (select i.answered_at from quiz_attempt_item i
+    where i.attempt_id = a.id and i.answered_at is not null
+    order by i.answered_at, i.id offset ${GOAL_PRACTICE_ANSWERS - 1} limit 1) end`;
+
+/** Practices that count for the goal, each on the day it counted. */
 const readPracticeEvents = async (
   database: Database,
   userId: string,
@@ -122,23 +125,13 @@ const readPracticeEvents = async (
   timeZone: string,
 ): Promise<PracticeEvent[]> => {
   const start = dayStart(from, timeZone);
-  const offset = GOAL_PRACTICE_ANSWERS - 1;
   const rows = await database.execute<{ kind: PracticeEvent["kind"]; day: string }>(sql`
     with events as (
-      select 'flashcards' as kind,
-        case when s.status = 'completed' and s.reviewed_cards > 0 then s.finished_at
-          else (select fr.reviewed_at from flashcard_review fr where fr.session_id = s.id
-            order by fr.reviewed_at, fr.id offset ${offset} limit 1)
-        end as counted_at
+      select 'flashcards' as kind, ${flashcardCountedAt} as counted_at
       from flashcard_practice_session s
       where s.user_id = ${userId} and s.last_activity_at >= ${start}
       union all
-      select 'quizzes' as kind,
-        case when a.status = 'completed' then a.completed_at
-          else (select i.answered_at from quiz_attempt_item i
-            where i.attempt_id = a.id and i.answered_at is not null
-            order by i.answered_at, i.id offset ${offset} limit 1)
-        end as counted_at
+      select 'quizzes' as kind, ${quizCountedAt} as counted_at
       from quiz_attempt a
       where a.user_id = ${userId} and a.last_activity_at >= ${start}
     )
@@ -218,7 +211,7 @@ const readCurrentMastery = async (database: Database, userId: string, timeZone: 
   }>(sql`
     with items as (
       select 'flashcards' as kind, c.project_id,
-        (f.srs_state = 'review' and f.scheduled_days >= ${MASTERED_FLASHCARD_DAYS}) as mastered
+        ${flashcardMasteredAs("f")} as mastered
       from flashcard f
       join flashcard_collection c
         on c.id = f.collection_id and c.user_id = ${userId} and c.archived_at is null
@@ -273,22 +266,21 @@ export const getStone = async (
   timeZone = "UTC",
   now = new Date(),
 ): Promise<StoneResponse> => {
-  const today = dateKeyInTimeZone(now, timeZone);
+  const today = dateKeyIn(now, timeZone);
   const from = historyStartFor(today);
-  const [account, goals, events, availability, everMastered, current] = await Promise.all([
+  const [account, goal, events, availability, everMastered, current] = await Promise.all([
     database.query.user.findFirst({ columns: { createdAt: true }, where: eq(user.id, userId) }),
-    readGoals(database, userId),
+    readGoal(database, userId),
     readPracticeEvents(database, userId, from, timeZone),
     readAvailability(database, userId, from, today, timeZone),
     readEverMastered(database, userId, timeZone),
     readCurrentMastery(database, userId, timeZone),
   ]);
-  const accountDay = account ? dateKeyInTimeZone(account.createdAt, timeZone) : from;
+  const accountDay = account ? dateKeyIn(account.createdAt, timeZone) : from;
   const levels = await syncLevels(database, userId, everMastered, now);
-  const history = buildStoneDays({ accountDay, availability, events, from, goals, today });
+  const history = buildStoneDays({ accountDay, availability, events, from, goal, today });
   const week = history.slice(-7);
   const { dull, kept, planned } = weekShine(week);
-  const goal = goalOn(goals, today);
   const level = Math.max(1, ...levels.map((item) => item.level));
   const totals = current.reduce(
     (sum, row) => ({ mastered: sum.mastered + row.mastered, total: sum.total + row.total }),
@@ -319,8 +311,6 @@ export const getStone = async (
     keptDays: kept,
     plannedDays: planned,
     goal,
-    today: history.at(-1)!,
-    week,
     history,
     levels: STONE_LEVELS.map((item) => ({
       level: item.level,
@@ -337,10 +327,8 @@ export const updateStudyGoal = async (
   database: Database,
   userId: string,
   goal: StudyGoal,
-  timeZone = "UTC",
   now = new Date(),
 ) => {
-  const effectiveFrom = dateKeyInTimeZone(now, timeZone);
   const values = {
     counts: goal.counts,
     practices: goal.practices,
@@ -349,11 +337,8 @@ export const updateStudyGoal = async (
   };
   await database
     .insert(userStudyGoal)
-    .values({ userId, effectiveFrom, ...values })
-    .onConflictDoUpdate({
-      target: [userStudyGoal.userId, userStudyGoal.effectiveFrom],
-      set: values,
-    });
+    .values({ userId, ...values })
+    .onConflictDoUpdate({ target: userStudyGoal.userId, set: values });
   return goal;
 };
 
@@ -369,16 +354,17 @@ export const getStoneContribution = async (
   timeZone = "UTC",
   now = new Date(),
 ): Promise<StoneContribution | null> => {
-  const today = dateKeyInTimeZone(now, timeZone);
-  const offset = GOAL_PRACTICE_ANSWERS - 1;
+  const today = dateKeyIn(now, timeZone);
   const [session] =
     kind === "flashcards"
-      ? await database.execute<{ startedAt: Date; countedDay: string | null; gained: number }>(sql`
-          select s.started_at as "startedAt",
-            to_char((case when s.status = 'completed' and s.reviewed_cards > 0 then s.finished_at
-              else (select fr.reviewed_at from flashcard_review fr where fr.session_id = s.id
-                order by fr.reviewed_at, fr.id offset ${offset} limit 1) end)
-              at time zone ${timeZone}, 'YYYY-MM-DD') as "countedDay",
+      ? await database.execute<{
+          startedAt: Date;
+          lastActivityAt: Date;
+          countedDay: string | null;
+          gained: number;
+        }>(sql`
+          select s.started_at as "startedAt", s.last_activity_at as "lastActivityAt",
+            to_char((${flashcardCountedAt}) at time zone ${timeZone}, 'YYYY-MM-DD') as "countedDay",
             (select count(*) from (
               select distinct on (fr.flashcard_id) fr.flashcard_id, fr.session_id
               from flashcard_review fr
@@ -390,47 +376,63 @@ export const getStoneContribution = async (
             ) first where first.session_id = s.id)::int as gained
           from flashcard_practice_session s
           where s.id = ${id} and s.user_id = ${userId}`)
-      : await database.execute<{ startedAt: Date; countedDay: string | null; gained: number }>(sql`
-          select a.started_at as "startedAt",
-            to_char((case when a.status = 'completed' then a.completed_at
-              else (select i.answered_at from quiz_attempt_item i
-                where i.attempt_id = a.id and i.answered_at is not null
-                order by i.answered_at, i.id offset ${offset} limit 1) end)
-              at time zone ${timeZone}, 'YYYY-MM-DD') as "countedDay",
+      : await database.execute<{
+          startedAt: Date;
+          lastActivityAt: Date;
+          countedDay: string | null;
+          gained: number;
+        }>(sql`
+          select a.started_at as "startedAt", a.last_activity_at as "lastActivityAt",
+            to_char((${quizCountedAt}) at time zone ${timeZone}, 'YYYY-MM-DD') as "countedDay",
+            -- A question counts for the attempt holding the first right answer on its
+            -- MASTERED_QUESTION_DAYS-th day: the one that made it mastered, and no other.
             (select count(*) from (
-              select i.question_id,
-                count(distinct (i.answered_at at time zone ${timeZone})::date) as all_days,
-                count(distinct (i.answered_at at time zone ${timeZone})::date)
-                  filter (where i.attempt_id <> a.id) as other_days
+              select i.attempt_id,
+                dense_rank() over (
+                  partition by i.question_id
+                  order by (i.answered_at at time zone ${timeZone})::date
+                ) as day_rank,
+                row_number() over (
+                  partition by i.question_id, (i.answered_at at time zone ${timeZone})::date
+                  order by i.answered_at, i.id
+                ) as in_day
               from quiz_attempt_item i
               join quiz_attempt o on o.id = i.attempt_id and o.user_id = ${userId}
               where i.is_correct and i.question_id in (
                 select question_id from quiz_attempt_item
                 where attempt_id = a.id and is_correct and question_id is not null)
-              group by i.question_id
-            ) q where q.all_days >= ${MASTERED_QUESTION_DAYS}
-              and q.other_days < ${MASTERED_QUESTION_DAYS})::int as gained
+            ) q where q.day_rank = ${MASTERED_QUESTION_DAYS} and q.in_day = 1
+              and q.attempt_id = a.id)::int as gained
           from quiz_attempt a
           where a.id = ${id} and a.user_id = ${userId}`);
   if (!session) return null;
-  const stone = await getStone(database, userId, timeZone, now);
+  // Only what the summary shows: today's goal, and the mastery with its levels (not the history).
+  const [goal, events, mastered] = await Promise.all([
+    readGoal(database, userId),
+    readPracticeEvents(database, userId, today, timeZone),
+    readEverMastered(database, userId, timeZone),
+  ]);
+  const levels = await syncLevels(database, userId, mastered, now);
+  const level = Math.max(1, ...levels.map((item) => item.level));
   const counted =
-    session.countedDay === today && counts(stone.goal, kind === "quiz" ? "quizzes" : "flashcards");
-  const after = stone.today.practices;
+    session.countedDay === today && counts(goal, kind === "quiz" ? "quizzes" : "flashcards");
+  const after = events.filter((event) => event.day === today && counts(goal, event.kind)).length;
   const startedAt = new Date(session.startedAt);
-  const levelsBefore = stone.levels
-    .filter(({ reachedAt }) => reachedAt && new Date(reachedAt) < startedAt)
-    .map(({ level }) => level);
+  const levelsBefore = levels
+    .filter(({ reachedAt }) => reachedAt < startedAt)
+    .map((item) => item.level);
   const levelBefore = Math.max(
-    stoneLevelFor(Math.max(0, stone.mastered - session.gained)).level,
+    stoneLevelFor(Math.max(0, mastered - session.gained)).level,
     ...levelsBefore,
   );
   return {
     counted,
-    goal: { before: Math.max(0, after - (counted ? 1 : 0)), after, target: stone.goal.practices },
+    // Just ended: the moment (and the level-up) belongs to the summary seen right after it.
+    fresh: now.getTime() - new Date(session.lastActivityAt).getTime() < FRESH_SESSION_MS,
+    goal: { before: Math.max(0, after - (counted ? 1 : 0)), after, target: goal.practices },
     masteredGained: session.gained,
-    mastered: stone.mastered,
-    levelBefore: Math.min(levelBefore, stone.level),
-    level: stone.level,
+    mastered,
+    levelBefore: Math.min(levelBefore, level),
+    level,
   };
 };

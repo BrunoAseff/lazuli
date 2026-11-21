@@ -33,7 +33,7 @@ export const AppShell = () => {
             >
               <AppSidebar />
               <SidebarInset className="min-w-0 md:overflow-clip md:peer-data-[variant=inset]:shadow-none">
-                <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:hidden">
+                <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 bg-background px-4 md:hidden">
                   <SidebarTrigger />
                   <Separator orientation="vertical" />
                   <LazuliWordmark />

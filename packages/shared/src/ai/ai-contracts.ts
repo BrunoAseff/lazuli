@@ -11,7 +11,8 @@ export const AI_SELECTION_MAX_TEXT_LENGTH = 12_000;
 export const AI_SELECTION_MAX_BLOCKS = 20;
 export const AI_DOCUMENT_MAX_BLOCKS = 400;
 export const AI_DOCUMENT_MAX_TEXT_LENGTH = 80_000;
-export const AI_SELECTION_MAX_ITEMS = 5;
+/** A selection takes the same range as a whole document: the person decides how many. */
+export const AI_SELECTION_MAX_ITEMS = 10;
 export const AI_COLLECTION_MAX_ITEMS = 10;
 export const AI_CREDITS_PER_ITEM = 10;
 export const AI_MAX_REFERENCES_PER_ITEM = 3;

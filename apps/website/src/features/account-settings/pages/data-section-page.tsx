@@ -56,7 +56,7 @@ const exportCategories: ReadonlyArray<{
     value: "projects",
   },
   {
-    description: "Coleções, cartões e histórico de revisões",
+    description: "Coleções, flashcards e histórico de revisões",
     label: "Flashcards",
     value: "flashcards",
   },

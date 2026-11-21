@@ -14,7 +14,7 @@ export const AI_MAX_CONTEXT_BLOCKS = AI_DOCUMENT_MAX_BLOCKS;
 export const AI_MAX_OUTPUT_TOKENS = 6_000;
 export const AI_MAX_SOURCE_IDS = AI_DOCUMENT_MAX_BLOCKS + 1;
 
-export type AiModelConfig = {
+type AiModelConfig = {
   model: "gpt-6-luna";
   provider: typeof AI_PROVIDER;
   requestTimeoutMs: number;

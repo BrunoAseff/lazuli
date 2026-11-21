@@ -8,13 +8,14 @@ export const analyticsKeys = {
   preference: (userId: string) => [...QUERY_KEY_ROOTS.analytics, "preference", userId] as const,
 };
 
+export const analyticsPreferenceQuery = (userId: string) => ({
+  queryKey: analyticsKeys.preference(userId),
+  queryFn: ({ signal }: { signal: AbortSignal }) => fetchAnalyticsPreference(signal),
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
 export const useAnalyticsPreference = (userId: string) =>
-  useQuery({
-    enabled: Boolean(userId),
-    queryKey: analyticsKeys.preference(userId),
-    queryFn: ({ signal }) => fetchAnalyticsPreference(signal),
-    staleTime: Number.POSITIVE_INFINITY,
-  });
+  useQuery({ ...analyticsPreferenceQuery(userId), enabled: Boolean(userId) });
 
 export const useUpdateAnalyticsPreference = (userId: string) => {
   const client = useQueryClient();

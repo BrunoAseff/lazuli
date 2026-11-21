@@ -5,8 +5,8 @@ import type { ComponentPropsWithoutRef, ElementRef } from "react";
 import { Switch as SwitchPrimitive } from "radix-ui";
 import { motion, useReducedMotion } from "motion/react";
 import type { Transition } from "motion/react";
-import { motionTokens } from "../lib/motion-tokens";
 import styles from "./switch.module.css";
+import { spring } from "@/lib/motion.ts";
 
 export interface SwitchProps extends ComponentPropsWithoutRef<typeof SwitchPrimitive.Root> {
   label?: string;
@@ -18,7 +18,7 @@ const travel = 18;
 /** How far the thumb widens toward the other side while pressed. */
 const stretch = 5;
 /** Critically damped: the thumb lands on its end without overshooting the state it reports. */
-const glide: Transition = { ...motionTokens.spring.smooth };
+const glide: Transition = { ...spring.smooth };
 
 export const Switch = forwardRef<ElementRef<typeof SwitchPrimitive.Root>, SwitchProps>(
   function Switch(
@@ -99,9 +99,7 @@ export const Switch = forwardRef<ElementRef<typeof SwitchPrimitive.Root>, Switch
             initial={false}
             animate={{ x: on ? travel : 0, scaleX: 1 + extra / size }}
             transition={
-              reduceMotion || keyboard.current
-                ? { duration: 0 }
-                : { x: glide, scaleX: motionTokens.spring.snappy }
+              reduceMotion || keyboard.current ? { duration: 0 } : { x: glide, scaleX: spring.snap }
             }
           />
         </span>

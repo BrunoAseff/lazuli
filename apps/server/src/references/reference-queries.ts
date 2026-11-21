@@ -21,6 +21,7 @@ import {
   quizQuestion,
   studyMaterialReference,
 } from "../database/schema/index.ts";
+import { pageOffset, paginationOf } from "../database/pagination.ts";
 
 const referenceSelection = {
   id: studyMaterialReference.id,
@@ -108,7 +109,7 @@ export const listReferences = async (db: Database, userId: string, input: Refere
       .where(where)
       .orderBy(asc(studyMaterialReference.createdAt), asc(studyMaterialReference.id))
       .limit(input.pageSize)
-      .offset((input.page - 1) * input.pageSize),
+      .offset(pageOffset(input)),
   ]);
   const totalItems = total?.value ?? 0;
   const sourcePreviews = new Map<string, string>();
@@ -130,12 +131,7 @@ export const listReferences = async (db: Database, userId: string, input: Refere
   }
   return {
     items: rows.map((row) => serializeReference(row, sourcePreviews.get(row.id) ?? null)),
-    pagination: {
-      page: input.page,
-      pageSize: input.pageSize,
-      totalItems,
-      totalPages: totalItems ? Math.ceil(totalItems / input.pageSize) : 0,
-    },
+    pagination: paginationOf(input, totalItems),
   };
 };
 

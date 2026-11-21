@@ -4,7 +4,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { DocumentDomainIcon } from "@/components/domain-icons.ts";
 import {
@@ -19,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input.tsx";
 import { FileDropzone } from "@/components/file-dropzone.tsx";
 import { acceptedDocumentImportTypes, inferImportMimeType } from "./document-import-api.ts";
+import { spring } from "@/lib/motion.ts";
 
 export type PreparedImportFile = { file: File; originalName: string };
 type PendingFile = PreparedImportFile & { id: string; extension: string; title: string };
@@ -78,7 +78,7 @@ export const DocumentImportDialog = ({
       open={open}
     >
       <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b border-border/50 px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <DialogTitle>Importar documentos</DialogTitle>
           <DialogDescription>
             Escolha os arquivos e ajuste os nomes antes de importar, se precisar.
@@ -106,7 +106,7 @@ export const DocumentImportDialog = ({
                     exit={{ opacity: 0, height: 0, paddingTop: 0, paddingBottom: 0 }}
                     initial={reduced ? false : { opacity: 0, height: 0 }}
                     key={item.id}
-                    transition={reduced ? { duration: 0 } : motionTokens.spring.smooth}
+                    transition={reduced ? { duration: 0 } : spring.smooth}
                   >
                     <DocumentDomainIcon className="size-[1.125rem] shrink-0 text-muted-foreground" />
                     {/* Same anatomy as every field (border, surface, hover, focus); the extension is a quiet suffix. */}
@@ -147,7 +147,7 @@ export const DocumentImportDialog = ({
             </section>
           )}
         </div>
-        <DialogFooter className="mx-0 mb-0 rounded-none border-t border-border/50 px-6 py-4">
+        <DialogFooter className="mx-0 mb-0 rounded-none px-6 py-4">
           <DialogCancelButton disabled={submitting} onClick={() => close(false)}>
             Cancelar
           </DialogCancelButton>

@@ -22,7 +22,7 @@ export const BILLING_FIXTURE_NAMES = [
   "downgrade-over",
 ] as const;
 
-export type BillingFixtureName = (typeof BILLING_FIXTURE_NAMES)[number];
+type BillingFixtureName = (typeof BILLING_FIXTURE_NAMES)[number];
 
 const MB = 1024 ** 2;
 const planSummary = (plan: CommercialPlan): CommercialSummary => {

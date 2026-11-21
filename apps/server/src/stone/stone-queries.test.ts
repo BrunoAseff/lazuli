@@ -1,7 +1,7 @@
 import { DEFAULT_STUDY_GOAL, type StoneDayStatus } from "@lazuli/shared";
 import { describe, expect, it } from "vitest";
 
-import { buildStoneDays, goalOn, weekShine } from "./stone-queries.ts";
+import { buildStoneDays, weekShine } from "./stone-queries.ts";
 
 const available = (date: string, flashcards = true, quizzes = true) => ({
   date,
@@ -23,14 +23,11 @@ describe("buildStoneDays", () => {
         { day: "2026-11-18", kind: "flashcards" },
       ],
       from: "2026-11-16",
-      goals: [
-        {
-          effectiveFrom: "2026-11-01",
-          counts: "both",
-          practices: 2,
-          days: [true, true, true, true, true, false, true],
-        },
-      ],
+      goal: {
+        counts: "both",
+        practices: 2,
+        days: [true, true, true, true, true, false, true],
+      },
       today: "2026-11-22",
     });
     expect(days.map(({ status }) => status)).toEqual([
@@ -50,29 +47,22 @@ describe("buildStoneDays", () => {
       availability: [available("2026-11-16")],
       events: [{ day: "2026-11-16", kind: "quizzes" }],
       from: "2026-11-16",
-      goals: [
-        { effectiveFrom: "2026-01-01", ...DEFAULT_STUDY_GOAL, counts: "flashcards", practices: 1 },
-      ],
+      goal: { ...DEFAULT_STUDY_GOAL, counts: "flashcards", practices: 1 },
       today: "2026-11-17",
     });
     expect(day).toEqual({ date: "2026-11-16", practices: 0, status: "missed", studyDay: true });
   });
 
-  it("judges every day by the current goal, so an edit shows at once", () => {
-    const goals = [
-      { effectiveFrom: "2026-11-01", ...DEFAULT_STUDY_GOAL, practices: 3 },
-      { effectiveFrom: "2026-11-17", ...DEFAULT_STUDY_GOAL, practices: 1 },
-    ];
+  it("judges past days by the current goal too, so an edit shows at once", () => {
     const [day] = buildStoneDays({
       accountDay: "2026-01-01",
       availability: [available("2026-11-16")],
       events: [{ day: "2026-11-16", kind: "flashcards" }],
       from: "2026-11-16",
-      goals,
+      goal: { ...DEFAULT_STUDY_GOAL, practices: 1 },
       today: "2026-11-17",
     });
     expect(day?.status).toBe("met");
-    expect(goalOn([], "2026-11-17")).toEqual(DEFAULT_STUDY_GOAL);
   });
 });
 

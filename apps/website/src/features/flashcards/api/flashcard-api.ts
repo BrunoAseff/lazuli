@@ -163,9 +163,3 @@ export const postPracticeReview = (
     flashcardPracticeSessionSchema,
     { method: "POST", body: JSON.stringify(input) },
   );
-
-export const postAbandonPracticeSession = (sessionId: string) =>
-  apiRequest(`/api/flashcard-practice-sessions/${encodeURIComponent(sessionId)}/abandon`, null, {
-    method: "POST",
-    body: JSON.stringify({}),
-  });

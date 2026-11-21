@@ -79,7 +79,9 @@ export const FlashcardImportDialog = ({
       );
       resetAndClose();
     } catch (error) {
-      toast.error(getFlashcardCollectionErrorMessage(error, "Não foi possível importar os cards."));
+      toast.error(
+        getFlashcardCollectionErrorMessage(error, "Não foi possível importar os flashcards."),
+      );
     }
   };
 
@@ -119,7 +121,7 @@ export const FlashcardImportDialog = ({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent className="max-h-[calc(100vh-2rem)] gap-0 overflow-hidden p-0 sm:max-w-3xl">
-        <DialogHeader className="border-b px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <DialogTitle>Importar flashcards</DialogTitle>
           <DialogDescription>
             Revise os pares reconhecidos antes de adicioná-los à coleção.
@@ -136,7 +138,7 @@ export const FlashcardImportDialog = ({
                 if (files[0]) void choose(files[0]);
               }}
               description="CSV e TSV: duas colunas, pergunta e resposta. TXT: pares separados por tabulação ou blocos separados por uma linha vazia."
-              hint="UTF-8 · até 2 MB · máximo de 1.000 cards"
+              hint="UTF-8 · até 2 MB · máximo de 1.000 flashcards"
             />
           ) : (
             <div>
@@ -227,7 +229,7 @@ export const FlashcardImportDialog = ({
               <div className="mt-3 flex min-h-8 items-center justify-between gap-4">
                 <p className="text-xs text-muted-foreground">
                   {invalidRows > 0
-                    ? `${invalidRows} ${invalidRows === 1 ? "card precisa" : "cards precisam"} de pergunta e resposta.`
+                    ? `${invalidRows} ${invalidRows === 1 ? "flashcard precisa" : "flashcards precisam"} de pergunta e resposta.`
                     : null}
                 </p>
                 {previewPages > 1 && (
@@ -259,7 +261,7 @@ export const FlashcardImportDialog = ({
             </div>
           )}
         </div>
-        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+        <DialogFooter className="mx-0 mb-0 px-6 py-4">
           <DialogCancelButton
             disabled={previewImport.isPending || importCards.isPending}
             onClick={close}

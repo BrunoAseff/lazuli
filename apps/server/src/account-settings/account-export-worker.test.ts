@@ -50,4 +50,10 @@ describe("account export CSV", () => {
     expect(csv).toContain('"Não","Revisão, final","85"');
     expect(csv).not.toContain("[object Object]");
   });
+
+  it("keeps cells that look like formulas as text", () => {
+    const csv = createCsv([{ front: '=HYPERLINK("http://x")', back: "@SUM(A1)", note: "a = b" }]);
+
+    expect(csv).toContain(`"'=HYPERLINK(""http://x"")","'@SUM(A1)","a = b"`);
+  });
 });

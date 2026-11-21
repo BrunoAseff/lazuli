@@ -19,14 +19,9 @@ const BatchAction = ({
     <TooltipTrigger asChild>
       <Button
         aria-label={label}
-        className={
-          destructive
-            ? "text-destructive hover:bg-destructive/10 hover:text-destructive"
-            : undefined
-        }
         onClick={onClick}
         size="icon-sm"
-        variant="ghost"
+        variant={destructive ? "destructive-ghost" : "ghost"}
       >
         {children}
       </Button>

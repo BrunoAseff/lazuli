@@ -122,8 +122,8 @@ export const ExistingMaterialPickerDialog = ({
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        <DialogHeader className="border-b px-6 py-5">
-          <DialogTitle className="pr-8">Ligar flashcards ou questões</DialogTitle>
+        <DialogHeader className="px-6 py-5">
+          <DialogTitle className="pr-8">Conectar flashcards ou questões</DialogTitle>
           <DialogDescription>
             {collectionId
               ? "Escolha um ou mais materiais desta coleção."
@@ -136,19 +136,33 @@ export const ExistingMaterialPickerDialog = ({
             composing
             destinationLabel="Escolher materiais"
             source={
-              <div className="space-y-7">
-                {sourceTitle && <h3>{sourceTitle}</h3>}
-                {!sourcePreview && <p data-source-label>Documento inteiro</p>}
-                {sourcePreview && <blockquote>{sourcePreview}</blockquote>}
-                <MaterialKindPicker
-                  label="Tipo de material"
-                  value={type}
-                  onChange={(next) => {
-                    setType(next);
-                    setCollectionId(undefined);
-                    setQuery("");
-                  }}
-                />
+              // Two groups, as in the other creation dialogs: what is being connected (the source and
+              // its extent together), then the one choice, with its own visible label.
+              <div className="grid gap-6">
+                <div className="grid gap-1">
+                  {sourceTitle && <h3 className="mb-0! leading-snug">{sourceTitle}</h3>}
+                  {sourcePreview ? (
+                    <blockquote className="mt-1">{sourcePreview}</blockquote>
+                  ) : (
+                    <p className="mb-0!" data-source-label>
+                      Documento inteiro
+                    </p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <p className="font-sans text-[0.8125rem] font-medium">Tipo de material</p>
+                  <MaterialKindPicker
+                    label="Tipo de material"
+                    value={type}
+                    onChange={(next) => {
+                      setType(next);
+                      setCollectionId(undefined);
+                      setQuery("");
+                      // What was picked belongs to the other kind: nothing stays selected.
+                      setSelected([]);
+                    }}
+                  />
+                </div>
               </div>
             }
           >
@@ -259,7 +273,7 @@ export const ExistingMaterialPickerDialog = ({
             </div>
           </CreationWorkspace>
         </div>
-        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+        <DialogFooter className="mx-0 mb-0 px-6 py-4">
           <DialogCancelButton onClick={onCancel}>Cancelar</DialogCancelButton>
           <Button
             pending={create.isPending}
@@ -267,10 +281,10 @@ export const ExistingMaterialPickerDialog = ({
             onClick={() => void save()}
           >
             {!selected.length
-              ? "Vincular materiais"
+              ? "Conectar materiais"
               : selected.length === 1
-                ? "Vincular material"
-                : `Vincular ${selected.length} materiais`}
+                ? "Conectar material"
+                : `Conectar ${selected.length} materiais`}
           </Button>
         </DialogFooter>
       </DialogContent>

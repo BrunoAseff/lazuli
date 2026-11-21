@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils.ts";
 
 export const chartTooltipClass =
-  "rounded-[var(--radius)] border-0 bg-popover p-3 text-xs text-popover-foreground shadow-[0_2px_6px_rgb(14_19_48/0.08)] ring-1 ring-border";
+  "rounded-[var(--radius)] border-0 bg-popover p-3 text-xs text-popover-foreground shadow-[var(--shadow-hint)] ring-1 ring-border";
 
 export function ChartTooltipSurface({
   children,

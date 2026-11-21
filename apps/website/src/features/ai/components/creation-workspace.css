@@ -66,6 +66,10 @@
 }
 .creation-origin-body {
   overflow-x: hidden;
+  /* Room for the fields' focus ring on both sides, which the clipping would cut; the negative
+     margin keeps the fields aligned with the label above. */
+  margin-left: -3px;
+  padding-left: 3px;
   padding-right: 4px;
   scrollbar-width: thin;
 

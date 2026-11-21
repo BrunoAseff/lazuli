@@ -41,7 +41,7 @@ const serverEnvSchema = z
     DATABASE_URL: z.url(),
     GOOGLE_CLIENT_ID: optionalNonEmptyEnvironmentValue,
     GOOGLE_CLIENT_SECRET: optionalNonEmptyEnvironmentValue,
-    LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("debug"),
+    LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
     LOG_PRETTY: booleanEnvironmentValue(true),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     OPENAI_API_KEY: optionalNonEmptyEnvironmentValue,

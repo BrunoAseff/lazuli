@@ -27,22 +27,19 @@ const order: Stage[] = ["before", "tapping", "cut", "details", "done"];
 const reached = (stage: Stage, target: Stage) => order.indexOf(stage) >= order.indexOf(target);
 
 export const LevelUpDialog = ({
-  forceMotion = false,
   from,
   mastered,
   onOpenChange,
   open,
   to,
 }: {
-  /** Plays the full motion even with reduced motion on (for reviewing the moment). */
-  forceMotion?: boolean;
   from: number;
   mastered: number;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   to: number;
 }) => {
-  const reduced = useReducedMotion() && !forceMotion;
+  const reduced = useReducedMotion();
   const before = stoneLevelByNumber(from);
   const after = stoneLevelByNumber(to);
   const next = nextStoneLevel(to);
@@ -50,6 +47,8 @@ export const LevelUpDialog = ({
   const [cut, setCut] = useState(before.cut);
   const [glint, setGlint] = useState<number>();
   const stone = useRef<HTMLDivElement>(null);
+  // When a press skipped the motion, the click that ends that same press is not "Continuar".
+  const skippedAt = useRef(0);
   const press = useAnimationControls();
   const timeline = useRef<{ timers: number[]; stops: Array<() => void> }>({
     timers: [],
@@ -110,7 +109,7 @@ export const LevelUpDialog = ({
         onComplete: () => setGlint(undefined),
       });
       timeline.current.stops.push(() => light.stop());
-      if (stone.current) goldBurst(stone.current, 8, forceMotion);
+      if (stone.current) goldBurst(stone.current, 8);
     });
     at(1900, () => setStage("details"));
     at(2400, () => setStage("done"));
@@ -123,7 +122,11 @@ export const LevelUpDialog = ({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent
         className="gap-0 overflow-hidden px-8 pt-10 pb-7 text-center sm:max-w-sm"
-        onPointerDown={() => stage !== "done" && finish()}
+        onPointerDown={() => {
+          if (stage === "done") return;
+          skippedAt.current = performance.now();
+          finish();
+        }}
         showCloseButton={false}
       >
         <div className="grid justify-items-center">
@@ -139,8 +142,8 @@ export const LevelUpDialog = ({
           </motion.div>
 
           <DialogTitle asChild>
-            <h2 className="mt-7 font-heading text-[2rem] leading-tight font-normal">
-              <MorphText force={forceMotion} text={shown("cut") ? after.name : before.name} />
+            <h2 className="mt-7 font-reading text-[2rem] leading-tight font-normal">
+              <MorphText text={shown("cut") ? after.name : before.name} />
             </h2>
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -195,13 +198,18 @@ export const LevelUpDialog = ({
 
           <motion.div
             animate={{ opacity: shown("done") ? 1 : 0, y: shown("done") ? 0 : 6 }}
-            className="mt-7 w-full"
+            // Not pressable until it shows: the tap that skips the motion must not also close.
+            className={cn("mt-7 w-full", !shown("done") && "pointer-events-none")}
+            inert={!shown("done")}
             initial={false}
             transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
           >
             <Button
               className="w-full"
-              onClick={() => onOpenChange(false)}
+              onClick={() => {
+                if (performance.now() - skippedAt.current < 600) return;
+                onOpenChange(false);
+              }}
               size="lg"
               tabIndex={shown("done") ? 0 : -1}
             >

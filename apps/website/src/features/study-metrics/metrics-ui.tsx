@@ -1,6 +1,8 @@
+import { STUDY_METRICS_MIN_SAMPLE } from "@lazuli/shared";
 import { TickingText } from "@/components/motion/number-ticker.tsx";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button.tsx";
+import { LoadError } from "@/components/empty-state.tsx";
 import { formatCount, formatRate } from "./metrics-format.ts";
 import { motion, useReducedMotion } from "motion/react";
 
@@ -59,10 +61,11 @@ export function MetricValue({
     </div>
   );
 }
+// Below the minimum sample a rate would overstate a few answers, so the count shows instead.
 export const rateValue = (success: number, total: number) =>
   !total
     ? "—"
-    : total < 20
+    : total < STUDY_METRICS_MIN_SAMPLE
       ? `${formatCount(success)}/${formatCount(total)}`
       : formatRate(success, total);
 
@@ -100,13 +103,25 @@ export function MetricsPagination({
     </nav>
   );
 }
-export function MetricsError({ message, retry }: { message: string; retry: () => void }) {
+export function MetricsError({
+  description,
+  retry,
+  title,
+}: {
+  description?: string;
+  retry: () => void;
+  title: string;
+}) {
   return (
-    <div role="alert" className="space-y-3 py-5 text-sm">
-      <p>{message}</p>
-      <Button variant="outline" className="max-sm:min-h-11" onClick={retry}>
-        Tentar novamente
-      </Button>
+    <div role="alert">
+      <LoadError
+        compact
+        description={description}
+        minHeight="sm"
+        onRetry={retry}
+        surface="inline"
+        title={title}
+      />
     </div>
   );
 }

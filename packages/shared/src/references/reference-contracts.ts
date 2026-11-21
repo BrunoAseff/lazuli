@@ -99,7 +99,6 @@ export type ReferenceTarget = z.infer<typeof referenceTargetSchema>;
 export type ReferenceSource = z.infer<typeof referenceSourceSchema>;
 export type CreateReferencesInput = z.infer<typeof createReferencesSchema>;
 export type ReferenceListQuery = z.infer<typeof referenceListQuerySchema>;
-export type StudyMaterialReference = z.infer<typeof studyMaterialReferenceSchema>;
 export type ReferenceListResponse = z.infer<typeof referenceListResponseSchema>;
 export type CreateReferencesResponse = z.infer<typeof createReferencesResponseSchema>;
 

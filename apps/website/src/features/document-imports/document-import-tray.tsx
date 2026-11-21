@@ -128,9 +128,9 @@ export const DocumentImportTray = ({
                 <div
                   aria-label={canOpen ? `Abrir ${item.originalName}` : undefined}
                   className={cn(
-                    "flex gap-3 rounded-lg px-2 py-2.5 transition-colors",
+                    "group flex gap-3 rounded-lg px-2 py-2.5",
                     canOpen &&
-                      "cursor-pointer hover:bg-[var(--row-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                   )}
                   key={item.id}
                   onClick={canOpen ? openDocument : undefined}
@@ -151,7 +151,10 @@ export const DocumentImportTray = ({
                     <OverflowTooltip side="top" text={item.originalName}>
                       {(ref) => (
                         <p
-                          className="truncate text-sm font-medium"
+                          className={cn(
+                            "truncate text-[0.9375rem] font-medium underline-offset-4",
+                            canOpen && "group-hover:underline",
+                          )}
                           ref={ref as React.RefObject<HTMLParagraphElement>}
                         >
                           {item.originalName}

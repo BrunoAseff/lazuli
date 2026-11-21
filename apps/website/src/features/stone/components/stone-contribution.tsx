@@ -1,18 +1,12 @@
-import {
-  nextStoneLevel,
-  stoneLevelByNumber,
-  type StoneContribution,
-  type StoneSessionKind,
-} from "@lazuli/shared";
+import { type StoneContribution, type StoneSessionKind } from "@lazuli/shared";
 import { motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
-
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 
 import { ForwardLink } from "@/components/nav-link.tsx";
 import { useStoneContribution } from "../api/stone-queries.ts";
 import { LevelUpDialog } from "./level-up-dialog.tsx";
-import { FillingProgress, goldBar } from "./stone-parts.tsx";
+import { MasteryLine } from "./stone-parts.tsx";
+import { spring } from "@/lib/motion.ts";
 
 /* What a practice or quiz added, shown in its summary: the goal of today and the mastery. */
 
@@ -20,19 +14,19 @@ const shownKey = (kind: StoneSessionKind, id: string) => `lazuli:level-up:${kind
 
 /**
  * The level-up moment, over the summary of the session that raised the level: it opens by itself,
- * once per session (coming back to the summary does not replay it).
+ * once, and only right after the session (an old summary opened later does not replay it).
  */
 export const StoneLevelUp = ({ id, kind }: { id: string; kind: StoneSessionKind }) => {
   const contribution = useStoneContribution(kind, id);
   const data = contribution.data;
   const [closed, setClosed] = useState(() => {
     try {
-      return window.sessionStorage.getItem(shownKey(kind, id)) === "1";
+      return window.localStorage.getItem(shownKey(kind, id)) === "1";
     } catch {
       return false;
     }
   });
-  if (!data || data.level <= data.levelBefore || closed) return null;
+  if (!data || !data.fresh || data.level <= data.levelBefore || closed) return null;
   return (
     <LevelUpDialog
       from={data.levelBefore}
@@ -40,7 +34,7 @@ export const StoneLevelUp = ({ id, kind }: { id: string; kind: StoneSessionKind 
       onOpenChange={(open) => {
         if (open) return;
         try {
-          window.sessionStorage.setItem(shownKey(kind, id), "1");
+          window.localStorage.setItem(shownKey(kind, id), "1");
         } catch {
           // Without storage, it could show again on a later visit to this summary.
         }
@@ -79,47 +73,31 @@ const GoalPart = ({ goal, counted }: Pick<StoneContribution, "goal" | "counted">
           className="absolute inset-y-0 bg-primary"
           initial={reduced ? false : { width: "0%" }}
           style={{ left: `${(before / goal.target) * 100}%` }}
-          transition={{ ...motionTokens.spring.smooth, delay: 0.35 }}
+          transition={{ ...spring.smooth, delay: 0.35 }}
         />
       </div>
     </div>
   );
 };
 
-const MasteryPart = ({ level, mastered, masteredGained }: StoneContribution) => {
-  const current = stoneLevelByNumber(level);
-  const next = nextStoneLevel(level);
-  const from = Math.min(current.from, mastered);
-  return (
-    <div className="grid gap-1.5">
-      <div className="flex justify-between gap-3 text-xs">
-        <span className="text-foreground">
-          {masteredGained
-            ? `+${masteredGained} ${masteredGained === 1 ? "dominado" : "dominados"}`
-            : `${mastered} ${mastered === 1 ? "dominado" : "dominados"}`}
-        </span>
-        <span className="text-muted-foreground tabular-nums">
-          {next
-            ? `faltam ${Math.max(0, next.from - mastered)} para o nível ${next.level}`
-            : "último nível"}
-        </span>
-      </div>
-      <FillingProgress
-        aria-label="Domínio até o próximo nível"
-        className={goldBar}
-        max={next ? next.from - from : 1}
-        value={next ? mastered - from : 1}
-      />
-    </div>
-  );
-};
+const MasteryPart = ({ level, mastered, masteredGained }: StoneContribution) => (
+  <MasteryLine
+    label={
+      masteredGained
+        ? `+${masteredGained} ${masteredGained === 1 ? "dominado" : "dominados"}`
+        : undefined
+    }
+    level={level}
+    mastered={mastered}
+  />
+);
 
 /** Under the result: today's goal before and after, and the mastered items to the next level. */
 export const StoneContributionRow = ({ id, kind }: { id: string; kind: StoneSessionKind }) => {
   const contribution = useStoneContribution(kind, id);
   if (!contribution.data) return null;
   return (
-    <div className="mt-6 border-t pt-5">
+    <div className="mt-8">
       <div className="grid gap-4 sm:grid-cols-2 sm:gap-6">
         <GoalPart counted={contribution.data.counted} goal={contribution.data.goal} />
         <MasteryPart {...contribution.data} />

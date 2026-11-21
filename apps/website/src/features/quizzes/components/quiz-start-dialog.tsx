@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useCreateQuizAttempt, useQuizAttemptAvailability } from "../api/quiz-queries.ts";
+import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
 /**
  * Starting (or resuming) a quiz, wherever it is offered. It opens over the current page, so
@@ -35,14 +36,16 @@ export const QuizStartDialog = ({
   // Which of the two buttons started the attempt, so only that one says it is working.
   const restarting = Boolean(start.variables?.abandonActive);
   const begin = async (abandonActive = false) => {
-    if (active && !abandonActive)
+    if (active && !abandonActive) {
+      onOpenChange(false);
       return void navigate(`/quizzes/${collectionId}/attempts/${active.id}`);
+    }
     try {
       const attempt = await start.mutateAsync({ id: crypto.randomUUID(), abandonActive });
       onOpenChange(false);
       await navigate(`/quizzes/${collectionId}/attempts/${attempt.id}`);
-    } catch {
-      toast.error("Não foi possível iniciar o quiz.");
+    } catch (error) {
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível iniciar o quiz."));
     }
   };
   return (
@@ -60,10 +63,10 @@ export const QuizStartDialog = ({
         <AlertDialogFooter>
           {active && (
             <Button
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+              className="sm:mr-auto"
               onClick={() => void begin(true)}
               pending={start.isPending && restarting}
-              variant="ghost"
+              variant="destructive-ghost"
             >
               <RotateCcwIcon aria-hidden="true" /> Recomeçar
             </Button>
@@ -75,7 +78,7 @@ export const QuizStartDialog = ({
             pending={start.isPending && !restarting}
             pendingLabel={active ? "Abrindo" : "Iniciando"}
           >
-            {active ? "Continuar" : "Iniciar quiz"}
+            {active ? "Continuar quiz" : "Iniciar quiz"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

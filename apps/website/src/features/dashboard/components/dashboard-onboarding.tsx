@@ -25,7 +25,7 @@ const stepCopy: Record<
   "generate-material": {
     title: "Crie materiais com IA",
     description: "Gere flashcards ou questões do seu documento e salve o que aprovar.",
-    label: "Criar materiais",
+    label: "Gerar materiais com IA",
   },
   "set-goal": {
     title: "Defina sua meta",
@@ -55,7 +55,7 @@ export const DashboardOnboarding = ({
   return (
     <section
       aria-labelledby="dashboard-onboarding-title"
-      className="surface-panel flex flex-col p-6"
+      className="surface-panel flex flex-col p-5 sm:p-6"
     >
       <DashboardSectionTitle
         action={

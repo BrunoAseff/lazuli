@@ -45,7 +45,7 @@ export const SessionEnding = () => {
     return (
       <main className="grid min-h-svh place-items-center bg-background px-5 text-center">
         <div className="max-w-sm space-y-4">
-          <h1 className="font-heading text-3xl">Não foi possível sair</h1>
+          <h1 className="font-reading text-3xl font-normal">Não foi possível sair</h1>
           <p className="text-sm leading-6 text-muted-foreground">
             Sua sessão continua ativa. Verifique sua conexão e tente novamente.
           </p>
@@ -75,7 +75,7 @@ export const SessionEnding = () => {
 export const SessionError = () => (
   <main className="grid min-h-svh place-items-center bg-background px-5 text-center">
     <div className="max-w-sm space-y-4">
-      <h1 className="font-heading text-3xl">Não foi possível verificar sua sessão</h1>
+      <h1 className="font-reading text-3xl font-normal">Não foi possível verificar sua sessão</h1>
       <p className="text-sm leading-6 text-muted-foreground">
         Confira sua conexão e tente novamente.
       </p>

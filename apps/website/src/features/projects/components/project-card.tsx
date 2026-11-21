@@ -30,7 +30,7 @@ export const ProjectCard = ({
     <Card className="group/project-card relative gap-0 overflow-hidden py-0 ring-border/50">
       <Link
         aria-label={`Abrir projeto ${project.title}`}
-        className="block overflow-hidden outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="block overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         state={{ projectListLocation: listLocation }}
         to={`/documents/${project.id}`}
       >

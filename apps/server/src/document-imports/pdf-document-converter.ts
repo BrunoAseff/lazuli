@@ -7,7 +7,7 @@ import {
   type DocumentInlineContent,
 } from "@lazuli/shared";
 import { getDocument, ImageKind, OPS } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { PNG } from "pngjs";
+import sharp from "sharp";
 
 type PdfRun = {
   color?: string;
@@ -484,21 +484,30 @@ export const isSoftMaskLayer = (image: PdfImage) => {
   return true;
 };
 
-const encodePdfImage = (image: PdfImage) => {
+/**
+ * A PDF image as a file the editor can show. Photos are usually JPEG inside the PDF: kept as JPEG
+ * they stay small, while a PNG of the same photo is several times larger and a document full of
+ * them hit the import's size limit (images were then dropped). Flat images (diagrams, text) keep
+ * PNG when it is not much larger, so they stay sharp; transparency always keeps PNG.
+ */
+const encodePdfImage = async (
+  image: PdfImage,
+): Promise<{ bytes: Uint8Array; mimeType: string } | null> => {
   if (!image.data || image.width <= 0 || image.height <= 0) return null;
   if (![ImageKind.RGB_24BPP, ImageKind.RGBA_32BPP].includes(image.kind ?? -1)) return null;
   const pixelCount = image.width * image.height;
   if (pixelCount > 20_000_000) return null;
   const channels = image.kind === ImageKind.RGBA_32BPP ? 4 : 3;
   if (image.data.length < pixelCount * channels) return null;
-  const png = new PNG({ width: image.width, height: image.height });
-  for (let source = 0, target = 0; target < png.data.length; source += channels, target += 4) {
-    png.data[target] = image.data[source]!;
-    png.data[target + 1] = image.data[source + 1]!;
-    png.data[target + 2] = image.data[source + 2]!;
-    png.data[target + 3] = channels === 4 ? image.data[source + 3]! : 255;
-  }
-  return new Uint8Array(PNG.sync.write(png));
+  const raw = sharp(Buffer.from(image.data.buffer, image.data.byteOffset, pixelCount * channels), {
+    raw: { channels, height: image.height, width: image.width },
+  });
+  const png = await raw.clone().png({ compressionLevel: 9 }).toBuffer();
+  if (channels === 4) return { bytes: new Uint8Array(png), mimeType: "image/png" };
+  const jpeg = await raw.clone().jpeg({ mozjpeg: true, quality: 85 }).toBuffer();
+  return png.byteLength <= jpeg.byteLength * 1.25
+    ? { bytes: new Uint8Array(png), mimeType: "image/png" }
+    : { bytes: new Uint8Array(jpeg), mimeType: "image/jpeg" };
 };
 
 const imageTop = (matrix: Matrix) =>
@@ -645,11 +654,11 @@ export const convertPdfDocument = async (
             importedImages.set(imageKey, null);
             continue;
           }
-          const encoded = image ? encodePdfImage(image) : null;
+          const encoded = image ? await encodePdfImage(image).catch(() => null) : null;
           if (
             !encoded ||
-            encoded.byteLength > IMAGE_MAX_BYTES ||
-            assetBytes + encoded.byteLength > DOCUMENT_IMPORT_BINARY_MAX_BYTES
+            encoded.bytes.byteLength > IMAGE_MAX_BYTES ||
+            assetBytes + encoded.bytes.byteLength > DOCUMENT_IMPORT_BINARY_MAX_BYTES
           ) {
             importedImages.set(imageKey, null);
             skippedImages += 1;
@@ -657,8 +666,8 @@ export const convertPdfDocument = async (
           }
           id = crypto.randomUUID();
           importedImages.set(imageKey, id);
-          assetBytes += encoded.byteLength;
-          assets.push({ id, mimeType: "image/png", bytes: encoded });
+          assetBytes += encoded.bytes.byteLength;
+          assets.push({ id, mimeType: encoded.mimeType, bytes: encoded.bytes });
         }
         if (!id) continue;
         elements.push({

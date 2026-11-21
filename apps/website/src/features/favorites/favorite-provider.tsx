@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { apiRequest } from "@/lib/api-client.ts";
+import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 
 const keyOf = (target: FavoriteTarget) => `${target.kind}:${target.id}`;
 export const favoriteKeys = ["favorites"] as const;
@@ -75,10 +76,10 @@ export const FavoriteProvider = ({ children }: { children: ReactNode }) => {
     onSettled: async (_data, _error, { target }) => {
       await Promise.all([
         client.invalidateQueries({ queryKey: favoriteKeys }),
-        client.invalidateQueries({ queryKey: ["projects"] }),
-        client.invalidateQueries({ queryKey: ["flashcard-collections"] }),
-        client.invalidateQueries({ queryKey: ["quiz-collections"] }),
-        client.invalidateQueries({ queryKey: ["global-search"] }),
+        client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.projects }),
+        client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcardCollections }),
+        client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.quizCollections }),
+        client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.globalSearch }),
       ]);
       setOptimistic((current) => {
         const next = { ...current };

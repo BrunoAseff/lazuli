@@ -1,10 +1,7 @@
 import { useCreateBlockNote } from "@blocknote/react";
 import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
 
-import { LocalizedBlockNoteInput } from "@/features/documents/editor/localized-blocknote-input.tsx";
 import { cn } from "@/lib/utils.ts";
-
-const blockNoteComponents = { Input: { Input: LocalizedBlockNoteInput } };
 
 export const RichContentField = ({
   appearance = "boxed",
@@ -46,14 +43,19 @@ export const RichContentField = ({
       <BlockNoteView
         className={cn(
           "lazuli-editor lazuli-flashcard-editor",
+          // The large question and answer type belongs to the open workbench; inside a boxed
+          // field (a dialog) the text and its placeholder keep the field's size.
           appearance === "workbench" && "lazuli-flashcard-workbench",
-          workbenchRole === "question" && "lazuli-flashcard-workbench-question",
-          workbenchRole === "answer" && "lazuli-flashcard-workbench-answer",
+          appearance === "workbench" &&
+            workbenchRole === "question" &&
+            "lazuli-flashcard-workbench-question",
+          appearance === "workbench" &&
+            workbenchRole === "answer" &&
+            "lazuli-flashcard-workbench-answer",
         )}
         editable={editable}
         editor={editor}
         onChange={onChange}
-        shadCNComponents={blockNoteComponents}
         sideMenu={false}
       />
     </div>

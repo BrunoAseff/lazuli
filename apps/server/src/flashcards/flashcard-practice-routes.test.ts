@@ -7,7 +7,6 @@ import type { Database } from "../database/client.ts";
 import { createFlashcardPracticeRoutes } from "./flashcard-practice-routes.ts";
 
 const queries = vi.hoisted(() => ({
-  abandonPracticeSession: vi.fn(),
   createPracticeSession: vi.fn(),
   getPracticeAvailability: vi.fn(),
   getPracticeSession: vi.fn(),

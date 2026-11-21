@@ -1,7 +1,8 @@
 import { z } from "zod";
 
+import { timeZoneSchema } from "./calendar.ts";
+
 export const STUDY_METRICS_MIN_SAMPLE = 20;
-export const STUDY_METRICS_MIN_POINT = 5;
 export const STUDY_METRICS_MIN_RANK = 3;
 export const studyMetricsViewSchema = z.enum(["overview", "flashcards", "quizzes"]);
 export type StudyMetricsView = z.infer<typeof studyMetricsViewSchema>;
@@ -9,7 +10,7 @@ const date = z.iso.date();
 export const studyMetricsQuerySchema = z.object({
   from: date,
   to: date,
-  tz: z.string().min(1).max(100),
+  tz: timeZoneSchema,
   collectionId: z.uuid().optional(),
   compare: z.enum(["true", "false"]).default("false"),
 });

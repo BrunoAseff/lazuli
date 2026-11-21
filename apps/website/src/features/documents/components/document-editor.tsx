@@ -62,19 +62,18 @@ import {
 } from "../api/document-queries.ts";
 import { DOCUMENT_MESSAGES } from "../document-messages.ts";
 import { lazuliBlockNoteDictionary } from "../editor/blocknote-dictionary.ts";
+import { LazuliSideMenuController } from "../editor/lazuli-side-menu.tsx";
 import { documentSchema, type LazuliDocumentBlock } from "../editor/document-schema.tsx";
 import { DocumentFind } from "../editor/document-find.tsx";
 import {
   ExternalImageImportError,
   importExternalImages,
 } from "../editor/import-external-images.ts";
-import { LocalizedBlockNoteInput } from "../editor/localized-blocknote-input.tsx";
 import { DocumentSaveStatus, type DocumentSaveState } from "./document-save-status.tsx";
 import { safeReturnTo } from "../document-navigation.ts";
 import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 import { useSourceAnchorsShown } from "@/features/references/source-anchor-visibility.ts";
 
-const blockNoteComponents = { Input: { Input: LocalizedBlockNoteInput } };
 const compactWorkspaceMaxWidth = 56 * 16;
 const toDocumentBlocks = (blocks: LazuliDocumentBlock) => blocks as unknown as DocumentBlock[];
 export const DocumentEditor = ({
@@ -263,7 +262,7 @@ export const DocumentEditor = ({
     if (!pendingTarget) return;
     const selection = getDocumentReferenceSelection(editor);
     if (!selection) {
-      toast.error("Selecione um trecho do documento antes de vincular.");
+      toast.error("Selecione um trecho do documento antes de conectar.");
       return;
     }
     const active = selection.imageBlockId ? undefined : editor.getActiveStyles().sourceAnchor;
@@ -278,7 +277,7 @@ export const DocumentEditor = ({
         source: { type: "selection", documentId, anchorId },
         targets: [pendingTarget],
       });
-      toast.success("Trecho vinculado.");
+      toast.success("Trecho conectado.");
       if (referenceReturnTo) void navigate(referenceReturnTo, { replace: true });
       else void navigate(-1);
     } catch {
@@ -287,7 +286,7 @@ export const DocumentEditor = ({
           .content as LazuliDocumentBlock;
         editor.replaceBlocks(editor.document, next);
       }
-      toast.error("Não foi possível vincular o trecho.");
+      toast.error("Não foi possível conectar o trecho.");
     }
   };
   /**
@@ -682,7 +681,7 @@ export const DocumentEditor = ({
   return (
     <>
       <div className="document-editor-scroll mr-1 lazuli-thin-scrollbar">
-        <header className="document-editor-toolbar @container/toolbar sticky z-20 border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:border-b-0 sm:bg-card/92 sm:px-6">
+        <header className="document-editor-toolbar @container/toolbar sticky z-20 bg-background px-3 sm:bg-card sm:px-6">
           <div className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 py-2">
             <div className="flex min-w-0 items-center gap-3">
               <DocumentSaveStatus
@@ -709,9 +708,9 @@ export const DocumentEditor = ({
                 initialQuery={initialSearchQuery}
               />
               <CreateMaterialsButton
-                compactLabel="Criar materiais"
+                compactLabel="Gerar materiais"
                 defaultDocumentIds={[documentId]}
-                label="Criar materiais de estudo"
+                label="Gerar materiais com IA"
                 onApproved={() => void adoptSavedDocument()}
                 onBeforeOpen={async () => {
                   const blocks = collectDocumentTextBlocks(editor.document as DocumentBlock[]);
@@ -778,7 +777,7 @@ export const DocumentEditor = ({
               className="lazuli-editor lazuli-document-editor"
               editor={editor}
               formattingToolbar={false}
-              sideMenu={!compactEditorChrome}
+              sideMenu={false}
               onChange={() => {
                 if (saveState !== "conflict") {
                   if (!adjustingAnchorRef.current && !aiAction) setAutoSavePaused(false);
@@ -797,8 +796,8 @@ export const DocumentEditor = ({
                 });
                 setDirty(true);
               }}
-              shadCNComponents={blockNoteComponents}
             >
+              {!compactEditorChrome && <LazuliSideMenuController />}
               {compactEditorChrome ? (
                 <ExperimentalMobileFormattingToolbarController
                   formattingToolbar={formattingToolbar}
@@ -848,7 +847,7 @@ export const DocumentEditor = ({
               ? "Selecione o novo trecho desta fonte."
               : pendingAiReference
                 ? "Selecione o novo trecho da fonte sugerida."
-                : "Selecione no documento o trecho que deseja vincular."}
+                : "Selecione no documento o trecho que deseja conectar."}
           </p>
           <Button
             onClick={
@@ -879,14 +878,14 @@ export const DocumentEditor = ({
             }
             size="sm"
           >
-            {adjustingAnchorId || pendingAiReference ? "Salvar trecho" : "Vincular trecho"}
+            {adjustingAnchorId || pendingAiReference ? "Salvar trecho" : "Conectar trecho"}
           </Button>
         </div>
       )}
       <AlertDialog open={pendingLinkConfirmationOpen} onOpenChange={setPendingLinkConfirmationOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Vincular o trecho selecionado?</AlertDialogTitle>
+            <AlertDialogTitle>Conectar o trecho selecionado?</AlertDialogTitle>
             <AlertDialogDescription>
               A fonte será conectada e você voltará ao material.
             </AlertDialogDescription>
@@ -899,7 +898,7 @@ export const DocumentEditor = ({
                 void selectPendingTarget();
               }}
             >
-              Vincular trecho
+              Conectar trecho
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

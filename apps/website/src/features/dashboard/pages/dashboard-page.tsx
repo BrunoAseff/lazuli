@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import { ContentPage } from "@/components/content-page.tsx";
-import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { authClient } from "@/features/auth/auth-client.ts";
 import { PracticeSetupDialog } from "@/features/flashcards/components/practice-setup-dialog.tsx";
@@ -11,6 +10,7 @@ import { DashboardOnboarding } from "../components/dashboard-onboarding.tsx";
 import { DashboardReviewQueue } from "../components/dashboard-review-queue.tsx";
 import { StoneCard } from "@/features/stone/components/stone-card.tsx";
 import { getDashboardGreeting } from "../dashboard-copy.ts";
+import { LoadError } from "@/components/empty-state.tsx";
 
 const todayLabel = () =>
   new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" })
@@ -48,17 +48,13 @@ export const DashboardPage = () => {
   if (dashboard.isError)
     return (
       <ContentPage maxWidth="6xl">
-        <div className="grid min-h-[55vh] place-items-center text-center">
-          <div className="max-w-md">
-            <h1 className="page-title">Não foi possível carregar seu início</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Seus materiais continuam seguros. Tente carregar o resumo novamente.
-            </p>
-            <Button className="mt-5" onClick={() => void dashboard.refetch()}>
-              Tentar novamente
-            </Button>
-          </div>
-        </div>
+        <LoadError
+          className="min-h-[55vh]"
+          description="Seus materiais continuam seguros. Tente carregar o resumo novamente."
+          onRetry={() => void dashboard.refetch()}
+          surface="inline"
+          title="Não foi possível carregar seu início"
+        />
       </ContentPage>
     );
 
@@ -91,7 +87,7 @@ export const DashboardPage = () => {
             queue={data.reviewQueue}
           />
           {/* Centred in its cell, so the stone never leaves a gap under itself. */}
-          <div className="flex items-center border-t border-[var(--line-subtle)] p-6 lg:border-t-0 lg:border-l">
+          <div className="flex items-center p-6 pt-2 lg:border-l lg:border-[var(--line-subtle)] lg:pt-6">
             <div className="w-full">
               <StoneCard />
             </div>

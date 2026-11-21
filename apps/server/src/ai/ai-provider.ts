@@ -7,7 +7,7 @@ export type AiTokenUsage = {
   totalTokens: number;
 };
 
-export type AiStructuredGenerationRequest<T> = {
+type AiStructuredGenerationRequest<T> = {
   idempotencyKey: string;
   images?: Array<{ data: Uint8Array; mediaType: string }>;
   maxOutputTokens: number;
@@ -20,7 +20,7 @@ export type AiStructuredGenerationRequest<T> = {
   userIdentifier: string;
 };
 
-export type AiStructuredGenerationResult<T> = {
+type AiStructuredGenerationResult<T> = {
   effectiveModel: string;
   output: T;
   providerRequestId: string | null;

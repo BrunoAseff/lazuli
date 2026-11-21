@@ -5,7 +5,7 @@ import type {
   CreateAiSelectionGenerationInput,
   CreateAiMaterialImprovementInput,
 } from "@lazuli/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
@@ -37,6 +37,13 @@ export const aiKeys = {
     [...QUERY_KEY_ROOTS.ai, "material-improvement", operationId] as const,
 };
 
+/** A generation spends or returns credits: the balance and the plan summary read them again. */
+const refreshCredits = (client: QueryClient) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: aiKeys.balance }),
+    client.invalidateQueries({ queryKey: billingKeys.summary() }),
+  ]);
+
 export const useAiCreditBalance = () =>
   useQuery({
     queryKey: aiKeys.balance,
@@ -57,10 +64,7 @@ export const useAiGeneration = (operationId: string) => {
 
   useEffect(() => {
     if (previousStatus.current === "running" && status && status !== "running")
-      void Promise.all([
-        client.invalidateQueries({ queryKey: aiKeys.balance }),
-        client.invalidateQueries({ queryKey: billingKeys.summary() }),
-      ]);
+      void refreshCredits(client);
     previousStatus.current = status;
   }, [client, status]);
 
@@ -74,10 +78,7 @@ export const useCreateAiSelectionGeneration = () => {
     onSuccess: async (result) => {
       if (result.status === "completed")
         client.setQueryData(aiKeys.generation(result.draft.operationId), result);
-      await Promise.all([
-        client.invalidateQueries({ queryKey: aiKeys.balance }),
-        client.invalidateQueries({ queryKey: billingKeys.summary() }),
-      ]);
+      await refreshCredits(client);
     },
   });
 };
@@ -112,10 +113,7 @@ export const useCreateAiCollectionGeneration = (collectionId: string) => {
       client.setQueryData(aiKeys.latestCollectionGeneration(collectionId), result);
       if (result.status !== "none" && result.status !== "completed")
         client.setQueryData(aiKeys.collectionGeneration(result.operationId), result);
-      await Promise.all([
-        client.invalidateQueries({ queryKey: aiKeys.balance }),
-        client.invalidateQueries({ queryKey: billingKeys.summary() }),
-      ]);
+      await refreshCredits(client);
     },
   });
 };
@@ -144,8 +142,7 @@ export const useApproveAiGeneration = (operationId: string) => {
       approveAiGeneration(target ?? operationId, input),
     onSuccess: async () => {
       await Promise.all([
-        client.invalidateQueries({ queryKey: aiKeys.balance }),
-        client.invalidateQueries({ queryKey: billingKeys.summary() }),
+        refreshCredits(client),
         client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcards }),
         client.invalidateQueries({ queryKey: quizKeys.all }),
         client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcardCollections }),
@@ -174,10 +171,7 @@ export const useCreateAiMaterialImprovement = () => {
     onSuccess: async (result) => {
       if (result.status === "completed")
         client.setQueryData(aiKeys.materialImprovement(result.draft.operationId), result);
-      await Promise.all([
-        client.invalidateQueries({ queryKey: aiKeys.balance }),
-        client.invalidateQueries({ queryKey: billingKeys.summary() }),
-      ]);
+      await refreshCredits(client);
     },
   });
 };
@@ -191,8 +185,7 @@ export const useApplyAiMaterialImprovement = (operationId: string) => {
       await Promise.all([
         client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.flashcards }),
         client.invalidateQueries({ queryKey: quizKeys.all }),
-        client.invalidateQueries({ queryKey: aiKeys.balance }),
-        client.invalidateQueries({ queryKey: billingKeys.summary() }),
+        refreshCredits(client),
       ]);
     },
   });

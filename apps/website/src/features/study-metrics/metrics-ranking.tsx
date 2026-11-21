@@ -121,7 +121,7 @@ export function MetricsRanking({
     <section
       ref={section}
       aria-label={title}
-      className="order-2 min-w-0 scroll-mt-20 surface-panel p-4 sm:p-5"
+      className="order-2 min-w-0 scroll-mt-20 surface-panel p-5 sm:p-6"
     >
       <div className="mb-4 flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -177,7 +177,7 @@ export function MetricsRanking({
         <Skeleton className="h-48" />
       ) : result.isError ? (
         <MetricsError
-          message="Não foi possível carregar esta lista."
+          title="Não foi possível carregar esta lista"
           retry={() => void result.refetch()}
         />
       ) : !result.data.items.length ? (
@@ -310,7 +310,7 @@ export function MetricsAttempts({ input }: { input: StudyMetricsQuery }) {
       { replace: true },
     );
   return (
-    <section className="surface-panel p-4 sm:p-5">
+    <section className="surface-panel p-5 sm:p-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm leading-snug font-semibold">
           {full ? "Histórico de quizzes" : "Últimos quizzes"}
@@ -329,7 +329,7 @@ export function MetricsAttempts({ input }: { input: StudyMetricsQuery }) {
         <Skeleton className="h-32" />
       ) : result.isError ? (
         <MetricsError
-          message="Não foi possível carregar o histórico."
+          title="Não foi possível carregar o histórico"
           retry={() => void result.refetch()}
         />
       ) : !result.data.items.length ? (

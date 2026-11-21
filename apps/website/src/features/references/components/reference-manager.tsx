@@ -31,9 +31,12 @@ import { CreationWorkspace } from "@/features/ai/components/creation-workspace.t
 import { documentLocation } from "@/features/documents/document-navigation.ts";
 import { useCreateReferences, useReferences } from "../api/reference-queries.ts";
 import { ReferenceDeleteButton } from "./reference-delete-button.tsx";
-import { ReferenceDocumentRow } from "./reference-document-row.tsx";
+import { ReferenceDocumentRow, ReferenceRowsSkeleton } from "./reference-document-row.tsx";
 import { SourceReading } from "./source-reading.tsx";
 import "@/features/ai/components/proposal-review.css";
+
+/** Sources listed in the side panel; more than these open in the full list. */
+const VISIBLE_SOURCES = 3;
 
 type ReferenceListItem = ReferenceListResponse["items"][number];
 
@@ -172,7 +175,7 @@ export const ReferenceManager = ({
                 {excerpts[0]?.sourcePreview ??
                   (count
                     ? "O material usa o documento todo."
-                    : "Este material ainda não está ligado a um documento.")}
+                    : "Este material ainda não está conectado a um documento.")}
               </p>
             </div>
           )
@@ -193,11 +196,10 @@ export const ReferenceManager = ({
         </h3>
         {!disabled && (
           <Button
-            className="h-auto px-0 text-muted-foreground hover:text-foreground"
             onClick={() => (count ? setManagerOpen(true) : setPickerOpen(true))}
             size="xs"
             type="button"
-            variant="link"
+            variant="field-link"
           >
             {count ? (
               <>
@@ -212,15 +214,18 @@ export const ReferenceManager = ({
         )}
       </div>
       {references.isPending ? (
-        <p className="text-sm text-muted-foreground">Carregando fontes…</p>
+        <div className="-mx-3">
+          <ReferenceRowsSkeleton rows={2} />
+        </div>
       ) : count ? (
         // Pulled out by the row's own padding so the file icon lines up with the label above.
         <div className="-mx-3 min-w-0">
-          {references.data?.items.slice(0, 2).map((reference) => (
+          {references.data?.items.slice(0, VISIBLE_SOURCES).map((reference) => (
             <ReferenceDocumentRow
               key={reference.id}
               documentTitle={reference.documentTitle}
               projectTitle={reference.projectTitle}
+              preview={reference.sourcePreview}
               scope={reference.anchorId ? "selection" : "document"}
               href={documentLocation({
                 anchorId: reference.anchorId,
@@ -230,6 +235,20 @@ export const ReferenceManager = ({
               })}
             />
           ))}
+          {/* The rest are never hidden without saying so: the list opens with all of them. */}
+          {count > VISIBLE_SOURCES && (
+            <Button
+              className="mx-3 mt-1"
+              onClick={() => setManagerOpen(true)}
+              size="xs"
+              type="button"
+              variant="field-link"
+            >
+              {count - VISIBLE_SOURCES === 1
+                ? "Mais 1 fonte"
+                : `Mais ${count - VISIBLE_SOURCES} fontes`}
+            </Button>
+          )}
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Nenhum documento conectado.</p>
@@ -259,15 +278,22 @@ const ReferenceListDialog = ({
   open: boolean;
 }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-lg">
-      <DialogHeader className="border-b px-6 py-5">
+    <DialogContent
+      className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-lg"
+      // Focus starts on the dialog itself, not on the first "Desconectar" (and its tooltip).
+      onOpenAutoFocus={(event) => {
+        event.preventDefault();
+        (event.currentTarget as HTMLElement).focus();
+      }}
+    >
+      <DialogHeader className="px-6 py-5">
         <DialogTitle className="pr-8">Fontes do material</DialogTitle>
         <DialogDescription>Documentos conectados a este material.</DialogDescription>
       </DialogHeader>
       <div className="min-h-0 overflow-y-auto px-3 py-3 lazuli-thin-scrollbar">
         {!items.length && (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            Nenhum documento vinculado.
+            Nenhum documento conectado.
           </p>
         )}
         <div className="grid gap-1">
@@ -277,6 +303,7 @@ const ReferenceListDialog = ({
               href={hrefOf(reference)}
               key={reference.id}
               projectTitle={reference.projectTitle}
+              preview={reference.sourcePreview}
               scope={reference.anchorId ? "selection" : "document"}
               trailing={
                 <ReferenceDeleteButton
@@ -288,7 +315,7 @@ const ReferenceListDialog = ({
           ))}
         </div>
       </div>
-      <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4">
+      <DialogFooter className="mx-0 mb-0 rounded-none px-6 py-4">
         <DialogCancelButton onClick={() => onOpenChange(false)}>Fechar</DialogCancelButton>
         <Button onClick={onAdd}>
           <PlusIcon aria-hidden="true" /> Conectar documento
@@ -348,7 +375,7 @@ const ReferenceSourcePickerDialog = ({
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        <DialogHeader className="border-b px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <DialogTitle className="pr-8">Conectar uma fonte</DialogTitle>
           <DialogDescription>Escolha o documento relacionado a este material.</DialogDescription>
         </DialogHeader>
@@ -499,7 +526,7 @@ const ReferenceSourcePickerDialog = ({
             )}
           </CreationWorkspace>
         </div>
-        <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4 sm:flex-wrap">
+        <DialogFooter className="mx-0 mb-0 rounded-none px-6 py-4 sm:flex-wrap">
           <DialogCancelButton onClick={close}>Cancelar</DialogCancelButton>
           <Button
             pending={create.isPending}

@@ -14,14 +14,7 @@ import {
   QuizAlternativesField,
   type QuizOptionDraft,
 } from "@/features/quizzes/components/quiz-alternatives-field.tsx";
-
-const textContent = (text: string): DocumentBlock[] => [
-  {
-    id: crypto.randomUUID(),
-    type: "paragraph",
-    content: [{ type: "text", text: text.trim(), styles: {} }],
-  },
-];
+import { textContent } from "../text-content.ts";
 
 export type AiEditableQuizProposal = {
   content?: DocumentBlock[];

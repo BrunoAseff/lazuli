@@ -1,7 +1,7 @@
+import { clientTimeZone } from "@lazuli/shared";
 import type { StoneSessionKind } from "@lazuli/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getClientTimeZone } from "@/features/dashboard/api/dashboard-api.ts";
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 import { fetchStone, fetchStoneContribution, saveStudyGoal } from "./stone-api.ts";
 
@@ -13,7 +13,7 @@ export const stoneKeys = {
 };
 
 export const useStone = () => {
-  const timeZone = getClientTimeZone();
+  const timeZone = clientTimeZone();
   return useQuery({
     queryKey: stoneKeys.summary(timeZone),
     queryFn: ({ signal }) => fetchStone(timeZone, signal),
@@ -27,7 +27,7 @@ export const useStoneContribution = (kind: StoneSessionKind, id: string, enabled
     enabled: enabled && Boolean(id),
     queryKey: stoneKeys.contribution(kind, id),
     queryFn: async ({ signal }) => {
-      const contribution = await fetchStoneContribution(kind, id, getClientTimeZone(), signal);
+      const contribution = await fetchStoneContribution(kind, id, clientTimeZone(), signal);
       // The session changed the stone: the home card and "Sua pedra" read it again.
       void client.invalidateQueries({ queryKey: [...stoneKeys.all, "summary"] });
       return contribution;

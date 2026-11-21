@@ -1,15 +1,8 @@
-import type { StudyMetricsPoint } from "@lazuli/shared";
+import { dateKeyIn, shiftDateKey, type StudyMetricsPoint } from "@lazuli/shared";
 
-export const shiftDate = (date: string, days: number) =>
-  new Date(Date.parse(`${date}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+export const shiftDate = shiftDateKey;
 
-export const localToday = (tz: string, now = new Date()) =>
-  new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
+export const localToday = (tz: string, now = new Date()) => dateKeyIn(now, tz);
 
 export const validateMetricsRange = (from: string, to: string, tz: string) => {
   try {

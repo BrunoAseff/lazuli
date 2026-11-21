@@ -37,7 +37,6 @@ const collection = {
   archivedAt: null,
   totalQuestions: 0,
   totalAttempts: 0,
-  attemptsLastSevenDays: 0,
   lastScore: null,
   bestScoreRate: null,
   lastAttemptAt: null,

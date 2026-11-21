@@ -1,6 +1,5 @@
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { isNotFound, ResourceUnavailable } from "@/components/not-found-page.tsx";
-import { Trash2Icon } from "@/components/icons.tsx";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BackButton, BackLink } from "@/components/nav-link.tsx";
 import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
@@ -17,7 +16,6 @@ import { toast } from "sonner";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -27,7 +25,6 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { AutoHeight } from "@/components/auto-height.tsx";
 import { StudySessionProgress } from "@/components/study-session-progress.tsx";
 import { ResultDistribution } from "@/components/result-distribution.tsx";
@@ -52,6 +49,8 @@ import {
   StoneContributionRow,
   StoneLevelUp,
 } from "@/features/stone/components/stone-contribution.tsx";
+import { ease } from "@/lib/motion.ts";
+import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
 const formatDuration = (minutes: number) => {
   if (minutes < 60) return `${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
@@ -131,15 +130,15 @@ export const QuizAttemptPage = () => {
   const select = async (optionId: string) => {
     try {
       await answer.mutateAsync({ itemId: item.id, optionId });
-    } catch {
-      toast.error("Não foi possível salvar esta resposta.");
+    } catch (error) {
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível salvar esta resposta."));
     }
   };
   const finish = async () => {
     try {
       await complete.mutateAsync();
-    } catch {
-      toast.error("Responda todas as questões antes de concluir.");
+    } catch (error) {
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível concluir a tentativa."));
     }
   };
   const goTo = (next: number) => {
@@ -177,7 +176,7 @@ export const QuizAttemptPage = () => {
             exit={{ opacity: 0 }}
             initial={reduced ? { opacity: 0 } : { opacity: 0, x: 20 }}
             key="review"
-            transition={{ duration: 0.18, ease: motionTokens.ease.standard }}
+            transition={{ duration: 0.18, ease: ease.standard }}
           >
             <p className="practice-kicker">Antes de concluir</p>
             <h2 className="font-heading text-lg font-semibold">Revisar respostas</h2>
@@ -238,7 +237,7 @@ export const QuizAttemptPage = () => {
             exit={reduced ? { opacity: 0 } : { opacity: 0, x: -20 * direction }}
             initial={reduced ? { opacity: 0 } : { opacity: 0, x: 20 * direction }}
             key={item.id}
-            transition={{ duration: 0.18, ease: motionTokens.ease.standard }}
+            transition={{ duration: 0.18, ease: ease.standard }}
           >
             <p className="practice-kicker">Questão {index + 1}</p>
             <div className="practice-question">
@@ -275,7 +274,7 @@ export const QuizAttemptPage = () => {
           </motion.section>
         )}
       </AnimatePresence>
-      <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
+      <AlertDialog open={exitOpen} onOpenChange={(open) => !abandon.isPending && setExitOpen(open)}>
         <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Sair da tentativa?</AlertDialogTitle>
@@ -285,17 +284,27 @@ export const QuizAttemptPage = () => {
           </AlertDialogHeader>
           {/* Destructive choice apart on the left; leaving keeps the answers, so it is the main way out. */}
           <AlertDialogFooter>
-            <AlertDialogAction
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
-              variant="ghost"
+            <Button
+              className="sm:mr-auto"
               onClick={async () => {
-                await abandon.mutateAsync();
-                await navigate(`/quizzes/${attempt.collectionId}`);
+                try {
+                  await abandon.mutateAsync();
+                  await navigate(`/quizzes/${attempt.collectionId}`);
+                } catch (error) {
+                  toast.error(
+                    getQuizCollectionErrorMessage(error, "Não foi possível abandonar a tentativa."),
+                  );
+                }
               }}
+              pending={abandon.isPending}
+              variant="destructive-ghost"
             >
-              <Trash2Icon aria-hidden="true" /> Abandonar
-            </AlertDialogAction>
-            <AlertDialogCancel>Continuar respondendo</AlertDialogCancel>
+              {/* No trash can: abandoning closes the attempt, it deletes nothing. */}
+              Abandonar tentativa
+            </Button>
+            <AlertDialogCancel disabled={abandon.isPending}>
+              Continuar respondendo
+            </AlertDialogCancel>
             <Button onClick={() => void navigate(`/quizzes/${attempt.collectionId}`)}>Sair</Button>
           </AlertDialogFooter>
         </AlertDialogContent>
