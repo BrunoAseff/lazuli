@@ -59,7 +59,7 @@ export const goalDaysText = (goal: StudyGoal) =>
 
 /** The study days of the last seven: lit when the goal was kept. */
 export const WeekFacets = ({ week }: { week: StoneDay[] }) => (
-  <span aria-hidden="true" className="flex items-center gap-1">
+  <span aria-hidden="true" className="flex shrink-0 items-center gap-1">
     {week
       .filter(({ status, studyDay }) => studyDay && ["met", "free", "missed"].includes(status))
       .map((day) => (
@@ -78,7 +78,7 @@ export const keptText = (stone: StoneResponse) =>
     : "Nenhum dia de estudo nos últimos 7";
 
 export const WeekLine = ({ stone }: { stone: StoneResponse }) => (
-  <div className="flex items-center gap-2 text-xs whitespace-nowrap text-foreground">
+  <div className="flex items-center gap-2 text-xs text-foreground">
     <WeekFacets week={stone.week} />
     {keptText(stone)}
   </div>
@@ -91,7 +91,7 @@ export const MasteryLine = ({ level, mastered }: { level: number; mastered: numb
   const from = Math.min(current.from, mastered);
   return (
     <div className="grid gap-1.5">
-      <div className="flex justify-between gap-3 text-xs">
+      <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-xs">
         <span className="text-foreground">
           <span className="tabular-nums">{mastered}</span>{" "}
           {mastered === 1 ? "item dominado" : "itens dominados"}
@@ -126,7 +126,7 @@ export const GoalLine = ({ stone }: { stone: StoneResponse }) => {
           : `${today.practices} de ${goalText(goal)}`;
   return (
     <div className="grid gap-1.5">
-      <div className="flex justify-between gap-3 text-xs">
+      <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-xs">
         <span className="text-foreground">Meta de hoje</span>
         <span className="whitespace-nowrap text-muted-foreground tabular-nums">{label}</span>
       </div>

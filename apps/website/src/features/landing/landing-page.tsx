@@ -29,7 +29,10 @@ export default function LandingPage() {
         Pular para o conteúdo
       </a>
       <Hero />
-      <main className="mx-auto max-w-6xl space-y-32 px-5 pt-40 pb-32 sm:px-8" id="conteudo">
+      <main
+        className="mx-auto max-w-6xl space-y-32 px-5 pt-24 pb-32 sm:pt-32 sm:px-8"
+        id="conteudo"
+      >
         <Chapter
           demo={<MaterialsDemo />}
           id="materiais"
@@ -87,7 +90,7 @@ const Hero = () => (
         </Link>
       </div>
     </nav>
-    <div className="mx-auto max-w-6xl px-5 pt-16 sm:px-8 sm:pt-24">
+    <div className="mx-auto max-w-6xl px-5 pt-16 pb-24 sm:px-8 sm:pt-24 sm:pb-32">
       <div className="on-stone">
         <h1 className="max-w-3xl font-reading text-5xl leading-[1.04] font-medium text-balance sm:text-7xl">
           Lapide o que você estuda
@@ -105,80 +108,8 @@ const Hero = () => (
           </a>
         </div>
       </div>
-      {/* The product itself rises out of the stone and overlaps the page below. */}
-      <div className="relative mt-16 -mb-28 sm:mt-20">
-        <ProductPreview />
-      </div>
     </div>
   </header>
-);
-
-/** A home screen with example data, built from the same pieces as the app's own. */
-const ProductPreview = () => (
-  <div
-    aria-label="Prévia da página inicial do Lazúli"
-    // A picture of the app: nothing inside it takes focus or clicks.
-    inert
-    className="overflow-hidden rounded-[var(--radius-overlay)] border border-white/15 bg-background text-foreground shadow-[0_24px_80px_rgb(8_12_40/0.35)]"
-    role="img"
-  >
-    <div className="grid gap-6 p-5 sm:p-8 lg:grid-cols-[minmax(0,7fr)_minmax(16rem,4fr)]">
-      <div className="grid content-start gap-5">
-        <p className="page-title">Boa tarde, Ana</p>
-        <div className="surface-panel flex flex-wrap items-center justify-between gap-4 p-5">
-          <div>
-            <p className="text-sm font-semibold">Seu próximo estudo</p>
-            <p className="mt-3 text-xl">Física: luz e cor</p>
-            <p className="text-xs text-muted-foreground">8 flashcards para revisar</p>
-          </div>
-          <span className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius)] bg-action px-3 text-sm text-action-foreground">
-            Revisar <ArrowRightIcon className="size-4" />
-          </span>
-        </div>
-        <div className="hidden gap-1 sm:grid">
-          <p className="mb-1 text-sm font-semibold">Documentos recentes</p>
-          {["Por que o céu é azul?", "A luz no pôr do sol", "Óptica: resumo da aula"].map(
-            (title, index) => (
-              <p key={title} className="flex justify-between gap-3 px-1 py-2 text-sm">
-                <span>{title}</span>
-                <span className="text-xs text-muted-foreground">{index ? "ontem" : "hoje"}</span>
-              </p>
-            ),
-          )}
-        </div>
-      </div>
-      <div className="hidden content-start gap-4 lg:grid">
-        <StoneDemo />
-        <div className="surface-panel p-5">
-          <p className="text-sm font-semibold">Ritmo de estudo</p>
-          <p className="text-xs text-muted-foreground">Últimos 7 dias</p>
-          {/* Example week: flashcard reviews (lapis) under quiz answers (teal). */}
-          <div className="mt-4 flex h-20 items-end gap-2">
-            {[
-              [10, 14],
-              [0, 0],
-              [12, 9],
-              [18, 12],
-              [6, 2],
-              [14, 8],
-              [8, 4],
-            ].map(([cards, quiz], index) => (
-              <div key={index} className="flex flex-1 flex-col justify-end gap-px">
-                <span
-                  className="rounded-t-[3px] bg-[var(--chart-3)]"
-                  style={{ height: `${quiz! * 2.4}px` }}
-                />
-                <span
-                  className="rounded-b-[3px] bg-primary"
-                  style={{ height: `${Math.max(cards! * 2.4, 2)}px` }}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 );
 
 const Chapter = ({

@@ -32,21 +32,31 @@ export const StoneCardView = ({
   link?: boolean;
   stone: StoneResponse;
 }) => (
-  <section aria-labelledby="stone-card-title" className="flex items-center gap-5">
-    <StoneGem dull={stone.dull} level={stone.level} size={76} />
-    <div className="grid min-w-0 flex-1 gap-4">
-      <div>
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-sm font-semibold" id="stone-card-title">
-            Sua pedra
-          </h2>
-          {link && <ForwardLink to="/stone">Ver sua pedra</ForwardLink>}
-        </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">{levelTitle(stone.level)}</p>
+  // In a narrow card (a phone) the lines need the whole width: the gem shrinks into the heading.
+  <div className="@container">
+    <section aria-labelledby="stone-card-title" className="flex items-center gap-5">
+      <div className="hidden shrink-0 @xs:block">
+        <StoneGem dull={stone.dull} level={stone.level} size={76} />
       </div>
-      <MasteryLine level={stone.level} mastered={stone.mastered} />
-      <GoalLine stone={stone} />
-      <WeekLine stone={stone} />
-    </div>
-  </section>
+      <div className="grid min-w-0 flex-1 gap-4">
+        <div className="flex items-center gap-3">
+          <div aria-hidden="true" className="shrink-0 @xs:hidden">
+            <StoneGem dull={stone.dull} level={stone.level} size={44} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-sm font-semibold" id="stone-card-title">
+                Sua pedra
+              </h2>
+              {link && <ForwardLink to="/stone">Ver sua pedra</ForwardLink>}
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">{levelTitle(stone.level)}</p>
+          </div>
+        </div>
+        <MasteryLine level={stone.level} mastered={stone.mastered} />
+        <GoalLine stone={stone} />
+        <WeekLine stone={stone} />
+      </div>
+    </section>
+  </div>
 );
