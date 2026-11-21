@@ -172,7 +172,7 @@ export const ReferenceManager = ({
                 {excerpts[0]?.sourcePreview ??
                   (count
                     ? "O material usa o documento todo."
-                    : "Este material ainda não está ligado a um documento.")}
+                    : "Este material ainda não está conectado a um documento.")}
               </p>
             </div>
           )
@@ -267,7 +267,7 @@ const ReferenceListDialog = ({
       <div className="min-h-0 overflow-y-auto px-3 py-3 lazuli-thin-scrollbar">
         {!items.length && (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            Nenhum documento vinculado.
+            Nenhum documento conectado.
           </p>
         )}
         <div className="grid gap-1">

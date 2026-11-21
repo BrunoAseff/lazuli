@@ -263,7 +263,7 @@ export const DocumentEditor = ({
     if (!pendingTarget) return;
     const selection = getDocumentReferenceSelection(editor);
     if (!selection) {
-      toast.error("Selecione um trecho do documento antes de vincular.");
+      toast.error("Selecione um trecho do documento antes de conectar.");
       return;
     }
     const active = selection.imageBlockId ? undefined : editor.getActiveStyles().sourceAnchor;
@@ -278,7 +278,7 @@ export const DocumentEditor = ({
         source: { type: "selection", documentId, anchorId },
         targets: [pendingTarget],
       });
-      toast.success("Trecho vinculado.");
+      toast.success("Trecho conectado.");
       if (referenceReturnTo) void navigate(referenceReturnTo, { replace: true });
       else void navigate(-1);
     } catch {
@@ -287,7 +287,7 @@ export const DocumentEditor = ({
           .content as LazuliDocumentBlock;
         editor.replaceBlocks(editor.document, next);
       }
-      toast.error("Não foi possível vincular o trecho.");
+      toast.error("Não foi possível conectar o trecho.");
     }
   };
   /**
@@ -848,7 +848,7 @@ export const DocumentEditor = ({
               ? "Selecione o novo trecho desta fonte."
               : pendingAiReference
                 ? "Selecione o novo trecho da fonte sugerida."
-                : "Selecione no documento o trecho que deseja vincular."}
+                : "Selecione no documento o trecho que deseja conectar."}
           </p>
           <Button
             onClick={
@@ -879,14 +879,14 @@ export const DocumentEditor = ({
             }
             size="sm"
           >
-            {adjustingAnchorId || pendingAiReference ? "Salvar trecho" : "Vincular trecho"}
+            {adjustingAnchorId || pendingAiReference ? "Salvar trecho" : "Conectar trecho"}
           </Button>
         </div>
       )}
       <AlertDialog open={pendingLinkConfirmationOpen} onOpenChange={setPendingLinkConfirmationOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Vincular o trecho selecionado?</AlertDialogTitle>
+            <AlertDialogTitle>Conectar o trecho selecionado?</AlertDialogTitle>
             <AlertDialogDescription>
               A fonte será conectada e você voltará ao material.
             </AlertDialogDescription>
@@ -899,7 +899,7 @@ export const DocumentEditor = ({
                 void selectPendingTarget();
               }}
             >
-              Vincular trecho
+              Conectar trecho
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

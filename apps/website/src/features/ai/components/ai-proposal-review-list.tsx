@@ -469,7 +469,7 @@ const ProposalSource = ({
                     variant="destructive"
                   >
                     <Trash2Icon />{" "}
-                    {references.length > 1 ? `Remover fonte ${index + 1}` : "Remover fonte"}
+                    {references.length > 1 ? `Desconectar fonte ${index + 1}` : "Desconectar fonte"}
                   </DropdownMenuItem>
                 ))}
               </>
@@ -500,7 +500,7 @@ const ProposalSource = ({
               ? firstExcerpt.quote
               : references.length
                 ? "A proposta foi gerada a partir do documento todo."
-                : "Esta proposta será salva sem ligação com a fonte."}
+                : "Esta proposta será salva sem conexão com a fonte."}
           </p>
         </div>
       )}
@@ -514,9 +514,9 @@ const ProposalSource = ({
         onOpenChange={(open) => {
           if (!open) setRemoving(null);
         }}
-        title="Remover esta fonte?"
+        title="Desconectar esta fonte?"
         description="A proposta continuará na revisão, mas perderá esta conexão com o documento."
-        actionLabel="Remover fonte"
+        actionLabel="Desconectar fonte"
         destructive
         onConfirm={() => {
           onChange(references.filter((_, index) => index !== removing));

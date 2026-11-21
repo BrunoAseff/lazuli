@@ -22,6 +22,6 @@ export const landingQuestions = [
   ],
   [
     "Posso reler o material?",
-    "Sim. Flashcards e questões podem ser vinculados a um documento ou a um trecho dele. Assim, você pode voltar à explicação original quando precisar.",
+    "Sim. Flashcards e questões podem ser conectados a um documento ou a um trecho dele. Assim, você pode voltar à explicação original quando precisar.",
   ],
 ] as const;

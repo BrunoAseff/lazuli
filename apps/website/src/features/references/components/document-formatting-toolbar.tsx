@@ -452,8 +452,8 @@ export const createDocumentFormattingToolbar = (
             <span className="contents" onMouseDown={(event) => event.preventDefault()}>
               <components.FormattingToolbar.Button
                 icon={<Link2Icon className="size-4" />}
-                label="Ligar a flashcard ou questão"
-                mainTooltip="Ligar este trecho a um flashcard ou questão que já existe"
+                label="Conectar a flashcard ou questão"
+                mainTooltip="Conectar este trecho a um flashcard ou questão que já existe"
                 onClick={link}
               />
             </span>

@@ -89,7 +89,7 @@ export const MaterialReferencesButton = ({
                   </OverflowTooltip>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {reference.projectTitle} ·{" "}
-                    {reference.anchorId ? "Trecho vinculado" : "Documento inteiro"}
+                    {reference.anchorId ? "Trecho conectado" : "Documento inteiro"}
                   </p>
                   {reference.sourcePreview && (
                     <blockquote className="source-excerpt mt-3">

@@ -64,7 +64,7 @@ export const DocumentReferencesDialog = ({
           <div className="pr-8">
             <div>
               <DialogTitle>
-                {anchorId ? "Este trecho no seu estudo" : "Materiais ligados"}
+                {anchorId ? "Este trecho no seu estudo" : "Materiais conectados"}
               </DialogTitle>
               <DialogDescription>
                 {anchorId
@@ -83,7 +83,7 @@ export const DocumentReferencesDialog = ({
           {references.isError && (
             <div className="px-3 py-4">
               <p className="text-sm text-destructive">
-                Não foi possível carregar os materiais ligados.
+                Não foi possível carregar os materiais conectados.
               </p>
               <Button variant="outline" className="mt-3" onClick={() => void references.refetch()}>
                 Tentar novamente
@@ -146,7 +146,7 @@ export const DocumentReferencesDialog = ({
           </div>
           {references.data && (
             <PaginationControls
-              label="Paginação dos materiais ligados"
+              label="Paginação dos materiais conectados"
               onPageChange={setPage}
               pagination={references.data.pagination}
             />
@@ -161,7 +161,7 @@ export const DocumentReferencesDialog = ({
             {showAnchorsOption && (
               <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-sm sm:mr-auto">
                 <Switch checked={anchorsShown} onCheckedChange={setSourceAnchorsShown} />
-                Sublinhar trechos ligados
+                Sublinhar trechos conectados
               </label>
             )}
             {onAdjust && Boolean(references.data?.items.length) && (
@@ -171,7 +171,7 @@ export const DocumentReferencesDialog = ({
             )}
             {onAdd && (
               <Button onClick={onAdd} variant="outline">
-                <Link2Icon aria-hidden="true" /> Ligar flashcard ou questão
+                <Link2Icon aria-hidden="true" /> Conectar flashcard ou questão
               </Button>
             )}
             {(onCreateFlashcard || onCreateQuiz) && (
@@ -214,19 +214,19 @@ export const DocumentReferencesButton = ({
   const count = references.data?.pagination.totalItems;
   const name =
     count === undefined
-      ? "Materiais ligados"
+      ? "Materiais conectados"
       : count === 0
-        ? "Nenhum material ligado"
+        ? "Nenhum material conectado"
         : count === 1
-          ? "1 material ligado"
-          : `${count} materiais ligados`;
+          ? "1 material conectado"
+          : `${count} materiais conectados`;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button aria-label={name} onClick={onClick} size="sm" variant="ghost">
           <Link2Icon aria-hidden="true" />
           {/* Where the toolbar is narrow the label yields, so the toolbar never wraps into two rows. */}
-          <span className="hidden @xl/toolbar:inline">Materiais ligados</span>
+          <span className="hidden @xl/toolbar:inline">Materiais conectados</span>
           {Boolean(count) && <span className="text-muted-foreground tabular-nums">{count}</span>}
         </Button>
       </TooltipTrigger>
