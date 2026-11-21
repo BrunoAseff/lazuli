@@ -1441,6 +1441,14 @@
   box-shadow: none;
 }
 
+/* A dialog changing size: no scrollbar flashes in for a frame (see use-animated-size.ts). */
+[data-resizing] * {
+  scrollbar-width: none;
+}
+[data-resizing] *::-webkit-scrollbar {
+  display: none;
+}
+
 /* A destructive row inside BlockNote's menus, in the app's destructive tone. */
 .lazuli-menu-destructive {
   display: contents;

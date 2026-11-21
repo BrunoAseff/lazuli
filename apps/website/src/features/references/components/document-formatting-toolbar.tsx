@@ -87,6 +87,8 @@ export type DocumentMaterialAction = {
   anchorCreated: boolean;
   kind: "flashcard" | "quizQuestion";
   selectedText: string;
+  /** The selection block by block, so the editor shows it as it reads in the document. */
+  selectedPreviewParts?: AiSelectionPreviewPart[];
 };
 
 type DocumentAiAction = Omit<DocumentMaterialAction, "kind"> & {
@@ -467,7 +469,12 @@ export const createDocumentFormattingToolbar = (
       if (!selection) return;
       const anchor = getAnchorId(selection.imageBlockId);
       if (!anchor) return;
-      onCreate({ ...anchor, kind, selectedText: selection.selectedText });
+      onCreate({
+        ...anchor,
+        kind,
+        selectedPreviewParts: selection.selectedPreviewParts,
+        selectedText: selection.selectedText,
+      });
     };
     const link = () => {
       const selection = renderedSelection ?? getDocumentReferenceSelection(editor);

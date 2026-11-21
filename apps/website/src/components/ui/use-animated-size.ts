@@ -42,8 +42,14 @@ export const useAnimatedSize = <T extends HTMLElement>(enabled = true) => {
         );
         animation.currentTime = time;
         running = { animation, from, to };
+        // While the box is between sizes its scrolling regions are briefly too short: marked, so
+        // they hide a scrollbar that would appear for a frame and push the content sideways.
+        node.setAttribute("data-resizing", "");
         animation.onfinish = () => {
-          if (running?.animation === animation) running = null;
+          if (running?.animation === animation) {
+            running = null;
+            node.removeAttribute("data-resizing");
+          }
           last = to;
         };
       };
@@ -73,6 +79,7 @@ export const useAnimatedSize = <T extends HTMLElement>(enabled = true) => {
       cleanup.current = () => {
         observer.disconnect();
         running?.animation.cancel();
+        node.removeAttribute("data-resizing");
       };
     },
     [enabled],

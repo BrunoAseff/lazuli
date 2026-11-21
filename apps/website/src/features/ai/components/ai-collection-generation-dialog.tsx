@@ -81,6 +81,7 @@ import {
   useLatestAiCollectionGeneration,
 } from "../api/ai-queries.ts";
 import { textContent } from "../text-content.ts";
+import { GenerationQuantityField, suggestedQuantity } from "./generation-quantity-field.tsx";
 
 /** `origin` is the generation a proposal came from when it is not the draft's own ("Gerar mais"). */
 type EditableFlashcard = AiCollectionDraft["flashcards"][number] & {
@@ -204,10 +205,6 @@ const fitsOneGeneration = (blocks: Array<{ text: string }>) =>
 
 const wordCount = (blocks: Array<{ text: string }>) =>
   blocks.reduce((total, { text }) => total + (text.match(/\S+/g)?.length ?? 0), 0);
-
-/** One proposal per ~300 words, between 1 and the most a generation makes. */
-const suggestedQuantity = (words: number) =>
-  Math.max(1, Math.min(AI_COLLECTION_MAX_ITEMS, Math.round(words / 300)));
 
 /**
  * What a marked document contributes: the whole of it when it fits one generation, else one of its
@@ -948,30 +945,15 @@ export const AiCollectionGenerationDialog = ({
                     />
                   </div>
                 )}
-                <div className="grid gap-2">
-                  <Label asChild>
-                    <p>{kind === "flashcard" ? "Quantos?" : "Quantas?"}</p>
-                  </Label>
-                  <QuantitySelector
-                    label="Quantidade de propostas"
-                    onChange={(value) => {
-                      setQuantity(value);
-                      setQuantityTouched(true);
-                    }}
-                    options={Array.from(
-                      { length: AI_COLLECTION_MAX_ITEMS },
-                      (_, index) => index + 1,
-                    )}
-                    value={quantity}
-                  />
-                  {words > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {suggestion} {suggestion === 1 ? "sugerido" : "sugeridos"} para cerca de{" "}
-                      {words.toLocaleString("pt-BR")} palavras. Depois de revisar, dá para gerar
-                      mais.
-                    </p>
-                  )}
-                </div>
+                <GenerationQuantityField
+                  kind={kind}
+                  onChange={(value) => {
+                    setQuantity(value);
+                    setQuantityTouched(true);
+                  }}
+                  value={quantity}
+                  words={words}
+                />
                 {!fixedCollectionId && (
                   <StudyCollectionDestination
                     key={kind}

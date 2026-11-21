@@ -46,9 +46,15 @@ export const RichContentField = ({
       <BlockNoteView
         className={cn(
           "lazuli-editor lazuli-flashcard-editor",
+          // The large question and answer type belongs to the open workbench; inside a boxed
+          // field (a dialog) the text and its placeholder keep the field's size.
           appearance === "workbench" && "lazuli-flashcard-workbench",
-          workbenchRole === "question" && "lazuli-flashcard-workbench-question",
-          workbenchRole === "answer" && "lazuli-flashcard-workbench-answer",
+          appearance === "workbench" &&
+            workbenchRole === "question" &&
+            "lazuli-flashcard-workbench-question",
+          appearance === "workbench" &&
+            workbenchRole === "answer" &&
+            "lazuli-flashcard-workbench-answer",
         )}
         editable={editable}
         editor={editor}

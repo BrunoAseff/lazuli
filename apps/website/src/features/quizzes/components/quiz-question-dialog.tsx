@@ -43,6 +43,8 @@ import {
   quizOptionsAreValid,
   type QuizOptionDraft,
 } from "./quiz-alternatives-field.tsx";
+import { SelectionPreview } from "@/features/ai/components/selection-preview.tsx";
+import type { AiSelectionPreviewPart } from "@/features/ai/ai-selection-types.ts";
 
 const newOptions = (): QuizOptionDraft[] => [
   { id: crypto.randomUUID(), text: "", isCorrect: true },
@@ -63,6 +65,8 @@ type QuizQuestionEditorProps = {
   question?: QuizQuestionDetail;
   readOnly?: boolean;
   sourcePreview?: string;
+  /** The selection block by block; without it the plain text is shown. */
+  sourcePreviewParts?: AiSelectionPreviewPart[];
 };
 
 const QuizQuestionEditor = ({
@@ -79,6 +83,7 @@ const QuizQuestionEditor = ({
   question,
   readOnly = false,
   sourcePreview,
+  sourcePreviewParts,
 }: QuizQuestionEditorProps) => {
   const [targetCollectionId, setTargetCollectionId] = useState(
     question?.collectionId ?? collectionId ?? "",
@@ -316,7 +321,11 @@ const QuizQuestionEditor = ({
                 sourceLabel={sourcePreview ? "Trecho de origem" : "Destino"}
                 source={
                   sourcePreview ? (
-                    <blockquote>{sourcePreview}</blockquote>
+                    sourcePreviewParts?.length ? (
+                      <SelectionPreview parts={sourcePreviewParts} />
+                    ) : (
+                      <blockquote>{sourcePreview}</blockquote>
+                    )
                   ) : (
                     <div className="font-sans text-sm">{collectionPicker}</div>
                   )

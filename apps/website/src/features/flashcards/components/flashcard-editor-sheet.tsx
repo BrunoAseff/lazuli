@@ -40,6 +40,8 @@ import type { StudyEditorPresentation } from "@/lib/study-editor.ts";
 import { uploadFlashcardImage } from "../api/flashcard-api.ts";
 import { useCreateFlashcard, useUpdateFlashcard } from "../api/flashcard-queries.ts";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
+import { SelectionPreview } from "@/features/ai/components/selection-preview.tsx";
+import type { AiSelectionPreviewPart } from "@/features/ai/ai-selection-types.ts";
 
 type FlashcardEditorProps = {
   card?: FlashcardDetail;
@@ -55,6 +57,8 @@ type FlashcardEditorProps = {
   presentation: StudyEditorPresentation;
   readOnly?: boolean;
   sourcePreview?: string;
+  /** The selection block by block; without it the plain text is shown. */
+  sourcePreviewParts?: AiSelectionPreviewPart[];
 };
 
 const FlashcardEditor = ({
@@ -71,6 +75,7 @@ const FlashcardEditor = ({
   presentation,
   readOnly = false,
   sourcePreview,
+  sourcePreviewParts,
 }: FlashcardEditorProps) => {
   const [targetCollectionId, setTargetCollectionId] = useState(
     card?.collectionId ?? collectionId ?? "",
@@ -335,7 +340,11 @@ const FlashcardEditor = ({
                 sourceLabel={sourcePreview ? "Trecho de origem" : "Destino"}
                 source={
                   sourcePreview ? (
-                    <blockquote>{sourcePreview}</blockquote>
+                    sourcePreviewParts?.length ? (
+                      <SelectionPreview parts={sourcePreviewParts} />
+                    ) : (
+                      <blockquote>{sourcePreview}</blockquote>
+                    )
                   ) : (
                     <div className="font-sans text-sm">{collectionPicker}</div>
                   )
