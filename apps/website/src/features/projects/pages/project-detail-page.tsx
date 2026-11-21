@@ -92,7 +92,7 @@ export const ProjectDetailPage = () => {
         </BackLink>
 
         {(currentProject.coverKey || currentProject.coverAssetId) && (
-          <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card">
+          <div className="surface-panel relative overflow-hidden">
             <ProjectCover
               className="max-h-72 min-h-32 sm:min-h-44"
               coverKey={currentProject.coverKey}
@@ -109,7 +109,7 @@ export const ProjectDetailPage = () => {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <CreateMaterialsButton label="Criar materiais" projectId={projectId} />
+            <CreateMaterialsButton label="Gerar materiais com IA" projectId={projectId} />
             <ProjectActionsMenu
               onChangeCover={() => setAction("cover")}
               onDelete={() => setAction("delete")}
@@ -150,7 +150,7 @@ export const ProjectDetailPage = () => {
                         pending={createItem.isPending}
                       >
                         <FilePlus2Icon />
-                        Criar documento em branco
+                        Novo documento
                       </Button>
                     </div>
                   }

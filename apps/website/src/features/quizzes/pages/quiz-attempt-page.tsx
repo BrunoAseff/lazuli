@@ -1,6 +1,5 @@
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { isNotFound, ResourceUnavailable } from "@/components/not-found-page.tsx";
-import { Trash2Icon } from "@/components/icons.tsx";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BackButton, BackLink } from "@/components/nav-link.tsx";
 import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
@@ -285,7 +284,7 @@ export const QuizAttemptPage = () => {
           {/* Destructive choice apart on the left; leaving keeps the answers, so it is the main way out. */}
           <AlertDialogFooter>
             <Button
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+              className="sm:mr-auto"
               onClick={async () => {
                 try {
                   await abandon.mutateAsync();
@@ -295,9 +294,10 @@ export const QuizAttemptPage = () => {
                 }
               }}
               pending={abandon.isPending}
-              variant="ghost"
+              variant="destructive-ghost"
             >
-              <Trash2Icon aria-hidden="true" /> Abandonar tentativa
+              {/* No trash can: abandoning closes the attempt, it deletes nothing. */}
+              Abandonar tentativa
             </Button>
             <AlertDialogCancel disabled={abandon.isPending}>
               Continuar respondendo

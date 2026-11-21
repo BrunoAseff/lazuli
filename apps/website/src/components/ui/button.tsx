@@ -23,6 +23,11 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:text-[var(--primary-hover)] hover:underline",
+        // A field's own action, inline beside or under it: grey text that underlines on hover.
+        "field-link":
+          "h-auto! px-0! text-muted-foreground underline-offset-4 hover:text-foreground hover:underline",
+        // A secondary destructive action beside the main ones: red text, a faint red on hover.
+        "destructive-ghost": "text-destructive hover:bg-destructive/10 hover:text-destructive",
       },
       size: {
         default:

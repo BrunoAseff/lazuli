@@ -445,7 +445,7 @@ export const ProjectStudy = ({
   const collections = useProjectCollections(projectId);
   return (
     <>
-      <section aria-label="Estudo deste projeto" className="surface-panel grid gap-6 p-6">
+      <section aria-label="Estudo deste projeto" className="surface-panel grid gap-6 p-5 sm:p-6">
         <StudySummary collections={collections} projectId={projectId} />
         {(collections.pending || collections.total > 0) && (
           <CollectionsBody collections={collections} />

@@ -436,16 +436,16 @@ export const createDocumentFormattingToolbar = (
             <span className="contents" onMouseDown={(event) => event.preventDefault()}>
               <components.FormattingToolbar.Button
                 icon={<FlashcardDomainIcon className="size-4" />}
-                label="Criar flashcard"
-                mainTooltip="Criar flashcard deste trecho"
+                label="Novo flashcard"
+                mainTooltip="Novo flashcard deste trecho"
                 onClick={() => create("flashcard")}
               />
             </span>
             <span className="contents" onMouseDown={(event) => event.preventDefault()}>
               <components.FormattingToolbar.Button
                 icon={<QuizDomainIcon className="size-4" />}
-                label="Criar questão"
-                mainTooltip="Criar questão deste trecho"
+                label="Nova questão"
+                mainTooltip="Nova questão deste trecho"
                 onClick={() => create("quizQuestion")}
               />
             </span>
@@ -465,7 +465,7 @@ export const createDocumentFormattingToolbar = (
               type="button"
             >
               <MagicWandIcon aria-hidden="true" />
-              Gerar com IA
+              Gerar materiais com IA
             </Button>
           </>
         )}

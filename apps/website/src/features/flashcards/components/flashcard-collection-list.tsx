@@ -9,7 +9,6 @@ import {
   type StudyStripSegment,
 } from "@/components/study-collection-card.tsx";
 import { StudyCollectionIdentity } from "@/components/study-collection-identity.tsx";
-import { StudyCollectionOpenAction } from "@/components/study-collection-open-action.tsx";
 import { formatMediumDateTime } from "@/lib/date-format.ts";
 import type { StudyCollectionAction } from "@/lib/study-actions.ts";
 import { FlashcardPracticeButton } from "./flashcard-practice-button.tsx";
@@ -64,11 +63,6 @@ export const FlashcardCollectionList = ({
           }
           actions={
             <>
-              <StudyCollectionOpenAction
-                className={collection.archivedAt ? "col-span-2" : undefined}
-                href={`/flashcards/${collection.id}`}
-                title={collection.title}
-              />
               {!collection.archivedAt && (
                 <FlashcardPracticeButton
                   dueCards={collection.dueCards}
@@ -79,7 +73,6 @@ export const FlashcardCollectionList = ({
                 />
               )}
               <StudyCollectionActions
-                favoriteTarget={{ kind: "flashcards", id: collection.id }}
                 archived={Boolean(collection.archivedAt)}
                 onArchive={() => onAction("archive", collection)}
                 onDelete={() => onAction("delete", collection)}

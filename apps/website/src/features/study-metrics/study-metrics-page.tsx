@@ -170,7 +170,7 @@ function Results({
             previous={data.previous ? formatCount(data.previous.attempts) : undefined}
           />
         </dl>
-        <section className="min-w-0 surface-panel p-4 sm:p-6">
+        <section className="min-w-0 surface-panel p-5 sm:p-6">
           <MetricsChart data={data} view={view} />
         </section>
         <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
@@ -182,7 +182,7 @@ function Results({
   return (
     <div className="grid items-start gap-5 @min-[900px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
       <div className="contents min-w-0 space-y-5 @min-[900px]:block">
-        <section className="order-1 min-w-0 surface-panel p-4 sm:p-5">
+        <section className="order-1 min-w-0 surface-panel p-5 sm:p-6">
           <MetricsSummary data={data} view={view} />
           <MetricsChart data={data} view={view} />
         </section>

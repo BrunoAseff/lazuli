@@ -789,10 +789,10 @@ export const AiCollectionGenerationDialog = ({
             {draft
               ? "Revisar propostas"
               : !fixedKind
-                ? "Criar materiais com IA"
+                ? "Gerar materiais com IA"
                 : fixedKind === "flashcard"
-                  ? "Criar flashcards com IA"
-                  : "Criar questões com IA"}
+                  ? "Gerar flashcards com IA"
+                  : "Gerar questões com IA"}
           </DialogTitle>
           <DialogDescription>
             {draft
@@ -1007,11 +1007,11 @@ export const AiCollectionGenerationDialog = ({
                   </div>
                 ) : (
                   <Button
-                    className="h-auto w-fit px-0 py-0.5 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                    className="w-fit py-0.5"
                     onClick={() => setGuidanceOpen(true)}
                     size="xs"
                     type="button"
-                    variant="ghost"
+                    variant="field-link"
                   >
                     <PlusIcon aria-hidden="true" /> Adicionar orientação para a IA
                   </Button>
@@ -1028,9 +1028,9 @@ export const AiCollectionGenerationDialog = ({
           )}
           {draft && (
             <Button
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+              className="sm:mr-auto"
               onClick={() => setDiscardOpen(true)}
-              variant="ghost"
+              variant="destructive-ghost"
             >
               <Trash2Icon /> Descartar propostas
             </Button>
@@ -1102,7 +1102,7 @@ export const AiCollectionGenerationAction = ({
   const busy = latest.data?.status === "queued" || latest.data?.status === "processing";
   const ready = latest.data?.status === "completed";
   const material = kind === "flashcard" ? "flashcards" : "questões";
-  const label = busy ? "Gerando…" : ready ? "Revisar propostas" : "Gerar com IA";
+  const label = busy ? "Gerando…" : ready ? "Revisar propostas" : `Gerar ${material} com IA`;
   useEffect(() => {
     if (requestedOperationId) setOpen(true);
   }, [requestedOperationId]);
@@ -1186,7 +1186,7 @@ const writePending = (projectId: string, operationId: string | null) => {
 };
 
 /**
- * "Criar materiais" from a document or a project. Like the collections' AI action, it keeps
+ * "Gerar materiais com IA" from a document or a project. Like the collections' AI action, it keeps
  * showing a generation started here after the dialog closes: generating, then proposals waiting
  * for review, which reopening goes back to.
  */

@@ -428,13 +428,13 @@ export const AiMaterialImprovementDialog = ({
           {draft ? (
             <>
               <Button
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+                className="sm:mr-auto"
                 disabled={discard.isPending || apply.isPending}
                 onClick={() => {
                   setCloseAfterDiscard(false);
                   setDiscardConfirmationOpen(true);
                 }}
-                variant="ghost"
+                variant="destructive-ghost"
               >
                 <Trash2Icon /> Descartar proposta
               </Button>

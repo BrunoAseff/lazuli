@@ -62,10 +62,10 @@ export const QuizStartDialog = ({
         <AlertDialogFooter>
           {active && (
             <Button
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+              className="sm:mr-auto"
               onClick={() => void begin(true)}
               pending={start.isPending && restarting}
-              variant="ghost"
+              variant="destructive-ghost"
             >
               <RotateCcwIcon aria-hidden="true" /> Recomeçar
             </Button>

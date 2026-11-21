@@ -74,7 +74,7 @@ export const DashboardContinue = ({
     .slice(0, 5);
   if (!items.length) return null;
   return (
-    <section aria-labelledby="dashboard-continue-title" className="surface-panel p-6">
+    <section aria-labelledby="dashboard-continue-title" className="surface-panel p-5 sm:p-6">
       <h2 className="text-sm leading-snug font-semibold" id="dashboard-continue-title">
         Continuar de onde parou
       </h2>

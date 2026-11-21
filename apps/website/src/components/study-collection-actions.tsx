@@ -5,8 +5,6 @@ import {
   PencilIcon,
   Trash2Icon,
 } from "@/components/icons.tsx";
-import type { FavoriteTarget } from "@lazuli/shared";
-import { FavoriteMenuItem } from "@/features/favorites/favorite-menu-item.tsx";
 
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -24,7 +22,6 @@ export const StudyCollectionActions = ({
   onEdit,
   onRestore,
   title,
-  favoriteTarget,
 }: {
   archived: boolean;
   onArchive: () => void;
@@ -32,8 +29,8 @@ export const StudyCollectionActions = ({
   onEdit: () => void;
   onRestore: () => void;
   title: string;
-  favoriteTarget: FavoriteTarget;
 }) => (
+  // Favoriting is the heart on the card itself, so the menu holds only what the card does not.
   <DropdownMenu modal={false}>
     <DropdownMenuTrigger asChild>
       <Button
@@ -46,7 +43,6 @@ export const StudyCollectionActions = ({
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
-      <FavoriteMenuItem target={favoriteTarget} />
       <DropdownMenuItem onSelect={onEdit}>
         <PencilIcon aria-hidden="true" />
         Renomear e organizar

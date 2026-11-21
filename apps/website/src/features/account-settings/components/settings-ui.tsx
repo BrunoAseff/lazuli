@@ -157,7 +157,7 @@ export const InlineFeedback = ({
 export const SettingsLoading = () => (
   <div className="space-y-6" aria-label="Carregando configurações" role="status">
     <Skeleton className="h-10 w-48" />
-    <div className="surface-panel p-6">
+    <div className="surface-panel p-5 sm:p-6">
       <Skeleton className="h-6 w-40" />
       <Skeleton className="mt-7 h-9 w-full" />
       <Skeleton className="mt-5 h-9 w-full" />

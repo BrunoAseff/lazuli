@@ -45,11 +45,10 @@ const LazuliImageBlock = (props: ReactCustomBlockRenderProps<typeof createImageB
             <p>O arquivo pode estar indisponível ou protegido pelo site de origem.</p>
           </div>
           <Button
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={() => props.editor.removeBlocks([props.block.id])}
             onMouseDown={(event) => event.preventDefault()}
             size="sm"
-            variant="ghost"
+            variant="destructive-ghost"
           >
             <TrashIcon aria-hidden />
             Remover

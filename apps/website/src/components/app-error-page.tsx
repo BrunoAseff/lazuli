@@ -9,7 +9,7 @@ export const AppErrorPage = () => {
 
   return (
     <main className="grid min-h-screen place-items-center px-5 py-12">
-      <div className="surface-panel max-w-md p-8 text-center">
+      <div className="surface-panel max-w-md p-6 text-center sm:p-8">
         <AlertTriangleIcon
           aria-hidden="true"
           className="mx-auto mb-4 size-7 text-muted-foreground"

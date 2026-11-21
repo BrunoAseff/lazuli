@@ -92,7 +92,6 @@ export const ProjectTable = ({ listLocation, onAction, projects, query }: Projec
               <div className="flex items-center justify-end gap-1">
                 <FavoriteButton kind="project" id={project.id} title={project.title} />
                 <ProjectActionsMenu
-                  favorite={{ kind: "project", id: project.id }}
                   className="shadow-none"
                   onChangeCover={() => onAction("cover", project)}
                   onDelete={() => onAction("delete", project)}

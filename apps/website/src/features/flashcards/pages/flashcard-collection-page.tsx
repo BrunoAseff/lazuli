@@ -311,7 +311,7 @@ export const FlashcardCollectionPage = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button disabled={Boolean(summary.archivedAt)} variant="outline">
-                      <PlusIcon /> Adicionar
+                      <PlusIcon /> Adicionar flashcards
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
@@ -451,7 +451,7 @@ export const FlashcardCollectionPage = () => {
           )}
           <StudyIndexScroll>
             <StudyItemListState
-              createLabel="Criar flashcard"
+              createLabel="Novo flashcard"
               emptyIcon={Layers3Icon}
               emptyTitle="Nenhum flashcard ainda"
               guidedElsewhere={input.status === "active"}
@@ -555,7 +555,8 @@ export const FlashcardCollectionPage = () => {
               !cards.isPending &&
               (input.status === "active" && !query && cards.data?.pagination.totalItems === 0 ? (
                 <StudyCollectionStart
-                  createLabel="Criar flashcard"
+                  createLabel="Novo flashcard"
+                  generateLabel="Gerar flashcards com IA"
                   icon={Layers3Icon}
                   noun="os primeiros flashcards"
                   onCreate={createCard}
@@ -624,7 +625,7 @@ export const FlashcardCollectionPage = () => {
       />
       <ConfirmationDialog
         actionLabel={moveCard ? "Mover flashcard" : "Mover flashcards"}
-        description={`Escolha outra coleção para ${moveCard ? "este card" : "os cards selecionados"}.`}
+        description={`Escolha outra coleção para ${moveCard ? "este flashcard" : "os flashcards selecionados"}.`}
         disabled={moveTarget === collectionId}
         onConfirm={performMove}
         onOpenChange={(open) => {
@@ -748,7 +749,7 @@ const DeleteDialogs = ({
   <>
     <ConfirmationDialog
       actionLabel="Excluir flashcard"
-      description="O conteúdo e todo o histórico deste card serão excluídos definitivamente."
+      description="O conteúdo e todo o histórico deste flashcard serão excluídos definitivamente."
       destructive
       pending={batchPending}
       open={Boolean(pendingDelete)}

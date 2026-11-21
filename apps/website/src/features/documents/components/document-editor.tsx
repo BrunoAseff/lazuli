@@ -709,9 +709,9 @@ export const DocumentEditor = ({
                 initialQuery={initialSearchQuery}
               />
               <CreateMaterialsButton
-                compactLabel="Criar materiais"
+                compactLabel="Gerar materiais"
                 defaultDocumentIds={[documentId]}
-                label="Criar materiais de estudo"
+                label="Gerar materiais com IA"
                 onApproved={() => void adoptSavedDocument()}
                 onBeforeOpen={async () => {
                   const blocks = collectDocumentTextBlocks(editor.document as DocumentBlock[]);

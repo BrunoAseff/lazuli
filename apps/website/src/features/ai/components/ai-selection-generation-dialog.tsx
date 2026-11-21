@@ -537,8 +537,8 @@ export const AiSelectionGenerationDialog = ({
               {draft
                 ? "Revisar propostas"
                 : kind === "flashcard"
-                  ? "Criar flashcards com IA"
-                  : "Criar questões com IA"}
+                  ? "Gerar flashcards com IA"
+                  : "Gerar questões com IA"}
             </DialogTitle>
             <DialogDescription>
               {draft
@@ -685,11 +685,11 @@ export const AiSelectionGenerationDialog = ({
                     </div>
                   ) : (
                     <Button
-                      className="h-auto w-fit px-0 py-0.5 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                      className="w-fit py-0.5"
                       onClick={() => setGuidanceOpen(true)}
                       size="xs"
                       type="button"
-                      variant="ghost"
+                      variant="field-link"
                     >
                       <PlusIcon aria-hidden="true" /> Adicionar orientação para a IA
                     </Button>
@@ -707,11 +707,11 @@ export const AiSelectionGenerationDialog = ({
             )}
             {draft && (
               <Button
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
+                className="sm:mr-auto"
                 disabled={approve.isPending}
                 onClick={() => setDiscardOpen(true)}
                 type="button"
-                variant="ghost"
+                variant="destructive-ghost"
               >
                 <Trash2Icon /> Descartar propostas
               </Button>

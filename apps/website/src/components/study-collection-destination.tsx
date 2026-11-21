@@ -105,11 +105,10 @@ export function StudyCollectionDestination({
         value={value}
         labelAction={
           <Button
-            className="h-auto px-0 text-muted-foreground hover:text-foreground"
             disabled={disabled}
             onClick={() => setCreating(true)}
             size="xs"
-            variant="link"
+            variant="field-link"
           >
             <PlusIcon aria-hidden="true" /> Nova coleção
           </Button>

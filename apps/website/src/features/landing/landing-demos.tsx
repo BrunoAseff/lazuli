@@ -355,7 +355,7 @@ const QuizDemo = () => {
 
 /** Keep: the stone as it appears on the home page, with example days. */
 export const StoneDemo = () => (
-  <div className="surface-panel p-6">
+  <div className="surface-panel p-6 sm:p-8">
     <StoneCardView stone={exampleStone} />
   </div>
 );

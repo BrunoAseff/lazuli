@@ -244,7 +244,7 @@ export const QuizCollectionPage = () => {
                   onClick={() => changeEditor({ type: "create" })}
                   variant="outline"
                 >
-                  <PlusIcon /> Adicionar
+                  <PlusIcon /> Nova questão
                 </Button>
                 <AiCollectionGenerationAction
                   collectionId={collectionId}
@@ -354,7 +354,7 @@ export const QuizCollectionPage = () => {
           )}
           <StudyIndexScroll>
             <StudyItemListState
-              createLabel="Criar questão"
+              createLabel="Nova questão"
               emptyIcon={SquareCheckBig}
               guidedElsewhere={input.status === "active"}
               emptyTitle={
@@ -479,7 +479,8 @@ export const QuizCollectionPage = () => {
               !query &&
               questions.data?.pagination.totalItems === 0 ? (
                 <StudyCollectionStart
-                  createLabel="Criar questão"
+                  createLabel="Nova questão"
+                  generateLabel="Gerar questões com IA"
                   icon={SquareCheckBig}
                   noun="as primeiras questões"
                   onCreate={() => changeEditor({ type: "create" })}
