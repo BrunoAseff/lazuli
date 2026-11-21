@@ -12,9 +12,47 @@ import { StudyCollectionIdentity } from "@/components/study-collection-identity.
 import { StudyCollectionOpenAction } from "@/components/study-collection-open-action.tsx";
 import { QuizCollectionMark } from "@/components/quiz-collection-mark.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import type { StudyCollectionAction } from "@/lib/study-actions.ts";
 import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 import { QuizStartDialog } from "./quiz-start-dialog.tsx";
+
+/** Outlined in the list: one filled action per screen. Without questions, it says why it waits. */
+const QuizStartButton = ({
+  onClick,
+  title,
+  totalQuestions,
+}: {
+  onClick: () => void;
+  title: string;
+  totalQuestions: number;
+}) => {
+  const button = (
+    <Button
+      aria-label={`Iniciar ${title}`}
+      className="w-full sm:w-auto"
+      disabled={totalQuestions === 0}
+      onClick={onClick}
+      size="sm"
+      variant="outline"
+    >
+      <PlayIcon aria-hidden="true" className="-translate-y-px" /> Iniciar
+    </Button>
+  );
+  if (totalQuestions) return button;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex w-full sm:w-auto" tabIndex={0}>
+          {button}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent sideOffset={6}>
+        Adicione uma questão à coleção antes de iniciar.
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
 /** The latest attempt as a strip: right and wrong answers, in the shared strip tones. */
 export const QuizCollectionStrip = ({ collection }: { collection: QuizCollectionSummary }) => (
@@ -78,15 +116,11 @@ export const QuizCollectionList = ({
                 title={collection.title}
               />
               {!collection.archivedAt && (
-                <Button
-                  className="w-full sm:w-auto"
-                  disabled={collection.totalQuestions === 0}
+                <QuizStartButton
                   onClick={() => setStarting(collection.id)}
-                  size="sm"
-                  variant={collection.totalQuestions ? "default" : "secondary"}
-                >
-                  <PlayIcon /> Iniciar
-                </Button>
+                  title={collection.title}
+                  totalQuestions={collection.totalQuestions}
+                />
               )}
               <StudyCollectionActions
                 favoriteTarget={{ kind: "quizzes", id: collection.id }}
