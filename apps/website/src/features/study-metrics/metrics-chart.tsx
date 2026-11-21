@@ -45,11 +45,20 @@ import { rangeLabel } from "./metrics-filters.tsx";
 import { MetricsPagination } from "./metrics-ui.tsx";
 import { MetricsHoverTooltip } from "./metrics-hover-tooltip.tsx";
 
+// The same tones as the collection strips (study-collection-card.css): ease in pyrite, effort neutral.
 const ratings = [
-  { key: "again", label: "Repetir", color: "var(--destructive)" },
-  { key: "hard", label: "Difícil", color: "var(--warning)" },
+  {
+    key: "again",
+    label: "Repetir",
+    color: "color-mix(in oklab, var(--destructive) 75%, transparent)",
+  },
+  {
+    key: "hard",
+    label: "Difícil",
+    color: "color-mix(in oklab, var(--muted-foreground) 55%, transparent)",
+  },
   { key: "good", label: "Bom", color: "var(--primary)" },
-  { key: "easy", label: "Fácil", color: "var(--success)" },
+  { key: "easy", label: "Fácil", color: "var(--gold)" },
 ] as const;
 type Kind = "activity" | "accuracy" | "ratings" | "answers";
 const titles: Record<Kind, string> = {

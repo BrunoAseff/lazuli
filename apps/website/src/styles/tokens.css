@@ -64,7 +64,7 @@
   --destructive-foreground: #ffffff;
   --success: #0f7a62; /* 4.8:1 on the page, 5.3:1 on white */
   --success-foreground: #ffffff;
-  --warning: #916015;
+  --warning: #a3520f; /* amber, apart from the pyrite of mastery: 5.6:1 on white */
   --warning-foreground: #ffffff;
   --border: rgb(20 26 46 / 12%);
   --input: rgb(20 26 46 / 22%);
@@ -131,8 +131,8 @@
   --destructive-foreground: #3a150d;
   --success: #7dd3b8; /* 9.5:1 on cards */
   --success-foreground: #0e2f26;
-  --warning: #e2b974;
-  --warning-foreground: #332610;
+  --warning: #f0a060; /* amber, apart from the bright pyrite: 7.9:1 on cards */
+  --warning-foreground: #3a1f08;
   --border: rgb(220 226 255 / 9%);
   --input: rgb(220 226 255 / 18%);
   --line-subtle: rgb(220 226 255 / 6%);
