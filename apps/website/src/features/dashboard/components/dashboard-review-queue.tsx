@@ -68,18 +68,19 @@ export const DashboardReviewQueue = ({
             const variant = index === 0 ? "default" : "outline";
             const label = collectionAction(collection);
             return (
-              // The name reads as text; the action is a real button, with every button's hover,
-              // press and focus.
+              // The name opens the collection and underlines on hover, like the rows below; the
+              // action is a real button, with every button's hover, press and focus.
               <li key={collection.collectionId} className="flex min-w-0 items-center gap-4 py-2">
                 <span className="min-w-0 flex-1">
                   <OverflowTooltip text={collection.collectionTitle}>
                     {(ref) => (
-                      <span
-                        className="block truncate text-[0.9375rem] font-medium"
-                        ref={ref as Ref<HTMLSpanElement>}
+                      <Link
+                        className="block truncate rounded-sm text-[0.9375rem] font-medium underline-offset-4 outline-none hover:underline focus-visible:underline"
+                        ref={ref as Ref<HTMLAnchorElement>}
+                        to={`/flashcards/${collection.collectionId}`}
                       >
                         {collection.collectionTitle}
-                      </span>
+                      </Link>
                     )}
                   </OverflowTooltip>
                   <span className="mt-0.5 block text-xs text-muted-foreground">

@@ -67,6 +67,7 @@ export const ProjectCard = ({
             {/* Same optical inset as the favorite above, so both icons share one column. */}
             <ProjectActionsMenu
               className="-mr-2"
+              favorite={{ kind: "project", id: project.id }}
               onChangeCover={onChangeCover}
               onDelete={onDelete}
               onRename={onRename}

@@ -9,6 +9,7 @@ import {
   StudyStrip,
 } from "@/components/study-collection-card.tsx";
 import { StudyCollectionIdentity } from "@/components/study-collection-identity.tsx";
+import { StudyCollectionOpenAction } from "@/components/study-collection-open-action.tsx";
 import { QuizCollectionMark } from "@/components/quiz-collection-mark.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
@@ -109,6 +110,11 @@ export const QuizCollectionList = ({
           favorite={<FavoriteButton kind="quizzes" id={collection.id} title={collection.title} />}
           actions={
             <>
+              <StudyCollectionOpenAction
+                className={collection.archivedAt ? "col-span-2" : undefined}
+                href={`/quizzes/${collection.id}`}
+                title={collection.title}
+              />
               {!collection.archivedAt && (
                 <QuizStartButton
                   onClick={() => setStarting(collection.id)}
@@ -117,6 +123,7 @@ export const QuizCollectionList = ({
                 />
               )}
               <StudyCollectionActions
+                favoriteTarget={{ kind: "quizzes", id: collection.id }}
                 archived={Boolean(collection.archivedAt)}
                 onArchive={() => onAction("archive", collection)}
                 onDelete={() => onAction("delete", collection)}
