@@ -58,7 +58,11 @@ const safeFilename = (value: string) =>
     .replaceAll(/^-+|-+$/g, "")
     .slice(0, 100) || "arquivo";
 
-const csvCell = (value: string) => `"${value.replaceAll('"', '""')}"`;
+// A cell starting with = + - @ (or a tab/return) is a formula to spreadsheets: the quote keeps it text.
+const csvCell = (value: string) => {
+  const text = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  return `"${text.replaceAll('"', '""')}"`;
+};
 
 const scalarText = (value: unknown): string => {
   if (value === null || value === undefined) return "";

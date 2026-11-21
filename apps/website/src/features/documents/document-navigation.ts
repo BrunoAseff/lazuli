@@ -1,5 +1,14 @@
-export const safeReturnTo = (value: string | null | undefined) =>
-  value?.startsWith("/") && !value.startsWith("//") ? value : null;
+const here = "https://lazuli.invalid";
+
+/** A path inside the app, or nothing: "//host" and "/\host" are other sites to the browser. */
+export const safeReturnTo = (value: string | null | undefined) => {
+  if (!value?.startsWith("/")) return null;
+  try {
+    return new URL(value, here).origin === here ? value : null;
+  } catch {
+    return null;
+  }
+};
 
 export const documentLocation = ({
   anchorId,
