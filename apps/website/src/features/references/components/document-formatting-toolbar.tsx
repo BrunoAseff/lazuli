@@ -464,8 +464,9 @@ export const createDocumentFormattingToolbar = (
               size="sm"
               type="button"
             >
+              {/* Short on purpose: the floating bar is tight, and the selection is the object. */}
               <MagicWandIcon aria-hidden="true" />
-              Gerar materiais com IA
+              Gerar com IA
             </Button>
           </>
         )}

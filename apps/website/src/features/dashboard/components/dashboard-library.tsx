@@ -78,7 +78,7 @@ export const DashboardContinue = ({
       <h2 className="text-sm leading-snug font-semibold" id="dashboard-continue-title">
         Continuar de onde parou
       </h2>
-      <ul className="mt-2 grid">
+      <ul className="mt-2 grid grid-cols-[minmax(0,1fr)]">
         {items.map((item) => (
           <li key={item.key}>
             <ContinueRow item={item} />

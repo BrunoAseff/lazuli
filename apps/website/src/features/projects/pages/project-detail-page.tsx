@@ -109,7 +109,11 @@ export const ProjectDetailPage = () => {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <CreateMaterialsButton label="Gerar materiais com IA" projectId={projectId} />
+            <CreateMaterialsButton
+              compactLabel="Gerar materiais"
+              label="Gerar materiais com IA"
+              projectId={projectId}
+            />
             <ProjectActionsMenu
               onChangeCover={() => setAction("cover")}
               onDelete={() => setAction("delete")}

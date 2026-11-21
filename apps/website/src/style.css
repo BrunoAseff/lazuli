@@ -320,8 +320,11 @@
   top: 3.5rem;
 }
 @media (min-width: 48rem) {
+  /* The files button floats at the top right until the tree fits beside the editor: the
+     toolbar keeps that corner free so its actions never sit under it. */
   .document-editor-toolbar {
     top: 0;
+    padding-right: 4.25rem;
   }
 }
 
@@ -416,6 +419,7 @@
 
   .document-editor-toolbar {
     top: 0;
+    padding-right: 1.5rem;
   }
 
   .project-files-trigger {

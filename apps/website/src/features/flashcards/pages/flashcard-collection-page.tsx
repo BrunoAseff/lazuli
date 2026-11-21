@@ -311,7 +311,7 @@ export const FlashcardCollectionPage = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button disabled={Boolean(summary.archivedAt)} variant="outline">
-                      <PlusIcon /> Adicionar flashcards
+                      <PlusIcon /> Adicionar
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">

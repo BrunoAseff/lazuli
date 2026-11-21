@@ -244,7 +244,7 @@ export const QuizCollectionPage = () => {
                   onClick={() => changeEditor({ type: "create" })}
                   variant="outline"
                 >
-                  <PlusIcon /> Nova questão
+                  <PlusIcon /> Adicionar
                 </Button>
                 <AiCollectionGenerationAction
                   collectionId={collectionId}
