@@ -97,6 +97,12 @@ Códigos: **S** segurança · **Q** qualidade · **R** DRY/YAGNI · **D** design
 
 ## P4 — Refatorações de manutenção (planejar)
 
+> **Corrigidos em 21/11** (2502dcf, 2b05a28, b07087f, 184115b, 48f471e, 706bffb, c701bf6, 792ae1c). Notas:
+>
+> - 44: rotas e consultas de coleção numa fábrica comum (`study-collections/`); a exclusão continua por tipo, porque os itens apagados são diferentes. Paginação em `database/pagination.ts`.
+> - 49: `try/catch` 500 → `sendInternalError` onde o código era `INTERNAL_ERROR`; rotas com código próprio (exclusão de conta, armazenamento, autenticação, Stripe) ficaram como estão.
+> - 51: o marcador dos passos do início e o tema escuro neutro são decisões visuais e estão em /system/propostas, aguardando aprovação.
+
 44. **R · Rotas e queries de coleção duplicadas entre flashcards e quizzes** (diferem em 37 linhas) e paginação repetida em 7 lugares.
 45. **R · Estado do editor duplicado nas páginas de coleção** (`useStudyItemEditor`).
 46. **R · Quatro implementações de data/fuso** (servidor, métricas, site, pedra) e schemas de `tz` idênticos.
