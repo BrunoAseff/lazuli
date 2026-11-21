@@ -31,6 +31,7 @@ import {
   StoneGem,
 } from "../components/stone-parts.tsx";
 import { StudyGoalDialog } from "../components/study-goal-dialog.tsx";
+import { LoadError } from "@/components/empty-state.tsx";
 
 /*
  * "Sua pedra": the level and the way to the next one, the daily goal and this week, twelve weeks
@@ -535,12 +536,11 @@ export const StonePage = () => {
           <Skeleton className="h-72" />
         </div>
       ) : stone.isError || !stone.data ? (
-        <div className="mt-6 flex items-center gap-3 text-sm text-muted-foreground">
-          Não foi possível carregar sua pedra.
-          <Button onClick={() => void stone.refetch()} size="sm" variant="outline">
-            Tentar de novo
-          </Button>
-        </div>
+        <LoadError
+          className="mt-6"
+          onRetry={() => void stone.refetch()}
+          title="Não foi possível carregar sua pedra"
+        />
       ) : (
         <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-4">
           <Reveal index={0}>

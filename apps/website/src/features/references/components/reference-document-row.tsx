@@ -3,6 +3,7 @@ import type { ReactNode, Ref } from "react";
 import { Link } from "react-router";
 
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 
 export const ReferenceDocumentRow = ({
   documentTitle,
@@ -41,5 +42,20 @@ export const ReferenceDocumentRow = ({
       </p>
     </div>
     {trailing && <div className="relative z-10">{trailing}</div>}
+  </div>
+);
+
+/** Rows of the same shape while references load: icon, title and the line under it. */
+export const ReferenceRowsSkeleton = ({ rows = 3 }: { rows?: number }) => (
+  <div aria-label="Carregando" className="grid gap-1" role="status">
+    {Array.from({ length: rows }, (_, index) => (
+      <div className="flex items-center gap-3 px-3 py-2.5" key={index}>
+        <Skeleton className="size-4 shrink-0" />
+        <div className="grid flex-1 gap-1.5">
+          <Skeleton className="h-3.5 w-3/5" />
+          <Skeleton className="h-3 w-2/5" />
+        </div>
+      </div>
+    ))}
   </div>
 );

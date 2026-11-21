@@ -354,11 +354,12 @@ export default function StudyMetricsPage() {
               />
             ) : (
               <MetricsError
-                message={
+                description={
                   result.error instanceof ApiError && result.error.status === 429
                     ? "Aguarde um instante e tente novamente."
-                    : "Não foi possível carregar seus resultados."
+                    : undefined
                 }
+                title="Não foi possível carregar seus resultados"
                 retry={() => void result.refetch()}
               />
             )

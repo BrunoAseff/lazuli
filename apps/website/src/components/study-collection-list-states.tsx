@@ -1,22 +1,30 @@
 import { type AppIcon } from "@/components/icons.tsx";
-import { ArchiveIcon, SearchXIcon, TriangleAlertIcon } from "@/components/icons.tsx";
+import { ArchiveIcon, SearchXIcon } from "@/components/icons.tsx";
 
-import { EmptyState } from "@/components/empty-state.tsx";
+import { EmptyState, LoadError } from "@/components/empty-state.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 
+/** The collection cards' own layout (study-collection-card.css): mark and title, actions, strip. */
 export const StudyCollectionListSkeleton = () => (
-  <div aria-label="Carregando coleções" className="divide-y border-y" role="status">
+  <div aria-label="Carregando coleções" className="space-y-2" role="status">
     {Array.from({ length: 5 }, (_, index) => (
-      <div
-        className="grid gap-5 py-5 sm:px-3 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(9rem,0.7fr))_auto]"
-        key={index}
-      >
-        <Skeleton className="h-10 w-52 max-w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="size-8" />
+      <div className="collection-card" key={index}>
+        <div className="collection-card-identity flex items-center gap-3">
+          <Skeleton className="size-9 shrink-0 rounded-[var(--radius)]" />
+          <div className="grid flex-1 gap-1.5">
+            <Skeleton className="h-4 w-48 max-w-full" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        </div>
+        <div className="collection-card-actions">
+          <Skeleton className="h-8 w-28" />
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="size-8" />
+        </div>
+        <div className="collection-card-state">
+          <Skeleton className="h-1.5 w-full max-w-md rounded-full" />
+        </div>
       </div>
     ))}
   </div>
@@ -55,14 +63,5 @@ export const NoStudyCollectionResults = ({ onClear }: { onClear: () => void }) =
 );
 
 export const StudyCollectionListError = ({ onRetry }: { onRetry: () => void }) => (
-  <EmptyState
-    action={
-      <Button onClick={onRetry} variant="outline">
-        Tentar novamente
-      </Button>
-    }
-    description="Confira sua conexão e tente novamente."
-    icon={TriangleAlertIcon}
-    title="Não foi possível carregar as coleções"
-  />
+  <LoadError onRetry={onRetry} title="Não foi possível carregar as coleções" />
 );

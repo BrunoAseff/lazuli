@@ -31,7 +31,7 @@ import { CreationWorkspace } from "@/features/ai/components/creation-workspace.t
 import { documentLocation } from "@/features/documents/document-navigation.ts";
 import { useCreateReferences, useReferences } from "../api/reference-queries.ts";
 import { ReferenceDeleteButton } from "./reference-delete-button.tsx";
-import { ReferenceDocumentRow } from "./reference-document-row.tsx";
+import { ReferenceDocumentRow, ReferenceRowsSkeleton } from "./reference-document-row.tsx";
 import { SourceReading } from "./source-reading.tsx";
 import "@/features/ai/components/proposal-review.css";
 
@@ -212,7 +212,9 @@ export const ReferenceManager = ({
         )}
       </div>
       {references.isPending ? (
-        <p className="text-sm text-muted-foreground">Carregando fontes…</p>
+        <div className="-mx-3">
+          <ReferenceRowsSkeleton rows={2} />
+        </div>
       ) : count ? (
         // Pulled out by the row's own padding so the file icon lines up with the label above.
         <div className="-mx-3 min-w-0">

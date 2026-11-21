@@ -1,4 +1,3 @@
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { REFERENCE_MAX_PAGE_SIZE, type ReferenceTarget } from "@lazuli/shared";
 import { FileTextIcon, Link2Icon } from "@/components/icons.tsx";
 import type { Ref } from "react";
@@ -16,6 +15,7 @@ import {
 import { useReferences } from "../api/reference-queries.ts";
 import { documentLocation } from "@/features/documents/document-navigation.ts";
 import { SourceReading } from "./source-reading.tsx";
+import { ReferenceRowsSkeleton } from "./reference-document-row.tsx";
 
 export const MaterialReferencesButton = ({
   count,
@@ -68,11 +68,7 @@ export const MaterialReferencesButton = ({
             </DialogDescription>
           </DialogHeader>
           <div className="grid min-h-0 content-start gap-6 overflow-y-auto px-6 py-5 lazuli-thin-scrollbar">
-            {references.isPending && (
-              <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-                <Spinner aria-hidden="true" role="presentation" className="size-4" /> Carregando…
-              </p>
-            )}
+            {references.isPending && <ReferenceRowsSkeleton rows={2} />}
             {references.data?.items.map((reference) => (
               <article className="flex min-w-0 gap-3" key={reference.id}>
                 <FileTextIcon

@@ -177,7 +177,7 @@ export function MetricsRanking({
         <Skeleton className="h-48" />
       ) : result.isError ? (
         <MetricsError
-          message="Não foi possível carregar esta lista."
+          title="Não foi possível carregar esta lista"
           retry={() => void result.refetch()}
         />
       ) : !result.data.items.length ? (
@@ -329,7 +329,7 @@ export function MetricsAttempts({ input }: { input: StudyMetricsQuery }) {
         <Skeleton className="h-32" />
       ) : result.isError ? (
         <MetricsError
-          message="Não foi possível carregar o histórico."
+          title="Não foi possível carregar o histórico"
           retry={() => void result.refetch()}
         />
       ) : !result.data.items.length ? (

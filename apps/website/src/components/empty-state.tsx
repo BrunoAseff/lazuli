@@ -1,5 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
+import { TriangleAlertIcon } from "@/components/icons.tsx";
+import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
 
 export const EmptyState = ({
@@ -46,4 +48,30 @@ export const EmptyState = ({
       {action && <div className="mt-5">{action}</div>}
     </div>
   </section>
+);
+
+/**
+ * The one "could not load" state: the alert glyph, what did not load, and a way to try again
+ * (outlined, since the page's filled action belongs to the content that failed).
+ */
+export const LoadError = ({
+  description = "Confira sua conexão e tente novamente.",
+  onRetry,
+  ...props
+}: {
+  description?: ReactNode;
+  onRetry: () => void;
+  title: string;
+} & Pick<Parameters<typeof EmptyState>[0], "className" | "compact" | "minHeight" | "surface">) => (
+  <EmptyState
+    {...props}
+    action={
+      <Button onClick={onRetry} variant="outline">
+        Tentar novamente
+      </Button>
+    }
+    description={description}
+    icon={TriangleAlertIcon}
+    iconClassName="text-destructive"
+  />
 );

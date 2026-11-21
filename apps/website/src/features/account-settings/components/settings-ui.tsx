@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 
-import { Button } from "@/components/ui/button.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { cn } from "@/lib/utils.ts";
+import { LoadError } from "@/components/empty-state.tsx";
 
 export const SettingsSectionHeader = ({ title }: { title: string }) => (
   <header className="mb-6">
@@ -166,11 +166,5 @@ export const SettingsLoading = () => (
 );
 
 export const SettingsError = ({ onRetry }: { onRetry: () => void }) => (
-  <div className="surface-panel p-6">
-    <h2 className="text-lg font-semibold">Não foi possível carregar esta seção</h2>
-    <p className="mt-2 text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
-    <Button className="mt-5" onClick={onRetry} variant="outline">
-      Tentar novamente
-    </Button>
-  </div>
+  <LoadError onRetry={onRetry} title="Não foi possível carregar esta seção" />
 );

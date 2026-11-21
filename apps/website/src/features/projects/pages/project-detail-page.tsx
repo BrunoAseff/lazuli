@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button.tsx";
 import { CreateMaterialsButton } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
 import { DocumentDomainIcon } from "@/components/domain-icons.ts";
-import { EmptyState } from "@/components/empty-state.tsx";
+import { EmptyState, LoadError } from "@/components/empty-state.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useDocumentImports } from "@/features/document-imports/document-import-context.ts";
 import { useCreateProjectItem } from "@/features/documents/api/document-queries.ts";
@@ -127,14 +127,10 @@ export const ProjectDetailPage = () => {
           )}
 
           {documents.isError && (
-            <div className="rounded-xl border border-dashed p-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                Não foi possível carregar os documentos.
-              </p>
-              <Button className="mt-4" onClick={() => void documents.refetch()} variant="outline">
-                Tentar novamente
-              </Button>
-            </div>
+            <LoadError
+              onRetry={() => void documents.refetch()}
+              title="Não foi possível carregar os documentos"
+            />
           )}
 
           {documents.data && (

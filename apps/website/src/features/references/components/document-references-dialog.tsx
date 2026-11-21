@@ -1,4 +1,3 @@
-import { Spinner } from "@/components/ui/spinner.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import { REFERENCE_PAGE_SIZE } from "@lazuli/shared";
 import { Layers3Icon, Link2Icon, PlusIcon, SquareCheckBigIcon } from "@/components/icons.tsx";
@@ -25,6 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
+import { ReferenceRowsSkeleton } from "./reference-document-row.tsx";
 
 export const DocumentReferencesDialog = ({
   anchorId,
@@ -75,11 +75,7 @@ export const DocumentReferencesDialog = ({
           </div>
         </DialogHeader>
         <div className="max-h-[min(60vh,32rem)] overflow-y-auto px-3 py-4 lazuli-thin-scrollbar">
-          {references.isPending && (
-            <p className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-              <Spinner aria-hidden="true" role="presentation" /> Carregando...
-            </p>
-          )}
+          {references.isPending && <ReferenceRowsSkeleton />}
           {references.isError && (
             <div className="px-3 py-4">
               <p className="text-sm text-destructive">
