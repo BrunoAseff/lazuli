@@ -50,6 +50,7 @@ import { HighlightText } from "@/components/highlight-text.tsx";
 import { apiRequest } from "@/lib/api-client.ts";
 import { useRecentProjects } from "@/features/projects/use-recent-projects.ts";
 import { favoriteKeys } from "@/features/favorites/favorite-provider.tsx";
+import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
 
 export const searchLabels: Record<SearchKind, string> = {
   project: "Projetos",
@@ -139,7 +140,7 @@ export const GlobalSearchProvider = ({
     },
   });
   const results = useQuery({
-    queryKey: ["global-search", userId, debounced, kind, onlyFavorites, page],
+    queryKey: [...QUERY_KEY_ROOTS.globalSearch, userId, debounced, kind, onlyFavorites, page],
     enabled: open && Boolean(debounced),
     staleTime: 0,
     // Typing refines what is on screen instead of blanking it between keystrokes.

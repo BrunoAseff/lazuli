@@ -20,6 +20,8 @@ import {
   ProjectCoverEditor,
   uploadProjectCover,
 } from "./project-cover-editor.tsx";
+import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
+import { accountSettingsKeys } from "@/features/account-settings/api/account-settings-queries.ts";
 
 export function ChangeProjectCoverDialog({
   project,
@@ -40,8 +42,8 @@ export function ChangeProjectCoverDialog({
       client.setQueryData(projectKeys.detail(project.id), value);
       await Promise.all([
         client.invalidateQueries({ queryKey: projectKeys.lists() }),
-        client.invalidateQueries({ queryKey: ["account-settings", "usage"] }),
-        client.invalidateQueries({ queryKey: ["billing"] }),
+        client.invalidateQueries({ queryKey: accountSettingsKeys.usage() }),
+        client.invalidateQueries({ queryKey: QUERY_KEY_ROOTS.billing }),
       ]);
     },
   });

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   nextStoneLevel,
   stoneLevelByNumber,
@@ -84,8 +85,19 @@ export const WeekLine = ({ stone }: { stone: StoneResponse }) => (
   </div>
 );
 
-/** The mastered count on its way to the next level, in gold. */
-export const MasteryLine = ({ level, mastered }: { level: number; mastered: number }) => {
+/**
+ * The mastered count on its way to the next level, in gold. `label` replaces the count on the left
+ * (a session summary says what it added instead).
+ */
+export const MasteryLine = ({
+  label,
+  level,
+  mastered,
+}: {
+  label?: ReactNode;
+  level: number;
+  mastered: number;
+}) => {
   const current = stoneLevelByNumber(level);
   const next = nextStoneLevel(level);
   const from = Math.min(current.from, mastered);
@@ -93,8 +105,12 @@ export const MasteryLine = ({ level, mastered }: { level: number; mastered: numb
     <div className="grid gap-1.5">
       <div className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 text-xs">
         <span className="text-foreground">
-          <span className="tabular-nums">{mastered}</span>{" "}
-          {mastered === 1 ? "item dominado" : "itens dominados"}
+          {label ?? (
+            <>
+              <span className="tabular-nums">{mastered}</span>{" "}
+              {mastered === 1 ? "item dominado" : "itens dominados"}
+            </>
+          )}
         </span>
         <span className="whitespace-nowrap text-muted-foreground tabular-nums">
           {next

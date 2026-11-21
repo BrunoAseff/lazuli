@@ -80,6 +80,7 @@ import {
   useDiscardAiCollectionGeneration,
   useLatestAiCollectionGeneration,
 } from "../api/ai-queries.ts";
+import { textContent } from "../text-content.ts";
 
 /** `origin` is the generation a proposal came from when it is not the draft's own ("Gerar mais"). */
 type EditableFlashcard = AiCollectionDraft["flashcards"][number] & {
@@ -163,14 +164,6 @@ const GenerateMore = ({
     </Popover>
   );
 };
-
-const textContent = (text: string): DocumentBlock[] => [
-  {
-    id: crypto.randomUUID(),
-    type: "paragraph",
-    content: [{ type: "text", text: text.trim(), styles: {} }],
-  },
-];
 
 const sectionOptions = (content: DocumentBlock[]) =>
   content.flatMap((block, index) => {

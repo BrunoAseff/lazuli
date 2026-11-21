@@ -52,18 +52,11 @@ import {
   useApproveAiGeneration,
   useCreateAiSelectionGeneration,
 } from "../api/ai-queries.ts";
+import { textContent } from "../text-content.ts";
 
 type EditableFlashcard = AiSelectionDraft["flashcards"][number] & { selected: boolean };
 type EditableQuiz = AiSelectionDraft["quizQuestions"][number] &
   AiEditableQuizProposal & { selected: boolean };
-const textContent = (text: string): DocumentBlock[] => [
-  {
-    id: crypto.randomUUID(),
-    type: "paragraph",
-    content: [{ type: "text", text: text.trim(), styles: {} }],
-  },
-];
-
 const generationMessages = {
   AI_INPUT_TOO_LARGE:
     "Este documento é grande demais para uma única geração. Selecione um trecho menor.",

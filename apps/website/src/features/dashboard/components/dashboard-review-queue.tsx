@@ -7,19 +7,19 @@ import { Link } from "react-router";
 
 import { OverflowTooltip } from "@/components/overflow-tooltip.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { studyItemCount } from "@/lib/text.ts";
 
 type ReviewCollection = DashboardResponse["reviewQueue"]["collections"][number];
 
-const flashcardCount = (count: number) => `${count} ${count === 1 ? "flashcard" : "flashcards"}`;
-
 const reviewProgress = (reviewedCards: number, totalCards: number) =>
-  `${reviewedCards} de ${flashcardCount(totalCards)} ${totalCards === 1 ? "revisado" : "revisados"}`;
+  `${reviewedCards} de ${studyItemCount("flashcard", totalCards)} ${totalCards === 1 ? "revisado" : "revisados"}`;
 
 const collectionStatus = (collection: ReviewCollection) => {
   const session = collection.activeSession;
   if (session) return reviewProgress(session.reviewedCards, session.totalCards);
-  if (collection.dueReviews) return `${flashcardCount(collection.dueReviews)} para revisar`;
-  return `${flashcardCount(collection.newCards)} ${collection.newCards === 1 ? "novo" : "novos"}`;
+  if (collection.dueReviews)
+    return `${studyItemCount("flashcard", collection.dueReviews)} para revisar`;
+  return `${studyItemCount("flashcard", collection.newCards)} ${collection.newCards === 1 ? "novo" : "novos"}`;
 };
 
 const collectionAction = (collection: ReviewCollection) =>
@@ -40,9 +40,9 @@ export const DashboardReviewQueue = ({
 }) => {
   const summary =
     queue.totalDueReviews > 0
-      ? `${flashcardCount(queue.totalDueReviews)} para revisar hoje`
+      ? `${studyItemCount("flashcard", queue.totalDueReviews)} para revisar hoje`
       : queue.totalNewCards > 0
-        ? `${flashcardCount(queue.totalNewCards)} para conhecer`
+        ? `${studyItemCount("flashcard", queue.totalNewCards)} para conhecer`
         : null;
   return (
     <section aria-labelledby="dashboard-reviews-title" className="min-w-0 p-6">

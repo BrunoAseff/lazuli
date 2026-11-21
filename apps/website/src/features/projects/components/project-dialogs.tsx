@@ -36,6 +36,7 @@ import {
 import { getCommercialLimit } from "@/features/billing/billing-errors.ts";
 import type { CommercialLimitDetails } from "@lazuli/shared";
 import { createProjectWithCover } from "../create-project-with-cover.ts";
+import { accountSettingsKeys } from "@/features/account-settings/api/account-settings-queries.ts";
 
 const renameProjectSchema = z.object({ title: projectTitleSchema });
 type RenameProjectValues = z.input<typeof renameProjectSchema>;
@@ -97,7 +98,7 @@ export const CreateProjectDialog = ({
       });
       await Promise.all([
         client.invalidateQueries({ queryKey: projectKeys.lists() }),
-        client.invalidateQueries({ queryKey: ["account-settings", "usage"] }),
+        client.invalidateQueries({ queryKey: accountSettingsKeys.usage() }),
       ]);
       toast.success("Projeto criado.");
       close(true);

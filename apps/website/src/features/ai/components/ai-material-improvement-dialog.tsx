@@ -45,6 +45,7 @@ import {
   useCreateAiMaterialImprovement,
   useDiscardAiMaterialImprovement,
 } from "../api/ai-queries.ts";
+import { textContent } from "../text-content.ts";
 
 const intentLabels: Record<AiImprovementIntent, string> = {
   clarify: "Deixar mais claro",
@@ -54,14 +55,6 @@ const intentLabels: Record<AiImprovementIntent, string> = {
   improveOptions: "Melhorar alternativas",
   reviewFromSource: "Revisar pelas fontes",
 };
-
-const textContent = (text: string): DocumentBlock[] => [
-  {
-    id: crypto.randomUUID(),
-    type: "paragraph",
-    content: [{ type: "text", text: text.trim(), styles: {} }],
-  },
-];
 
 const richText = (content: unknown) =>
   collectDocumentTextBlocks(content as DocumentBlock[])
