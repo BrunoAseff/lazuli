@@ -14,15 +14,6 @@ import { dismissDashboardOnboarding, getDashboard } from "./dashboard-queries.ts
 
 type DashboardRoutesOptions = { auth: Auth; database: Database; websiteUrl: string };
 
-export const normalizeTimeZone = (value?: string) => {
-  if (!value) return "UTC";
-  try {
-    return new Intl.DateTimeFormat("en-US", { timeZone: value }).resolvedOptions().timeZone;
-  } catch {
-    return null;
-  }
-};
-
 export const createDashboardRoutes = ({
   auth,
   database,

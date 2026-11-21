@@ -1,3 +1,4 @@
+import { dateKeyIn, shiftDateKey } from "@lazuli/shared";
 export const formatCount = (value: number) => new Intl.NumberFormat("pt-BR").format(value);
 export const quantity = (value: number, singular: string, plural: string) =>
   `${formatCount(value)} ${value === 1 ? singular : plural}`;
@@ -30,12 +31,8 @@ export const formatChartDate = (date: string, bucket: "day" | "week" | "month") 
 
 // Reserve enough space for every category; no missing or displaced axis labels.
 export const metricsPlotMinWidth = (categories: number) => Math.max(240, categories * 30 + 48);
-export const shiftLocalDate = (date: string, days: number) =>
-  new Date(Date.parse(`${date}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
-export const todayLocal = () =>
-  new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(
-    new Date(),
-  );
+export const shiftLocalDate = shiftDateKey;
+export const todayLocal = () => dateKeyIn(new Date());
 export const presetRange = (days: number) => {
   const to = todayLocal();
   if (days === 365) {

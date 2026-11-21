@@ -4,13 +4,13 @@ import {
   stoneResponseSchema,
   stoneSessionKindSchema,
   updateStudyGoalSchema,
+  normalizeTimeZone,
 } from "@lazuli/shared";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
-import { normalizeTimeZone } from "../dashboard/dashboard-routes.ts";
 import type { Database } from "../database/client.ts";
 import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";

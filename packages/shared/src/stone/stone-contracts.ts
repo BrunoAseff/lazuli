@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { timeZoneSchema } from "../calendar.ts";
 
 /*
  * "Sua pedra": the person's gamification. Mastery gives the level (the stone's cut) and never
@@ -53,9 +54,7 @@ export const studyGoalSchema = z
 
 export const updateStudyGoalSchema = z.object({ goal: studyGoalSchema }).strict();
 
-export const stoneQuerySchema = z
-  .object({ tz: z.string().trim().min(1).max(100).optional() })
-  .strict();
+export const stoneQuerySchema = z.object({ tz: timeZoneSchema.optional() }).strict();
 
 /**
  * A day: met (the goal, or more), missed, off (a day off with no goal), free (nothing to practice,

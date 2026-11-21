@@ -31,7 +31,6 @@ import {
 const RECENT_DOCUMENT_LIMIT = 4;
 const CANDIDATE_LIMIT = 4;
 const CONTINUATION_LIMIT = 2;
-const DAY_MS = 24 * 60 * 60 * 1_000;
 
 type ActiveFlashcardSession = {
   collectionId: string;
@@ -83,25 +82,6 @@ type RecentDocument = {
  * example (the example project is the one exempt from quotas). Joins `project` on the collection.
  */
 const ownLibrary = (projectId: AnyColumn) => or(isNull(projectId), eq(project.quotaExempt, false));
-
-const utcDay = (value: Date) => value.toISOString().slice(0, 10);
-
-export const dateKeyInTimeZone = (value: Date, timeZone: string) => {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone,
-    year: "numeric",
-  }).formatToParts(value);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((item) => item.type === type)?.value;
-  return `${part("year")}-${part("month")}-${part("day")}`;
-};
-
-export const shiftDateKey = (date: string, days: number) => {
-  const [year, month, day] = date.split("-").map(Number);
-  return utcDay(new Date(Date.UTC(year!, month! - 1, day!) + days * DAY_MS));
-};
 
 export const buildReviewQueue = ({
   activeSessions,

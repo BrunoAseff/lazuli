@@ -9,6 +9,7 @@ import {
   type StudyMetricsQuery,
   type StudyMetricsResponse,
   type StudyMetricsView,
+  clientTimeZone,
 } from "@lazuli/shared";
 import { ContentPage } from "@/components/content-page.tsx";
 import { EmptyState } from "@/components/empty-state.tsx";
@@ -206,7 +207,7 @@ export default function StudyMetricsPage() {
   const input: StudyMetricsQuery = {
     from,
     to,
-    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    tz: clientTimeZone(),
     compare: params.get("compare") === "true" ? "true" : "false",
     ...(view !== "overview" && params.get(`${view}Collection`)
       ? { collectionId: params.get(`${view}Collection`)! }

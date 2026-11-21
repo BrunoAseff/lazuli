@@ -6,6 +6,7 @@ export * from "./legal/legal-constants.ts";
 export * from "./account-settings/account-settings-contracts.ts";
 export * from "./favorites.ts";
 export * from "./global-search.ts";
+export * from "./calendar.ts";
 export * from "./study-metrics.ts";
 export * from "./analytics/analytics-contracts.ts";
 export * from "./ai/ai-contracts.ts";

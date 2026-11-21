@@ -11,10 +11,11 @@ import {
   type StoneResponse,
   type StoneSessionKind,
   type StudyGoal,
+  dateKeyIn,
+  shiftDateKey,
 } from "@lazuli/shared";
 import { eq, sql } from "drizzle-orm";
 
-import { dateKeyInTimeZone, shiftDateKey } from "../dashboard/dashboard-queries.ts";
 import { flashcardMasteredAs } from "./mastery-sql.ts";
 import type { Database } from "../database/client.ts";
 import { user, userStoneLevel, userStudyGoal } from "../database/schema/index.ts";
@@ -265,7 +266,7 @@ export const getStone = async (
   timeZone = "UTC",
   now = new Date(),
 ): Promise<StoneResponse> => {
-  const today = dateKeyInTimeZone(now, timeZone);
+  const today = dateKeyIn(now, timeZone);
   const from = historyStartFor(today);
   const [account, goal, events, availability, everMastered, current] = await Promise.all([
     database.query.user.findFirst({ columns: { createdAt: true }, where: eq(user.id, userId) }),
@@ -275,7 +276,7 @@ export const getStone = async (
     readEverMastered(database, userId, timeZone),
     readCurrentMastery(database, userId, timeZone),
   ]);
-  const accountDay = account ? dateKeyInTimeZone(account.createdAt, timeZone) : from;
+  const accountDay = account ? dateKeyIn(account.createdAt, timeZone) : from;
   const levels = await syncLevels(database, userId, everMastered, now);
   const history = buildStoneDays({ accountDay, availability, events, from, goal, today });
   const week = history.slice(-7);
@@ -355,7 +356,7 @@ export const getStoneContribution = async (
   timeZone = "UTC",
   now = new Date(),
 ): Promise<StoneContribution | null> => {
-  const today = dateKeyInTimeZone(now, timeZone);
+  const today = dateKeyIn(now, timeZone);
   const [session] =
     kind === "flashcards"
       ? await database.execute<{
