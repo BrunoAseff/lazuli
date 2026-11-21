@@ -422,7 +422,7 @@ const StoneStages = () => {
     <Section
       id="stone"
       title="A pedra sendo lapidada"
-      lead="A gamificação do início: a pedra começa bruta e vira a gema da marca conforme os flashcards são dominados. Revisões pendentes tiram o brilho até serem feitas. Cada estado vem com o nome escrito."
+      lead="A gamificação do início: a pedra começa bruta e vira a gema da marca conforme flashcards e questões são dominados. O brilho vem dos dias de estudo cumpridos na última semana. Cada estado vem com o nome escrito."
     >
       <div className="grid gap-10">
         <div className="flex flex-wrap items-end gap-x-10 gap-y-6">
@@ -455,7 +455,7 @@ const StoneStages = () => {
             </label>
             <label className="grid gap-2 text-sm">
               <span className="flex justify-between">
-                <span>Revisões pendentes (opacidade)</span>
+                <span>Dias de estudo perdidos (brilho)</span>
                 <span className="text-muted-foreground tabular-nums">
                   {Math.round(dull * 100)}%
                 </span>

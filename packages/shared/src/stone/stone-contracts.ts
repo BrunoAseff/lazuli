@@ -86,7 +86,7 @@ export const stoneResponseSchema = z.object({
   notMastered: z.number().int().nonnegative(),
   /** True when the person has nothing at all to practice for their goal: the goal is paused. */
   paused: z.boolean(),
-  /** 0 (full shine) to 1 (dull), from the studied days of the last seven. */
+  /** 0 (full shine) to 1 (dull): study days kept out of those planned in the last seven. */
   dull: z.number().min(0).max(1),
   /** Study days of the last seven that kept the goal, out of the study days that are over. */
   keptDays: z.number().int().min(0).max(7),

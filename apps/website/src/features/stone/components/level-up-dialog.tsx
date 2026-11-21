@@ -27,22 +27,19 @@ const order: Stage[] = ["before", "tapping", "cut", "details", "done"];
 const reached = (stage: Stage, target: Stage) => order.indexOf(stage) >= order.indexOf(target);
 
 export const LevelUpDialog = ({
-  forceMotion = false,
   from,
   mastered,
   onOpenChange,
   open,
   to,
 }: {
-  /** Plays the full motion even with reduced motion on (for reviewing the moment). */
-  forceMotion?: boolean;
   from: number;
   mastered: number;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   to: number;
 }) => {
-  const reduced = useReducedMotion() && !forceMotion;
+  const reduced = useReducedMotion();
   const before = stoneLevelByNumber(from);
   const after = stoneLevelByNumber(to);
   const next = nextStoneLevel(to);
@@ -112,7 +109,7 @@ export const LevelUpDialog = ({
         onComplete: () => setGlint(undefined),
       });
       timeline.current.stops.push(() => light.stop());
-      if (stone.current) goldBurst(stone.current, 8, forceMotion);
+      if (stone.current) goldBurst(stone.current, 8);
     });
     at(1900, () => setStage("details"));
     at(2400, () => setStage("done"));
@@ -146,7 +143,7 @@ export const LevelUpDialog = ({
 
           <DialogTitle asChild>
             <h2 className="mt-7 font-heading text-[2rem] leading-tight font-normal">
-              <MorphText force={forceMotion} text={shown("cut") ? after.name : before.name} />
+              <MorphText text={shown("cut") ? after.name : before.name} />
             </h2>
           </DialogTitle>
           <DialogDescription className="sr-only">

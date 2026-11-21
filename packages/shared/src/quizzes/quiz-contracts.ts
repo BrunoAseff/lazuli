@@ -12,9 +12,6 @@ import {
   STUDY_COLLECTION_PAGE_SIZE,
   studyCollectionIdSchema,
   studyCollectionListQueryShape,
-  studyCollectionProjectFilterSchema,
-  studyCollectionStatusSchema,
-  studyCollectionTitleSchema,
   updateStudyCollectionSchema,
 } from "../study-collections/study-collection-contracts.ts";
 
@@ -26,9 +23,6 @@ export const QUIZ_MAX_CONTENT_BYTES = 256 * 1024;
 export const QUIZ_ATTEMPT_MAX_QUESTIONS = 200;
 
 export const quizCollectionIdSchema = studyCollectionIdSchema;
-export const quizCollectionTitleSchema = studyCollectionTitleSchema;
-export const quizCollectionStatusSchema = studyCollectionStatusSchema;
-export const quizCollectionProjectFilterSchema = studyCollectionProjectFilterSchema;
 export const quizCollectionListQuerySchema = z.object(studyCollectionListQueryShape).strict();
 export const createQuizCollectionSchema = createStudyCollectionSchema;
 export const updateQuizCollectionSchema = updateStudyCollectionSchema;

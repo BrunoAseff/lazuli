@@ -3,8 +3,8 @@
  * is scarce in Lazúli, so this marks mastery only (a flashcard rated "Fácil"). It lives outside
  * React on purpose: the element that triggered it usually unmounts right after (the card leaves).
  */
-export function goldBurst(origin: Element, count = 6, force = false) {
-  if (!force && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+export function goldBurst(origin: Element, count = 6) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const rect = origin.getBoundingClientRect();
   const gold =
     getComputedStyle(document.documentElement).getPropertyValue("--gold").trim() || "#c9a14a";

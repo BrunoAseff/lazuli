@@ -12,9 +12,6 @@ import {
   STUDY_COLLECTION_PAGE_SIZE,
   studyCollectionIdSchema,
   studyCollectionListQueryShape,
-  studyCollectionProjectFilterSchema,
-  studyCollectionStatusSchema,
-  studyCollectionTitleSchema,
   updateStudyCollectionSchema,
 } from "../study-collections/study-collection-contracts.ts";
 
@@ -30,9 +27,6 @@ export const FLASHCARD_IMPORT_MAX_ROWS = 1_000;
 export const FLASHCARD_IMPORT_TEXT_MAX_LENGTH = 10_000;
 
 export const flashcardCollectionIdSchema = studyCollectionIdSchema;
-export const flashcardCollectionTitleSchema = studyCollectionTitleSchema;
-export const flashcardCollectionStatusSchema = studyCollectionStatusSchema;
-export const flashcardCollectionProjectFilterSchema = studyCollectionProjectFilterSchema;
 export const flashcardRatingSchema = z.enum(["again", "hard", "good", "easy"]);
 export const flashcardIdSchema = z.uuid();
 export const flashcardPracticeSessionIdSchema = z.uuid();
