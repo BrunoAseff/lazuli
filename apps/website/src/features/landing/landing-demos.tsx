@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { StoneCardView } from "@/features/stone/components/stone-card.tsx";
-import { GenerationPending } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
+import { GenerationPending } from "@/features/ai/components/generation-pending.tsx";
 import { cn } from "@/lib/utils.ts";
 import "@/components/study-practice.css";
 

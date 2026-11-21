@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Slider } from "@/components/ui/slider.tsx";
 import { goldBurst } from "@/components/motion/gold-burst.ts";
 import { MorphText } from "@/components/motion/morph-text.tsx";
-import { GenerationPending } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
+import { GenerationPending } from "@/features/ai/components/generation-pending.tsx";
 import { spring } from "@/lib/motion.ts";
 import { cn } from "@/lib/utils.ts";
 

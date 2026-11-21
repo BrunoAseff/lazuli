@@ -1,4 +1,3 @@
-import { Spinner } from "@/components/ui/spinner.tsx";
 import {
   AI_CREDITS_PER_ITEM,
   AI_SELECTION_MAX_ITEMS,
@@ -38,6 +37,7 @@ import type { AiEditableQuizProposal } from "./ai-quiz-proposal-editor.tsx";
 import { AiProposalReviewList } from "./ai-proposal-review-list.tsx";
 import { studyItemAgreement, studyItemCount } from "@/lib/text.ts";
 import { getApiErrorMessage } from "@/lib/api-client.ts";
+import { GenerationPending } from "./generation-pending.tsx";
 import { cn } from "@/lib/utils.ts";
 import { AssetImage } from "@/components/asset-image.tsx";
 import {
@@ -614,6 +614,8 @@ export const AiSelectionGenerationDialog = ({
                   />
                 </div>
               </CreationWorkspace>
+            ) : createGeneration.isPending || generation.data?.status === "running" ? (
+              <GenerationPending />
             ) : (
               <div className="grid gap-5">
                 <PrepareSource
@@ -695,21 +697,6 @@ export const AiSelectionGenerationDialog = ({
                 </div>
               </div>
             )}
-            {(createGeneration.isPending || generation.data?.status === "running") && (
-              <div className="absolute inset-0 grid place-items-center bg-background/80 backdrop-blur-sm">
-                <div className="text-center">
-                  <Spinner
-                    aria-hidden="true"
-                    role="presentation"
-                    className="mx-auto mb-3 size-7 text-muted-foreground"
-                  />
-                  <p className="font-medium">Criando propostas…</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Você pode fechar e continuar depois.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
 
           <DialogFooter className="mx-0 mb-0 shrink-0 flex-col rounded-none border-t px-6 py-4 sm:items-center">
@@ -777,7 +764,7 @@ export const AiSelectionGenerationDialog = ({
         </DialogContent>
       </Dialog>
       <ConfirmationDialog
-        actionLabel="Descartar"
+        actionLabel="Descartar propostas"
         description="As propostas serão removidas. Os créditos já consumidos pela geração não serão devolvidos."
         destructive
         onConfirm={() => {
