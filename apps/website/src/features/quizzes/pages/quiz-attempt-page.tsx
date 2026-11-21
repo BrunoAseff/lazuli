@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { AutoHeight } from "@/components/auto-height.tsx";
 import { StudySessionProgress } from "@/components/study-session-progress.tsx";
 import { ResultDistribution } from "@/components/result-distribution.tsx";
@@ -50,6 +49,7 @@ import {
   StoneContributionRow,
   StoneLevelUp,
 } from "@/features/stone/components/stone-contribution.tsx";
+import { ease } from "@/lib/motion.ts";
 
 const formatDuration = (minutes: number) => {
   if (minutes < 60) return `${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
@@ -175,7 +175,7 @@ export const QuizAttemptPage = () => {
             exit={{ opacity: 0 }}
             initial={reduced ? { opacity: 0 } : { opacity: 0, x: 20 }}
             key="review"
-            transition={{ duration: 0.18, ease: motionTokens.ease.standard }}
+            transition={{ duration: 0.18, ease: ease.standard }}
           >
             <p className="practice-kicker">Antes de concluir</p>
             <h2 className="font-heading text-lg font-semibold">Revisar respostas</h2>
@@ -236,7 +236,7 @@ export const QuizAttemptPage = () => {
             exit={reduced ? { opacity: 0 } : { opacity: 0, x: -20 * direction }}
             initial={reduced ? { opacity: 0 } : { opacity: 0, x: 20 * direction }}
             key={item.id}
-            transition={{ duration: 0.18, ease: motionTokens.ease.standard }}
+            transition={{ duration: 0.18, ease: ease.standard }}
           >
             <p className="practice-kicker">Questão {index + 1}</p>
             <div className="practice-question">

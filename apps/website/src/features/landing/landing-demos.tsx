@@ -2,7 +2,6 @@ import type { StoneDay, StoneResponse } from "@lazuli/shared";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useReducer, useRef, useState } from "react";
 
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { AutoHeight } from "@/components/auto-height.tsx";
 import { CheckIcon } from "@/components/icons.tsx";
 import { DocumentDomainIcon, ProjectOpenIcon } from "@/components/domain-icons.ts";
@@ -31,6 +30,7 @@ import {
   flashcardReducer,
   quizReducer,
 } from "./practice-state.ts";
+import { ease } from "@/lib/motion.ts";
 
 /** Example days for the stone: dates only matter for their weekday names. */
 /** An example stone: Facetada, a good week, today's goal half done. */
@@ -222,7 +222,7 @@ const FlashcardDemo = () => {
             exit={reduced ? { opacity: 0 } : "leave"}
             initial={reduced ? { opacity: 0 } : card ? { opacity: 0, x: 20 } : { opacity: 0, y: 6 }}
             key={card ? `${card.id}-${step}` : "done"}
-            transition={{ duration: 0.18, ease: motionTokens.ease.standard }}
+            transition={{ duration: 0.18, ease: ease.standard }}
             variants={{ leave: cardExit }}
           >
             {!card ? (

@@ -1,8 +1,8 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { CheckIcon, XIcon } from "./icons.tsx";
 import "./study-answer-choice.css";
+import { spring, ease } from "@/lib/motion.ts";
 
 type Outcome = "correct" | "incorrect";
 
@@ -25,7 +25,7 @@ export const ChoiceSeal = ({
         className="choice-seal-fill"
         initial={false}
         animate={{ scale: filled || outcome ? 1 : 0 }}
-        transition={reduced ? { duration: 0 } : motionTokens.spring.snappy}
+        transition={reduced ? { duration: 0 } : spring.snap}
       />
       <AnimatePresence initial={false} mode="popLayout">
         <motion.span
@@ -34,7 +34,7 @@ export const ChoiceSeal = ({
           exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
           initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
           key={glyph}
-          transition={{ duration: reduced ? 0 : 0.14, ease: motionTokens.ease.enter }}
+          transition={{ duration: reduced ? 0 : 0.14, ease: ease.enter }}
         >
           {glyph === "check" ? (
             <CheckIcon className="size-3.5" />

@@ -9,7 +9,6 @@ import { Link, useParams } from "react-router";
 import { toast } from "sonner";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Kbd } from "@/components/ui/kbd.tsx";
 import "@/components/study-practice.css";
@@ -45,6 +44,7 @@ import {
   StoneContributionRow,
   StoneLevelUp,
 } from "@/features/stone/components/stone-contribution.tsx";
+import { ease } from "@/lib/motion.ts";
 
 const ratings: Array<{
   value: FlashcardRating;
@@ -223,7 +223,7 @@ export default function FlashcardPracticePage() {
           variants={{ leave: cardExit }}
           initial={reduced ? { opacity: 0 } : { opacity: 0, x: 20 }}
           key={item.id}
-          transition={{ duration: 0.18, ease: motionTokens.ease.standard }}
+          transition={{ duration: 0.18, ease: ease.standard }}
         >
           <section
             ref={questionRegion}

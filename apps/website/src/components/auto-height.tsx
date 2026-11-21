@@ -1,7 +1,6 @@
 import { motion, useReducedMotion } from "motion/react";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
+import { spring } from "@/lib/motion.ts";
 
 /**
  * Lets a region change size with its content instead of freezing a height:
@@ -39,7 +38,7 @@ export const AutoHeight = ({
       }}
       onAnimationStart={() => inner.current?.parentElement?.setAttribute("data-animating", "")}
       style={{ overflow: "hidden" }}
-      transition={reduced ? { duration: 0 } : motionTokens.spring.smooth}
+      transition={reduced ? { duration: 0 } : spring.smooth}
     >
       <div ref={inner}>{children}</div>
     </motion.div>

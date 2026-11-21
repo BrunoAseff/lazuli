@@ -7,12 +7,11 @@ import {
 import { motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
-
 import { ForwardLink } from "@/components/nav-link.tsx";
 import { useStoneContribution } from "../api/stone-queries.ts";
 import { LevelUpDialog } from "./level-up-dialog.tsx";
 import { FillingProgress, goldBar } from "./stone-parts.tsx";
+import { spring } from "@/lib/motion.ts";
 
 /* What a practice or quiz added, shown in its summary: the goal of today and the mastery. */
 
@@ -79,7 +78,7 @@ const GoalPart = ({ goal, counted }: Pick<StoneContribution, "goal" | "counted">
           className="absolute inset-y-0 bg-primary"
           initial={reduced ? false : { width: "0%" }}
           style={{ left: `${(before / goal.target) * 100}%` }}
-          transition={{ ...motionTokens.spring.smooth, delay: 0.35 }}
+          transition={{ ...spring.smooth, delay: 0.35 }}
         />
       </div>
     </div>

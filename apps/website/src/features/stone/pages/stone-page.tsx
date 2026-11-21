@@ -11,7 +11,6 @@ import { Link, useSearchParams } from "react-router";
 
 import { Facet } from "@/components/brand-mark.tsx";
 import { CutGem } from "@/components/brand/cut-gem.tsx";
-import { motionTokens } from "@/components/arc/motion-tokens.ts";
 import { ContentPage } from "@/components/content-page.tsx";
 import { ArrowRightIcon, PencilIcon } from "@/components/icons.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -32,6 +31,7 @@ import {
 } from "../components/stone-parts.tsx";
 import { StudyGoalDialog } from "../components/study-goal-dialog.tsx";
 import { LoadError } from "@/components/empty-state.tsx";
+import { spring } from "@/lib/motion.ts";
 
 /*
  * "Sua pedra": the level and the way to the next one, the daily goal and this week, twelve weeks
@@ -85,7 +85,7 @@ const Reveal = ({
       animate={{ opacity: 1, y: 0 }}
       className={cn("min-w-0", className)}
       initial={reduced ? false : { opacity: 0, y: 10 }}
-      transition={{ ...motionTokens.spring.smooth, delay: index * 0.06 }}
+      transition={{ ...spring.smooth, delay: index * 0.06 }}
     >
       {children}
     </motion.div>
@@ -138,7 +138,7 @@ const LevelTrack = ({ stone }: { stone: StoneResponse }) => {
   const filled = (stone.level - 1 + partial) / steps;
   const shown = pointed ?? stone.level;
   const ahead = pointed && pointed > stone.level ? (pointed - 1) / steps : null;
-  const spring = reduced ? { duration: 0 } : motionTokens.spring.smooth;
+  const lineMotion = reduced ? { duration: 0 } : spring.smooth;
   return (
     <div className="relative" onMouseLeave={() => setPointed(null)}>
       <div className="relative">
@@ -151,13 +151,13 @@ const LevelTrack = ({ stone }: { stone: StoneResponse }) => {
             }}
             className="absolute inset-y-0 left-0 rounded-full bg-primary/50"
             initial={false}
-            transition={spring}
+            transition={lineMotion}
           />
           <motion.div
             animate={{ scaleX: filled }}
             className="absolute inset-0 origin-left rounded-full bg-[var(--gold)]"
             initial={reduced ? false : { scaleX: 0 }}
-            transition={{ ...spring, delay: reduced ? 0 : 0.25 }}
+            transition={{ ...lineMotion, delay: reduced ? 0 : 0.25 }}
           />
         </div>
         <ol className="relative grid grid-cols-5">
@@ -212,7 +212,7 @@ const LevelTrack = ({ stone }: { stone: StoneResponse }) => {
             exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
             initial={reduced ? { opacity: 0 } : { opacity: 0, y: 6 }}
             key={shown}
-            transition={motionTokens.spring.snappy}
+            transition={spring.snap}
           >
             {/* Only another level gets a note: the panel already says where the person is. */}
             {shown !== stone.level && (
@@ -244,7 +244,7 @@ const LevelPanel = ({ stone }: { stone: StoneResponse }) => {
           animate={{ opacity: 1, scale: 1 }}
           className="shrink-0"
           initial={reduced ? false : { opacity: 0, scale: 0.9 }}
-          transition={motionTokens.spring.smooth}
+          transition={spring.smooth}
         >
           <StoneGem dull={stone.dull} level={stone.level} size={112} />
         </motion.div>
