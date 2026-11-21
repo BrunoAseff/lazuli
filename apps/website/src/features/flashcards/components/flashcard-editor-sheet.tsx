@@ -33,7 +33,6 @@ import {
 import { RichContentField } from "@/components/rich-content-field.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
-import { MaterialSourcesAction } from "@/features/references/components/material-sources-action.tsx";
 import { CreationWorkspace } from "@/features/ai/components/creation-workspace.tsx";
 import { AiMaterialImprovementDialog } from "@/features/ai/components/ai-material-improvement-dialog.tsx";
 import type { StudyItemAction } from "@/lib/study-actions.ts";
@@ -377,7 +376,6 @@ const FlashcardEditor = ({
             <header className="sticky top-0 z-10 mx-auto flex min-h-10 w-full max-w-3xl flex-wrap items-center justify-between gap-3 bg-card py-2">
               {card && <FlashcardMemoryStatus card={card} />}
               <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-                {card && <MaterialSourcesAction target={{ type: "flashcard", id: card.id }} />}
                 <StudyDetailsButton onClick={() => setDetailsSheetOpen(true)} />
                 {!readOnly && (
                   <>

@@ -35,6 +35,9 @@ import { ReferenceDocumentRow, ReferenceRowsSkeleton } from "./reference-documen
 import { SourceReading } from "./source-reading.tsx";
 import "@/features/ai/components/proposal-review.css";
 
+/** Sources listed in the side panel; more than these open in the full list. */
+const VISIBLE_SOURCES = 3;
+
 type ReferenceListItem = ReferenceListResponse["items"][number];
 
 export const ReferenceManager = ({
@@ -217,7 +220,7 @@ export const ReferenceManager = ({
       ) : count ? (
         // Pulled out by the row's own padding so the file icon lines up with the label above.
         <div className="-mx-3 min-w-0">
-          {references.data?.items.slice(0, 2).map((reference) => (
+          {references.data?.items.slice(0, VISIBLE_SOURCES).map((reference) => (
             <ReferenceDocumentRow
               key={reference.id}
               documentTitle={reference.documentTitle}
@@ -231,6 +234,20 @@ export const ReferenceManager = ({
               })}
             />
           ))}
+          {/* The rest are never hidden without saying so: the list opens with all of them. */}
+          {count > VISIBLE_SOURCES && (
+            <Button
+              className="mx-3 mt-1"
+              onClick={() => setManagerOpen(true)}
+              size="xs"
+              type="button"
+              variant="field-link"
+            >
+              {count - VISIBLE_SOURCES === 1
+                ? "Mais 1 fonte"
+                : `Mais ${count - VISIBLE_SOURCES} fontes`}
+            </Button>
+          )}
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Nenhum documento conectado.</p>

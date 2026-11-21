@@ -32,7 +32,6 @@ import {
 import { RichContentField } from "@/components/rich-content-field.tsx";
 import { ReferenceManager } from "@/features/references/components/reference-manager.tsx";
 import { ReferenceSourcePreview } from "@/features/references/components/reference-source-preview.tsx";
-import { MaterialSourcesAction } from "@/features/references/components/material-sources-action.tsx";
 import { CreationWorkspace } from "@/features/ai/components/creation-workspace.tsx";
 import { AiMaterialImprovementDialog } from "@/features/ai/components/ai-material-improvement-dialog.tsx";
 import type { StudyItemAction } from "@/lib/study-actions.ts";
@@ -356,9 +355,6 @@ const QuizQuestionEditor = ({
         <div className="grid min-h-0 min-w-0 flex-1 bg-background @min-[960px]/study-workspace:grid-cols-[minmax(0,1fr)_16rem]">
           <section className="@container/editor m-2 flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-xl bg-card px-5 py-4 ring-1 ring-border/45 lazuli-thin-scrollbar sm:px-6 lg:px-8">
             <header className="sticky top-0 z-10 mx-auto flex min-h-10 w-full max-w-3xl flex-wrap items-center justify-end gap-1.5 bg-card py-2 sm:gap-2">
-              {question && (
-                <MaterialSourcesAction target={{ type: "quizQuestion", id: question.id }} />
-              )}
               <StudyDetailsButton onClick={() => setDetailsSheetOpen(true)} />
               {!readOnly && (
                 <>

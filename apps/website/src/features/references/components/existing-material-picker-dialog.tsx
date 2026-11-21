@@ -136,19 +136,33 @@ export const ExistingMaterialPickerDialog = ({
             composing
             destinationLabel="Escolher materiais"
             source={
-              <div className="space-y-7">
-                {sourceTitle && <h3>{sourceTitle}</h3>}
-                {!sourcePreview && <p data-source-label>Documento inteiro</p>}
-                {sourcePreview && <blockquote>{sourcePreview}</blockquote>}
-                <MaterialKindPicker
-                  label="Tipo de material"
-                  value={type}
-                  onChange={(next) => {
-                    setType(next);
-                    setCollectionId(undefined);
-                    setQuery("");
-                  }}
-                />
+              // Two groups, as in the other creation dialogs: what is being connected (the source and
+              // its extent together), then the one choice, with its own visible label.
+              <div className="grid gap-6">
+                <div className="grid gap-1">
+                  {sourceTitle && <h3 className="mb-0! leading-snug">{sourceTitle}</h3>}
+                  {sourcePreview ? (
+                    <blockquote className="mt-1">{sourcePreview}</blockquote>
+                  ) : (
+                    <p className="mb-0!" data-source-label>
+                      Documento inteiro
+                    </p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <p className="font-sans text-[0.8125rem] font-medium">Tipo de material</p>
+                  <MaterialKindPicker
+                    label="Tipo de material"
+                    value={type}
+                    onChange={(next) => {
+                      setType(next);
+                      setCollectionId(undefined);
+                      setQuery("");
+                      // What was picked belongs to the other kind: nothing stays selected.
+                      setSelected([]);
+                    }}
+                  />
+                </div>
               </div>
             }
           >
