@@ -5,6 +5,8 @@ import {
   type StoneDay,
   type StoneResponse,
   type StudyGoal,
+  stoneToday,
+  stoneWeek,
 } from "@lazuli/shared";
 import { useEffect, useState, type ComponentProps, type CSSProperties } from "react";
 
@@ -80,7 +82,7 @@ export const keptText = (stone: StoneResponse) =>
 
 export const WeekLine = ({ stone }: { stone: StoneResponse }) => (
   <div className="flex items-center gap-2 text-xs text-foreground">
-    <WeekFacets week={stone.week} />
+    <WeekFacets week={stoneWeek(stone)} />
     {keptText(stone)}
   </div>
 );
@@ -129,7 +131,8 @@ export const MasteryLine = ({
 };
 
 export const GoalLine = ({ stone }: { stone: StoneResponse }) => {
-  const { goal, paused, today } = stone;
+  const { goal, paused } = stone;
+  const today = stoneToday(stone);
   const done = today.status === "met" || today.status === "free";
   const label = paused
     ? "pausada até você ter materiais"

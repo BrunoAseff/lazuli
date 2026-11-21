@@ -9,7 +9,7 @@ import {
   StorageLimitReachedError,
 } from "../documents/document-image-storage.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
-import { sendValidationError } from "./route-helpers.ts";
+import { sendValidationError, sendInternalError } from "./route-helpers.ts";
 
 type StoreImage = (input: {
   database: Database;
@@ -63,12 +63,12 @@ export const handleStudyImageUpload = async ({
         .send({ code: "IMAGE_TOO_LARGE", message: "A imagem deve ter no máximo 10 MB." });
     if (error instanceof StorageLimitReachedError)
       return sendCommercialLimitError(reply, database, userId, "PLAN_STORAGE_LIMIT_REACHED");
-    request.log.error(
+    return sendInternalError(
+      request,
+      reply,
+      "Não foi possível enviar a imagem.",
       { errorName: error instanceof Error ? error.name : "UnknownError", userId },
       logMessage,
     );
-    return reply
-      .status(500)
-      .send({ code: "INTERNAL_ERROR", message: "Não foi possível enviar a imagem." });
   }
 };

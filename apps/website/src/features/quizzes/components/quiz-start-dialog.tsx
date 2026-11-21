@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { useCreateQuizAttempt, useQuizAttemptAvailability } from "../api/quiz-queries.ts";
+import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
 /**
  * Starting (or resuming) a quiz, wherever it is offered. It opens over the current page, so
@@ -43,8 +44,8 @@ export const QuizStartDialog = ({
       const attempt = await start.mutateAsync({ id: crypto.randomUUID(), abandonActive });
       onOpenChange(false);
       await navigate(`/quizzes/${collectionId}/attempts/${attempt.id}`);
-    } catch {
-      toast.error("Não foi possível iniciar o quiz.");
+    } catch (error) {
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível iniciar o quiz."));
     }
   };
   return (

@@ -9,7 +9,11 @@ import type { FastifyPluginAsync } from "fastify";
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
 import type { Database } from "../database/client.ts";
-import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
+import {
+  createMutationAuthorizer,
+  sendValidationError,
+  sendInternalError,
+} from "../routes/route-helpers.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import {
   createQuizCollection,
@@ -54,11 +58,13 @@ export const createQuizCollectionRoutes = ({
         const result = await listQuizCollections(database, session.user.id, query.data);
         return { ...result, items: result.items.map(serializeCollection) };
       } catch (error) {
-        request.log.error({ err: error, userId: session.user.id }, "quiz collections failed");
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível carregar suas coleções de quizzes.",
-        });
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível carregar suas coleções de quizzes.",
+          { err: error, userId: session.user.id },
+          "quiz collections failed",
+        );
       }
     });
 
@@ -78,14 +84,13 @@ export const createQuizCollectionRoutes = ({
           });
         return serializeCollection(collection);
       } catch (error) {
-        request.log.error(
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível carregar esta coleção.",
           { collectionId: collectionId.data, err: error, userId: session.user.id },
           "quiz collection detail failed",
         );
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível carregar esta coleção.",
-        });
       }
     });
 
@@ -114,14 +119,13 @@ export const createQuizCollectionRoutes = ({
           .status(result.created ? 201 : 200)
           .send(serializeCollection(result.collection));
       } catch (error) {
-        request.log.error(
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível criar a coleção.",
           { err: error, userId: session.user.id },
           "quiz collection creation failed",
         );
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível criar a coleção.",
-        });
       }
     });
 
@@ -152,14 +156,13 @@ export const createQuizCollectionRoutes = ({
           });
         return serializeCollection(result.collection);
       } catch (error) {
-        request.log.error(
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível atualizar a coleção.",
           { collectionId: collectionId.data, err: error, userId: session.user.id },
           "quiz collection update failed",
         );
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível atualizar a coleção.",
-        });
       }
     });
 
@@ -179,14 +182,13 @@ export const createQuizCollectionRoutes = ({
           });
         return reply.status(204).send();
       } catch (error) {
-        request.log.error(
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível excluir a coleção.",
           { collectionId: collectionId.data, err: error, userId: session.user.id },
           "quiz collection deletion failed",
         );
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível excluir a coleção.",
-        });
       }
     });
   };

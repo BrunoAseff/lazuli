@@ -57,8 +57,6 @@ const exampleStone: StoneResponse = {
   keptDays: 4,
   plannedDays: 5,
   goal: { counts: "both", practices: 2, days: [true, true, true, true, true, false, true] },
-  today: exampleWeek.at(-1)!,
-  week: exampleWeek,
   history: exampleWeek,
   levels: [],
   projects: [],

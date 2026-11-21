@@ -65,6 +65,7 @@ import {
 } from "../api/quiz-queries.ts";
 import { QuizQuestionPanel } from "../components/quiz-question-dialog.tsx";
 import { QuizStartDialog } from "../components/quiz-start-dialog.tsx";
+import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
 // A quiz is read in its own order, so its index follows it by default (numbers ascend).
 const quizQuestionListDefaults = { sort: "position", status: "active" };
@@ -175,8 +176,8 @@ export const QuizCollectionPage = () => {
       });
       if (activeId === question.id) closeEditor();
       toast.success(archived ? "Questão arquivada." : "Questão restaurada.");
-    } catch {
-      toast.error("Não foi possível atualizar a questão.");
+    } catch (error) {
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível atualizar a questão."));
     }
   };
   const performBatch = async (action: StudyItemBatchAction) => {
@@ -204,8 +205,10 @@ export const QuizCollectionPage = () => {
             ? "Questões restauradas."
             : "Questões excluídas.",
       );
-    } catch {
-      toast.error("Não foi possível alterar as questões selecionadas.");
+    } catch (error) {
+      toast.error(
+        getQuizCollectionErrorMessage(error, "Não foi possível alterar as questões selecionadas."),
+      );
     }
   };
 
@@ -524,8 +527,10 @@ export const QuizCollectionPage = () => {
             if (activeId === id) showReplacement(replacementId);
             setPendingDelete(null);
             toast.success("Questão excluída.");
-          } catch {
-            toast.error("Não foi possível excluir a questão.");
+          } catch (error) {
+            toast.error(
+              getQuizCollectionErrorMessage(error, "Não foi possível excluir a questão."),
+            );
           }
         }}
       />

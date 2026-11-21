@@ -45,6 +45,7 @@ import {
 } from "./quiz-alternatives-field.tsx";
 import { SelectionPreview } from "@/features/ai/components/selection-preview.tsx";
 import type { AiSelectionPreviewPart } from "@/features/ai/ai-selection-types.ts";
+import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
 const newOptions = (): QuizOptionDraft[] => [
   { id: crypto.randomUUID(), text: "", isCorrect: true },
@@ -206,8 +207,8 @@ const QuizQuestionEditor = ({
         return;
       }
       if (presentation === "dialog") onOpenChange(false);
-    } catch {
-      toast.error("Não foi possível salvar a questão.");
+    } catch (error) {
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível salvar a questão."));
     }
   };
   const isPending = create.isPending || update.isPending;

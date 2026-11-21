@@ -1,9 +1,24 @@
-import type { FastifyReply } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { RequestRateLimiter } from "../security/request-rate-limiter.ts";
+
+/**
+ * An unexpected failure: logged with what identifies the request, answered with a message the
+ * person can read and nothing internal.
+ */
+export const sendInternalError = (
+  request: FastifyRequest,
+  reply: FastifyReply,
+  message: string,
+  context: Record<string, unknown>,
+  log: string,
+) => {
+  request.log.error(context, log);
+  return reply.status(500).send({ code: "INTERNAL_ERROR", message });
+};
 
 export const sendValidationError = (reply: FastifyReply) =>
   reply.status(400).send({

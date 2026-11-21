@@ -311,8 +311,6 @@ export const getStone = async (
     keptDays: kept,
     plannedDays: planned,
     goal,
-    today: history.at(-1)!,
-    week,
     history,
     levels: STONE_LEVELS.map((item) => ({
       level: item.level,

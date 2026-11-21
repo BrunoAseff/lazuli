@@ -50,6 +50,7 @@ import {
   StoneLevelUp,
 } from "@/features/stone/components/stone-contribution.tsx";
 import { ease } from "@/lib/motion.ts";
+import { getQuizCollectionErrorMessage } from "../quiz-messages.ts";
 
 const formatDuration = (minutes: number) => {
   if (minutes < 60) return `${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
@@ -129,15 +130,15 @@ export const QuizAttemptPage = () => {
   const select = async (optionId: string) => {
     try {
       await answer.mutateAsync({ itemId: item.id, optionId });
-    } catch {
-      toast.error("Não foi possível salvar esta resposta.");
+    } catch (error) {
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível salvar esta resposta."));
     }
   };
   const finish = async () => {
     try {
       await complete.mutateAsync();
-    } catch {
-      toast.error("Responda todas as questões antes de concluir.");
+    } catch (error) {
+      toast.error(getQuizCollectionErrorMessage(error, "Não foi possível concluir a tentativa."));
     }
   };
   const goTo = (next: number) => {
@@ -289,8 +290,10 @@ export const QuizAttemptPage = () => {
                 try {
                   await abandon.mutateAsync();
                   await navigate(`/quizzes/${attempt.collectionId}`);
-                } catch {
-                  toast.error("Não foi possível abandonar a tentativa.");
+                } catch (error) {
+                  toast.error(
+                    getQuizCollectionErrorMessage(error, "Não foi possível abandonar a tentativa."),
+                  );
                 }
               }}
               pending={abandon.isPending}

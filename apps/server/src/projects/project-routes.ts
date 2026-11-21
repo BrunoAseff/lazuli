@@ -15,7 +15,7 @@ import { requireSession } from "../auth/require-session.ts";
 import { requireTrustedOrigin } from "../auth/require-trusted-origin.ts";
 import type { Database } from "../database/client.ts";
 import { sendCommercialLimitError } from "../commercial/commercial-limit-errors.ts";
-import { sendValidationError } from "../routes/route-helpers.ts";
+import { sendValidationError, sendInternalError } from "../routes/route-helpers.ts";
 import {
   createProject,
   deleteProject,
@@ -80,11 +80,13 @@ export const createProjectRoutes = ({
           items: result.items.map(serializeProject),
         };
       } catch (error) {
-        request.log.error({ err: error, userId: session.user.id }, "project listing failed");
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível carregar seus projetos.",
-        });
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível carregar seus projetos.",
+          { err: error, userId: session.user.id },
+          "project listing failed",
+        );
       }
     });
 
@@ -124,11 +126,13 @@ export const createProjectRoutes = ({
         if (result.created) await analytics.capture(session.user.id, "project_created", {});
         return reply.status(result.created ? 201 : 200).send(serializeProject(result.project));
       } catch (error) {
-        request.log.error({ err: error, userId: session.user.id }, "project creation failed");
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível criar o projeto.",
-        });
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível criar o projeto.",
+          { err: error, userId: session.user.id },
+          "project creation failed",
+        );
       }
     });
 
@@ -151,14 +155,13 @@ export const createProjectRoutes = ({
         }
         return serializeProject(result);
       } catch (error) {
-        request.log.error(
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível carregar o projeto.",
           { err: error, projectId: projectId.data, userId: session.user.id },
           "project detail failed",
         );
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível carregar o projeto.",
-        });
       }
     });
 
@@ -190,14 +193,13 @@ export const createProjectRoutes = ({
             code: "COVER_CHANGED",
             message: "A capa foi alterada em outra aba. Reabra este diálogo para continuar.",
           });
-        request.log.error(
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível atualizar o projeto.",
           { err: error, projectId: projectId.data, userId: session.user.id },
           "project update failed",
         );
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível atualizar o projeto.",
-        });
       }
     });
 
@@ -219,14 +221,13 @@ export const createProjectRoutes = ({
         );
         return reply.status(204).send();
       } catch (error) {
-        request.log.error(
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível excluir o projeto.",
           { err: error, projectId: projectId.data, userId: session.user.id },
           "project deletion failed",
         );
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível excluir o projeto.",
-        });
       }
     });
 
@@ -263,14 +264,13 @@ export const createProjectRoutes = ({
           })),
         };
       } catch (error) {
-        request.log.error(
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível carregar os documentos.",
           { err: error, projectId: projectId.data, userId: session.user.id },
           "document listing failed",
         );
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível carregar os documentos.",
-        });
       }
     });
   };

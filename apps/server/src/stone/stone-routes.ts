@@ -12,7 +12,11 @@ import { z } from "zod";
 import type { Auth } from "../auth/auth.ts";
 import { requireSession } from "../auth/require-session.ts";
 import type { Database } from "../database/client.ts";
-import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
+import {
+  createMutationAuthorizer,
+  sendValidationError,
+  sendInternalError,
+} from "../routes/route-helpers.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
 import { getStone, getStoneContribution, updateStudyGoal } from "./stone-queries.ts";
 
@@ -42,10 +46,13 @@ export const createStoneRoutes = ({
       try {
         return stoneResponseSchema.parse(await getStone(database, session.user.id, timeZone));
       } catch (error) {
-        request.log.error({ err: error, userId: session.user.id }, "stone loading failed");
-        return reply
-          .status(500)
-          .send({ code: "INTERNAL_ERROR", message: "Não foi possível carregar sua pedra." });
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível carregar sua pedra.",
+          { err: error, userId: session.user.id },
+          "stone loading failed",
+        );
       }
     });
 
@@ -71,10 +78,13 @@ export const createStoneRoutes = ({
             .send({ code: "NOT_FOUND", message: "Sessão de estudo não encontrada." });
         return stoneContributionSchema.parse(contribution);
       } catch (error) {
-        request.log.error({ err: error, userId: session.user.id }, "stone contribution failed");
-        return reply
-          .status(500)
-          .send({ code: "INTERNAL_ERROR", message: "Não foi possível carregar o progresso." });
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível carregar o progresso.",
+          { err: error, userId: session.user.id },
+          "stone contribution failed",
+        );
       }
     });
 
@@ -86,10 +96,13 @@ export const createStoneRoutes = ({
       try {
         return { goal: await updateStudyGoal(database, session.user.id, input.data.goal) };
       } catch (error) {
-        request.log.error({ err: error, userId: session.user.id }, "study goal update failed");
-        return reply
-          .status(500)
-          .send({ code: "INTERNAL_ERROR", message: "Não foi possível salvar a meta." });
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível salvar a meta.",
+          { err: error, userId: session.user.id },
+          "study goal update failed",
+        );
       }
     });
   };

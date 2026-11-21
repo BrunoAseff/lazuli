@@ -91,10 +91,8 @@ export const stoneResponseSchema = z.object({
   keptDays: z.number().int().min(0).max(7),
   plannedDays: z.number().int().min(0).max(7),
   goal: studyGoalSchema,
-  today: stoneDaySchema,
-  week: z.array(stoneDaySchema).length(7),
-  /** From the Monday eleven weeks back to today, in order. */
-  history: z.array(stoneDaySchema).max(84),
+  /** From the Monday eleven weeks back to today, in order; stoneToday and stoneWeek read it. */
+  history: z.array(stoneDaySchema).min(7).max(84),
   levels: z.array(
     z.object({ level: z.number().int().min(1).max(5), reachedAt: z.iso.datetime().nullable() }),
   ),
@@ -144,3 +142,9 @@ export const stoneShine = (week: Array<Pick<StoneDay, "status" | "studyDay">>) =
   const planned = days.length;
   return { kept, planned, dull: planned ? 1 - kept / planned : 0 };
 };
+
+/** Today, the last day of the history (it always ends on today). */
+export const stoneToday = (stone: Pick<StoneResponse, "history">) => stone.history.at(-1)!;
+
+/** The last seven days of the history, today included. */
+export const stoneWeek = (stone: Pick<StoneResponse, "history">) => stone.history.slice(-7);

@@ -15,7 +15,11 @@ import { requireSession } from "../auth/require-session.ts";
 import type { Database } from "../database/client.ts";
 import { storeStudyImage } from "../documents/document-image-storage.ts";
 import { createRequestRateLimiter } from "../security/request-rate-limiter.ts";
-import { createMutationAuthorizer, sendValidationError } from "../routes/route-helpers.ts";
+import {
+  createMutationAuthorizer,
+  sendValidationError,
+  sendInternalError,
+} from "../routes/route-helpers.ts";
 import { handleStudyImageUpload } from "../routes/study-image-upload.ts";
 import type { ObjectStorage } from "../storage/object-storage.ts";
 import {
@@ -97,14 +101,13 @@ export const createFlashcardRoutes = ({
           });
         return { ...result, items: result.items.map(serializeCard) };
       } catch (error) {
-        request.log.error(
+        return sendInternalError(
+          request,
+          reply,
+          "Não foi possível carregar os flashcards.",
           { errorName: errorName(error), userId: session.user.id },
           "flashcard list failed",
         );
-        return reply.status(500).send({
-          code: "INTERNAL_ERROR",
-          message: "Não foi possível carregar os flashcards.",
-        });
       }
     });
 
