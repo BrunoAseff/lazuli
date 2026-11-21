@@ -17,7 +17,6 @@ import { toast } from "sonner";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -275,7 +274,7 @@ export const QuizAttemptPage = () => {
           </motion.section>
         )}
       </AnimatePresence>
-      <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
+      <AlertDialog open={exitOpen} onOpenChange={(open) => !abandon.isPending && setExitOpen(open)}>
         <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Sair da tentativa?</AlertDialogTitle>
@@ -285,17 +284,24 @@ export const QuizAttemptPage = () => {
           </AlertDialogHeader>
           {/* Destructive choice apart on the left; leaving keeps the answers, so it is the main way out. */}
           <AlertDialogFooter>
-            <AlertDialogAction
+            <Button
               className="text-destructive hover:bg-destructive/10 hover:text-destructive sm:mr-auto"
-              variant="ghost"
               onClick={async () => {
-                await abandon.mutateAsync();
-                await navigate(`/quizzes/${attempt.collectionId}`);
+                try {
+                  await abandon.mutateAsync();
+                  await navigate(`/quizzes/${attempt.collectionId}`);
+                } catch {
+                  toast.error("Não foi possível abandonar a tentativa.");
+                }
               }}
+              pending={abandon.isPending}
+              variant="ghost"
             >
-              <Trash2Icon aria-hidden="true" /> Abandonar
-            </AlertDialogAction>
-            <AlertDialogCancel>Continuar respondendo</AlertDialogCancel>
+              <Trash2Icon aria-hidden="true" /> Abandonar tentativa
+            </Button>
+            <AlertDialogCancel disabled={abandon.isPending}>
+              Continuar respondendo
+            </AlertDialogCancel>
             <Button onClick={() => void navigate(`/quizzes/${attempt.collectionId}`)}>Sair</Button>
           </AlertDialogFooter>
         </AlertDialogContent>

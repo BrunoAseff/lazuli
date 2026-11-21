@@ -15,7 +15,6 @@ import {
   Layers3Icon,
   ListFilterIcon,
   PlusIcon,
-  Trash2Icon,
   UploadIcon,
 } from "@/components/icons.tsx";
 import { useEffect, useState } from "react";
@@ -38,15 +37,6 @@ import {
 } from "@/components/study-index.tsx";
 import { resultCount } from "@/lib/text.ts";
 import { AiCollectionGenerationAction } from "@/features/ai/components/ai-collection-generation-dialog.tsx";
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { StudyCollectionStart } from "@/components/study-collection-start.tsx";
 import {
@@ -583,24 +573,25 @@ export const FlashcardCollectionPage = () => {
       </section>
 
       <ArchiveConfirmation
+        actionLabel="Arquivar flashcard"
         description="O flashcard deixará de aparecer entre os materiais ativos, mas poderá ser restaurado."
         disabled={batch.isPending}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pendingArchive) return;
-          const card = pendingArchive;
+          await performCardAction("archive", pendingArchive, true);
           setPendingArchive(null);
-          void performCardAction("archive", card, true);
         }}
         onOpenChange={(open) => !open && setPendingArchive(null)}
         open={Boolean(pendingArchive)}
         title="Arquivar flashcard?"
       />
       <ArchiveConfirmation
+        actionLabel="Arquivar flashcards"
         description="Os itens selecionados deixarão de aparecer entre os materiais ativos e poderão ser restaurados posteriormente."
         disabled={batch.isPending}
-        onConfirm={() => {
+        onConfirm={async () => {
+          await performBatch("archive");
           setBatchArchiveOpen(false);
-          void performBatch("archive");
         }}
         onOpenChange={setBatchArchiveOpen}
         open={batchArchiveOpen}
@@ -631,34 +622,20 @@ export const FlashcardCollectionPage = () => {
         pendingDelete={pendingDelete}
         selectedCount={selected.size}
       />
-      <AlertDialog
-        open={moveOpen}
+      <ConfirmationDialog
+        actionLabel={moveCard ? "Mover flashcard" : "Mover flashcards"}
+        description={`Escolha outra coleção para ${moveCard ? "este card" : "os cards selecionados"}.`}
+        disabled={moveTarget === collectionId}
+        onConfirm={performMove}
         onOpenChange={(open) => {
           setMoveOpen(open);
           if (!open) setMoveCard(null);
         }}
+        open={moveOpen}
+        title={moveCard ? "Mover flashcard" : `Mover ${selected.size} flashcards`}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {moveCard ? "Mover flashcard" : `Mover ${selected.size} flashcards`}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Escolha outra coleção para {moveCard ? "este card" : "os cards selecionados"}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <CollectionPicker onChange={setMoveTarget} value={moveTarget} />
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <Button
-              disabled={batch.isPending || moveTarget === collectionId}
-              onClick={() => void performMove()}
-            >
-              Mover
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        <CollectionPicker onChange={setMoveTarget} value={moveTarget} />
+      </ConfirmationDialog>
       <PracticeSetupDialog
         collectionId={collectionId}
         onOpenChange={setPracticeOpen}
@@ -670,7 +647,7 @@ export const FlashcardCollectionPage = () => {
         open={importOpen}
       />
       <ConfirmationDialog
-        actionLabel="Descartar"
+        actionLabel="Descartar alterações"
         cancelLabel="Continuar editando"
         description="A pergunta ou resposta atual ainda não foi salva."
         destructive
@@ -722,6 +699,7 @@ const SelectionBar = ({
 );
 
 const ArchiveConfirmation = ({
+  actionLabel,
   description,
   disabled,
   onConfirm,
@@ -729,18 +707,18 @@ const ArchiveConfirmation = ({
   open,
   title,
 }: {
+  actionLabel: string;
   description: string;
   disabled: boolean;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   title: string;
 }) => (
   <ConfirmationDialog
-    actionLabel="Arquivar"
+    actionLabel={actionLabel}
     description={description}
     pending={disabled}
-    media={<ArchiveIcon />}
     onConfirm={onConfirm}
     onOpenChange={onOpenChange}
     open={open}
@@ -769,22 +747,20 @@ const DeleteDialogs = ({
 }) => (
   <>
     <ConfirmationDialog
-      actionLabel="Excluir"
+      actionLabel="Excluir flashcard"
       description="O conteúdo e todo o histórico deste card serão excluídos definitivamente."
       destructive
       pending={batchPending}
-      media={<Trash2Icon />}
       open={Boolean(pendingDelete)}
       onOpenChange={(open) => !open && onPendingDeleteChange(null)}
       onConfirm={onDeleteOne}
       title="Excluir flashcard?"
     />
     <ConfirmationDialog
-      actionLabel="Excluir"
+      actionLabel="Excluir flashcards"
       description="Os conteúdos e históricos selecionados serão excluídos definitivamente."
       destructive
       pending={batchPending}
-      media={<Trash2Icon />}
       onConfirm={onDeleteBatch}
       onOpenChange={onBatchDeleteOpenChange}
       open={batchDeleteOpen}

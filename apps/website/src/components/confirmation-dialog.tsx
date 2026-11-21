@@ -7,7 +7,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -19,8 +18,6 @@ export const ConfirmationDialog = ({
   description,
   destructive = false,
   disabled = false,
-  media,
-  mediaClassName,
   onConfirm,
   onOpenChange,
   open,
@@ -33,8 +30,6 @@ export const ConfirmationDialog = ({
   description: ReactNode;
   destructive?: boolean;
   disabled?: boolean;
-  media?: ReactNode;
-  mediaClassName?: string;
   onConfirm: () => void | Promise<void>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -42,19 +37,20 @@ export const ConfirmationDialog = ({
   pending?: boolean;
   title: ReactNode;
 }) => {
-  // While the confirmed action runs, its button says so ("Excluindo") instead of greying out.
+  // While the confirmed action runs, its button says so ("Excluindo") and the dialog stays open.
   const [running, setRunning] = useState(false);
+  const busy = running || pending;
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
       <AlertDialogContent>
+        {/* No icon on top: the title and the action's label name what happens. */}
         <AlertDialogHeader>
-          {media && <AlertDialogMedia className={mediaClassName}>{media}</AlertDialogMedia>}
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         {children}
         <AlertDialogFooter>
-          <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogCancel disabled={busy}>{cancelLabel}</AlertDialogCancel>
           <Button
             disabled={disabled}
             onClick={async () => {
@@ -65,7 +61,7 @@ export const ConfirmationDialog = ({
                 setRunning(false);
               }
             }}
-            pending={running || pending}
+            pending={busy}
             variant={destructive ? "destructive" : "default"}
           >
             {actionLabel}

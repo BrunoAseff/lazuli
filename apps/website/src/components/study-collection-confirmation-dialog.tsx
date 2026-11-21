@@ -1,4 +1,3 @@
-import { AlertTriangleIcon, ArchiveIcon } from "@/components/icons.tsx";
 import type { ReactNode } from "react";
 
 import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
@@ -29,12 +28,8 @@ export const StudyCollectionConfirmationDialog = ({
       description={description}
       destructive={deleting}
       pending={pending}
-      media={
-        deleting ? <AlertTriangleIcon aria-hidden="true" /> : <ArchiveIcon aria-hidden="true" />
-      }
-      mediaClassName={deleting ? "bg-destructive/10 text-destructive" : undefined}
       onConfirm={onConfirm}
-      onOpenChange={(next) => !pending && onOpenChange(next)}
+      onOpenChange={onOpenChange}
       open={open}
       title={title}
     />

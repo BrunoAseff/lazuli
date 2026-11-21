@@ -496,20 +496,19 @@ export const QuizCollectionPage = () => {
         </div>
       </section>
       <ConfirmationDialog
-        actionLabel="Arquivar"
+        actionLabel="Arquivar questão"
         open={Boolean(pendingArchive)}
         title="Arquivar questão?"
         description="A questão deixará de aparecer entre os materiais ativos, mas poderá ser restaurada."
         onOpenChange={(open) => !open && setPendingArchive(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!pendingArchive) return;
-          const question = pendingArchive;
+          await changeStatus(pendingArchive, true);
           setPendingArchive(null);
-          void changeStatus(question, true);
         }}
       />
       <ConfirmationDialog
-        actionLabel="Excluir"
+        actionLabel="Excluir questão"
         destructive
         open={Boolean(pendingDelete)}
         title="Excluir questão?"
@@ -530,13 +529,13 @@ export const QuizCollectionPage = () => {
         }}
       />
       <ConfirmationDialog
-        actionLabel={
+        actionLabel={`${
           batchAction === "delete"
             ? "Excluir"
             : batchAction === "restore"
               ? "Restaurar"
               : "Arquivar"
-        }
+        } questões`}
         destructive={batchAction === "delete"}
         open={Boolean(batchAction)}
         title={`${
@@ -554,13 +553,13 @@ export const QuizCollectionPage = () => {
               : "As questões poderão ser restauradas depois."
         }
         onOpenChange={(open) => !open && setBatchAction(null)}
-        onConfirm={() => {
-          if (batchAction) void performBatch(batchAction);
+        onConfirm={async () => {
+          if (batchAction) await performBatch(batchAction);
         }}
       />
       <QuizStartDialog collectionId={collectionId} open={startOpen} onOpenChange={setStartOpen} />
       <ConfirmationDialog
-        actionLabel="Descartar"
+        actionLabel="Descartar alterações"
         cancelLabel="Continuar editando"
         destructive
         open={Boolean(pendingEditor)}

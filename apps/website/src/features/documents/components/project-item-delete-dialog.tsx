@@ -1,15 +1,6 @@
 import type { ProjectTreeItem } from "@lazuli/shared";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
+import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 
 export const ProjectItemDeleteDialog = ({
   item,
@@ -17,27 +8,23 @@ export const ProjectItemDeleteDialog = ({
   onOpenChange,
 }: {
   item: ProjectTreeItem | null;
-  onConfirm: (item: ProjectTreeItem) => void;
+  onConfirm: (item: ProjectTreeItem) => Promise<void>;
   onOpenChange: (open: boolean) => void;
-}) => (
-  <AlertDialog onOpenChange={onOpenChange} open={Boolean(item)}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>
-          Excluir {item?.type === "folder" ? "pasta" : "documento"}?
-        </AlertDialogTitle>
-        <AlertDialogDescription>
-          {item?.type === "folder"
-            ? "Todos os documentos e pastas dentro dela também serão excluídos."
-            : "O conteúdo e as imagens deste documento serão excluídos permanentemente."}
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-        <AlertDialogAction variant="destructive" onClick={() => item && onConfirm(item)}>
-          Excluir
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
-);
+}) => {
+  const noun = item?.type === "folder" ? "pasta" : "documento";
+  return (
+    <ConfirmationDialog
+      actionLabel={`Excluir ${noun}`}
+      description={
+        item?.type === "folder"
+          ? "Todos os documentos e pastas dentro dela também serão excluídos."
+          : "O conteúdo e as imagens deste documento serão excluídos permanentemente."
+      }
+      destructive
+      onConfirm={() => (item ? onConfirm(item) : undefined)}
+      onOpenChange={onOpenChange}
+      open={Boolean(item)}
+      title={`Excluir ${noun}?`}
+    />
+  );
+};

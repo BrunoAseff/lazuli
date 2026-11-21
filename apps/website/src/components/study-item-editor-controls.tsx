@@ -8,16 +8,7 @@ import {
   SlidersHorizontalIcon,
 } from "@/components/icons.tsx";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog.tsx";
+import { ConfirmationDialog } from "@/components/confirmation-dialog.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip.tsx";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -119,20 +110,16 @@ export const DiscardStudyItemChangesDialog = ({
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) => (
-  <AlertDialog open={open} onOpenChange={onOpenChange}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
-        <AlertDialogDescription>{description}</AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>Continuar editando</AlertDialogCancel>
-        <AlertDialogAction onClick={onDiscard} variant="destructive">
-          Descartar
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
+  <ConfirmationDialog
+    actionLabel="Descartar alterações"
+    cancelLabel="Continuar editando"
+    description={description}
+    destructive
+    onConfirm={onDiscard}
+    onOpenChange={onOpenChange}
+    open={open}
+    title="Descartar alterações?"
+  />
 );
 
 export const StudyItemDetails = ({
