@@ -1,8 +1,8 @@
 /** BlockNote 0.54 icon adapter. Keep its behavior; render the same free Stroke Rounded family. */
 import { createIcon } from "./icons.tsx";
 import {
-  AlignLeftIcon as AlignLeftIconData,
-  AlignRightIcon as AlignRightIconData,
+  TextAlignLeftIcon as TextAlignLeftIconData,
+  TextAlignRightIcon as TextAlignRightIconData,
   ArrowLeftRightIcon as ArrowLeftRightIconData,
   ArrowUpRightIcon as ArrowUpRightIconData,
   BoldIcon as BoldIconData,
@@ -51,13 +51,18 @@ import {
   VideoIcon as VideoIconData,
   VolumeHighIcon as VolumeHighIconData,
   XIcon as XIconData,
+  ArrowDown01Icon as ArrowDown01IconData,
+  AlertCircleIcon as AlertCircleIconData,
+  DragDropVerticalIcon as DragDropVerticalIconData,
+  LeftToRightBlockQuoteIcon as LeftToRightBlockQuoteIconData,
+  ArrowTurnBackwardIcon as ArrowTurnBackwardIconData,
 } from "@hugeicons/core-free-icons";
 
 export const RiAddFill = /* @__PURE__ */ createIcon(PlusIconData);
 export const RiAlignCenter = /* @__PURE__ */ createIcon(TextAlignCenterIconData);
 export const RiAlignJustify = /* @__PURE__ */ createIcon(TextAlignJustifyIconData);
-export const RiAlignLeft = /* @__PURE__ */ createIcon(AlignLeftIconData);
-export const RiAlignRight = /* @__PURE__ */ createIcon(AlignRightIconData);
+export const RiAlignLeft = /* @__PURE__ */ createIcon(TextAlignLeftIconData);
+export const RiAlignRight = /* @__PURE__ */ createIcon(TextAlignRightIconData);
 export const RiArrowGoBackFill = /* @__PURE__ */ createIcon(RotateCcwIconData);
 export const RiArrowLeftRightLine = /* @__PURE__ */ createIcon(ArrowLeftRightIconData);
 export const RiBold = /* @__PURE__ */ createIcon(BoldIconData);
@@ -108,3 +113,11 @@ export const RiText = /* @__PURE__ */ createIcon(TypeIconData);
 export const RiUnderline = /* @__PURE__ */ createIcon(UnderlineIconData);
 export const RiVideoFill = /* @__PURE__ */ createIcon(VideoIconData);
 export const RiVolumeUpFill = /* @__PURE__ */ createIcon(VolumeHighIconData);
+
+/* Icons BlockNote bundles from other react-icons sets (see vite/blocknote-icons.ts). */
+export const AiOutlinePlus = /* @__PURE__ */ createIcon(PlusIconData);
+export const MdArrowDropDown = /* @__PURE__ */ createIcon(ArrowDown01IconData);
+export const MdKeyboardReturn = /* @__PURE__ */ createIcon(ArrowTurnBackwardIconData);
+export const MdErrorOutline = /* @__PURE__ */ createIcon(AlertCircleIconData);
+export const MdDragIndicator = /* @__PURE__ */ createIcon(DragDropVerticalIconData);
+export const TbBlockquote = /* @__PURE__ */ createIcon(LeftToRightBlockQuoteIconData);

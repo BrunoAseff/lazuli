@@ -3,17 +3,20 @@ import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 
+import { blockNoteIcons, editorIconModule } from "./vite/blocknote-icons.ts";
+
 export default defineConfig({
   envDir: fileURLToPath(new URL("../../", import.meta.url)),
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), blockNoteIcons()],
+  // BlockNote is pre-bundled in development: its icons are swapped there too.
+  optimizeDeps: {
+    rolldownOptions: { external: [editorIconModule], plugins: [blockNoteIcons()] },
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
-      // BlockNote's internal controls join the product icon family without patching node_modules.
+      // BlockNote's shadcn controls import lucide-react: they join the product icon family.
       "lucide-react": fileURLToPath(new URL("./src/components/icons.tsx", import.meta.url)),
-      "react-icons/ri": fileURLToPath(
-        new URL("./src/components/editor-icons.tsx", import.meta.url),
-      ),
     },
   },
   server: {
