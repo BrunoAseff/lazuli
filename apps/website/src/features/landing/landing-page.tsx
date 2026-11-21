@@ -7,7 +7,6 @@ import { LapisField } from "@/components/brand/lapis-field.tsx";
 import { LazuliWordmark } from "@/components/brand-mark.tsx";
 import { ArrowRightIcon, MinusIcon, PlusIcon } from "@/components/icons.tsx";
 import { LegalLinks } from "@/features/legal/legal-links.tsx";
-import { spring } from "@/lib/motion.ts";
 import { cn } from "@/lib/utils.ts";
 
 import { resetAccountEntryScroll } from "./account-navigation.ts";
@@ -138,7 +137,15 @@ const Chapter = ({
       )}
       id={id}
     >
-      <div className={flip ? "lg:order-2" : undefined}>
+      {/* Reflexo: the chapter lights up in place (title and text, then the demo), and a band of
+          light crosses the demo once, like light over a facet. Nothing moves. */}
+      <motion.div
+        className={flip ? "lg:order-2" : undefined}
+        initial={reduced ? false : { opacity: 0 }}
+        transition={{ duration: 0.5 }}
+        viewport={{ once: true, margin: "-15% 0px" }}
+        whileInView={{ opacity: 1 }}
+      >
         <h2
           className="font-reading text-3xl leading-tight font-medium text-balance sm:text-4xl"
           id={`${id}-title`}
@@ -146,15 +153,31 @@ const Chapter = ({
           {title}
         </h2>
         <p className="mt-3 max-w-md text-lg leading-relaxed text-muted-foreground">{lead}</p>
-      </div>
+      </motion.div>
       <motion.div
-        className={flip ? "lg:order-1" : undefined}
-        initial={reduced ? false : { opacity: 0, y: 20 }}
-        transition={spring.settle}
+        className={cn("relative isolate", flip && "lg:order-1")}
+        initial={reduced ? false : "hidden"}
         viewport={{ once: true, margin: "-15% 0px" }}
-        whileInView={{ opacity: 1, y: 0 }}
+        whileInView="shown"
       >
-        {demo}
+        <motion.div
+          transition={{ duration: 0.5, delay: 0.15 }}
+          variants={{ hidden: { opacity: 0 }, shown: { opacity: 1 } }}
+        >
+          {demo}
+        </motion.div>
+        {!reduced && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-[var(--radius-panel)]"
+          >
+            <motion.span
+              className="absolute inset-y-[-20%] left-0 w-1/3 -skew-x-12 bg-[linear-gradient(90deg,transparent,rgb(255_255_255/0.55),transparent)] mix-blend-soft-light dark:bg-[linear-gradient(90deg,transparent,rgb(255_255_255/0.18),transparent)] dark:mix-blend-screen"
+              transition={{ duration: 1.1, delay: 0.45, ease: [0.4, 0, 0.2, 1] }}
+              variants={{ hidden: { x: "-120%" }, shown: { x: "320%" } }}
+            />
+          </span>
+        )}
       </motion.div>
     </section>
   );
