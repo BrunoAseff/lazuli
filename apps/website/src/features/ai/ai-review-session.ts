@@ -27,13 +27,23 @@ export const readAiReviewSession = (operationId: string): AiReviewSession | null
   }
 };
 
+/** Keeps the review across a reload; when storage is full or blocked, the review just lives in memory. */
 export const writeAiReviewSession = (operationId: string, value: AiReviewSession) => {
   if (!operationId) return;
-  window.sessionStorage.setItem(key(operationId), JSON.stringify(value));
+  try {
+    window.sessionStorage.setItem(key(operationId), JSON.stringify(value));
+  } catch {
+    // Too large or not allowed: nothing to restore after a reload, the review itself goes on.
+  }
 };
 
 export const clearAiReviewSession = (operationId: string) => {
-  if (operationId) window.sessionStorage.removeItem(key(operationId));
+  if (!operationId) return;
+  try {
+    window.sessionStorage.removeItem(key(operationId));
+  } catch {
+    // Storage blocked: there was nothing saved.
+  }
 };
 
 export const updateAiReviewReference = ({

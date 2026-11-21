@@ -42,7 +42,7 @@ export const createLifecycleEmail = (
   payload: LifecycleEmailPayload,
   websiteUrl: string,
 ) => {
-  if (kind === "export_ready") return createAccountExportEmail({ name: payload.name });
+  if (kind === "export_ready") return createAccountExportEmail({ name: payload.name, websiteUrl });
   const date = payload.effectiveAt
     ? new Intl.DateTimeFormat("pt-BR", {
         dateStyle: "long",
@@ -108,6 +108,7 @@ export const createLifecycleEmail = (
       childrenHtml: `${emailParagraph(escapeEmailHtml(greeting))}${emailParagraph(escapeEmailHtml(content.body))}`,
       footerHtml: "Esta mensagem confirma uma atividade da sua conta no Lazúli.",
       action: content.action && href ? { href, label: content.action.label } : undefined,
+      websiteUrl,
     }),
   };
 };

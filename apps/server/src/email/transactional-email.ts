@@ -35,8 +35,7 @@ export const emailParagraph = (html: string, options: { secondary?: boolean } = 
   `<p style="margin:0 0 14px;color:${options.secondary ? EMAIL_COLORS.muted : EMAIL_COLORS.ink};font-family:${SANS};font-size:${options.secondary ? 14 : 16}px;line-height:1.65">${html}</p>`;
 
 /** The app icon (the gem on lapis night), served by the website; a drawn gem when there is none. */
-const brandMark = () => {
-  const website = process.env.WEBSITE_URL;
+const brandMark = (website?: string) => {
   if (website) {
     const src = escapeEmailHtml(new URL("/icon-192.png", website).toString());
     return `<img src="${src}" width="32" height="32" alt="" style="display:block;width:32px;height:32px;border:0;border-radius:8px">`;
@@ -53,6 +52,8 @@ type TransactionalEmailOptions = {
   footerHtml: string;
   preheader: string;
   title: string;
+  /** The validated WEBSITE_URL, where the app icon is served. */
+  websiteUrl?: string;
 };
 
 export const createTransactionalEmailHtml = ({
@@ -61,6 +62,7 @@ export const createTransactionalEmailHtml = ({
   footerHtml,
   preheader,
   title,
+  websiteUrl,
 }: TransactionalEmailOptions) => {
   const safeHref = action ? escapeEmailHtml(action.href) : null;
   const safeActionLabel = action ? escapeEmailHtml(action.label) : null;
@@ -86,7 +88,7 @@ export const createTransactionalEmailHtml = ({
               <td style="padding:0 4px 22px">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                   <tr>
-                    <td width="32" valign="middle">${brandMark()}</td>
+                    <td width="32" valign="middle">${brandMark(websiteUrl)}</td>
                     <td valign="middle" style="padding-left:10px;font-family:${SERIF};font-size:23px;font-weight:500;line-height:1;color:${EMAIL_COLORS.ink}">${APP_NAME}</td>
                   </tr>
                 </table>

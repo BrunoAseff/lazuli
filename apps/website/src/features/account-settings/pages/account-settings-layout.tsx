@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { cn } from "@/lib/utils.ts";
+import { authClient } from "@/features/auth/auth-client.ts";
 import { prefetchAccountSettings } from "../api/account-settings-queries.ts";
 import { SettingsLoading } from "../components/settings-ui.tsx";
 
@@ -45,10 +46,11 @@ export const AccountSettingsLayout = () => {
   const navigate = useNavigate();
   const current = sections.find(({ path }) => location.pathname === path) ?? sections[0];
   const client = useQueryClient();
+  const userId = authClient.useSession().data?.user.id ?? "";
   useEffect(() => {
     void preloadSections();
-    void prefetchAccountSettings(client);
-  }, [client]);
+    void prefetchAccountSettings(client, userId);
+  }, [client, userId]);
 
   return (
     <ContentPage maxWidth="5xl">

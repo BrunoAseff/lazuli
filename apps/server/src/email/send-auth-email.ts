@@ -26,7 +26,9 @@ export const createAuthEmailSender = (
   env: ServerEnv,
   logger: FastifyBaseLogger,
   options: {
-    createMessage: (data: Pick<AuthEmailData, "name" | "url">) => AuthEmailMessage;
+    createMessage: (
+      data: Pick<AuthEmailData, "name" | "url"> & { websiteUrl: string },
+    ) => AuthEmailMessage;
     idempotencyPrefix: string;
     logMessage: string;
   },
@@ -34,7 +36,7 @@ export const createAuthEmailSender = (
   const send = createEmailTransport(env);
 
   return async ({ email, name, token, url }: AuthEmailData) => {
-    const message = options.createMessage({ name, url });
+    const message = options.createMessage({ name, url, websiteUrl: env.WEBSITE_URL });
     const operationId = createHash("sha256").update(token).digest("hex").slice(0, 32);
     await send({
       to: email,

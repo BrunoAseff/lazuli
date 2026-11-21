@@ -35,8 +35,10 @@ export const QuizStartDialog = ({
   // Which of the two buttons started the attempt, so only that one says it is working.
   const restarting = Boolean(start.variables?.abandonActive);
   const begin = async (abandonActive = false) => {
-    if (active && !abandonActive)
+    if (active && !abandonActive) {
+      onOpenChange(false);
       return void navigate(`/quizzes/${collectionId}/attempts/${active.id}`);
+    }
     try {
       const attempt = await start.mutateAsync({ id: crypto.randomUUID(), abandonActive });
       onOpenChange(false);

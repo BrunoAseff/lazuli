@@ -137,7 +137,7 @@ export const DeleteQuizCollectionDialog = ({
             ? "A coleção ainda não possui questões."
             : `${collection.totalQuestions} ${collection.totalQuestions === 1 ? "questão será excluída" : "questões serão excluídas"}.`}{" "}
           {collection.totalAttempts > 0
-            ? `O histórico de ${collection.totalAttempts} ${collection.totalAttempts === 1 ? "tentativa também será excluído" : "tentativas também será excluído"}. `
+            ? `O histórico de ${collection.totalAttempts} ${collection.totalAttempts === 1 ? "tentativa" : "tentativas"} também será excluído. `
             : ""}
           Esta ação não pode ser desfeita.
         </>

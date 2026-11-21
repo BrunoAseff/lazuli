@@ -1,7 +1,13 @@
-import type { CreateAccountExportInput, DeleteAccountInput } from "@lazuli/shared";
+import {
+  accountUsageSchema,
+  type CreateAccountExportInput,
+  type DeleteAccountInput,
+} from "@lazuli/shared";
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { apiRequest } from "@/lib/api-client.ts";
 import { QUERY_KEY_ROOTS } from "@/lib/query-key-roots.ts";
+import { analyticsPreferenceQuery } from "@/features/analytics/api/analytics-queries.ts";
 import {
   deleteAccount,
   fetchAccountProfile,
@@ -21,13 +27,20 @@ export const accountSettingsKeys = {
   profile: () => [...QUERY_KEY_ROOTS.accountSettings, "profile"] as const,
   sessions: () => [...QUERY_KEY_ROOTS.accountSettings, "sessions"] as const,
   study: () => [...QUERY_KEY_ROOTS.accountSettings, "study"] as const,
+  usage: () => [...QUERY_KEY_ROOTS.accountSettings, "usage"] as const,
 };
+
+export const accountUsageQuery = () => ({
+  queryKey: accountSettingsKeys.usage(),
+  queryFn: ({ signal }: { signal: AbortSignal }) =>
+    apiRequest("/api/account-settings/usage", accountUsageSchema, { signal }),
+});
 
 export const useAuthCapabilities = () =>
   useQuery({
     queryKey: accountSettingsKeys.capabilities(),
     queryFn: ({ signal }) => fetchAuthCapabilities(signal),
-    refetchOnMount: "always",
+    // Fresh from the prefetch when Settings opens; linking or unlinking invalidates it.
     staleTime: 60_000,
   });
 
@@ -91,8 +104,10 @@ export const useDeleteAccount = () =>
  * Everything the settings sections read, fetched as soon as Settings opens, so switching tabs
  * shows the section instead of waiting for it.
  */
-export const prefetchAccountSettings = (client: QueryClient) =>
+export const prefetchAccountSettings = (client: QueryClient, userId: string) =>
   Promise.allSettled([
+    client.prefetchQuery(accountUsageQuery()),
+    ...(userId ? [client.prefetchQuery(analyticsPreferenceQuery(userId))] : []),
     client.prefetchQuery({
       queryKey: accountSettingsKeys.profile(),
       queryFn: ({ signal }) => fetchAccountProfile(signal),
