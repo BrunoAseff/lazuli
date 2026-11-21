@@ -77,6 +77,14 @@ Códigos: **S** segurança · **Q** qualidade · **R** DRY/YAGNI · **D** design
 
 ## P3 — Corrigir quando passar pela área
 
+> **Corrigidos em 20/11** (b32bc71, 0013df4, e207877, 7222941, 840764a, c7d70f7, 125a8a7). Notas:
+>
+> - 20: o CSP publicado é só a base (`base-uri`, `object-src`, `frame-ancestors`, `form-action`) mais HSTS. Restringir `script-src`/`connect-src` exige as origens de produção (API, PostHog, armazenamento) e um hash do script de tema. `TRUST_PROXY` no Railway ainda precisa ser conferido.
+> - 26: a frase estava certa ("o histórico … será excluído"); só tirei a repetição.
+> - 30: pickers (documento, coleção, projeto, material existente) mantêm o fundo de item de menu; listas de conteúdo sublinham.
+> - 33: padrão "Novo X" / "Gerar X com IA".
+> - 39: resolvido ao tirar a prévia da landing.
+
 **Segurança** 17. **S · `returnTo` aceita `/\host`** — `features/documents/document-navigation.ts:1-2`. Ctrl+clique no "Voltar" abre o site externo. Validar a origem com `new URL`. 18. **S · Nome do usuário entra cru no texto dos e-mails** — `email/verification-email.ts:14`. Dá para mandar texto de golpe pelo domínio legítimo cadastrando o e-mail de outra pessoa. Restringir o nome ou omiti-lo no e-mail de cadastro. 19. **S · Injeção de fórmula no CSV da exportação** — `account-export-worker.ts:61`. Prefixar com `'` células que começam com `= + - @`. 20. **S · Sem Content-Security-Policy nem HSTS** — `apps/website/public/_headers`. Defesa em profundidade. Confirmar também `TRUST_PROXY` no Railway (sem ele o limite de reset/verificação vira global).
 
 **Qualidade** 21. **Q · Prefetch das configurações não cobre "Uso" e analytics e busca `capabilities` duas vezes** — `account-settings-queries.ts:94-112`. 22. **Q · Gravar a revisão da IA no sessionStorage pode quebrar com muitas propostas** — `ai-review-session.ts:30-37` (sem try/catch). 23. **Q · E-mails leem `process.env.WEBSITE_URL` em vez do env validado** — `transactional-email.ts:38-45`. 24. **Q · Worker de e-mail descarta o erro ao falhar o envio** — `email-worker.ts:132,151` (`catch {}`). 25. **Q · "Continuar" no diálogo do quiz navega sem fechar o diálogo** — `quiz-start-dialog.tsx:37-39`. 26. **R · Erro de concordância** — `quiz-collection-dialogs.tsx:140`: "tentativas também **será excluído**" → "serão excluídas".
