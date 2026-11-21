@@ -1,7 +1,7 @@
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import rawBody from "fastify-raw-body";
-import Fastify from "fastify";
+import Fastify, { LogController } from "fastify";
 
 import { createAiCreditReconciler } from "./ai-credits/ai-credit-reconciler.ts";
 import { createAccountDeletionLifecycle } from "./account-settings/account-deletion.ts";
@@ -53,7 +53,7 @@ import { getLegalStatus } from "./legal/legal-service.ts";
 export const buildApp = (env: ServerEnv) => {
   const app = Fastify({
     // Requests are logged by route pattern (see logRequest), never by URL.
-    disableRequestLogging: true,
+    logController: new LogController({ disableRequestLogging: true }),
     loggerInstance: createLogger(env),
     trustProxy: env.TRUST_PROXY,
   });

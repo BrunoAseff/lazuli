@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { LogController } from "fastify";
 import pino from "pino";
 import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
@@ -14,7 +14,10 @@ describe("request log", () => {
         done();
       },
     });
-    const app = Fastify({ disableRequestLogging: true, loggerInstance: pino({}, sink) });
+    const app = Fastify({
+      logController: new LogController({ disableRequestLogging: true }),
+      loggerInstance: pino({}, sink),
+    });
     app.addHook("onResponse", logRequest);
     app.get("/api/auth/*", async () => ({ ok: true }));
 
