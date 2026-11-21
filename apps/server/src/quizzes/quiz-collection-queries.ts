@@ -1,49 +1,24 @@
-import type {
-  CreateQuizCollectionInput,
-  QuizCollectionListQuery,
-  UpdateQuizCollectionInput,
-} from "@lazuli/shared";
-import { and, count, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
 import type { Database, QueryExecutor } from "../database/client.ts";
-import { escapeLikePattern } from "../database/sql-search.ts";
 import {
   asset,
-  project,
   quizAttempt,
   quizAttemptAsset,
   quizCollection,
   quizQuestion,
 } from "../database/schema/index.ts";
-import { ownsProject } from "../projects/project-ownership.ts";
 import { releaseStoredObjects } from "../storage/storage-cleanup.ts";
 import { deleteReferencesForTargets } from "../references/reference-queries.ts";
-import { isFavoriteSql } from "../favorites/favorite-queries.ts";
-
-const collectionSelection = {
-  id: quizCollection.id,
-  title: quizCollection.title,
-  projectId: project.id,
-  projectTitle: project.title,
-  archivedAt: quizCollection.archivedAt,
-  createdAt: quizCollection.createdAt,
-  updatedAt: quizCollection.updatedAt,
-};
-
-type CollectionRow = {
-  id: string;
-  title: string;
-  projectId: string | null;
-  projectTitle: string | null;
-  archivedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
+import {
+  createStudyCollectionQueries,
+  type StudyCollectionRow,
+} from "../study-collections/study-collection-queries.ts";
 
 const enrichCollections = async (
   database: QueryExecutor,
   userId: string,
-  rows: CollectionRow[],
+  rows: StudyCollectionRow[],
 ) => {
   if (rows.length === 0) return [];
   const collectionIds = rows.map(({ id }) => id);
@@ -124,136 +99,16 @@ const enrichCollections = async (
   });
 };
 
-const createCollectionWhere = (userId: string, input: QuizCollectionListQuery) =>
-  and(
-    eq(quizCollection.userId, userId),
-    input.favorites === "only" ? isFavoriteSql(userId, "quizzes", quizCollection.id) : undefined,
-    input.status === "active"
-      ? isNull(quizCollection.archivedAt)
-      : isNotNull(quizCollection.archivedAt),
-    input.project === "none"
-      ? isNull(quizCollection.projectId)
-      : input.project
-        ? eq(quizCollection.projectId, input.project)
-        : undefined,
-    input.query
-      ? sql<boolean>`unaccent(lower(${quizCollection.title})) LIKE unaccent(lower(${`%${escapeLikePattern(input.query)}%`})) ESCAPE ${"\\"}`
-      : undefined,
-  );
+const quizCollectionQueries = createStudyCollectionQueries({
+  enrich: (database, userId, rows) => enrichCollections(database, userId, rows),
+  favoriteKind: "quizzes",
+  table: quizCollection,
+});
 
-export const listQuizCollections = async (
-  database: Database,
-  userId: string,
-  input: QuizCollectionListQuery,
-) => {
-  const where = createCollectionWhere(userId, input);
-  const [total, rows] = await Promise.all([
-    database.select({ value: count() }).from(quizCollection).where(where),
-    database
-      .select(collectionSelection)
-      .from(quizCollection)
-      .leftJoin(project, and(eq(project.id, quizCollection.projectId), eq(project.userId, userId)))
-      .where(where)
-      .orderBy(desc(quizCollection.createdAt), desc(quizCollection.id))
-      .limit(input.pageSize)
-      .offset((input.page - 1) * input.pageSize),
-  ]);
-  const totalItems = total[0]?.value ?? 0;
-  return {
-    items: await enrichCollections(database, userId, rows),
-    pagination: {
-      page: input.page,
-      pageSize: input.pageSize,
-      totalItems,
-      totalPages: totalItems === 0 ? 0 : Math.ceil(totalItems / input.pageSize),
-    },
-  };
-};
-
-export const getQuizCollection = async (
-  database: QueryExecutor,
-  userId: string,
-  collectionId: string,
-) => {
-  const [row] = await database
-    .select(collectionSelection)
-    .from(quizCollection)
-    .leftJoin(project, and(eq(project.id, quizCollection.projectId), eq(project.userId, userId)))
-    .where(and(eq(quizCollection.id, collectionId), eq(quizCollection.userId, userId)))
-    .limit(1);
-  if (!row) return null;
-  return (await enrichCollections(database, userId, [row]))[0] ?? null;
-};
-
-export const createQuizCollection = async (
-  database: Database,
-  userId: string,
-  input: CreateQuizCollectionInput,
-) =>
-  database.transaction(async (tx) => {
-    if (input.projectId && !(await ownsProject(tx, userId, input.projectId)))
-      return { kind: "project-not-found" as const };
-    const [inserted] = await tx
-      .insert(quizCollection)
-      .values({ ...input, userId })
-      .onConflictDoNothing({ target: quizCollection.id })
-      .returning({ id: quizCollection.id });
-    if (inserted)
-      return {
-        kind: "ok" as const,
-        created: true,
-        collection: await getQuizCollection(tx, userId, inserted.id),
-      };
-    const existing = await getQuizCollection(tx, userId, input.id);
-    if (
-      !existing ||
-      existing.title !== input.title ||
-      (existing.project?.id ?? null) !== input.projectId ||
-      existing.archivedAt !== null
-    )
-      return { kind: "conflict" as const };
-    return { kind: "ok" as const, created: false, collection: existing };
-  });
-
-export const updateQuizCollection = async (
-  database: Database,
-  userId: string,
-  collectionId: string,
-  input: UpdateQuizCollectionInput,
-) =>
-  database.transaction(async (tx) => {
-    if (input.projectId && !(await ownsProject(tx, userId, input.projectId)))
-      return { kind: "project-not-found" as const };
-    const changes = [];
-    const values: {
-      title?: string;
-      projectId?: string | null;
-      archivedAt?: Date | null;
-      updatedAt: Date;
-    } = { updatedAt: new Date() };
-    if (input.title !== undefined) {
-      values.title = input.title;
-      changes.push(sql`${quizCollection.title} is distinct from ${input.title}`);
-    }
-    if (input.projectId !== undefined) {
-      values.projectId = input.projectId;
-      changes.push(sql`${quizCollection.projectId} is distinct from ${input.projectId}`);
-    }
-    if (input.archived !== undefined) {
-      values.archivedAt = input.archived ? new Date() : null;
-      changes.push(
-        input.archived ? isNull(quizCollection.archivedAt) : isNotNull(quizCollection.archivedAt),
-      );
-    }
-    await tx
-      .update(quizCollection)
-      .set(values)
-      .where(
-        and(eq(quizCollection.id, collectionId), eq(quizCollection.userId, userId), or(...changes)),
-      );
-    const collection = await getQuizCollection(tx, userId, collectionId);
-    return collection ? { kind: "ok" as const, collection } : { kind: "not-found" as const };
-  });
+export const listQuizCollections = quizCollectionQueries.list;
+export const getQuizCollection = quizCollectionQueries.get;
+export const createQuizCollection = quizCollectionQueries.create;
+export const updateQuizCollection = quizCollectionQueries.update;
 
 export const deleteQuizCollection = async (
   database: Database,

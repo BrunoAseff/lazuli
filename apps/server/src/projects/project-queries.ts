@@ -18,6 +18,7 @@ import {
 } from "../database/schema/index.ts";
 import { enqueueObjectDeletions, releaseStoredObjects } from "../storage/storage-cleanup.ts";
 import { isFavoriteSql } from "../favorites/favorite-queries.ts";
+import { pageOffset, paginationOf } from "../database/pagination.ts";
 
 const createSearchCondition = (query: string) => {
   if (!query) {
@@ -68,16 +69,11 @@ export const listProjects = async (database: Database, userId: string, input: Pr
     .groupBy(project.id)
     .orderBy(desc(project.createdAt), desc(project.id))
     .limit(input.pageSize)
-    .offset((input.page - 1) * input.pageSize);
+    .offset(pageOffset(input));
 
   return {
     items,
-    pagination: {
-      page: input.page,
-      pageSize: input.pageSize,
-      totalItems,
-      totalPages: totalItems === 0 ? 0 : Math.ceil(totalItems / input.pageSize),
-    },
+    pagination: paginationOf(input, totalItems),
   };
 };
 
@@ -298,15 +294,10 @@ export const listProjectDocuments = async (
     .where(where)
     .orderBy(desc(projectItem.updatedAt), desc(projectItem.id))
     .limit(input.pageSize)
-    .offset((input.page - 1) * input.pageSize);
+    .offset(pageOffset(input));
 
   return {
     items,
-    pagination: {
-      page: input.page,
-      pageSize: input.pageSize,
-      totalItems,
-      totalPages: totalItems === 0 ? 0 : Math.ceil(totalItems / input.pageSize),
-    },
+    pagination: paginationOf(input, totalItems),
   };
 };
