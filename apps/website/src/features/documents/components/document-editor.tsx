@@ -62,6 +62,7 @@ import {
 } from "../api/document-queries.ts";
 import { DOCUMENT_MESSAGES } from "../document-messages.ts";
 import { lazuliBlockNoteDictionary } from "../editor/blocknote-dictionary.ts";
+import { LazuliSideMenuController } from "../editor/lazuli-side-menu.tsx";
 import { documentSchema, type LazuliDocumentBlock } from "../editor/document-schema.tsx";
 import { DocumentFind } from "../editor/document-find.tsx";
 import {
@@ -778,7 +779,7 @@ export const DocumentEditor = ({
               className="lazuli-editor lazuli-document-editor"
               editor={editor}
               formattingToolbar={false}
-              sideMenu={!compactEditorChrome}
+              sideMenu={false}
               onChange={() => {
                 if (saveState !== "conflict") {
                   if (!adjustingAnchorRef.current && !aiAction) setAutoSavePaused(false);
@@ -799,6 +800,7 @@ export const DocumentEditor = ({
               }}
               shadCNComponents={blockNoteComponents}
             >
+              {!compactEditorChrome && <LazuliSideMenuController />}
               {compactEditorChrome ? (
                 <ExperimentalMobileFormattingToolbarController
                   formattingToolbar={formattingToolbar}
