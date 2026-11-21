@@ -60,7 +60,7 @@ export const DocumentReferencesDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-xl">
-        <DialogHeader className="border-b px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <div className="pr-8">
             <div>
               <DialogTitle>
@@ -107,7 +107,7 @@ export const DocumentReferencesDialog = ({
                 : `/quizzes/${reference.material.collectionId}?question=${reference.material.id}`;
               return (
                 <div
-                  className="relative flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[var(--row-hover)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/50"
+                  className="group relative flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/50"
                   key={reference.id}
                 >
                   <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
@@ -117,7 +117,7 @@ export const DocumentReferencesDialog = ({
                     >
                       {(ref) => (
                         <Link
-                          className="block truncate text-sm font-medium outline-none after:absolute after:inset-0 after:rounded-lg"
+                          className="block truncate text-sm font-medium underline-offset-4 outline-none group-hover:underline after:absolute after:inset-0 after:rounded-lg"
                           ref={ref as Ref<HTMLAnchorElement>}
                           to={href}
                         >
@@ -157,7 +157,7 @@ export const DocumentReferencesDialog = ({
           onCreateFlashcard ||
           onCreateQuiz ||
           (onAdjust && Boolean(references.data?.items.length))) && (
-          <div className="flex flex-wrap justify-end gap-2 border-t px-6 py-4">
+          <div className="flex flex-wrap justify-end gap-2 px-6 py-4">
             {showAnchorsOption && (
               <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-sm sm:mr-auto">
                 <Switch checked={anchorsShown} onCheckedChange={setSourceAnchorsShown} />

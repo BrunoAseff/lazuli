@@ -91,7 +91,7 @@ export const DashboardPage = () => {
             queue={data.reviewQueue}
           />
           {/* Centred in its cell, so the stone never leaves a gap under itself. */}
-          <div className="flex items-center border-t border-[var(--line-subtle)] p-6 lg:border-t-0 lg:border-l">
+          <div className="flex items-center p-6 pt-2 lg:border-l lg:border-[var(--line-subtle)] lg:pt-6">
             <div className="w-full">
               <StoneCard />
             </div>

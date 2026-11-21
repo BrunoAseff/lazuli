@@ -301,7 +301,7 @@ export const AiMaterialImprovementDialog = ({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && requestClose()}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        <DialogHeader className="border-b px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <DialogTitle className="pr-8">
             Refinar {material.kind === "flashcard" ? "flashcard" : "questão"}
           </DialogTitle>
@@ -419,7 +419,7 @@ export const AiMaterialImprovementDialog = ({
             )}
           </CreationWorkspace>
         </div>
-        <DialogFooter className="mx-0 mb-0 flex-col border-t px-6 py-4 sm:items-center">
+        <DialogFooter className="mx-0 mb-0 flex-col px-6 py-4 sm:items-center">
           {!draft && (
             <div className="w-full sm:mr-auto sm:w-auto">
               <AiCreditCost cost={AI_CREDITS_PER_ITEM} available={balance.data?.available} />

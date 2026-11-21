@@ -119,7 +119,7 @@ export const FlashcardImportDialog = ({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent className="max-h-[calc(100vh-2rem)] gap-0 overflow-hidden p-0 sm:max-w-3xl">
-        <DialogHeader className="border-b px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <DialogTitle>Importar flashcards</DialogTitle>
           <DialogDescription>
             Revise os pares reconhecidos antes de adicioná-los à coleção.
@@ -259,7 +259,7 @@ export const FlashcardImportDialog = ({
             </div>
           )}
         </div>
-        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+        <DialogFooter className="mx-0 mb-0 px-6 py-4">
           <DialogCancelButton
             disabled={previewImport.isPending || importCards.isPending}
             onClick={close}

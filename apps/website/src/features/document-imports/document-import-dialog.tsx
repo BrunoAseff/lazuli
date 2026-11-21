@@ -78,7 +78,7 @@ export const DocumentImportDialog = ({
       open={open}
     >
       <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b border-border/50 px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <DialogTitle>Importar documentos</DialogTitle>
           <DialogDescription>
             Escolha os arquivos e ajuste os nomes antes de importar, se precisar.
@@ -147,7 +147,7 @@ export const DocumentImportDialog = ({
             </section>
           )}
         </div>
-        <DialogFooter className="mx-0 mb-0 rounded-none border-t border-border/50 px-6 py-4">
+        <DialogFooter className="mx-0 mb-0 rounded-none px-6 py-4">
           <DialogCancelButton disabled={submitting} onClick={() => close(false)}>
             Cancelar
           </DialogCancelButton>

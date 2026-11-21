@@ -119,7 +119,7 @@ export const StoneContributionRow = ({ id, kind }: { id: string; kind: StoneSess
   const contribution = useStoneContribution(kind, id);
   if (!contribution.data) return null;
   return (
-    <div className="mt-6 border-t pt-5">
+    <div className="mt-8">
       <div className="grid gap-4 sm:grid-cols-2 sm:gap-6">
         <GoalPart counted={contribution.data.counted} goal={contribution.data.goal} />
         <MasteryPart {...contribution.data} />

@@ -61,7 +61,7 @@ export const MaterialReferencesButton = ({
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-lg">
-          <DialogHeader className="border-b px-6 py-5">
+          <DialogHeader className="px-6 py-5">
             <DialogTitle className="pr-8">Fontes deste material</DialogTitle>
             <DialogDescription>
               Consulte as fontes sem sair da revisão ou abra o documento completo.

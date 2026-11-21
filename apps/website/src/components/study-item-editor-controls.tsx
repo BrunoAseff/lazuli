@@ -148,7 +148,7 @@ export const StudyItemDetails = ({
     <>
       <Sheet open={open && !inline} onOpenChange={onOpenChange}>
         <SheetContent className="w-[min(24rem,calc(100vw-1rem))] overflow-y-auto p-0 lazuli-thin-scrollbar">
-          <SheetHeader className="border-b px-5 py-5">
+          <SheetHeader className="px-5 py-5">
             <SheetTitle>Organização</SheetTitle>
             <SheetDescription>{description}</SheetDescription>
           </SheetHeader>

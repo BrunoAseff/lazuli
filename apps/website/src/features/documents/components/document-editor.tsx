@@ -682,7 +682,7 @@ export const DocumentEditor = ({
   return (
     <>
       <div className="document-editor-scroll mr-1 lazuli-thin-scrollbar">
-        <header className="document-editor-toolbar @container/toolbar sticky z-20 border-b bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 sm:border-b-0 sm:bg-card/92 sm:px-6">
+        <header className="document-editor-toolbar @container/toolbar sticky z-20 bg-background px-3 sm:bg-card sm:px-6">
           <div className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 py-2">
             <div className="flex min-w-0 items-center gap-3">
               <DocumentSaveStatus

@@ -21,13 +21,13 @@ export const ReferenceDocumentRow = ({
 }) => (
   // The whole row opens the source; trailing actions sit above the stretched link. The row keeps its
   // own padding (no negative margin), so it never overflows a scrolling column.
-  <div className="relative flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[var(--row-hover)] has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/50">
+  <div className="group relative flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/50">
     <FileTextIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
     <div className="min-w-0 flex-1">
       <OverflowTooltip text={documentTitle}>
         {(ref) => (
           <Link
-            className="block truncate text-sm font-medium outline-none after:absolute after:inset-0 after:rounded-lg"
+            className="block truncate text-sm font-medium underline-offset-4 outline-none group-hover:underline after:absolute after:inset-0 after:rounded-lg"
             onClick={onNavigate}
             ref={ref as Ref<HTMLAnchorElement>}
             to={href}

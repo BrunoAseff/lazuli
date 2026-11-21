@@ -122,7 +122,7 @@ export const ExistingMaterialPickerDialog = ({
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        <DialogHeader className="border-b px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <DialogTitle className="pr-8">Conectar flashcards ou questões</DialogTitle>
           <DialogDescription>
             {collectionId
@@ -259,7 +259,7 @@ export const ExistingMaterialPickerDialog = ({
             </div>
           </CreationWorkspace>
         </div>
-        <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+        <DialogFooter className="mx-0 mb-0 px-6 py-4">
           <DialogCancelButton onClick={onCancel}>Cancelar</DialogCancelButton>
           <Button
             pending={create.isPending}

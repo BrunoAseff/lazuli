@@ -532,7 +532,7 @@ export const AiSelectionGenerationDialog = ({
             draft ? "sm:max-w-5xl" : "sm:max-w-lg",
           )}
         >
-          <DialogHeader className={draft ? "border-b px-6 py-5" : "px-6 pt-6"}>
+          <DialogHeader className={draft ? "px-6 py-5" : "px-6 pt-6"}>
             <DialogTitle>
               {draft
                 ? "Revisar propostas"
@@ -699,7 +699,7 @@ export const AiSelectionGenerationDialog = ({
             )}
           </div>
 
-          <DialogFooter className="mx-0 mb-0 shrink-0 flex-col rounded-none border-t px-6 py-4 sm:items-center">
+          <DialogFooter className="mx-0 mb-0 shrink-0 flex-col rounded-none px-6 py-4 sm:items-center">
             {!draft && (
               <div className="w-full sm:mr-auto sm:w-auto">
                 <AiCreditCost cost={cost} available={balance.data?.available} />

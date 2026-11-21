@@ -300,7 +300,7 @@ const QuizQuestionEditor = ({
       {presentation === "dialog" ? (
         <Dialog open={open} onOpenChange={(next) => !next && requestClose()}>
           <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-            <DialogHeader className="border-b px-6 py-5">
+            <DialogHeader className="px-6 py-5">
               <DialogTitle className="pr-8">
                 {question ? "Editar questão" : "Nova questão"}
               </DialogTitle>
@@ -334,7 +334,7 @@ const QuizQuestionEditor = ({
                 )}
               </CreationWorkspace>
             </div>
-            <DialogFooter className="mx-0 mb-0 border-t px-6 py-4">
+            <DialogFooter className="mx-0 mb-0 px-6 py-4">
               <DialogCancelButton disabled={isPending} onClick={requestClose}>
                 Cancelar
               </DialogCancelButton>
@@ -355,7 +355,7 @@ const QuizQuestionEditor = ({
       ) : (
         <div className="grid min-h-0 min-w-0 flex-1 bg-background @min-[960px]/study-workspace:grid-cols-[minmax(0,1fr)_16rem]">
           <section className="@container/editor m-2 flex min-h-0 min-w-0 flex-col overflow-y-auto rounded-xl bg-card px-5 py-4 ring-1 ring-border/45 lazuli-thin-scrollbar sm:px-6 lg:px-8">
-            <header className="sticky top-0 z-10 mx-auto flex min-h-10 w-full max-w-3xl flex-wrap items-center justify-end gap-1.5 bg-card/95 py-2 backdrop-blur-sm sm:gap-2">
+            <header className="sticky top-0 z-10 mx-auto flex min-h-10 w-full max-w-3xl flex-wrap items-center justify-end gap-1.5 bg-card py-2 sm:gap-2">
               {question && (
                 <MaterialSourcesAction target={{ type: "quizQuestion", id: question.id }} />
               )}

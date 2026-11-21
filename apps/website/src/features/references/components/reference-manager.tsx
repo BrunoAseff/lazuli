@@ -260,7 +260,7 @@ const ReferenceListDialog = ({
 }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-lg">
-      <DialogHeader className="border-b px-6 py-5">
+      <DialogHeader className="px-6 py-5">
         <DialogTitle className="pr-8">Fontes do material</DialogTitle>
         <DialogDescription>Documentos conectados a este material.</DialogDescription>
       </DialogHeader>
@@ -288,7 +288,7 @@ const ReferenceListDialog = ({
           ))}
         </div>
       </div>
-      <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4">
+      <DialogFooter className="mx-0 mb-0 rounded-none px-6 py-4">
         <DialogCancelButton onClick={() => onOpenChange(false)}>Fechar</DialogCancelButton>
         <Button onClick={onAdd}>
           <PlusIcon aria-hidden="true" /> Conectar documento
@@ -348,7 +348,7 @@ const ReferenceSourcePickerDialog = ({
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        <DialogHeader className="border-b px-6 py-5">
+        <DialogHeader className="px-6 py-5">
           <DialogTitle className="pr-8">Conectar uma fonte</DialogTitle>
           <DialogDescription>Escolha o documento relacionado a este material.</DialogDescription>
         </DialogHeader>
@@ -499,7 +499,7 @@ const ReferenceSourcePickerDialog = ({
             )}
           </CreationWorkspace>
         </div>
-        <DialogFooter className="mx-0 mb-0 rounded-none border-t px-6 py-4 sm:flex-wrap">
+        <DialogFooter className="mx-0 mb-0 rounded-none px-6 py-4 sm:flex-wrap">
           <DialogCancelButton onClick={close}>Cancelar</DialogCancelButton>
           <Button
             pending={create.isPending}
