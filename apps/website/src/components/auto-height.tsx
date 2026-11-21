@@ -30,7 +30,14 @@ export const AutoHeight = ({
     <motion.div
       animate={{ height }}
       className={className}
+      // Marked while it moves, so a dialog around it follows instead of animating on its own.
+      data-auto-height=""
       initial={false}
+      onAnimationComplete={(definition) => {
+        void definition;
+        inner.current?.parentElement?.removeAttribute("data-animating");
+      }}
+      onAnimationStart={() => inner.current?.parentElement?.setAttribute("data-animating", "")}
       style={{ overflow: "hidden" }}
       transition={reduced ? { duration: 0 } : motionTokens.spring.smooth}
     >

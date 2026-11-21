@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { overlayMotion, overlaySurface } from "./ui-styles.ts";
 import { useOverlayFocusReturn } from "./use-overlay-focus-return.ts";
+import { useAnimatedSize, useMergedRef } from "./use-animated-size.ts";
 
 function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
@@ -41,17 +42,21 @@ function AlertDialogContent({
   size = "default",
   onOpenAutoFocus,
   onCloseAutoFocus,
+  ref,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
 }) {
   const focusReturn = useOverlayFocusReturn({ onOpenAutoFocus, onCloseAutoFocus });
+  const sizeRef = useAnimatedSize<HTMLDivElement>();
+  const contentRef = useMergedRef(sizeRef, ref);
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         data-size={size}
+        ref={contentRef}
         {...focusReturn}
         className={cn(
           `group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-5 p-5 outline-none max-w-xs sm:max-w-sm data-[size=sm]:sm:max-w-xs ${overlaySurface} ${overlayMotion}`,
