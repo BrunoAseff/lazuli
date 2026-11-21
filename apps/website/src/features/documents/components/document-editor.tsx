@@ -69,13 +69,11 @@ import {
   ExternalImageImportError,
   importExternalImages,
 } from "../editor/import-external-images.ts";
-import { LocalizedBlockNoteInput } from "../editor/localized-blocknote-input.tsx";
 import { DocumentSaveStatus, type DocumentSaveState } from "./document-save-status.tsx";
 import { safeReturnTo } from "../document-navigation.ts";
 import { FavoriteButton } from "@/features/favorites/favorite-button.tsx";
 import { useSourceAnchorsShown } from "@/features/references/source-anchor-visibility.ts";
 
-const blockNoteComponents = { Input: { Input: LocalizedBlockNoteInput } };
 const compactWorkspaceMaxWidth = 56 * 16;
 const toDocumentBlocks = (blocks: LazuliDocumentBlock) => blocks as unknown as DocumentBlock[];
 export const DocumentEditor = ({
@@ -798,7 +796,6 @@ export const DocumentEditor = ({
                 });
                 setDirty(true);
               }}
-              shadCNComponents={blockNoteComponents}
             >
               {!compactEditorChrome && <LazuliSideMenuController />}
               {compactEditorChrome ? (

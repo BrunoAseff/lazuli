@@ -1,10 +1,7 @@
 import { useCreateBlockNote } from "@blocknote/react";
 import { ThemedBlockNoteView as BlockNoteView } from "@/components/themed-blocknote-view.tsx";
 
-import { LocalizedBlockNoteInput } from "@/features/documents/editor/localized-blocknote-input.tsx";
 import { cn } from "@/lib/utils.ts";
-
-const blockNoteComponents = { Input: { Input: LocalizedBlockNoteInput } };
 
 export const RichContentField = ({
   appearance = "boxed",
@@ -59,7 +56,6 @@ export const RichContentField = ({
         editable={editable}
         editor={editor}
         onChange={onChange}
-        shadCNComponents={blockNoteComponents}
         sideMenu={false}
       />
     </div>

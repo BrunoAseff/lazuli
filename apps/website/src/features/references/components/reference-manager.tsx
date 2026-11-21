@@ -225,6 +225,7 @@ export const ReferenceManager = ({
               key={reference.id}
               documentTitle={reference.documentTitle}
               projectTitle={reference.projectTitle}
+              preview={reference.sourcePreview}
               scope={reference.anchorId ? "selection" : "document"}
               href={documentLocation({
                 anchorId: reference.anchorId,
@@ -277,7 +278,14 @@ const ReferenceListDialog = ({
   open: boolean;
 }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-lg">
+    <DialogContent
+      className="max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-lg"
+      // Focus starts on the dialog itself, not on the first "Desconectar" (and its tooltip).
+      onOpenAutoFocus={(event) => {
+        event.preventDefault();
+        (event.currentTarget as HTMLElement).focus();
+      }}
+    >
       <DialogHeader className="px-6 py-5">
         <DialogTitle className="pr-8">Fontes do material</DialogTitle>
         <DialogDescription>Documentos conectados a este material.</DialogDescription>
@@ -295,6 +303,7 @@ const ReferenceListDialog = ({
               href={hrefOf(reference)}
               key={reference.id}
               projectTitle={reference.projectTitle}
+              preview={reference.sourcePreview}
               scope={reference.anchorId ? "selection" : "document"}
               trailing={
                 <ReferenceDeleteButton

@@ -28,7 +28,36 @@ export const lazuliBlockNoteDictionary = {
   ...pt,
   slash_menu: slashMenu,
   file_panel: {
-    ...pt.file_panel,
-    upload: { ...pt.file_panel.upload, title: "Enviar" },
+    upload: {
+      title: "Enviar",
+      file_placeholder: {
+        image: "Escolher imagem",
+        video: "Escolher vídeo",
+        audio: "Escolher áudio",
+        file: "Escolher arquivo",
+      },
+      upload_error: "Não foi possível enviar o arquivo. Tente novamente.",
+    },
+    embed: {
+      ...pt.file_panel.embed,
+      url_placeholder: "Cole o endereço (https://…)",
+    },
+  },
+  link_toolbar: {
+    ...pt.link_toolbar,
+    form: { title_placeholder: "O texto que aparece", url_placeholder: "https://…" },
+  },
+  formatting_toolbar: {
+    ...pt.formatting_toolbar,
+    file_caption: { tooltip: "Editar legenda", input_placeholder: "Aparece abaixo da imagem" },
+    file_rename: {
+      ...pt.formatting_toolbar.file_rename,
+      input_placeholder: {
+        image: "Usado ao baixar a imagem",
+        video: "Usado ao baixar o vídeo",
+        audio: "Usado ao baixar o áudio",
+        file: "Usado ao baixar o arquivo",
+      },
+    },
   },
 };

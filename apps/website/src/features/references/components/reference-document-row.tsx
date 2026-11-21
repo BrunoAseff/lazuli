@@ -9,6 +9,7 @@ export const ReferenceDocumentRow = ({
   documentTitle,
   href,
   onNavigate,
+  preview,
   projectTitle,
   scope,
   trailing,
@@ -16,14 +17,20 @@ export const ReferenceDocumentRow = ({
   documentTitle: string;
   href: string;
   onNavigate?: () => void;
+  /** A passage's own words, so a trecho reads as more than a link. */
+  preview?: string | null;
   projectTitle: string;
   scope: "document" | "selection";
   trailing?: ReactNode;
 }) => (
   // The whole row opens the source; trailing actions sit above the stretched link. The row keeps its
   // own padding (no negative margin), so it never overflows a scrolling column.
-  <div className="group relative flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/50">
-    <FileTextIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+  <div className="group relative flex min-w-0 items-start gap-3 rounded-lg px-3 py-2.5 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring/50">
+    {/* Centered on the title's first line, whether or not a passage follows. */}
+    <FileTextIcon
+      aria-hidden="true"
+      className="mt-[0.1875rem] size-4 shrink-0 text-muted-foreground"
+    />
     <div className="min-w-0 flex-1">
       <OverflowTooltip text={documentTitle}>
         {(ref) => (
@@ -40,6 +47,15 @@ export const ReferenceDocumentRow = ({
       <p className="truncate text-xs text-muted-foreground">
         {projectTitle} · {scope === "selection" ? "Trecho" : "Documento inteiro"}
       </p>
+      {scope === "selection" &&
+        preview && (
+          // Clamped inside the tinted box, so a third line never shows in its padding.
+          <div className="source-excerpt mt-2">
+            <p className="line-clamp-2 font-reading text-sm leading-normal text-foreground/85">
+              {preview}
+            </p>
+          </div>
+        )}
     </div>
     {trailing && <div className="relative z-10">{trailing}</div>}
   </div>

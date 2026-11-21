@@ -1416,29 +1416,34 @@
 }
 
 /*
- * BlockNote's small forms (link, caption, file name): the app's field and nothing around it.
- * Its wrapper box goes transparent; the leading icon stays beside the field.
+ * BlockNote's small forms (link, caption, file name) are the app's labelled field (see
+ * blocknote-components.tsx) on a popover with the app's 12px inset.
  */
 .bn-shadcn [data-slot="popover-content"] {
-  width: min(22rem, calc(100vw - 1rem));
-  padding: 0.5rem;
+  width: min(20rem, calc(100vw - 1rem));
+  padding: 0.75rem;
 }
-.bn-shadcn .bn-text-input {
-  height: auto;
-  gap: 0.5rem;
-  border: 0;
-  padding: 0 0 0 0.25rem;
+/* The image panel draws its own surface: the popover around it stays bare. */
+.bn-shadcn [data-slot="popover-content"]:has(> .lazuli-file-panel) {
+  width: auto;
+  padding: 0;
   background: transparent;
   box-shadow: none;
 }
-.bn-shadcn .bn-text-input > svg {
-  width: 1rem;
-  height: 1rem;
-  flex: none;
-  color: var(--muted-foreground);
+.lazuli-file-panel {
+  width: min(20rem, calc(100vw - 1rem));
+  border-radius: var(--radius-overlay);
+  padding: 0.75rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  font-family: var(--font-sans);
+  box-shadow:
+    var(--shadow-float),
+    0 0 0 1px var(--border);
 }
-.bn-shadcn .bn-text-input:focus-within {
-  box-shadow: none;
+.lazuli-file-panel .bn-error-text {
+  font-size: 0.8125rem;
+  color: var(--destructive);
 }
 
 /* A dialog changing size: no scrollbar flashes in for a frame (see use-animated-size.ts). */
