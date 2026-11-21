@@ -53,11 +53,7 @@ import { cn } from "@/lib/utils.ts";
 import { parsePositivePage } from "@/lib/pagination.ts";
 import { mergeSearchParams } from "@/lib/search-params.ts";
 import type { StudyItemAction, StudyItemBatchAction } from "@/lib/study-actions.ts";
-import {
-  findReplacementStudyItemId,
-  type PendingStudyEditorState,
-  type StudyEditorState,
-} from "@/lib/study-editor.ts";
+import { findReplacementStudyItemId } from "@/lib/study-editor.ts";
 import {
   useBatchFlashcards,
   useDeleteFlashcard,
@@ -77,6 +73,7 @@ import { FlashcardImportDialog } from "../components/flashcard-import-dialog.tsx
 import { FlashcardPracticeButton } from "../components/flashcard-practice-button.tsx";
 import { PracticeSetupDialog } from "../components/practice-setup-dialog.tsx";
 import { getFlashcardCollectionErrorMessage } from "../flashcard-messages.ts";
+import { useStudyItemEditor } from "@/lib/use-study-item-editor.ts";
 
 const flashcardListDefaults = { filter: "all", sort: "updated", status: "active" };
 
@@ -113,10 +110,14 @@ export const FlashcardCollectionPage = () => {
     updateParams({ query: value || undefined }),
   );
   const [selected, setSelected] = useState(new Set<string>());
-  const [editor, setEditor] = useState<StudyEditorState>(null);
   const [duplicateSource, setDuplicateSource] = useState<FlashcardDetail | null>(null);
-  const [editorDirty, setEditorDirty] = useState(false);
-  const [pendingEditor, setPendingEditor] = useState<PendingStudyEditorState>(null);
+  const itemEditor = useStudyItemEditor({
+    linkedId: linkedCardId,
+    onChange: () => setDuplicateSource(null),
+    param: "card",
+    updateParams,
+  });
+  const { activeId, editor, showReplacement } = itemEditor;
   const compact = useIsMobile();
   const [pendingDelete, setPendingDelete] = useState<FlashcardSummary | null>(null);
   const [pendingArchive, setPendingArchive] = useState<FlashcardSummary | null>(null);
@@ -134,10 +135,6 @@ export const FlashcardCollectionPage = () => {
   const batch = useBatchFlashcards(collectionId);
   const remove = useDeleteFlashcard(collectionId);
 
-  useEffect(() => {
-    if (linkedCardId)
-      setEditor(linkedCardId === "new" ? { type: "create" } : { type: "edit", id: linkedCardId });
-  }, [linkedCardId]);
   useEffect(() => setSelected(new Set()), [input.page, input.filter, input.query, input.status]);
   useEffect(() => {
     const totalPages = cards.data?.pagination.totalPages;
@@ -148,56 +145,23 @@ export const FlashcardCollectionPage = () => {
     if (compact || editor || linkedCardId || !cards.data?.items.length) return;
     const first = cards.data.items[0];
     if (!first) return;
-    setEditor({ type: "edit", id: first.id });
-    updateParams({ card: first.id }, false, true);
+    itemEditor.show({ type: "edit", id: first.id }, true);
   }, [cards.data?.items, compact, editor, linkedCardId]);
 
   const openCard = (card: FlashcardSummary) => {
-    if (activeId === card.id) return;
-    const next = { type: "edit" as const, id: card.id };
-    if (editorDirty) {
-      setPendingEditor(next);
-      return;
-    }
-    setEditor(next);
-    updateParams({ card: card.id }, false);
+    if (activeId !== card.id) itemEditor.change({ type: "edit", id: card.id });
   };
-  const createCard = () => {
-    setDuplicateSource(null);
-    const next = { type: "create" as const };
-    if (editorDirty) {
-      setPendingEditor(next);
-      return;
-    }
-    setEditor(next);
-    updateParams({ card: "new" }, false);
-  };
+  const createCard = () => itemEditor.change({ type: "create" });
   const openDuplicateDraft = (card: FlashcardDetail) => {
     setDuplicateSource(card);
-    setEditor({ type: "create" });
-    updateParams({ card: "new" }, false);
+    itemEditor.show({ type: "create" });
   };
   const replacementCardId = (excluded: Set<string>) => {
     const visible = cards.data?.items ?? [];
     return findReplacementStudyItemId(visible, activeId, excluded);
   };
-  const showReplacement = (replacementId?: string) => {
-    if (replacementId) {
-      setEditor({ type: "edit", id: replacementId });
-      updateParams({ card: replacementId }, false, true);
-    } else {
-      setEditor(null);
-      updateParams({ card: undefined }, false, true);
-    }
-  };
-  const closeEditor = () => {
-    if (editorDirty) {
-      setPendingEditor("close");
-      return;
-    }
-    setEditor(null);
-    updateParams({ card: undefined }, false, true);
-  };
+  const closeEditor = itemEditor.close;
+
   const performCardAction = async (
     action: StudyItemAction,
     card: FlashcardSummary,
@@ -215,8 +179,7 @@ export const FlashcardCollectionPage = () => {
     try {
       await batch.mutateAsync({ ids: [card.id], action: { type: action } });
       if (activeId === card.id) {
-        setEditor(null);
-        updateParams({ card: undefined }, false, true);
+        itemEditor.show(null, true);
       }
       toast.success(action === "archive" ? "Flashcard arquivado." : "Flashcard restaurado.");
     } catch (error) {
@@ -261,8 +224,7 @@ export const FlashcardCollectionPage = () => {
       setMoveCard(null);
       setMoveOpen(false);
       if (movesActiveCard) {
-        setEditor(null);
-        updateParams({ card: undefined }, false, true);
+        itemEditor.show(null, true);
       }
       toast.success("Flashcards movidos.");
     } catch (error) {
@@ -286,7 +248,6 @@ export const FlashcardCollectionPage = () => {
     );
 
   const summary = collection.data;
-  const activeId = editor?.type === "edit" ? editor.id : undefined;
   const appliedFilters =
     Number(input.filter !== "all") +
     Number(input.sort !== "updated") +
@@ -514,16 +475,15 @@ export const FlashcardCollectionPage = () => {
                 initialQuestion={duplicateSource?.question}
                 key={duplicateSource ? `duplicate-${duplicateSource.id}` : "new"}
                 onOpenChange={() => undefined}
-                onDirtyChange={setEditorDirty}
+                onDirtyChange={itemEditor.setDirty}
                 onSaved={(cardId, savedCollectionId) => {
-                  setEditorDirty(false);
+                  itemEditor.setDirty(false);
                   setDuplicateSource(null);
                   if (savedCollectionId !== collectionId) {
                     void navigate(`/flashcards/${savedCollectionId}?card=${cardId}`);
                     return;
                   }
-                  setEditor({ type: "edit", id: cardId });
-                  updateParams({ card: cardId }, false, true);
+                  itemEditor.show({ type: "edit", id: cardId }, true);
                 }}
                 open
                 readOnly={Boolean(summary.archivedAt)}
@@ -539,9 +499,9 @@ export const FlashcardCollectionPage = () => {
                   if (action !== "duplicate") return void performCardAction(action, detail.data);
                   openDuplicateDraft(detail.data);
                 }}
-                onDirtyChange={setEditorDirty}
+                onDirtyChange={itemEditor.setDirty}
                 onSaved={(cardId, savedCollectionId) => {
-                  setEditorDirty(false);
+                  itemEditor.setDirty(false);
                   if (savedCollectionId !== collectionId)
                     void navigate(`/flashcards/${savedCollectionId}?card=${cardId}`);
                   else updateParams({ card: cardId }, false, true);
@@ -652,21 +612,7 @@ export const FlashcardCollectionPage = () => {
         cancelLabel="Continuar editando"
         description="A pergunta ou resposta atual ainda não foi salva."
         destructive
-        onConfirm={() => {
-          if (!pendingEditor) return;
-          const next = pendingEditor;
-          setPendingEditor(null);
-          setEditorDirty(false);
-          if (next === "close") {
-            setEditor(null);
-            updateParams({ card: undefined }, false, true);
-            return;
-          }
-          setEditor(next);
-          updateParams({ card: next.type === "create" ? "new" : next.id }, false);
-        }}
-        open={Boolean(pendingEditor)}
-        onOpenChange={(open) => !open && setPendingEditor(null)}
+        {...itemEditor.discard}
         title="Descartar alterações?"
       />
     </main>
