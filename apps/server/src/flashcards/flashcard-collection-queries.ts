@@ -62,10 +62,6 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
       collectionId: flashcard.collectionId,
       totalCards: count().mapWith(Number),
       newCards: sql<number>`count(*) filter (where ${flashcard.srsState} = 'new')`.mapWith(Number),
-      studiedCards:
-        sql<number>`count(*) filter (where ${flashcard.lastReviewedAt} is not null)`.mapWith(
-          Number,
-        ),
       dueCards: sql<number>`count(*) filter (where ${lte(flashcard.dueAt, now)})`.mapWith(Number),
       // Mastered: reviewed into a long interval, not lapsed, and not due again yet.
       masteredCards:
@@ -77,9 +73,6 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
         sql<Date | null>`min(${flashcard.dueAt}) filter (where ${gt(flashcard.dueAt, now)})`.mapWith(
           flashcard.dueAt,
         ),
-      lastReviewedAt: sql<Date | null>`max(${flashcard.lastReviewedAt})`.mapWith(
-        flashcard.lastReviewedAt,
-      ),
     })
     .from(flashcard)
     .where(and(inArray(flashcard.collectionId, collectionIds), isNull(flashcard.archivedAt)))
@@ -89,10 +82,6 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
     .select({
       collectionId: flashcardPracticeSession.collectionId,
       reviewsLastSevenDays: count().mapWith(Number),
-      successfulReviews:
-        sql<number>`count(*) filter (where ${flashcardReview.rating} in ('hard', 'good', 'easy'))`.mapWith(
-          Number,
-        ),
     })
     .from(flashcardReview)
     .innerJoin(flashcardPracticeSession, eq(flashcardPracticeSession.id, flashcardReview.sessionId))
@@ -117,15 +106,10 @@ const enrichCollections = async (database: QueryExecutor, rows: CollectionRow[],
       archivedAt: row.archivedAt,
       totalCards: metrics?.totalCards ?? 0,
       newCards: metrics?.newCards ?? 0,
-      studiedCards: metrics?.studiedCards ?? 0,
       dueCards: metrics?.dueCards ?? 0,
       masteredCards: metrics?.masteredCards ?? 0,
       nextPracticeAt: metrics?.nextPracticeAt ?? null,
       reviewsLastSevenDays: reviews?.reviewsLastSevenDays ?? 0,
-      successRateLastSevenDays: reviews?.reviewsLastSevenDays
-        ? reviews.successfulReviews / reviews.reviewsLastSevenDays
-        : null,
-      lastReviewedAt: metrics?.lastReviewedAt ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

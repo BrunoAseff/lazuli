@@ -25,7 +25,6 @@ const serializeCollection = <
   T extends {
     archivedAt: Date | null;
     createdAt: Date;
-    lastReviewedAt: Date | null;
     nextPracticeAt: Date | null;
     updatedAt: Date;
   },
@@ -35,7 +34,6 @@ const serializeCollection = <
   ...value,
   archivedAt: value.archivedAt?.toISOString() ?? null,
   nextPracticeAt: value.nextPracticeAt?.toISOString() ?? null,
-  lastReviewedAt: value.lastReviewedAt?.toISOString() ?? null,
   createdAt: value.createdAt.toISOString(),
   updatedAt: value.updatedAt.toISOString(),
 });

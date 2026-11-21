@@ -3,7 +3,7 @@ import type {
   QuizCollectionListQuery,
   UpdateQuizCollectionInput,
 } from "@lazuli/shared";
-import { and, count, desc, eq, gte, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import type { Database, QueryExecutor } from "../database/client.ts";
 import { escapeLikePattern } from "../database/sql-search.ts";
@@ -44,11 +44,9 @@ const enrichCollections = async (
   database: QueryExecutor,
   userId: string,
   rows: CollectionRow[],
-  now: Date,
 ) => {
   if (rows.length === 0) return [];
   const collectionIds = rows.map(({ id }) => id);
-  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1_000);
   const [questionMetrics, attemptMetrics, lastAttempts] = await Promise.all([
     database
       .select({ collectionId: quizQuestion.collectionId, totalQuestions: count().mapWith(Number) })
@@ -61,10 +59,6 @@ const enrichCollections = async (
       .select({
         collectionId: quizAttempt.collectionId,
         totalAttempts: count().mapWith(Number),
-        attemptsLastSevenDays:
-          sql<number>`count(*) filter (where ${gte(quizAttempt.completedAt, weekStart)})`.mapWith(
-            Number,
-          ),
         bestScoreRate: sql<
           number | null
         >`max(${quizAttempt.correctAnswers}::double precision / nullif(${quizAttempt.totalQuestions}, 0))`.mapWith(
@@ -85,7 +79,6 @@ const enrichCollections = async (
         collectionId: quizAttempt.collectionId,
         correctAnswers: quizAttempt.correctAnswers,
         totalQuestions: quizAttempt.totalQuestions,
-        completedAt: quizAttempt.completedAt,
       })
       .from(quizAttempt)
       .where(
@@ -123,10 +116,8 @@ const enrichCollections = async (
       archivedAt: row.archivedAt,
       totalQuestions: questionsByCollection.get(row.id) ?? 0,
       totalAttempts: attempts?.totalAttempts ?? 0,
-      attemptsLastSevenDays: attempts?.attemptsLastSevenDays ?? 0,
       lastScore,
       bestScoreRate: attempts?.bestScoreRate ?? null,
-      lastAttemptAt: last?.completedAt ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -154,7 +145,6 @@ export const listQuizCollections = async (
   database: Database,
   userId: string,
   input: QuizCollectionListQuery,
-  now = new Date(),
 ) => {
   const where = createCollectionWhere(userId, input);
   const [total, rows] = await Promise.all([
@@ -170,7 +160,7 @@ export const listQuizCollections = async (
   ]);
   const totalItems = total[0]?.value ?? 0;
   return {
-    items: await enrichCollections(database, userId, rows, now),
+    items: await enrichCollections(database, userId, rows),
     pagination: {
       page: input.page,
       pageSize: input.pageSize,
@@ -184,7 +174,6 @@ export const getQuizCollection = async (
   database: QueryExecutor,
   userId: string,
   collectionId: string,
-  now = new Date(),
 ) => {
   const [row] = await database
     .select(collectionSelection)
@@ -193,7 +182,7 @@ export const getQuizCollection = async (
     .where(and(eq(quizCollection.id, collectionId), eq(quizCollection.userId, userId)))
     .limit(1);
   if (!row) return null;
-  return (await enrichCollections(database, userId, [row], now))[0] ?? null;
+  return (await enrichCollections(database, userId, [row]))[0] ?? null;
 };
 
 export const createQuizCollection = async (

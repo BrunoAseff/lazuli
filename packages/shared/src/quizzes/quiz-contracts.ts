@@ -218,10 +218,8 @@ export const quizCollectionSummarySchema = z.object({
   archivedAt: z.iso.datetime().nullable(),
   totalQuestions: metricSchema,
   totalAttempts: metricSchema,
-  attemptsLastSevenDays: metricSchema,
   lastScore: scoreSchema.nullable(),
   bestScoreRate: z.number().min(0).max(1).nullable(),
-  lastAttemptAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

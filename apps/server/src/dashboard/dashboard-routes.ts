@@ -1,6 +1,5 @@
 import {
   dashboardOnboardingDismissalSchema,
-  dashboardQuerySchema,
   dashboardResponseSchema,
   dismissDashboardOnboardingSchema,
 } from "@lazuli/shared";
@@ -36,14 +35,8 @@ export const createDashboardRoutes = ({
     app.get("/api/dashboard", async (request, reply) => {
       const session = await requireSession(auth, request, reply);
       if (!session) return;
-      const input = dashboardQuerySchema.safeParse(request.query);
-      if (!input.success) return sendValidationError(reply);
-      const timeZone = normalizeTimeZone(input.data.tz);
-      if (!timeZone) return sendValidationError(reply);
       try {
-        return dashboardResponseSchema.parse(
-          await getDashboard(database, session.user.id, timeZone),
-        );
+        return dashboardResponseSchema.parse(await getDashboard(database, session.user.id));
       } catch (error) {
         request.log.error({ err: error, userId: session.user.id }, "dashboard loading failed");
         return reply.status(500).send({

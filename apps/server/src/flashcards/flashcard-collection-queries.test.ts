@@ -102,7 +102,6 @@ describe("flashcard collection queries", () => {
           {
             collectionId,
             totalCards: 4,
-            studiedCards: 3,
             dueCards: 2,
             nextPracticeAt: new Date("2026-08-21T12:00:00.000Z"),
             lastReviewedAt: new Date("2026-08-20T10:00:00.000Z"),
@@ -130,14 +129,12 @@ describe("flashcard collection queries", () => {
     expect(result.items[0]).toMatchObject({
       id: collectionId,
       totalCards: 4,
-      studiedCards: 3,
       dueCards: 2,
       reviewsLastSevenDays: 5,
     });
     expect(result.items[1]).toMatchObject({
       id: secondId,
       totalCards: 0,
-      studiedCards: 0,
       dueCards: 0,
       reviewsLastSevenDays: 0,
     });

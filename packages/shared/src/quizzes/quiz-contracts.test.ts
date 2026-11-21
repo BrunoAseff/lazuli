@@ -36,7 +36,6 @@ describe("quiz collection contracts", () => {
       archivedAt: null,
       totalQuestions: 4,
       totalAttempts: 0,
-      attemptsLastSevenDays: 0,
       bestScoreRate: null,
       lastAttemptAt: null,
       createdAt: "2026-08-25T12:00:00.000Z",

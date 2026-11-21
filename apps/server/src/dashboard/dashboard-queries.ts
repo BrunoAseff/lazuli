@@ -1,16 +1,13 @@
-import type { DashboardResponse, DashboardWeeklyDay } from "@lazuli/shared";
+import type { DashboardResponse } from "@lazuli/shared";
 import {
   type AnyColumn,
   and,
-  count,
   desc,
   eq,
   gt,
-  gte,
   inArray,
   isNotNull,
   isNull,
-  lt,
   lte,
   or,
   sql,
@@ -22,11 +19,9 @@ import {
   flashcard,
   flashcardCollection,
   flashcardPracticeSession,
-  flashcardReview,
   project,
   projectItem,
   quizAttempt,
-  quizAttemptItem,
   quizCollection,
   quizQuestion,
   userDashboardOnboarding,
@@ -51,7 +46,6 @@ type ReviewCollection = {
   collectionTitle: string;
   dueReviews: number;
   newCards: number;
-  oldestDueAt: Date | null;
 };
 
 type ReviewTotals = {
@@ -79,16 +73,9 @@ type QuizCandidate = {
 type RecentDocument = {
   documentId: string;
   documentTitle: string;
-  isExample: boolean;
   projectId: string;
   projectTitle: string;
   updatedAt: Date;
-};
-
-type DailyMetric = {
-  date: string;
-  successful: number;
-  total: number;
 };
 
 /**
@@ -116,35 +103,6 @@ export const shiftDateKey = (date: string, days: number) => {
   return utcDay(new Date(Date.UTC(year!, month! - 1, day!) + days * DAY_MS));
 };
 
-export const buildWeeklyActivity = (
-  flashcardDays: DailyMetric[],
-  quizDays: DailyMetric[],
-  now: Date,
-  timeZone = "UTC",
-): DashboardResponse["weeklyActivity"] => {
-  const today = dateKeyInTimeZone(now, timeZone);
-  const flashcardByDay = new Map(flashcardDays.map((item) => [item.date, item]));
-  const quizByDay = new Map(quizDays.map((item) => [item.date, item]));
-  const days: DashboardWeeklyDay[] = Array.from({ length: 7 }, (_, index) => {
-    const date = shiftDateKey(today, index - 6);
-    const flashcardMetric = flashcardByDay.get(date);
-    const quizMetric = quizByDay.get(date);
-    const flashcardReviews = flashcardMetric?.total ?? 0;
-    const quizAnswers = quizMetric?.total ?? 0;
-    return { date, flashcardReviews, quizAnswers, total: flashcardReviews + quizAnswers };
-  });
-  const flashcardTotal = flashcardDays.reduce((total, item) => total + item.total, 0);
-  const flashcardSuccessful = flashcardDays.reduce((total, item) => total + item.successful, 0);
-  const quizTotal = quizDays.reduce((total, item) => total + item.total, 0);
-  const quizSuccessful = quizDays.reduce((total, item) => total + item.successful, 0);
-  return {
-    days,
-    flashcardRecallRate: flashcardTotal ? flashcardSuccessful / flashcardTotal : null,
-    quizAccuracyRate: quizTotal ? quizSuccessful / quizTotal : null,
-    totalItems: days.reduce((total, item) => total + item.total, 0),
-  };
-};
-
 export const buildReviewQueue = ({
   activeSessions,
   collections,
@@ -162,7 +120,6 @@ export const buildReviewQueue = ({
       collectionTitle: session.collectionTitle,
       dueReviews: metrics?.dueReviews ?? 0,
       newCards: metrics?.newCards ?? 0,
-      oldestDueAt: metrics?.oldestDueAt?.toISOString() ?? null,
       activeSession: {
         sessionId: session.sessionId,
         reviewedCards: session.reviewedCards,
@@ -173,11 +130,7 @@ export const buildReviewQueue = ({
   for (const collection of collections) {
     if (activeSessions.some(({ collectionId }) => collectionId === collection.collectionId))
       continue;
-    merged.push({
-      ...collection,
-      oldestDueAt: collection.oldestDueAt?.toISOString() ?? null,
-      activeSession: null,
-    });
+    merged.push({ ...collection, activeSession: null });
   }
   const visible = merged.slice(0, CANDIDATE_LIMIT);
   const displayedAvailable = visible.filter(
@@ -249,16 +202,8 @@ export const dismissDashboardOnboarding = async (
 export const getDashboard = async (
   database: Database,
   userId: string,
-  timeZone = "UTC",
   now = new Date(),
 ): Promise<DashboardResponse> => {
-  const today = dateKeyInTimeZone(now, timeZone);
-  const activityStartDay = shiftDateKey(today, -6);
-  const activityEndDay = shiftDateKey(today, 1);
-  const activityStart = sql<Date>`(${activityStartDay}::date::timestamp at time zone ${timeZone})`;
-  const activityEnd = sql<Date>`(${activityEndDay}::date::timestamp at time zone ${timeZone})`;
-  const flashcardActivityDay = sql<string>`to_char(${flashcardReview.reviewedAt} at time zone ${timeZone}, 'YYYY-MM-DD')`;
-  const quizActivityDay = sql<string>`to_char(${quizAttemptItem.answeredAt} at time zone ${timeZone}, 'YYYY-MM-DD')`;
   const relevantGenerationTypes = ["selection_generation", "collection_generation"] as const;
   const availableCard = lte(flashcard.dueAt, now);
   const dueReview = and(isNotNull(flashcard.lastReviewedAt), availableCard);
@@ -305,14 +250,11 @@ export const getDashboard = async (
     reviewTotals,
     activeQuizAttempts,
     quizCandidates,
-    flashcardDays,
-    quizDays,
   ] = await Promise.all([
     database
       .select({
         documentId: projectItem.id,
         documentTitle: projectItem.title,
-        isExample: project.quotaExempt,
         projectId: project.id,
         projectTitle: project.title,
         updatedAt: projectItem.updatedAt,
@@ -360,10 +302,6 @@ export const getDashboard = async (
         newCards: sql<number>`count(*) filter (where ${flashcard.lastReviewedAt} is null)`.mapWith(
           Number,
         ),
-        oldestDueAt:
-          sql<Date | null>`min(${flashcard.dueAt}) filter (where ${flashcard.lastReviewedAt} is not null)`.mapWith(
-            flashcard.dueAt,
-          ),
       })
       .from(flashcardCollection)
       .innerJoin(
@@ -469,50 +407,6 @@ export const getDashboard = async (
         desc(quizCollection.id),
       )
       .limit(CANDIDATE_LIMIT),
-    database
-      .select({
-        date: flashcardActivityDay,
-        successful:
-          sql<number>`count(*) filter (where ${flashcardReview.rating} in ('hard', 'good', 'easy'))`.mapWith(
-            Number,
-          ),
-        total: count().mapWith(Number),
-      })
-      .from(flashcardReview)
-      .innerJoin(
-        flashcardPracticeSession,
-        and(
-          eq(flashcardPracticeSession.id, flashcardReview.sessionId),
-          eq(flashcardPracticeSession.userId, userId),
-        ),
-      )
-      .where(
-        and(
-          gte(flashcardReview.reviewedAt, activityStart),
-          lt(flashcardReview.reviewedAt, activityEnd),
-        ),
-      )
-      .groupBy(sql`1`),
-    database
-      .select({
-        date: quizActivityDay,
-        successful:
-          sql<number>`count(*) filter (where ${quizAttemptItem.isCorrect} = true)`.mapWith(Number),
-        total: count().mapWith(Number),
-      })
-      .from(quizAttemptItem)
-      .innerJoin(
-        quizAttempt,
-        and(eq(quizAttempt.id, quizAttemptItem.attemptId), eq(quizAttempt.userId, userId)),
-      )
-      .where(
-        and(
-          isNotNull(quizAttemptItem.answeredAt),
-          gte(quizAttemptItem.answeredAt, activityStart),
-          lt(quizAttemptItem.answeredAt, activityEnd),
-        ),
-      )
-      .groupBy(sql`1`),
   ]);
 
   const [
@@ -640,7 +534,6 @@ export const getDashboard = async (
     },
   });
   const generation = generationProgress[0];
-  const weeklyActivity = buildWeeklyActivity(flashcardDays, quizDays, now, timeZone);
   const ownDocumentTarget = ownDocument[0];
   const approved = generation?.approved ?? false;
   const example = exampleCollection[0];
@@ -662,10 +555,8 @@ export const getDashboard = async (
     ...content,
     reviewQueue,
     onboarding: {
-      dismissedAt: onboardingDismissal?.dismissedAt.toISOString() ?? null,
       visible: !onboardingDismissal && steps.some(({ completed }) => !completed),
       steps,
     },
-    weeklyActivity,
   };
 };

@@ -235,20 +235,15 @@ export const flashcardCollectionSummarySchema = z
     archivedAt: z.iso.datetime().nullable(),
     totalCards: flashcardMetricSchema,
     newCards: flashcardMetricSchema,
-    studiedCards: flashcardMetricSchema,
     dueCards: flashcardMetricSchema,
     /** Reviewed into a long interval and not due: the gold of the strip. */
     masteredCards: flashcardMetricSchema.default(0),
     nextPracticeAt: z.iso.datetime().nullable(),
     reviewsLastSevenDays: flashcardMetricSchema,
-    successRateLastSevenDays: z.number().min(0).max(1).nullable(),
-    lastReviewedAt: z.iso.datetime().nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
-  .superRefine(({ dueCards, newCards, studiedCards, totalCards }, context) => {
-    if (studiedCards > totalCards)
-      context.addIssue({ code: "custom", message: "A contagem de cards estudados é inválida." });
+  .superRefine(({ dueCards, newCards, totalCards }, context) => {
     if (dueCards > totalCards)
       context.addIssue({ code: "custom", message: "A contagem de cards disponíveis é inválida." });
     if (newCards > totalCards)

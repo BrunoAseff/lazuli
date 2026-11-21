@@ -25,7 +25,6 @@ const serializeCollection = <
   T extends {
     archivedAt: Date | null;
     createdAt: Date;
-    lastAttemptAt: Date | null;
     updatedAt: Date;
   },
 >(
@@ -33,7 +32,6 @@ const serializeCollection = <
 ) => ({
   ...value,
   archivedAt: value.archivedAt?.toISOString() ?? null,
-  lastAttemptAt: value.lastAttemptAt?.toISOString() ?? null,
   createdAt: value.createdAt.toISOString(),
   updatedAt: value.updatedAt.toISOString(),
 });

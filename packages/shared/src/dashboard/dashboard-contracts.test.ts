@@ -24,13 +24,11 @@ const response = {
         collectionTitle: "Anatomia",
         dueReviews: 3,
         newCards: 2,
-        oldestDueAt: "2026-10-19T12:00:00.000Z",
         activeSession: null,
       },
     ],
   },
   onboarding: {
-    dismissedAt: null,
     visible: true,
     steps: [
       { id: "create-document", completed: true, href: "/documents" },
@@ -39,22 +37,10 @@ const response = {
       { id: "practice-example", completed: false, href: "/flashcards" },
     ],
   },
-  weeklyActivity: {
-    days: Array.from({ length: 7 }, (_, day) => ({
-      date: `2026-10-${String(15 + day).padStart(2, "0")}`,
-      flashcardReviews: day,
-      quizAnswers: 0,
-      total: day,
-    })),
-    flashcardRecallRate: 0.75,
-    quizAccuracyRate: null,
-    totalItems: 21,
-  },
   recentDocuments: [
     {
       documentId: ids.document,
       documentTitle: "Sistema nervoso",
-      isExample: false,
       projectId: ids.project,
       projectTitle: "Anatomia",
       updatedAt: "2026-10-21T12:00:00.000Z",
@@ -68,13 +54,7 @@ describe("dashboard contracts", () => {
     expect(dashboardResponseSchema.parse(response)).toEqual(response);
   });
 
-  it("rejects ambiguous metrics and oversized document lists", () => {
-    expect(
-      dashboardResponseSchema.safeParse({
-        ...response,
-        weeklyActivity: { ...response.weeklyActivity, flashcardRecallRate: 1.1 },
-      }).success,
-    ).toBe(false);
+  it("rejects oversized document lists", () => {
     expect(
       dashboardResponseSchema.safeParse({
         ...response,

@@ -45,7 +45,6 @@ describe("flashcard collection contracts", () => {
       project: null,
       archivedAt: null,
       totalCards: 1,
-      studiedCards: 2,
       dueCards: 0,
       nextPracticeAt: null,
       reviewsLastSevenDays: 0,

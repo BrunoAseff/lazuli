@@ -9,17 +9,12 @@ import { quizAttemptIdSchema, quizCollectionIdSchema } from "../quizzes/quiz-con
 
 const nonnegativeMetricSchema = z.number().int().nonnegative();
 
-export const dashboardQuerySchema = z
-  .object({ tz: z.string().trim().min(1).max(100).optional() })
-  .strict();
-
 export const dashboardRecentDocumentSchema = z.object({
   documentId: projectIdSchema,
   documentTitle: z.string(),
   projectId: projectIdSchema,
   projectTitle: z.string(),
   updatedAt: z.iso.datetime(),
-  isExample: z.boolean(),
 });
 
 const dashboardReviewSessionSchema = z.object({
@@ -33,7 +28,6 @@ export const dashboardReviewCollectionSchema = z.object({
   collectionTitle: z.string(),
   dueReviews: nonnegativeMetricSchema,
   newCards: nonnegativeMetricSchema,
-  oldestDueAt: z.iso.datetime().nullable(),
   activeSession: dashboardReviewSessionSchema.nullable(),
 });
 
@@ -54,7 +48,6 @@ export const dashboardOnboardingStepIdSchema = z.enum([
 ]);
 
 export const dashboardOnboardingSchema = z.object({
-  dismissedAt: z.iso.datetime().nullable(),
   visible: z.boolean(),
   steps: z
     .array(
@@ -65,20 +58,6 @@ export const dashboardOnboardingSchema = z.object({
       }),
     )
     .length(4),
-});
-
-export const dashboardWeeklyDaySchema = z.object({
-  date: z.iso.date(),
-  flashcardReviews: nonnegativeMetricSchema,
-  quizAnswers: nonnegativeMetricSchema,
-  total: nonnegativeMetricSchema,
-});
-
-export const dashboardWeeklyActivitySchema = z.object({
-  days: z.array(dashboardWeeklyDaySchema).length(7),
-  flashcardRecallRate: z.number().min(0).max(1).nullable(),
-  quizAccuracyRate: z.number().min(0).max(1).nullable(),
-  totalItems: nonnegativeMetricSchema,
 });
 
 export const dashboardQuizContinuationSchema = z.discriminatedUnion("kind", [
@@ -102,7 +81,6 @@ export const dashboardQuizContinuationSchema = z.discriminatedUnion("kind", [
 export const dashboardResponseSchema = z.object({
   reviewQueue: dashboardReviewQueueSchema,
   onboarding: dashboardOnboardingSchema,
-  weeklyActivity: dashboardWeeklyActivitySchema,
   recentDocuments: z.array(dashboardRecentDocumentSchema).max(4),
   quizContinuations: z.array(dashboardQuizContinuationSchema).max(2),
 });
@@ -115,4 +93,3 @@ export const dashboardOnboardingDismissalSchema = z.object({
 
 export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;
 export type DashboardOnboardingStepId = z.infer<typeof dashboardOnboardingStepIdSchema>;
-export type DashboardWeeklyDay = z.infer<typeof dashboardWeeklyDaySchema>;
